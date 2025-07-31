@@ -80,6 +80,105 @@
             background: rgba(32, 178, 170, 0.1);
             border-radius: 20px;
         }
+        
+        .docs-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            overflow: hidden;
+        }
+        
+        .docs-tabs {
+            display: flex;
+            background: rgba(13, 13, 13, 0.8);
+            border-bottom: 1px solid rgba(32, 178, 170, 0.2);
+            overflow-x: auto;
+        }
+        
+        .docs-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 20px 25px;
+            background: none;
+            border: none;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        .docs-tab:hover {
+            background: rgba(32, 178, 170, 0.1);
+            color: #20B2AA;
+        }
+        
+        .docs-tab.active {
+            background: rgba(32, 178, 170, 0.15);
+            color: #20B2AA;
+            border-bottom-color: #20B2AA;
+        }
+        
+        .docs-tab i {
+            font-size: 1.1rem;
+        }
+        
+        .docs-content {
+            padding: 40px;
+            min-height: 600px;
+        }
+        
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .tab-panel.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-panel h2 {
+            color: #20B2AA;
+            border-bottom: 2px solid rgba(32, 178, 170, 0.3);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .tab-panel h3 {
+            color: #00CED1;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .docs-content {
+                padding: 25px 20px;
+            }
+            
+            .docs-tab {
+                padding: 15px 20px;
+                font-size: 0.85rem;
+            }
+            
+            .docs-tab span {
+                display: none;
+            }
+            
+            .docs-tab i {
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
 <body class="docs-body">
@@ -112,200 +211,286 @@
                 <p>Complete guide to launching memecoins on Kaspa with Gemlaunch.fun</p>
             </div>
             
-            <div class="docs-content">
-                <h2>🎯 Project Overview</h2>
-                
-                <p><strong>Vision:</strong> Bring the proven pump.fun model to the underserved Kaspa ecosystem with community-first economics and professional growth tools.</p>
-                
-                <p><strong>Target:</strong> Kaspa community hungry for memecoin infrastructure (first-mover advantage)</p>
-                
-                <p><strong>Key Differentiator:</strong> Complete ecosystem from fair meme launches to professional project tools - community-owned, transparent fee sharing, ecosystem reinvestment vs extraction</p>
-                
-                <p><strong>Partnership:</strong> Integrated with Kaspa Finance - all graduated tokens automatically deploy to their DEX with professional liquidity pools</p>
-                
-                <div class="highlight-box">
-                    <h4>🥇 First-Mover Advantage</h4>
-                    <p>Only memecoin launchpad on Kaspa ecosystem</p>
+            <div class="docs-container">
+                <!-- Tabs Navigation -->
+                <div class="docs-tabs">
+                    <button class="docs-tab active" data-tab="overview">
+                        <i class="fas fa-rocket"></i>
+                        <span>Overview</span>
+                    </button>
+                    <button class="docs-tab" data-tab="mechanics">
+                        <i class="fas fa-cogs"></i>
+                        <span>Mechanics</span>
+                    </button>
+                    <button class="docs-tab" data-tab="process">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Process</span>
+                    </button>
+                    <button class="docs-tab" data-tab="tokenomics">
+                        <i class="fas fa-coins"></i>
+                        <span>Tokenomics</span>
+                    </button>
+                    <button class="docs-tab" data-tab="technical">
+                        <i class="fas fa-code"></i>
+                        <span>Technical</span>
+                    </button>
+                    <button class="docs-tab" data-tab="strategy">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Strategy</span>
+                    </button>
                 </div>
                 
-                <h2>📊 Platform Mechanics</h2>
-                
-                <h3>Bonding Curve Model</h3>
-                <ul>
-                    <li><strong>Starting Market Cap:</strong> ~$1,000 (algorithmic, not user funds)</li>
-                    <li><strong>Graduation Threshold:</strong> ~$70,000 market cap (automatic DEX listing)</li>
-                    <li><strong>Token Supply:</strong> 1B tokens (default) - fully customizable</li>
-                    <li><strong>Platform Fee:</strong> 1% (community-aligned distribution)</li>
-                    <li><strong>Bonding Curve:</strong> x*y=k formula (proven mathematical model)</li>
-                </ul>
-                
-                <h3>Token Creation Options</h3>
-                
-                <p><strong>🎯 Simple Mode (Default)</strong></p>
-                <ul>
-                    <li>1 billion token supply - industry standard</li>
-                    <li>No technical decisions needed</li>
-                    <li>One-click deployment for quick launches</li>
-                </ul>
-                
-                <p><strong>⚙️ Advanced Mode (Optional)</strong></p>
-                <ul>
-                    <li>Custom token supply (1M to 100B+ tokens)</li>
-                    <li>Token reserves - hold back up to 25%</li>
-                    <li>Strategic planning for evolving projects</li>
-                </ul>
-                
-                <h3>Reserved Token Use Cases</h3>
-                <p>When creators choose to reserve tokens (up to 25% of supply), they can later deploy them through our gemlaunch.io professional suite:</p>
-                <ul>
-                    <li><strong>Community Airdrops:</strong> Reward loyal holders and attract new users</li>
-                    <li><strong>Team Allocations:</strong> Time-locked vesting for founders, developers, advisors</li>
-                    <li><strong>Partnership Incentives:</strong> Collaborate with other projects and platforms</li>
-                    <li><strong>DAO Treasury:</strong> Build governance reserves for community-driven decisions</li>
-                    <li><strong>Marketing Campaigns:</strong> Strategic token distribution for organic growth</li>
-                </ul>
-                
-                <div class="highlight-box">
-                    <h4>💡 Pro tip</h4>
-                    <p>Reserved tokens remain locked in smart contracts until activated - they can't be dumped or manipulated</p>
+                <!-- Tab Content -->
+                <div class="docs-content">
+                    <!-- Overview Tab -->
+                    <div class="tab-panel active" id="overview">
+                        <h2>🎯 Project Overview</h2>
+                        
+                        <p><strong>Vision:</strong> Bring the proven pump.fun model to the underserved Kaspa ecosystem with community-first economics and professional growth tools.</p>
+                        
+                        <p><strong>Target:</strong> Kaspa community hungry for memecoin infrastructure (first-mover advantage)</p>
+                        
+                        <p><strong>Key Differentiator:</strong> Complete ecosystem from fair meme launches to professional project tools - community-owned, transparent fee sharing, ecosystem reinvestment vs extraction</p>
+                        
+                        <p><strong>Partnership:</strong> Integrated with Kaspa Finance - all graduated tokens automatically deploy to their DEX with professional liquidity pools</p>
+                        
+                        <div class="highlight-box">
+                            <h4>🥇 First-Mover Advantage</h4>
+                            <p>Only memecoin launchpad on Kaspa ecosystem</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Mechanics Tab -->
+                    <div class="tab-panel" id="mechanics">
+                        <h2>📊 Platform Mechanics</h2>
+                        
+                        <h3>Bonding Curve Model</h3>
+                        <ul>
+                            <li><strong>Starting Market Cap:</strong> ~$1,000 (algorithmic, not user funds)</li>
+                            <li><strong>Graduation Threshold:</strong> ~$70,000 market cap (automatic DEX listing)</li>
+                            <li><strong>Token Supply:</strong> 1B tokens (default) - fully customizable</li>
+                            <li><strong>Platform Fee:</strong> 1% (community-aligned distribution)</li>
+                            <li><strong>Bonding Curve:</strong> x*y=k formula (proven mathematical model)</li>
+                        </ul>
+                        
+                        <h3>Token Creation Options</h3>
+                        
+                        <p><strong>🎯 Simple Mode (Default)</strong></p>
+                        <ul>
+                            <li>1 billion token supply - industry standard</li>
+                            <li>No technical decisions needed</li>
+                            <li>One-click deployment for quick launches</li>
+                        </ul>
+                        
+                        <p><strong>⚙️ Advanced Mode (Optional)</strong></p>
+                        <ul>
+                            <li>Custom token supply (1M to 100B+ tokens)</li>
+                            <li>Token reserves - hold back up to 25%</li>
+                            <li>Strategic planning for evolving projects</li>
+                        </ul>
+                        
+                        <h3>Reserved Token Use Cases</h3>
+                        <p>When creators choose to reserve tokens (up to 25% of supply), they can later deploy them through our gemlaunch.io professional suite:</p>
+                        <ul>
+                            <li><strong>Community Airdrops:</strong> Reward loyal holders and attract new users</li>
+                            <li><strong>Team Allocations:</strong> Time-locked vesting for founders, developers, advisors</li>
+                            <li><strong>Partnership Incentives:</strong> Collaborate with other projects and platforms</li>
+                            <li><strong>DAO Treasury:</strong> Build governance reserves for community-driven decisions</li>
+                            <li><strong>Marketing Campaigns:</strong> Strategic token distribution for organic growth</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>💡 Pro tip</h4>
+                            <p>Reserved tokens remain locked in smart contracts until activated - they can't be dumped or manipulated</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Process Tab -->
+                    <div class="tab-panel" id="process">
+                        <h2>🏗️ Complete Launch Process</h2>
+                        
+                        <p><strong>1. Token Creation</strong> - Set name, symbol, image, and choose supply/reserves (takes 30 seconds)</p>
+                        <p><strong>2. Fair Launch</strong> - Token starts at algorithmic ~$1,000 market cap (no upfront capital required)</p>
+                        <p><strong>3. Price Discovery</strong> - Price increases automatically as people buy (xy=k mathematical curve)</p>
+                        <p><strong>4. Community Building</strong> - Share, promote, trade - earn GEM points for activity</p>
+                        <p><strong>5. Graduation</strong> - At ~$70k market cap, auto-lists on Kaspa Finance DEX (liquidity permanently locked)</p>
+                        <p><strong>6. Evolution</strong> - Optionally access gemlaunch.io professional suite for reserved tokens</p>
+                    </div>
+                    
+                    <!-- Tokenomics Tab -->
+                    <div class="tab-panel" id="tokenomics">
+                        <h2>💰 Tokenomics & Fee Structure</h2>
+                        
+                        <h3>Fee Structure (1% swap fee)</h3>
+                        <p>Based on LetsBonk.fun's successful model:</p>
+                        <ul>
+                            <li><strong>40% Platform Development</strong> - Features, security, mobile support</li>
+                            <li><strong>30% GEM Buyback & Burn</strong> - Deflationary pressure on GEM token</li>
+                            <li><strong>20% Kaspa Network Support</strong> - Validator support, infrastructure</li>
+                            <li><strong>10% Community Rewards</strong> - GEM airdrops for contributors</li>
+                        </ul>
+                        
+                        <h3>Creator Revenue Share</h3>
+                        <p>Unlike Pump.fun, creators receive a portion of KAS contributed to their bonding curve (similar to LetsBonk.fun model).</p>
+                        
+                        <h3>GEM Token (Platform Token)</h3>
+                        <ul>
+                            <li><strong>Chain:</strong> Kaspa native</li>
+                            <li><strong>Utility:</strong> Governance, staking rewards, fee discounts</li>
+                            <li><strong>Distribution:</strong> Community airdrops, creator rewards, ecosystem incentives</li>
+                            <li><strong>Deflationary:</strong> 30% of platform fees used for buyback & burn</li>
+                            <li><strong>Presale:</strong> Initial funding round to bootstrap development</li>
+                        </ul>
+                        
+                        <h3>🎮 Gamification & Community</h3>
+                        <p><strong>GEM Points System:</strong></p>
+                        <ul>
+                            <li><strong>Earn points for:</strong> Token launches, trading activity, community participation</li>
+                            <li><strong>Convert to:</strong> GEM tokens via periodic airdrops</li>
+                            <li><strong>Benefits:</strong> Achievements, badges, early access, creator bonuses</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Technical Tab -->
+                    <div class="tab-panel" id="technical">
+                        <h2>🏗️ Technical Architecture</h2>
+                        
+                        <h3>Blockchain Infrastructure</h3>
+                        <ul>
+                            <li><strong>Blockchain:</strong> Kaspa Kasplex L2</li>
+                            <li><strong>Contracts:</strong> EVM-compatible smart contracts - Proven Ethereum tooling</li>
+                            <li><strong>Speed:</strong> Lightning-fast finality - BlockDAG architecture advantages</li>
+                            <li><strong>Fees:</strong> Ultra-low fees - Affordable for small trades</li>
+                            <li><strong>Advantage:</strong> First-mover advantage - Underserved but growing ecosystem</li>
+                        </ul>
+                        
+                        <h3>Smart Contracts Required</h3>
+                        <ul>
+                            <li><strong>Bonding Curve Contract:</strong> Handles price calculation and token minting/burning</li>
+                            <li><strong>Fee Distribution Contract:</strong> Automatically allocates swap fees</li>
+                            <li><strong>GEM Token Contract:</strong> Platform token with burn mechanics</li>
+                            <li><strong>Graduation Contract:</strong> Automatic DEX listing at threshold</li>
+                        </ul>
+                        
+                        <h3>Frontend Requirements</h3>
+                        <ul>
+                            <li><strong>Token creation interface:</strong> Name, symbol, image upload, description</li>
+                            <li><strong>Supply customization:</strong> Default 1B tokens with custom option</li>
+                            <li><strong>Reserve allocation:</strong> Slider/input for 0-25% token reserves</li>
+                            <li><strong>Trading interface:</strong> Buy/sell with bonding curve visualization</li>
+                            <li><strong>Chat system:</strong> Global and per-token discussion</li>
+                            <li><strong>Leaderboard:</strong> Points, achievements, creator stats</li>
+                            <li><strong>AI assistant:</strong> Gemmy integration for guidance and recommendations</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Strategy Tab -->
+                    <div class="tab-panel" id="strategy">
+                        <h2>🚀 Go-to-Market Strategy</h2>
+                        
+                        <h3>Development Phases</h3>
+                        
+                        <p><strong>Phase 1: Platform Development</strong></p>
+                        <ul>
+                            <li>Smart contracts on Kasplex L2</li>
+                            <li>Web interface (similar to pump.fun UX)</li>
+                            <li>AI assistant (Gemmy) integration</li>
+                            <li>Leaderboard connection</li>
+                        </ul>
+                        
+                        <p><strong>Phase 2: Community Building</strong></p>
+                        <ul>
+                            <li>GEM token presale to fund development</li>
+                            <li>Kaspa community outreach</li>
+                            <li>Influencer partnerships</li>
+                            <li>Beta testing with key community members</li>
+                        </ul>
+                        
+                        <p><strong>Phase 3: Launch</strong></p>
+                        <ul>
+                            <li>Public platform launch</li>
+                            <li>First tokens launched by team/community</li>
+                            <li>Marketing campaign</li>
+                            <li>Feature iterations based on usage</li>
+                        </ul>
+                        
+                        <h3>📈 Success Metrics</h3>
+                        
+                        <p><strong>Platform Health:</strong> Daily Active Users, Tokens launched per day, Trading volume, Graduation rate (tokens reaching $70k), Creator retention</p>
+                        
+                        <p><strong>Community Growth:</strong> GEM token holders, Leaderboard participants, Social engagement, Referral activity</p>
+                        
+                        <p><strong>Financial Health:</strong> Fee revenue, GEM token price appreciation, Creator earnings, Kaspa ecosystem contribution</p>
+                        
+                        <h3>Competitive Advantages</h3>
+                        
+                        <p><strong>vs Pump.fun:</strong> Community-first, creator rewards, cleaner ecosystem</p>
+                        <p><strong>vs LetsBonk.fun:</strong> First-mover on Kaspa, dedicated high-signal community</p>
+                        <p><strong>vs Traditional Launchpads:</strong> Fair launches, instant liquidity, no gatekeepers</p>
+                        
+                        <h3>🎪 Marketing Strategy</h3>
+                        
+                        <p><strong>Community Messaging:</strong></p>
+                        <ul>
+                            <li>"Fair launches for the Kaspa community"</li>
+                            <li>"Community-owned, not VC-owned"</li>
+                            <li>"Creators get rewarded, not extracted from"</li>
+                            <li>"First-mover advantage on Kaspa's memecoin revolution"</li>
+                        </ul>
+                        
+                        <p><strong>Technical Messaging:</strong></p>
+                        <ul>
+                            <li>"Built on Kaspa's lightning-fast BlockDAG"</li>
+                            <li>"EVM-compatible smart contracts on Kasplex L2"</li>
+                            <li>"Transparent, on-chain fee distribution"</li>
+                            <li>"AI-powered launch assistance with Gemmy"</li>
+                        </ul>
+                    </div>
                 </div>
-                
-                <h2>🏗️ Complete Launch Process</h2>
-                
-                <p><strong>1. Token Creation</strong> - Set name, symbol, image, and choose supply/reserves (takes 30 seconds)</p>
-                <p><strong>2. Fair Launch</strong> - Token starts at algorithmic ~$1,000 market cap (no upfront capital required)</p>
-                <p><strong>3. Price Discovery</strong> - Price increases automatically as people buy (xy=k mathematical curve)</p>
-                <p><strong>4. Community Building</strong> - Share, promote, trade - earn GEM points for activity</p>
-                <p><strong>5. Graduation</strong> - At ~$70k market cap, auto-lists on Kaspa Finance DEX (liquidity permanently locked)</p>
-                <p><strong>6. Evolution</strong> - Optionally access gemlaunch.io professional suite for reserved tokens</p>
-                
-                <h2>💰 Tokenomics & Fee Structure</h2>
-                
-                <h3>Fee Structure (1% swap fee)</h3>
-                <p>Based on LetsBonk.fun's successful model:</p>
-                <ul>
-                    <li><strong>40% Platform Development</strong> - Features, security, mobile support</li>
-                    <li><strong>30% GEM Buyback & Burn</strong> - Deflationary pressure on GEM token</li>
-                    <li><strong>20% Kaspa Network Support</strong> - Validator support, infrastructure</li>
-                    <li><strong>10% Community Rewards</strong> - GEM airdrops for contributors</li>
-                </ul>
-                
-                <h3>Creator Revenue Share</h3>
-                <p>Unlike Pump.fun, creators receive a portion of KAS contributed to their bonding curve (similar to LetsBonk.fun model).</p>
-                
-                <h3>GEM Token (Platform Token)</h3>
-                <ul>
-                    <li><strong>Chain:</strong> Kaspa native</li>
-                    <li><strong>Utility:</strong> Governance, staking rewards, fee discounts</li>
-                    <li><strong>Distribution:</strong> Community airdrops, creator rewards, ecosystem incentives</li>
-                    <li><strong>Deflationary:</strong> 30% of platform fees used for buyback & burn</li>
-                    <li><strong>Presale:</strong> Initial funding round to bootstrap development</li>
-                </ul>
-                
-                <h3>🎮 Gamification & Community</h3>
-                <p><strong>GEM Points System:</strong></p>
-                <ul>
-                    <li><strong>Earn points for:</strong> Token launches, trading activity, community participation</li>
-                    <li><strong>Convert to:</strong> GEM tokens via periodic airdrops</li>
-                    <li><strong>Benefits:</strong> Achievements, badges, early access, creator bonuses</li>
-                </ul>
-                
-                <h2>🏗️ Technical Architecture</h2>
-                
-                <h3>Blockchain Infrastructure</h3>
-                <ul>
-                    <li><strong>Blockchain:</strong> Kaspa Kasplex L2</li>
-                    <li><strong>Contracts:</strong> EVM-compatible smart contracts - Proven Ethereum tooling</li>
-                    <li><strong>Speed:</strong> Lightning-fast finality - BlockDAG architecture advantages</li>
-                    <li><strong>Fees:</strong> Ultra-low fees - Affordable for small trades</li>
-                    <li><strong>Advantage:</strong> First-mover advantage - Underserved but growing ecosystem</li>
-                </ul>
-                
-                <h3>Smart Contracts Required</h3>
-                <ul>
-                    <li><strong>Bonding Curve Contract:</strong> Handles price calculation and token minting/burning</li>
-                    <li><strong>Fee Distribution Contract:</strong> Automatically allocates swap fees</li>
-                    <li><strong>GEM Token Contract:</strong> Platform token with burn mechanics</li>
-                    <li><strong>Graduation Contract:</strong> Automatic DEX listing at threshold</li>
-                </ul>
-                
-                <h3>Frontend Requirements</h3>
-                <ul>
-                    <li><strong>Token creation interface:</strong> Name, symbol, image upload, description</li>
-                    <li><strong>Supply customization:</strong> Default 1B tokens with custom option</li>
-                    <li><strong>Reserve allocation:</strong> Slider/input for 0-25% token reserves</li>
-                    <li><strong>Trading interface:</strong> Buy/sell with bonding curve visualization</li>
-                    <li><strong>Chat system:</strong> Global and per-token discussion</li>
-                    <li><strong>Leaderboard:</strong> Points, achievements, creator stats</li>
-                    <li><strong>AI assistant:</strong> Gemmy integration for guidance and recommendations</li>
-                </ul>
-                
-                <h2>🚀 Go-to-Market Strategy</h2>
-                
-                <h3>Development Phases</h3>
-                
-                <p><strong>Phase 1: Platform Development</strong></p>
-                <ul>
-                    <li>Smart contracts on Kasplex L2</li>
-                    <li>Web interface (similar to pump.fun UX)</li>
-                    <li>AI assistant (Gemmy) integration</li>
-                    <li>Leaderboard connection</li>
-                </ul>
-                
-                <p><strong>Phase 2: Community Building</strong></p>
-                <ul>
-                    <li>GEM token presale to fund development</li>
-                    <li>Kaspa community outreach</li>
-                    <li>Influencer partnerships</li>
-                    <li>Beta testing with key community members</li>
-                </ul>
-                
-                <p><strong>Phase 3: Launch</strong></p>
-                <ul>
-                    <li>Public platform launch</li>
-                    <li>First tokens launched by team/community</li>
-                    <li>Marketing campaign</li>
-                    <li>Feature iterations based on usage</li>
-                </ul>
-                
-                <h3>📈 Success Metrics</h3>
-                
-                <p><strong>Platform Health:</strong> Daily Active Users, Tokens launched per day, Trading volume, Graduation rate (tokens reaching $70k), Creator retention</p>
-                
-                <p><strong>Community Growth:</strong> GEM token holders, Leaderboard participants, Social engagement, Referral activity</p>
-                
-                <p><strong>Financial Health:</strong> Fee revenue, GEM token price appreciation, Creator earnings, Kaspa ecosystem contribution</p>
-                
-                <h3>Competitive Advantages</h3>
-                
-                <p><strong>vs Pump.fun:</strong> Community-first, creator rewards, cleaner ecosystem</p>
-                <p><strong>vs LetsBonk.fun:</strong> First-mover on Kaspa, dedicated high-signal community</p>
-                <p><strong>vs Traditional Launchpads:</strong> Fair launches, instant liquidity, no gatekeepers</p>
-                
-                <h3>🎪 Marketing Strategy</h3>
-                
-                <p><strong>Community Messaging:</strong></p>
-                <ul>
-                    <li>"Fair launches for the Kaspa community"</li>
-                    <li>"Community-owned, not VC-owned"</li>
-                    <li>"Creators get rewarded, not extracted from"</li>
-                    <li>"First-mover advantage on Kaspa's memecoin revolution"</li>
-                </ul>
-                
-                <p><strong>Technical Messaging:</strong></p>
-                <ul>
-                    <li>"Built on Kaspa's lightning-fast BlockDAG"</li>
-                    <li>"EVM-compatible smart contracts on Kasplex L2"</li>
-                    <li>"Transparent, on-chain fee distribution"</li>
-                    <li>"AI-powered launch assistance with Gemmy"</li>
-                </ul>
             </div>
         </div>
     </main>
 
     <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/docs.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab functionality
+            const tabs = document.querySelectorAll('.docs-tab');
+            const panels = document.querySelectorAll('.tab-panel');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and panels
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panels.forEach(p => p.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding panel
+                    tab.classList.add('active');
+                    const targetPanel = document.getElementById(targetTab);
+                    if (targetPanel) {
+                        targetPanel.classList.add('active');
+                    }
+                });
+            });
+
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            console.log('📚 Documentation page loaded successfully!');
+        });
+    </script>
 </body>
 </html>
