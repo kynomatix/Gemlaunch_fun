@@ -11,6 +11,8 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Corrected misinformation: Kaspa is 10 BPS (blocks per second), not 100+ BPS
 - Removed fake "launch fee" step from How It Works - no launch fees exist, only 1% swap fee
 - Updated steps to match authentic project information from original content
+- Added Gemmy mascot to both homepage hero section and documentation overview
+- Implemented floating mascot card with hover animations and AI assistant branding
 
 # User Preferences
 

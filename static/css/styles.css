@@ -182,6 +182,62 @@ header nav > div:last-child {
     z-index: 1;
 }
 
+/* Mascot Styles */
+.mascot-container {
+    margin-top: 60px;
+    display: flex;
+    justify-content: center;
+}
+
+.mascot-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 25px;
+    padding: 30px;
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(32, 178, 170, 0.3);
+    transition: all 0.3s ease;
+    animation: float 6s ease-in-out infinite;
+    box-shadow: 0 20px 40px rgba(32, 178, 170, 0.1);
+}
+
+.mascot-card:hover {
+    transform: translateY(-10px);
+    border-color: rgba(32, 178, 170, 0.6);
+    box-shadow: 0 30px 60px rgba(32, 178, 170, 0.2);
+}
+
+.mascot-image {
+    width: 200px;
+    height: 200px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.mascot-image:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(32, 178, 170, 0.4);
+}
+
+.mascot-card h3 {
+    color: #20B2AA;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.mascot-card p {
+    color: #CCCCCC;
+    font-size: 1rem;
+    margin: 0;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+}
+
 .glitch-text {
     font-size: clamp(3rem, 8vw, 6rem);
     font-weight: 900;
