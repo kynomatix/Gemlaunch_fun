@@ -14,6 +14,11 @@ def index():
     """Main landing page for Gemlaunch.fun"""
     return render_template('index.html')
 
+@app.route('/docs')
+def docs():
+    """Documentation page for Gemlaunch.fun"""
+    return render_template('docs.html')
+
 @app.route('/health')
 def health():
     """Health check endpoint"""
