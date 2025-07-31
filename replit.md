@@ -13,6 +13,7 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Updated steps to match authentic project information from original content
 - Added Gemmy mascot to both homepage hero section and documentation overview
 - Implemented floating mascot card with hover animations and AI assistant branding
+- Fixed Lightning Fast feature card: corrected "1-second block times" to accurate "~100ms block times"
 
 # User Preferences
 
