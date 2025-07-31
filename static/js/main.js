@@ -289,5 +289,26 @@ document.addEventListener('DOMContentLoaded', function() {
         revealObserver.observe(el);
     });
 
+    // Documentation tab functionality
+    const docsTabs = document.querySelectorAll('.docs-tab');
+    const docsPanels = document.querySelectorAll('.docs-panel');
+    
+    docsTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.getAttribute('data-tab');
+            
+            // Remove active class from all tabs and panels
+            docsTabs.forEach(t => t.classList.remove('active'));
+            docsPanels.forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            tab.classList.add('active');
+            const targetPanel = document.getElementById(targetTab);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        });
+    });
+
     console.log('🚀 Gemlaunch.fun enhanced interface loaded successfully!');
 });
