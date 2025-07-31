@@ -8,6 +8,9 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Integrated actual project documentation content (no placeholder data)
 - Removed hallucinated statistics from hero section
 - Implemented tab-based navigation for documentation categories
+- Corrected misinformation: Kaspa is 10 BPS (blocks per second), not 100+ BPS
+- Removed fake "launch fee" step from How It Works - no launch fees exist, only 1% swap fee
+- Updated steps to match authentic project information from original content
 
 # User Preferences
 
