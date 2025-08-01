@@ -643,7 +643,7 @@ header nav > div:last-child {
 }
 
 .footer-logo {
-    height: 60px;
+    height: 40px;
     width: auto;
     transition: all 0.3s ease;
     filter: brightness(1.1);
