@@ -26,6 +26,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Replaced robot emoji with Gemmy head image in "Meet Gemmy - AI Assistant" feature card
 - Updated hero text: changed "fastest L1 blockchain" to accurate "fastest proof-of-work blockchain"
 - Added miner-friendly economics section explaining how memecoin trading fees support mining profitability
+- Added 4 additional Kaspa feature cards: Trilemma Solved, Bitcoin Security, Passionate Community, Fair Launch DNA
+- Fixed duplicate fire emoji between Ultra-Low Fees and Passionate Community (changed latter to blue heart)
+- Updated Community-First Economics hover effect from wild swivel to subtle lift with glow
+- Updated milestone text to specify "Kaspa Finance DEX" instead of generic "major DEXs"
 
 # User Preferences
 

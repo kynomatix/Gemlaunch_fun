@@ -606,7 +606,9 @@ header nav > div:last-child {
 }
 
 .benefit:hover {
-    transform: scale(1.05);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(32, 178, 170, 0.3);
+    border: 2px solid rgba(32, 178, 170, 0.5);
 }
 
 .benefit h4 {
