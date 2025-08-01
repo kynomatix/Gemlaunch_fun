@@ -653,6 +653,28 @@ header nav > div:last-child {
     border: 2px solid rgba(32, 178, 170, 0.3);
 }
 
+.graduation.glass-card:hover {
+    transform: none !important;
+    border-color: rgba(32, 178, 170, 0.5);
+    box-shadow: 0 5px 15px rgba(32, 178, 170, 0.1);
+}
+
+/* Ensure no transforms on Community-First Economics at all */
+#community .graduation,
+#community .graduation *,
+.graduation.glass-card {
+    transform: none !important;
+    backface-visibility: hidden;
+    perspective: none !important;
+}
+
+#community .graduation:hover,
+#community .graduation.glass-card:hover {
+    transform: none !important;
+    border-color: rgba(32, 178, 170, 0.3);
+    box-shadow: 0 2px 8px rgba(32, 178, 170, 0.1);
+}
+
 .graduation h2 {
     font-size: 2.5rem;
     margin-bottom: 20px;
