@@ -14,6 +14,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Added Gemmy mascot to both homepage hero section and documentation overview
 - Implemented floating mascot card with hover animations and AI assistant branding
 - Fixed Lightning Fast feature card: corrected "1-second block times" to accurate "~100ms block times"
+- Added innovative platform features: AI Assistant (Gemmy), Built-in Social Layer with $cashtags, Gamified Leaderboard
+- Enhanced Why Kaspa section with authentic messaging about other blockchains being "stale/bloated/oversaturated"
+- Added Kaspa Finance partnership highlight showing automatic DEX deployment for graduated tokens
+- Updated Kaspa features to match original content: Lightning Speed, Ultra-Low Fees, EVM Compatible, First-Mover Edge, K-for-Kaspa Culture
 
 # User Preferences
 
