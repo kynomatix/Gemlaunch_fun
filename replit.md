@@ -23,6 +23,9 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Updated social media links to new URLs (t.me/gemlaunchio and x.com/gemlaunchio)
 - Added proper spacing to documentation page between tab navigation and content frames
 - Corrected Gamified Leaderboard messaging: seasonal airdrops, leaderboard points, acolades terminology
+- Replaced robot emoji with Gemmy head image in "Meet Gemmy - AI Assistant" feature card
+- Updated hero text: changed "fastest L1 blockchain" to accurate "fastest proof-of-work blockchain"
+- Added miner-friendly economics section explaining how memecoin trading fees support mining profitability
 
 # User Preferences
 
