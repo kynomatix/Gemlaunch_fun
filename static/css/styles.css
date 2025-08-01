@@ -481,6 +481,79 @@ header nav > div:last-child {
     line-height: 1.6;
 }
 
+/* Gamification Effects */
+.gamified-step {
+    position: relative;
+    overflow: hidden;
+}
+
+.achievement-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    animation: badgeGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes badgeGlow {
+    0% { box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3); }
+    100% { box-shadow: 0 4px 25px rgba(255, 215, 0, 0.6); }
+}
+
+.xp-bar {
+    position: relative;
+    background: rgba(0, 0, 0, 0.3);
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 15px;
+    overflow: hidden;
+}
+
+.xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #20B2AA, #00CED1);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 2s ease-out;
+    animation: xpFill 3s ease-out forwards;
+}
+
+.xp-text {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    color: #20B2AA;
+    font-size: 0.9rem;
+    font-weight: 600;
+    animation: xpPop 0.5s ease-out 2.5s both;
+}
+
+@keyframes xpFill {
+    0% { width: 0%; }
+    100% { width: 100%; }
+}
+
+@keyframes xpPop {
+    0% { transform: scale(0) translateY(10px); opacity: 0; }
+    50% { transform: scale(1.2) translateY(-5px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.gamified-step:hover .achievement-badge {
+    animation: badgeBounce 0.6s ease-in-out;
+}
+
+@keyframes badgeBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1) rotate(5deg); }
+}
+
 /* Features Grid */
 .features {
     display: grid;
