@@ -75,14 +75,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // XP Bar animations
     function initXPBars() {
         const xpBars = document.querySelectorAll('.xp-fill');
-        xpBars.forEach(bar => {
+        xpBars.forEach((bar, index) => {
             const targetWidth = bar.getAttribute('data-xp');
             bar.style.setProperty('--target-width', targetWidth + '%');
             
-            // Start animation after page load
+            // Start animation with progressive delays
             setTimeout(() => {
                 bar.style.width = targetWidth + '%';
-            }, 1000);
+                // Show XP text after bar fills
+                const xpText = bar.parentElement.querySelector('.xp-text');
+                if (xpText) {
+                    setTimeout(() => {
+                        xpText.style.opacity = '1';
+                    }, 2000);
+                }
+            }, 1000 + (index * 500));
         });
     }
 

@@ -429,9 +429,9 @@ header nav > div:last-child {
 }
 
 .glass-card:hover {
-    transform: translateY(-10px);
+    transform: translateY(-5px);
     border-color: rgba(32, 178, 170, 0.5);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 25px rgba(32, 178, 170, 0.2);
 }
 
 /* Steps Section */
@@ -513,6 +513,7 @@ header nav > div:last-child {
     border-radius: 4px;
     margin-top: 15px;
     overflow: hidden;
+    width: 100%;
 }
 
 .xp-fill {
@@ -530,6 +531,7 @@ header nav > div:last-child {
     color: #20B2AA;
     font-size: 0.9rem;
     font-weight: 600;
+    opacity: 0;
     animation: xpPop 0.5s ease-out 2.5s both;
 }
 
