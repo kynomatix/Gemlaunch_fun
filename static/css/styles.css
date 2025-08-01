@@ -639,12 +639,19 @@ header nav > div:last-child {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    align-items: center;
 }
 
-.footer-brand > span {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #20B2AA;
+.footer-logo {
+    height: 60px;
+    width: auto;
+    transition: all 0.3s ease;
+    filter: brightness(1.1);
+}
+
+.footer-logo:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
 }
 
 .footer-brand p {
