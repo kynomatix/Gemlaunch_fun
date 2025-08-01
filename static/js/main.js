@@ -72,6 +72,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, observerOptions);
 
+    // XP Bar animations
+    function initXPBars() {
+        const xpBars = document.querySelectorAll('.xp-fill');
+        xpBars.forEach(bar => {
+            const targetWidth = bar.getAttribute('data-xp');
+            bar.style.setProperty('--target-width', targetWidth + '%');
+            
+            // Start animation after page load
+            setTimeout(() => {
+                bar.style.width = targetWidth + '%';
+            }, 1000);
+        });
+    }
+
+    // Initialize XP bars
+    initXPBars();
+
     // Observe elements for scroll animations
     document.querySelectorAll('.step, .feature, .kaspa-feature, .benefit, .hero-stats').forEach(el => {
         el.classList.add('reveal');

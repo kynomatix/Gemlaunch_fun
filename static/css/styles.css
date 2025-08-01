@@ -521,7 +521,6 @@ header nav > div:last-child {
     border-radius: 4px;
     width: 0%;
     transition: width 2s ease-out;
-    animation: xpFill 3s ease-out forwards;
 }
 
 .xp-text {
@@ -536,7 +535,8 @@ header nav > div:last-child {
 
 @keyframes xpFill {
     0% { width: 0%; }
-    100% { width: 100%; }
+    25% { width: var(--target-width, 100%); }
+    100% { width: var(--target-width, 100%); }
 }
 
 @keyframes xpPop {
