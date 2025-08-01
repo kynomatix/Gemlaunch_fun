@@ -240,6 +240,7 @@ header nav > div:last-child {
     margin-bottom: 20px;
     position: relative;
     animation: glitch 3s ease-in-out infinite;
+    text-transform: none !important;
 }
 
 @keyframes glitch {
