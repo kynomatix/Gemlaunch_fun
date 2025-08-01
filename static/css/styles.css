@@ -98,24 +98,16 @@ header nav > div:first-child {
     gap: 15px;
 }
 
-.logo-icon {
-    font-size: 1.8rem;
-    color: #20B2AA;
-    animation: rotate 4s ease-in-out infinite;
+.logo-image {
+    height: 40px;
+    width: auto;
+    transition: all 0.3s ease;
+    filter: brightness(1.1);
 }
 
-@keyframes rotate {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(15deg); }
-}
-
-.logo-text {
-    font-size: 1.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #20B2AA, #00CED1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+.logo-image:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
 }
 
 header nav > div:last-child {
