@@ -18,6 +18,8 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Enhanced Why Kaspa section with authentic messaging about other blockchains being "stale/bloated/oversaturated"
 - Added Kaspa Finance partnership highlight showing automatic DEX deployment for graduated tokens
 - Updated Kaspa features to match original content: Lightning Speed, Ultra-Low Fees, EVM Compatible, First-Mover Edge, K-for-Kaspa Culture
+- Fixed glitch text capitalization: added inline CSS to ensure "Gemlaunch.fun" displays with proper uppercase G
+- Integrated GDF logo into footer section replacing gem icon with proper image element and hover effects
 
 # User Preferences
 
