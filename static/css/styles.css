@@ -10,6 +10,14 @@ html {
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+html::-webkit-scrollbar { /* WebKit */
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 body {
@@ -21,12 +29,32 @@ body {
     width: 100%;
     max-width: 100%;
     position: relative;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+body::-webkit-scrollbar { /* WebKit */
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 /* Prevent horizontal scrolling on all elements */
 *, *::before, *::after {
     max-width: 100%;
     box-sizing: border-box;
+}
+
+/* Hide all scrollbars globally */
+* {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+*::-webkit-scrollbar { /* WebKit */
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 .container {
