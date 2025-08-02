@@ -227,7 +227,7 @@ header nav > div:last-child {
     align-items: center;
     position: relative;
     text-align: center;
-    padding: 140px 0 80px;
+    padding: 140px 0 40px;
     overflow: visible;
 }
 
@@ -249,7 +249,8 @@ header nav > div:last-child {
 
 /* Mascot Styles */
 .mascot-container {
-    margin-top: 60px;
+    margin-top: 40px;
+    margin-bottom: -20px;
     display: flex;
     justify-content: center;
 }
