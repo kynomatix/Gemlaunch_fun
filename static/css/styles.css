@@ -64,6 +64,7 @@ body::-webkit-scrollbar { /* WebKit */
     width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
+    overflow-y: visible;
 }
 
 /* Enhanced Background Animation */
@@ -86,6 +87,33 @@ body::-webkit-scrollbar { /* WebKit */
     z-index: -1;
     pointer-events: none;
     overflow: hidden;
+}
+
+/* Ensure sections don't create scroll traps */
+section {
+    position: relative;
+    overflow: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+.container {
+    overflow: visible;
+}
+
+/* Prevent mobile scroll traps */
+.features, .kaspa-features, .graduation-benefits {
+    touch-action: pan-y;
+    overflow: visible;
+}
+
+/* Platform features section mobile optimization */
+.platform-features {
+    overflow: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+.feature {
+    overflow: visible;
 }
 
 .floating-gem {
@@ -200,6 +228,7 @@ header nav > div:last-child {
     position: relative;
     text-align: center;
     padding: 140px 0 80px;
+    overflow: visible;
 }
 
 .hero::before {
@@ -962,6 +991,18 @@ header nav > div:last-child {
     .hero-content {
         text-align: center;
         padding: 20px 0;
+    }
+    
+    /* Additional mobile scroll optimization */
+    .features, .kaspa-features {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        max-height: none;
+    }
+    
+    .feature, .kaspa-feature {
+        min-height: auto;
+        height: auto;
     }
 }
 
