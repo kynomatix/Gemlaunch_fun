@@ -26,11 +26,13 @@ body {
     color: #FFFFFF;
     line-height: 1.6;
     overflow-x: hidden;
+    overflow-y: auto;
     width: 100%;
     max-width: 100%;
     position: relative;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
+    touch-action: pan-y;
 }
 
 body::-webkit-scrollbar { /* WebKit */
@@ -637,14 +639,19 @@ header nav > div:last-child {
 /* Features Grid */
 .features {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 30px;
     margin-top: 60px;
+    overflow: visible;
+    touch-action: pan-y;
 }
 
 .feature {
     padding: 40px 30px;
     text-align: center;
+    overflow: visible;
+    height: auto;
+    min-height: auto;
 }
 
 .feature-icon {
@@ -663,6 +670,8 @@ header nav > div:last-child {
     list-style: none;
     color: #CCCCCC;
     text-align: left;
+    overflow: visible;
+    max-height: none;
 }
 
 .feature ul li {
@@ -949,6 +958,14 @@ header nav > div:last-child {
     
     .features {
         grid-template-columns: 1fr;
+        gap: 25px;
+        overflow: visible;
+    }
+    
+    .feature {
+        overflow: visible;
+        height: auto;
+        max-height: none;
     }
     
     .kaspa-features {
@@ -999,11 +1016,34 @@ header nav > div:last-child {
         grid-template-columns: 1fr;
         gap: 20px;
         max-height: none;
+        overflow: visible;
+        touch-action: pan-y;
     }
     
     .feature, .kaspa-feature {
         min-height: auto;
         height: auto;
+        overflow: visible;
+        max-height: none;
+    }
+    
+    /* Force no scroll containers on mobile */
+    section, .container, .features, .feature, .feature ul, .glass-card {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    /* Prevent any element from becoming scrollable */
+    * {
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+    }
+    
+    /* Exception: keep body scrollable */
+    body {
+        overflow-y: auto !important;
     }
 }
 
