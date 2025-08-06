@@ -35,8 +35,7 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Fixed social media links in documentation navigation to use correct URLs (t.me/gemlaunchio, x.com/gemlaunchio)
 - Applied comprehensive mobile scroll trap fixes to eliminate horizontal scrolling issues
 - Added prominent "Join GEM Presale" button in hero section with golden styling and glow animation
-- Created dedicated GEM Token Presale section with utility features, tokenomics, and call-to-action
-- Implemented responsive presale card design with stat cards showing token distribution
+- Button links to external presale portal (https://presale.gemlaunch.fun) instead of on-page section
 
 # User Preferences
 
