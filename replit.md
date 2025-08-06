@@ -30,6 +30,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Fixed duplicate fire emoji between Ultra-Low Fees and Passionate Community (changed latter to blue heart)
 - Updated Community-First Economics hover effect from wild swivel to subtle lift with glow
 - Updated milestone text to specify "Kaspa Finance DEX" instead of generic "major DEXs"
+- Removed go-to-market strategy section from documentation (hidden from public view)
+- Sanitized documentation by replacing competitor references (pump.fun, LetsBonk.fun) with generic terms
+- Fixed social media links in documentation navigation to use correct URLs (t.me/gemlaunchio, x.com/gemlaunchio)
+- Applied comprehensive mobile scroll trap fixes to eliminate horizontal scrolling issues
 
 # User Preferences
 
