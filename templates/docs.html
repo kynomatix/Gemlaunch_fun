@@ -388,34 +388,19 @@
                         <h2>🏗️ Complete Launch Process</h2>
                         
                         <p><strong>1. Token Creation</strong> - Set name, symbol, image, and choose supply/reserves (takes 30 seconds)</p>
-                        <p><strong>2. Select Pair Token</strong> - Choose KAS or GEM as your bonding curve pair (GEM offers premium benefits)</p>
-                        <p><strong>3. Fair Launch</strong> - Token starts at algorithmic ~$1,000 market cap (no upfront capital required)</p>
-                        <p><strong>4. Price Discovery</strong> - Price increases automatically as people buy (xy=k mathematical curve)</p>
-                        <p><strong>5. Community Building</strong> - Share, promote, trade - earn GEM points for activity</p>
-                        <p><strong>6. Graduation</strong> - At ~$70k market cap, auto-lists on Kaspa Finance DEX (liquidity permanently locked)</p>
-                        <p><strong>7. Evolution</strong> - Optionally access gemlaunch.io professional suite for reserved tokens</p>
+                        <p><strong>2. Fair Launch</strong> - Token starts at algorithmic ~$1,000 market cap (no upfront capital required)</p>
+                        <p><strong>3. Price Discovery</strong> - Price increases automatically as people buy (xy=k mathematical curve)</p>
+                        <p><strong>4. Community Building</strong> - Share, promote, trade - earn GEM points for activity</p>
+                        <p><strong>5. Graduation</strong> - At ~$70k market cap, auto-lists on Kaspa Finance DEX (liquidity permanently locked)</p>
+                        <p><strong>6. Evolution</strong> - Optionally access gemlaunch.io professional suite for reserved tokens</p>
                     </div>
                     
                     <!-- Tokenomics Tab -->
                     <div class="tab-panel" id="tokenomics">
                         <h2>💰 Tokenomics & Fee Structure</h2>
                         
-                        <h3>💎 Pairing Options: KAS vs GEM</h3>
-                        <p>Choose your bonding curve pair token to unlock different benefits:</p>
-                        
-                        <div class="highlight-box">
-                            <h4>🚀 GEM Pairing Benefits (Premium)</h4>
-                            <ul>
-                                <li><strong>Lower Platform Fee:</strong> 1% vs 2% for KAS pairing</li>
-                                <li><strong>Graduation Bonus:</strong> Auto-featured on leaderboard carousel for 24 hours</li>
-                                <li><strong>Airdrop Boost:</strong> Extra leaderboard points for GEM token airdrops</li>
-                                <li><strong>Liquidity Incentive:</strong> Dual rewards (GEM + project token) from KFC</li>
-                                <li><strong>DAO Perks:</strong> Access to advanced launchpad features (dual-chain deployment)</li>
-                            </ul>
-                        </div>
-                        
-                        <h3>Fee Structure</h3>
-                        <p><strong>KAS Pairing:</strong> 2% swap fee | <strong>GEM Pairing:</strong> 1% swap fee</p>
+                        <h3>Fee Structure (1% swap fee)</h3>
+                        <p>Based on successful community-first models:</p>
                         <ul>
                             <li><strong>40% Platform Development</strong> - Features, security, mobile support</li>
                             <li><strong>30% GEM Buyback & Burn</strong> - Deflationary pressure on GEM token</li>
@@ -424,7 +409,7 @@
                         </ul>
                         
                         <h3>Creator Revenue Share</h3>
-                        <p>Unlike other platforms, creators receive a portion of the pair token (KAS or GEM) contributed to their bonding curve through our community-first model. GEM-paired launches provide additional creator benefits through the enhanced reward system.</p>
+                        <p>Unlike other platforms, creators receive a portion of KAS contributed to their bonding curve through our community-first model.</p>
                         
                         <h3>GEM Token (Platform Token)</h3>
                         <ul>
@@ -442,11 +427,6 @@
                             <li><strong>Convert to:</strong> GEM tokens via periodic airdrops</li>
                             <li><strong>Benefits:</strong> Achievements, badges, early access, creator bonuses</li>
                         </ul>
-                        
-                        <div class="highlight-box">
-                            <h4>🏆 Enhanced Leaderboard Features</h4>
-                            <p><strong>Featured Carousel:</strong> GEM-paired graduated tokens get prominent 24-hour featuring with boosted leaderboard points, increasing visibility and community engagement for successful projects.</p>
-                        </div>
                     </div>
                     
                     <!-- Technical Tab -->
@@ -464,22 +444,20 @@
                         
                         <h3>Smart Contracts Required</h3>
                         <ul>
-                            <li><strong>Dual Bonding Curve Contract:</strong> Handles KAS/GEM pairing with different fee structures</li>
-                            <li><strong>Fee Distribution Contract:</strong> Automatically allocates swap fees based on pair token</li>
-                            <li><strong>GEM Token Contract:</strong> Platform token with burn mechanics and reward distribution</li>
-                            <li><strong>Graduation Contract:</strong> Automatic DEX listing with dual/single reward setup</li>
-                            <li><strong>Leaderboard Contract:</strong> Points tracking and featured carousel management</li>
+                            <li><strong>Bonding Curve Contract:</strong> Handles price calculation and token minting/burning</li>
+                            <li><strong>Fee Distribution Contract:</strong> Automatically allocates swap fees</li>
+                            <li><strong>GEM Token Contract:</strong> Platform token with burn mechanics</li>
+                            <li><strong>Graduation Contract:</strong> Automatic DEX listing at threshold</li>
                         </ul>
                         
                         <h3>Frontend Requirements</h3>
                         <ul>
                             <li><strong>Token creation interface:</strong> Name, symbol, image upload, description</li>
-                            <li><strong>Pair token selection:</strong> Choose between KAS or GEM with benefit comparison</li>
                             <li><strong>Supply customization:</strong> Default 1B tokens with custom option</li>
                             <li><strong>Reserve allocation:</strong> Slider/input for 0-25% token reserves</li>
                             <li><strong>Trading interface:</strong> Buy/sell with bonding curve visualization</li>
                             <li><strong>Chat system:</strong> Global and per-token discussion</li>
-                            <li><strong>Enhanced leaderboard:</strong> Points, achievements, featured carousel for GEM-paired grads</li>
+                            <li><strong>Leaderboard:</strong> Points, achievements, creator stats</li>
                             <li><strong>AI assistant:</strong> Gemmy integration for guidance and recommendations</li>
                         </ul>
                     </div>

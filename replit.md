@@ -36,11 +36,6 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Applied comprehensive mobile scroll trap fixes to eliminate horizontal scrolling issues
 - Added prominent "Join GEM Presale" button in hero section with golden styling and glow animation
 - Button links to external presale portal (https://presale.gemlaunch.fun) instead of on-page section
-- Updated documentation to include KAS/GEM pairing options with premium GEM benefits
-- Added comprehensive GEM pairing incentives: lower fees, graduation bonuses, airdrop boosts, dual rewards, DAO perks
-- Updated launch process to include pair token selection step
-- Enhanced tokenomics section with differential fee structure (1% GEM vs 2% KAS)
-- Added leaderboard carousel feature for GEM-paired graduated tokens
 
 # User Preferences
 
