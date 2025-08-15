@@ -49,7 +49,7 @@
             height: 85vh;
             display: none;
             animation: slideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 26, 26, 0.95), rgba(0, 51, 51, 0.92));
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(10, 0, 26, 0.95), rgba(20, 0, 40, 0.92));
             border: 2px solid transparent;
             background-clip: padding-box;
             border-radius: 25px;
@@ -57,7 +57,7 @@
             backdrop-filter: blur(30px);
             box-shadow: 
                 0 25px 50px rgba(0, 255, 255, 0.15),
-                0 0 0 1px rgba(0, 255, 255, 0.3),
+                0 0 0 1px rgba(196, 81, 196, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
             overflow-y: auto;
             position: relative;
@@ -70,7 +70,7 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #00ffff, #ff6b35, #00ffff);
+            background: linear-gradient(90deg, #00ffff, #c451c4, #00ffff);
             border-radius: 25px 25px 0 0;
         }
 
@@ -136,7 +136,7 @@
         h1 {
             font-size: 4.5rem;
             margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, #00ffff 0%, #ff6b35 50%, #00ffff 100%);
+            background: linear-gradient(135deg, #00ffff 0%, #c451c4 50%, #00ffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -197,7 +197,7 @@
         .image-placeholder {
             width: 100%;
             height: 200px;
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 107, 53, 0.1));
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(196, 81, 196, 0.1));
             border: 2px dashed rgba(0, 255, 255, 0.4);
             border-radius: 15px;
             display: flex;
@@ -212,8 +212,8 @@
         }
 
         .image-placeholder:hover {
-            border-color: rgba(0, 255, 255, 0.8);
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(255, 107, 53, 0.15));
+            border-color: rgba(196, 81, 196, 0.8);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(196, 81, 196, 0.15));
             transform: scale(1.02);
         }
 
@@ -244,7 +244,7 @@
         }
 
         .advantage-card {
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(255, 107, 53, 0.05));
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(196, 81, 196, 0.05));
             border: 1px solid rgba(0, 255, 255, 0.2);
             border-radius: 15px;
             padding: 2rem;
@@ -291,7 +291,7 @@
         .moat-section {
             margin-top: 3rem;
             padding: 2rem;
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 107, 53, 0.1));
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(196, 81, 196, 0.1));
             border-radius: 20px;
             border: 1px solid rgba(0, 255, 255, 0.3);
             text-align: center;
@@ -313,8 +313,8 @@
         .moat-number {
             font-size: 2.5rem;
             font-weight: 900;
-            color: #ff6b35;
-            text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+            color: #c451c4;
+            text-shadow: 0 0 10px rgba(196, 81, 196, 0.5);
         }
 
         .moat-label {
@@ -327,7 +327,7 @@
         .presale-highlight {
             margin-top: 3rem;
             padding: 2rem;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 107, 53, 0.1));
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(196, 81, 196, 0.1));
             border: 2px solid rgba(255, 215, 0, 0.3);
             border-radius: 20px;
             text-align: center;
@@ -349,7 +349,7 @@
         .presale-number {
             font-size: 2.8rem;
             font-weight: 900;
-            background: linear-gradient(135deg, #FFD700, #ff6b35);
+            background: linear-gradient(135deg, #FFD700, #c451c4);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -395,28 +395,44 @@
             margin: 1rem 0;
         }
 
-        /* Problem/Solution Layout */
-        .problem-solution {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            margin-top: 2rem;
+        /* Traditional Pitch Deck Content Layout */
+        .content-section {
+            margin: 2rem 0;
+            text-align: center;
         }
 
-        .problem-box, .solution-box {
+        .bullet-points {
+            text-align: left;
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+
+        .bullet-points ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .bullet-points li {
+            background: rgba(0, 255, 255, 0.05);
+            border-left: 4px solid #c451c4;
+            margin: 1rem 0;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .bullet-points li strong {
+            color: #00ffff;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(196, 81, 196, 0.1));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 20px;
             padding: 2rem;
-            border-radius: 15px;
-            border: 1px solid rgba(0, 255, 255, 0.2);
-        }
-
-        .problem-box {
-            background: linear-gradient(135deg, rgba(255, 0, 100, 0.1), rgba(255, 0, 0, 0.05));
-            border-color: rgba(255, 0, 100, 0.3);
-        }
-
-        .solution-box {
-            background: linear-gradient(135deg, rgba(0, 255, 100, 0.1), rgba(0, 255, 0, 0.05));
-            border-color: rgba(0, 255, 100, 0.3);
+            margin: 2rem 0;
+            text-align: center;
         }
 
         /* Market Stats */
@@ -834,38 +850,37 @@
             </div>
         </div>
 
-        <!-- Slide 2: Problem -->
+        <!-- Slide 2: The Problem -->
         <div class="slide">
             <h2>The Problem</h2>
-            <div class="problem-solution">
-                <div class="problem-box">
-                    <h3>🚫 Current Challenges</h3>
-                    <ul>
-                        <li>Kaspa ecosystem lacks memecoin infrastructure</li>
-                        <li>High barriers to entry for creators (technical complexity)</li>
-                        <li>Existing platforms extract value, don't reinvest</li>
-                        <li>No fair launch mechanisms - prone to rugs</li>
-                        <li>Fragmented experience between launch and trading</li>
-                        <li>Zero guidance for non-technical users</li>
-                    </ul>
-                </div>
-                <div class="solution-box">
-                    <h3>✅ Our Solution</h3>
-                    <ul>
-                        <li>First complete launchpad on Kaspa</li>
-                        <li>No-code, 30-second token creation</li>
-                        <li>Community-first fee distribution model</li>
-                        <li>Bonding curve ensures fair launches</li>
-                        <li>Integrated DEX listing at graduation</li>
-                        <li>AI assistant guides every step</li>
-                    </ul>
-                </div>
+            <p class="subtitle">Current memecoin platforms are failing creators</p>
+            
+            <div class="image-placeholder hero-image-placeholder">
+                Frustrated Creator Using Complex Tools
+            </div>
+            
+            <div class="bullet-points">
+                <ul>
+                    <li><strong>Solana Oversaturation:</strong> 10,000+ tokens launched daily, impossible to stand out</li>
+                    <li><strong>Technical Barriers:</strong> Creators need coding skills to launch properly</li>
+                    <li><strong>High Costs:</strong> Gas fees and listing costs exceed $1,000+</li>
+                    <li><strong>No Community Tools:</strong> Fragmented experience across multiple platforms</li>
+                    <li><strong>Zero Creator Support:</strong> Platforms take fees but provide no guidance</li>
+                    <li><strong>Slow & Expensive:</strong> Other blockchains feel stale and bloated</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3>Result: 95% of memecoins fail within the first week</h3>
+                <p>Creators are left without proper tools, guidance, or community support</p>
             </div>
         </div>
 
         <!-- Slide 3: Market Opportunity -->
         <div class="slide">
             <h2>Market Opportunity</h2>
+            <p class="subtitle">The memecoin market is exploding, but Kaspa is untapped</p>
+            
             <div class="market-stats">
                 <div class="stat-card">
                     <div class="stat-number">$2.4B</div>
@@ -880,28 +895,53 @@
                     <div class="stat-label">Active Traders</div>
                 </div>
             </div>
-            
-            <h3>TAM Analysis</h3>
-            <ul>
-                <li><strong>Total Addressable Market:</strong> $50B+ memecoin ecosystem</li>
-                <li><strong>Serviceable Addressable Market:</strong> $5B Kaspa ecosystem potential</li>
-                <li><strong>Serviceable Obtainable Market:</strong> $500M in first 2 years</li>
-            </ul>
 
-            <h3>Why Kaspa?</h3>
-            <ul>
-                <li>Fastest growing L1 blockchain - 10 blocks per second</li>
-                <li>Underserved ecosystem hungry for DeFi infrastructure</li>
-                <li>Ultra-low fees enable micro-transactions</li>
-                <li>BlockDAG architecture supports massive scale</li>
-                <li>Zero competition - complete first-mover advantage</li>
-            </ul>
+            <div class="image-placeholder feature-image-placeholder">
+                Market Size Comparison Chart
+            </div>
+            
+            <div class="bullet-points">
+                <h3 style="text-align: center; color: #c451c4; margin-bottom: 2rem;">Why Kaspa is the Perfect Opportunity</h3>
+                <ul>
+                    <li><strong>Untapped Ecosystem:</strong> Zero competition in Kaspa's growing $5B+ potential market</li>
+                    <li><strong>Superior Technology:</strong> 10 BPS (blocks per second) vs Ethereum's 0.07 BPS</li>
+                    <li><strong>Ultra-Low Fees:</strong> Transactions cost pennies vs $50+ on Ethereum</li>
+                    <li><strong>Growing Community:</strong> Passionate, miner-friendly economics driving adoption</li>
+                    <li><strong>First-Mover Edge:</strong> Capture entire Kaspa memecoin market before competition arrives</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3>Target Market: $500M in first 2 years</h3>
+                <p>Serviceable obtainable market with zero current competition</p>
+            </div>
         </div>
 
-        <!-- Slide 4: Product Features -->
+        <!-- Slide 4: Our Solution -->
         <div class="slide">
-            <h2>Product Features</h2>
-            <div class="feature-grid">
+            <h2>Our Solution</h2>
+            <p class="subtitle">Gemlaunch.fun - The complete Kaspa memecoin platform</p>
+            
+            <div class="image-placeholder hero-image-placeholder">
+                Platform Interface Screenshot
+            </div>
+            
+            <div class="bullet-points">
+                <ul>
+                    <li><strong>AI Assistant (Gemmy):</strong> First-ever AI guide for token creation and marketing strategies</li>
+                    <li><strong>No-Code Launch:</strong> Create professional tokens in 30 seconds without coding</li>
+                    <li><strong>Fair Launch Mechanism:</strong> Bonding curve starting at $1K prevents rug pulls</li>
+                    <li><strong>Integrated Social Layer:</strong> Built-in community tools with $cashtags</li>
+                    <li><strong>Gamified Leaderboard:</strong> Points system with seasonal airdrops</li>
+                    <li><strong>Auto DEX Graduation:</strong> Seamless transition to Kaspa Finance DEX at $70K market cap</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h3>Complete End-to-End Solution</h3>
+                <p>From idea to trading in minutes, with ongoing community support</p>
+            </div>
+        </div>
                 <div class="feature-item">
                     <div class="feature-icon">🤖</div>
                     <div class="feature-content">
@@ -1314,7 +1354,7 @@
 
             <div class="cta-section">
                 <h3>Ready to join the GEM Token Presale?</h3>
-                <a href="https://presale.gemlaunch.fun" class="cta-button" target="_blank" style="background: linear-gradient(135deg, #FFD700, #ff6b35); color: #000; text-decoration: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3); transition: all 0.3s ease;">Join Presale Now</a>
+                <a href="https://presale.gemlaunch.fun" class="cta-button" target="_blank" style="background: linear-gradient(135deg, #FFD700, #c451c4); color: #000; text-decoration: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3); transition: all 0.3s ease;">Join Presale Now</a>
                 <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.8); font-size: 1.1rem;">presale.gemlaunch.fun • t.me/gemlaunchio</p>
                 <p style="margin-top: 0.5rem; color: rgba(0, 255, 255, 0.8); font-size: 0.9rem;">⚡ Early bird bonus available for first 48 hours</p>
             </div>
