@@ -1435,37 +1435,41 @@
             <h2>How It Works</h2>
             <p class="subtitle">Complete launch journey in 5 simple steps powered by AI</p>
             
-            <div class="roadmap">
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">1</div>
+            <div class="roadmap" style="display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin: 2rem 0;">
+                <div class="roadmap-item" style="flex: 1; text-align: center;">
+                    <div class="roadmap-dot" style="margin: 0 auto 1rem;">1</div>
                     <div class="roadmap-content">
                         <h4>Create</h4>
                         <p>30-second setup with Gemmy AI</p>
                     </div>
                 </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">2</div>
+                <div style="color: rgba(0, 255, 255, 0.5); font-size: 1.5rem;">→</div>
+                <div class="roadmap-item" style="flex: 1; text-align: center;">
+                    <div class="roadmap-dot" style="margin: 0 auto 1rem;">2</div>
                     <div class="roadmap-content">
                         <h4>Launch</h4>
                         <p>$1K fair start bonding curve</p>
                     </div>
                 </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">3</div>
+                <div style="color: rgba(0, 255, 255, 0.5); font-size: 1.5rem;">→</div>
+                <div class="roadmap-item" style="flex: 1; text-align: center;">
+                    <div class="roadmap-dot" style="margin: 0 auto 1rem;">3</div>
                     <div class="roadmap-content">
                         <h4>Trade</h4>
                         <p>Community-driven price discovery</p>
                     </div>
                 </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">4</div>
+                <div style="color: rgba(0, 255, 255, 0.5); font-size: 1.5rem;">→</div>
+                <div class="roadmap-item" style="flex: 1; text-align: center;">
+                    <div class="roadmap-dot" style="margin: 0 auto 1rem;">4</div>
                     <div class="roadmap-content">
                         <h4>Build</h4>
                         <p>Community growth & engagement</p>
                     </div>
                 </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">5</div>
+                <div style="color: rgba(0, 255, 255, 0.5); font-size: 1.5rem;">→</div>
+                <div class="roadmap-item" style="flex: 1; text-align: center;">
+                    <div class="roadmap-dot" style="margin: 0 auto 1rem;">5</div>
                     <div class="roadmap-content">
                         <h4>Graduate</h4>
                         <p>Automatic DEX listing at $70K</p>
@@ -1473,14 +1477,61 @@
                 </div>
             </div>
 
-            <h3>Bonding Curve Mechanics</h3>
-            <ul>
-                <li>Starting market cap: ~$1,000 (algorithmic, no upfront capital)</li>
-                <li>Mathematical formula: x*y=k (proven model)</li>
-                <li>Graduation threshold: ~$70,000 market cap</li>
-                <li>Automatic DEX deployment with locked liquidity</li>
-                <li>Creator can reserve up to 25% for future use</li>
-            </ul>
+            <!-- Bonding Curve Section -->
+            <div style="display: flex; gap: 3rem; align-items: flex-start; margin-top: 3rem;">
+                <!-- Left: Mechanics -->
+                <div style="flex: 1;">
+                    <h3>Bonding Curve Mechanics</h3>
+                    <ul style="font-size: 1rem; line-height: 1.6;">
+                        <li>Starting market cap: ~$1,000 (algorithmic, no upfront capital)</li>
+                        <li>Mathematical formula: x*y=k (proven model)</li>
+                        <li>Graduation threshold: ~$70,000 market cap</li>
+                        <li>Automatic DEX deployment with locked liquidity</li>
+                    </ul>
+                </div>
+                
+                <!-- Right: Chart -->
+                <div style="flex: 1;">
+                    <svg width="100%" height="300" viewBox="0 0 400 300" style="border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 15px; background: rgba(0, 255, 255, 0.05);">
+                        <!-- Grid lines -->
+                        <defs>
+                            <pattern id="grid" width="40" height="30" patternUnits="userSpaceOnUse">
+                                <path d="M 40 0 L 0 0 0 30" fill="none" stroke="rgba(0, 255, 255, 0.1)" stroke-width="1"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                        
+                        <!-- Axes -->
+                        <line x1="50" y1="250" x2="350" y2="250" stroke="rgba(0, 255, 255, 0.5)" stroke-width="2"/>
+                        <line x1="50" y1="250" x2="50" y2="50" stroke="rgba(0, 255, 255, 0.5)" stroke-width="2"/>
+                        
+                        <!-- Bonding Curve -->
+                        <path d="M 50 240 Q 100 220 150 180 Q 200 140 250 110 Q 300 85 350 70" 
+                              fill="none" 
+                              stroke="#00ffff" 
+                              stroke-width="3"
+                              stroke-linecap="round"/>
+                        
+                        <!-- Graduation line -->
+                        <line x1="280" y1="50" x2="280" y2="250" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="5,5"/>
+                        
+                        <!-- Labels -->
+                        <text x="200" y="275" text-anchor="middle" fill="rgba(255, 255, 255, 0.8)" font-size="12">Market Cap</text>
+                        <text x="25" y="150" text-anchor="middle" fill="rgba(255, 255, 255, 0.8)" font-size="12" transform="rotate(-90, 25, 150)">Price</text>
+                        
+                        <!-- Key points -->
+                        <circle cx="60" cy="235" r="4" fill="#00ffff"/>
+                        <text x="60" y="265" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-size="10">$1K</text>
+                        
+                        <circle cx="280" cy="85" r="4" fill="#ff6b6b"/>
+                        <text x="280" y="45" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-size="10">$70K</text>
+                        <text x="280" y="30" text-anchor="middle" fill="#ff6b6b" font-size="9">DEX</text>
+                        
+                        <!-- Title -->
+                        <text x="200" y="25" text-anchor="middle" fill="#00ffff" font-size="14" font-weight="bold">Bonding Curve Model</text>
+                    </svg>
+                </div>
+            </div>
         </div>
 
         <!-- Slide 6: Business Model -->
