@@ -37,8 +37,14 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Added prominent "Join GEM Presale" button in hero section with golden styling and glow animation
 - Button links to external presale portal (https://presale.gemlaunch.fun) instead of on-page section
 - Removed API link from Resources section in footer
-- Added complete investor pitch deck at /pitch-deck route with 11 interactive slides
+- Added complete investor pitch deck at /pitch-deck route with 12 interactive slides
 - Created pitch deck link in footer Resources section for investor access
+- Enhanced pitch deck with sequential entrance animations and connecting lines for "How It Works" section
+- Added proper x*y=k bonding curve with token launch and DEX graduation points in brand colors
+- Implemented innovative animated roadmap with progress line, traveling glow, and pulsing milestone dots
+- Updated roadmap strategy: Q1 2026 focuses on community-driven features instead of mobile app (working with Kastle wallet)
+- Q2 2026 Pro Analytics targets KRC20 bubble maps and market analytics rather than institutional features
+- Added wallet integrations to Q4 2025 launch milestone
 
 # User Preferences
 
