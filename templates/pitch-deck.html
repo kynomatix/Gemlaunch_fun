@@ -1021,8 +1021,9 @@
         /* Process Steps for How It Works */
         .process-steps {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 2rem;
+            grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr auto 1fr;
+            align-items: center;
+            gap: 1rem;
             margin: 2.5rem 0;
         }
 
@@ -1035,6 +1036,8 @@
             text-align: center;
             transition: all 0.4s ease;
             overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
         }
 
         .process-step::before {
@@ -1057,6 +1060,25 @@
             transform: translateY(-8px);
             border-color: rgba(0, 255, 255, 0.5);
             box-shadow: 0 15px 35px rgba(0, 255, 255, 0.2);
+        }
+
+        .connecting-line {
+            height: 3px;
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 255, 0.6), rgba(0, 255, 255, 0.3));
+            position: relative;
+            opacity: 0;
+            transform: scaleX(0);
+            transform-origin: left;
+        }
+
+        .connecting-line::after {
+            content: '→';
+            position: absolute;
+            right: -10px;
+            top: -12px;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 1.2rem;
+            font-weight: bold;
         }
 
         .step-icon {
@@ -1094,6 +1116,65 @@
             font-size: 0.95rem;
             line-height: 1.5;
             margin: 0;
+        }
+
+        /* Sequential entrance animations */
+        .slide.active .process-step[data-step="1"] {
+            animation: slideInUp 0.6s ease-out 0.3s both;
+        }
+
+        .slide.active .connecting-line[data-line="1"] {
+            animation: lineExpand 0.4s ease-out 0.9s both;
+        }
+
+        .slide.active .process-step[data-step="2"] {
+            animation: slideInUp 0.6s ease-out 1.3s both;
+        }
+
+        .slide.active .connecting-line[data-line="2"] {
+            animation: lineExpand 0.4s ease-out 1.9s both;
+        }
+
+        .slide.active .process-step[data-step="3"] {
+            animation: slideInUp 0.6s ease-out 2.3s both;
+        }
+
+        .slide.active .connecting-line[data-line="3"] {
+            animation: lineExpand 0.4s ease-out 2.9s both;
+        }
+
+        .slide.active .process-step[data-step="4"] {
+            animation: slideInUp 0.6s ease-out 3.3s both;
+        }
+
+        .slide.active .connecting-line[data-line="4"] {
+            animation: lineExpand 0.4s ease-out 3.9s both;
+        }
+
+        .slide.active .process-step[data-step="5"] {
+            animation: slideInUp 0.6s ease-out 4.3s both;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes lineExpand {
+            from {
+                opacity: 0;
+                transform: scaleX(0);
+            }
+            to {
+                opacity: 1;
+                transform: scaleX(1);
+            }
         }
     </style>
 </head>
@@ -1514,31 +1595,35 @@
             <p class="subtitle">Complete launch journey in 5 simple steps powered by AI</p>
             
             <div class="process-steps">
-                <div class="process-step">
+                <div class="process-step" data-step="1">
                     <div class="step-icon">🎨</div>
                     <div class="step-number">01</div>
                     <h4>Create</h4>
                     <p>30-second setup with Gemmy AI assistance</p>
                 </div>
-                <div class="process-step">
+                <div class="connecting-line" data-line="1"></div>
+                <div class="process-step" data-step="2">
                     <div class="step-icon">🚀</div>
                     <div class="step-number">02</div>
                     <h4>Launch</h4>
                     <p>$1K fair start bonding curve</p>
                 </div>
-                <div class="process-step">
+                <div class="connecting-line" data-line="2"></div>
+                <div class="process-step" data-step="3">
                     <div class="step-icon">📈</div>
                     <div class="step-number">03</div>
                     <h4>Trade</h4>
                     <p>Community-driven price discovery</p>
                 </div>
-                <div class="process-step">
+                <div class="connecting-line" data-line="3"></div>
+                <div class="process-step" data-step="4">
                     <div class="step-icon">🏗️</div>
                     <div class="step-number">04</div>
                     <h4>Build</h4>
                     <p>Community growth & engagement</p>
                 </div>
-                <div class="process-step">
+                <div class="connecting-line" data-line="4"></div>
+                <div class="process-step" data-step="5">
                     <div class="step-icon">🎓</div>
                     <div class="step-number">05</div>
                     <h4>Graduate</h4>
