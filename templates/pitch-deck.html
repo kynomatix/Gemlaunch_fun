@@ -50,7 +50,7 @@
             width: 90vw;
             max-width: 1400px;
             height: calc(90vw * 9 / 16);
-            max-height: 80vh;
+            max-height: 85vh;
             display: none;
             animation: slideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 30, 30, 0.95));
@@ -1242,57 +1242,69 @@
         </div>
 
         <!-- Slide 8: Traction & Milestones -->
-        <div class="slide">
+        <div class="slide" data-has-substeps="true">
             <h2>Traction & Roadmap</h2>
             
-            <h3>Current Status</h3>
-            <div class="traction-grid">
-                <div class="metric-card">
-                    <div class="metric-value">Q1 2025</div>
-                    <div class="metric-label">Platform Launch</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value">Kaspa Finance</div>
-                    <div class="metric-label">DEX Partnership Secured</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value">$500K</div>
-                    <div class="metric-label">Seed Round Target</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value">5,000+</div>
-                    <div class="metric-label">Community Members</div>
+            <!-- Sub-slide navigation -->
+            <div class="sub-navigation">
+                <div class="sub-dot active" onclick="showSubSlide(7, 0)"></div>
+                <div class="sub-dot" onclick="showSubSlide(7, 1)"></div>
+            </div>
+            
+            <!-- Sub-slide 1: Current Status -->
+            <div class="sub-slide active">
+                <h3>Current Status</h3>
+                <div class="traction-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">Q4 2025</div>
+                        <div class="metric-label">Platform Launch (Planned)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">Kaspa Finance</div>
+                        <div class="metric-label">DEX Partnership Secured</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">$500K</div>
+                        <div class="metric-label">Seed Round Target</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">5,000+</div>
+                        <div class="metric-label">Community Members</div>
+                    </div>
                 </div>
             </div>
-
-            <h3>Roadmap</h3>
-            <div class="roadmap">
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">Q1</div>
-                    <div class="roadmap-content">
-                        <p><strong>2025</strong></p>
-                        <p>Beta Launch</p>
+            
+            <!-- Sub-slide 2: Roadmap -->
+            <div class="sub-slide">
+                <h3>Development Roadmap</h3>
+                <div class="roadmap">
+                    <div class="roadmap-item">
+                        <div class="roadmap-dot">Q4</div>
+                        <div class="roadmap-content">
+                            <p><strong>2025</strong></p>
+                            <p>Platform Launch</p>
+                        </div>
                     </div>
-                </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">Q2</div>
-                    <div class="roadmap-content">
-                        <p><strong>2025</strong></p>
-                        <p>Mobile App</p>
+                    <div class="roadmap-item">
+                        <div class="roadmap-dot">Q1</div>
+                        <div class="roadmap-content">
+                            <p><strong>2026</strong></p>
+                            <p>Mobile App</p>
+                        </div>
                     </div>
-                </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">Q3</div>
-                    <div class="roadmap-content">
-                        <p><strong>2025</strong></p>
-                        <p>Pro Tools</p>
+                    <div class="roadmap-item">
+                        <div class="roadmap-dot">Q2</div>
+                        <div class="roadmap-content">
+                            <p><strong>2026</strong></p>
+                            <p>Pro Tools</p>
+                        </div>
                     </div>
-                </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">Q4</div>
-                    <div class="roadmap-content">
-                        <p><strong>2025</strong></p>
-                        <p>Multi-chain</p>
+                    <div class="roadmap-item">
+                        <div class="roadmap-dot">Q3</div>
+                        <div class="roadmap-content">
+                            <p><strong>2026</strong></p>
+                            <p>Multi-chain</p>
+                        </div>
                     </div>
                 </div>
             </div>
