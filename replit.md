@@ -36,6 +36,9 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Applied comprehensive mobile scroll trap fixes to eliminate horizontal scrolling issues
 - Added prominent "Join GEM Presale" button in hero section with golden styling and glow animation
 - Button links to external presale portal (https://presale.gemlaunch.fun) instead of on-page section
+- Removed API link from Resources section in footer
+- Added complete investor pitch deck at /pitch-deck route with 11 interactive slides
+- Created pitch deck link in footer Resources section for investor access
 
 # User Preferences
 

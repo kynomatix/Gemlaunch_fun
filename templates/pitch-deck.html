@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemlaunch.fun - Investor Pitch Deck</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        /* Slide Container */
+        .deck-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Individual Slides */
+        .slide {
+            position: absolute;
+            width: 90%;
+            max-width: 1200px;
+            height: 85vh;
+            display: none;
+            animation: slideIn 0.5s ease-out;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 20, 20, 0.95));
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 60px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px rgba(0, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-indicator {
+            color: #00ffff;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            letter-spacing: -2px;
+        }
+
+        h2 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            color: #00ffff;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        h3 {
+            font-size: 1.8rem;
+            color: #00ffff;
+            margin: 1.5rem 0 1rem 0;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1rem;
+        }
+
+        /* Title Slide */
+        .title-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-bottom: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .tagline {
+            font-size: 1.8rem;
+            color: #00ffff;
+            margin: 1rem 0;
+        }
+
+        /* Problem/Solution Layout */
+        .problem-solution {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 2rem;
+        }
+
+        .problem-box, .solution-box {
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .problem-box {
+            background: linear-gradient(135deg, rgba(255, 0, 100, 0.1), rgba(255, 0, 0, 0.05));
+            border-color: rgba(255, 0, 100, 0.3);
+        }
+
+        .solution-box {
+            background: linear-gradient(135deg, rgba(0, 255, 100, 0.1), rgba(0, 255, 0, 0.05));
+            border-color: rgba(0, 255, 100, 0.3);
+        }
+
+        /* Market Stats */
+        .market-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(0, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: start;
+            gap: 1rem;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: #00ffff;
+            min-width: 40px;
+        }
+
+        .feature-content h4 {
+            color: #00ffff;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        /* Business Model */
+        .revenue-streams {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .revenue-card {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+
+        .revenue-percentage {
+            font-size: 2.5rem;
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        /* Competitive Analysis */
+        .comparison-table {
+            width: 100%;
+            margin: 2rem 0;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 1rem;
+            text-align: left;
+            color: #00ffff;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        .check {
+            color: #00ff00;
+            font-size: 1.5rem;
+        }
+
+        .cross {
+            color: #ff0044;
+            font-size: 1.5rem;
+        }
+
+        /* Roadmap */
+        .roadmap {
+            display: flex;
+            justify-content: space-between;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .roadmap::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ffff, #00a8a8);
+        }
+
+        .roadmap-item {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .roadmap-dot {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+            position: relative;
+            z-index: 1;
+        }
+
+        .roadmap-content {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Team */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .team-member {
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 15px;
+        }
+
+        .team-role {
+            color: #00ffff;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        /* CTA */
+        .cta-section {
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1.2rem 3rem;
+            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            color: #000;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 255, 255, 0.5);
+        }
+
+        /* Lists */
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        ul li {
+            padding: 0.7rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+
+        ul li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #00ffff;
+        }
+
+        /* Traction metrics */
+        .traction-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), transparent);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .metric-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.5rem;
+        }
+
+        /* Progress bar */
+        .progress-dots {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .dot.active {
+            background: #00ffff;
+            box-shadow: 0 0 10px #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Progress Dots -->
+    <div class="progress-dots">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+
+    <div class="deck-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active title-slide">
+            <div class="logo-container">
+                <h1>gemlaunch.fun</h1>
+            </div>
+            <p class="tagline">The Kaspa Memecoin Revolution</p>
+            <p class="subtitle">Democratizing memecoin creation with zero-code fair launches on the fastest proof-of-work blockchain</p>
+            <div class="cta-section">
+                <p>Investor Presentation • 2024</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: Problem -->
+        <div class="slide">
+            <h2>The Problem</h2>
+            <div class="problem-solution">
+                <div class="problem-box">
+                    <h3>Current Memecoin Landscape Issues</h3>
+                    <ul>
+                        <li>Complex token creation requiring technical expertise</li>
+                        <li>Unfair launches with insider advantages</li>
+                        <li>Rug pulls and abandoned projects</li>
+                        <li>High transaction fees on congested networks</li>
+                        <li>Lack of creator incentives for successful projects</li>
+                        <li>Limited community-driven growth mechanisms</li>
+                    </ul>
+                </div>
+                <div class="solution-box">
+                    <h3>Market Opportunity</h3>
+                    <ul>
+                        <li>$50B+ memecoin market cap globally</li>
+                        <li>Kaspa ecosystem underserved for memecoins</li>
+                        <li>Growing demand for fair launch platforms</li>
+                        <li>Community seeks transparent alternatives</li>
+                        <li>Creator economy needs sustainable models</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Solution -->
+        <div class="slide">
+            <h2>Our Solution</h2>
+            <p class="subtitle">A no-code, community-first memecoin launchpad on Kaspa</p>
+            
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🚀</div>
+                    <div class="feature-content">
+                        <h4>Zero-Code Creation</h4>
+                        <p>Launch memecoins in seconds with just name, image, and ticker</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-content">
+                        <h4>Lightning Fast</h4>
+                        <p>Built on Kaspa's 10 BPS blockchain with ~100ms block times</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💎</div>
+                    <div class="feature-content">
+                        <h4>Fair Bonding Curves</h4>
+                        <p>Transparent pricing with no presales or insider advantages</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🤖</div>
+                    <div class="feature-content">
+                        <h4>AI-Powered Assistant</h4>
+                        <p>Gemmy helps with token creation, marketing, and strategy</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Market Size -->
+        <div class="slide">
+            <h2>Market Opportunity</h2>
+            <div class="market-stats">
+                <div class="stat-card">
+                    <div class="stat-number">$50B+</div>
+                    <div class="stat-label">Global Memecoin Market Cap</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">$5B+</div>
+                    <div class="stat-label">Daily Memecoin Trading Volume</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">10M+</div>
+                    <div class="stat-label">Active Memecoin Traders</div>
+                </div>
+            </div>
+            
+            <h3>Kaspa Ecosystem</h3>
+            <ul>
+                <li>Fastest proof-of-work blockchain (10 blocks per second)</li>
+                <li>Growing developer and community adoption</li>
+                <li>Currently underserved for memecoin infrastructure</li>
+                <li>First-mover advantage in this ecosystem</li>
+                <li>Strong alignment with fair launch philosophy</li>
+            </ul>
+        </div>
+
+        <!-- Slide 5: Business Model -->
+        <div class="slide">
+            <h2>Business Model</h2>
+            <p class="subtitle">Sustainable revenue through community-aligned fee structure</p>
+            
+            <div class="revenue-streams">
+                <div class="revenue-card">
+                    <div class="revenue-percentage">1%</div>
+                    <h4>Trading Fee</h4>
+                    <p>Applied to all token swaps on bonding curves</p>
+                </div>
+                <div class="revenue-card">
+                    <div class="revenue-percentage">0%</div>
+                    <h4>Token Creation</h4>
+                    <p>Free token launches to maximize adoption</p>
+                </div>
+            </div>
+
+            <h3>Fee Distribution (Community-First)</h3>
+            <ul>
+                <li><strong>40%</strong> Platform Development - Features, security, mobile support</li>
+                <li><strong>30%</strong> GEM Buyback & Burn - Deflationary token mechanics</li>
+                <li><strong>20%</strong> Kaspa Network Support - Validator support, infrastructure</li>
+                <li><strong>10%</strong> Community Rewards - GEM airdrops for contributors</li>
+            </ul>
+        </div>
+
+        <!-- Slide 6: Product Features -->
+        <div class="slide">
+            <h2>Key Platform Features</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-content">
+                        <h4>Bonding Curve Mechanics</h4>
+                        <p>x*y=k formula ensuring fair price discovery from $1K to $70K market cap</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🏆</div>
+                    <div class="feature-content">
+                        <h4>Graduation System</h4>
+                        <p>Automatic DEX listing on Kaspa Finance at $70K with locked liquidity</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎮</div>
+                    <div class="feature-content">
+                        <h4>Gamified Experience</h4>
+                        <p>Leaderboard points, achievements, and seasonal airdrops</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💬</div>
+                    <div class="feature-content">
+                        <h4>Social Layer</h4>
+                        <p>Built-in chat, $cashtags, and community features</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Creator Benefits</h3>
+            <ul>
+                <li>Revenue share from successful token graduations</li>
+                <li>GEM token rewards for platform activity</li>
+                <li>Built-in marketing and community tools</li>
+                <li>AI assistant for optimization and strategy</li>
+            </ul>
+        </div>
+
+        <!-- Slide 7: Competitive Analysis -->
+        <div class="slide">
+            <h2>Competitive Landscape</h2>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>gemlaunch.fun</th>
+                        <th>Other Platforms</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>No-Code Creation</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Creator Revenue Share</td>
+                        <td class="check">✓</td>
+                        <td class="cross">✗</td>
+                    </tr>
+                    <tr>
+                        <td>AI Assistant</td>
+                        <td class="check">✓</td>
+                        <td class="cross">✗</td>
+                    </tr>
+                    <tr>
+                        <td>Fast Blockchain (10 BPS)</td>
+                        <td class="check">✓</td>
+                        <td class="cross">✗</td>
+                    </tr>
+                    <tr>
+                        <td>Community-First Economics</td>
+                        <td class="check">✓</td>
+                        <td class="cross">✗</td>
+                    </tr>
+                    <tr>
+                        <td>First-Mover on Kaspa</td>
+                        <td class="check">✓</td>
+                        <td class="cross">✗</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Key Differentiators</h3>
+            <ul>
+                <li>Community ownership vs VC-backed extraction models</li>
+                <li>Creator rewards align incentives for long-term success</li>
+                <li>AI-powered guidance reduces barriers to entry</li>
+                <li>Kaspa's technical advantages (speed, low fees)</li>
+            </ul>
+        </div>
+
+        <!-- Slide 8: Go-to-Market Strategy -->
+        <div class="slide">
+            <h2>Go-to-Market Strategy</h2>
+            
+            <div class="roadmap">
+                <div class="roadmap-item">
+                    <div class="roadmap-dot">1</div>
+                    <div class="roadmap-content">
+                        <h4>Phase 1: Foundation</h4>
+                        <p>Smart contracts, web interface, AI assistant integration</p>
+                    </div>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-dot">2</div>
+                    <div class="roadmap-content">
+                        <h4>Phase 2: Community</h4>
+                        <p>GEM token presale, Kaspa community outreach, beta testing</p>
+                    </div>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-dot">3</div>
+                    <div class="roadmap-content">
+                        <h4>Phase 3: Launch</h4>
+                        <p>Public platform launch, marketing campaign, feature iterations</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Marketing Approach</h3>
+            <ul>
+                <li><strong>Kaspa Community:</strong> Direct engagement with existing ecosystem</li>
+                <li><strong>Influencer Partnerships:</strong> Crypto and memecoin thought leaders</li>
+                <li><strong>Fair Launch Messaging:</strong> "Community-owned, not VC-owned"</li>
+                <li><strong>Technical Advantages:</strong> Speed, low fees, creator rewards</li>
+            </ul>
+        </div>
+
+        <!-- Slide 9: Traction & Milestones -->
+        <div class="slide">
+            <h2>Current Progress</h2>
+            
+            <div class="traction-grid">
+                <div class="metric-card">
+                    <div class="metric-value">Q1 2024</div>
+                    <div class="metric-label">Platform Development Started</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">MVP</div>
+                    <div class="metric-label">Landing Page & Documentation</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">GEM</div>
+                    <div class="metric-label">Token Design & Presale Prep</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">Q2 2024</div>
+                    <div class="metric-label">Smart Contract Development</div>
+                </div>
+            </div>
+
+            <h3>Key Milestones Ahead</h3>
+            <ul>
+                <li><strong>Q2 2024:</strong> Smart contract deployment on Kaspa testnet</li>
+                <li><strong>Q3 2024:</strong> Beta launch with select community members</li>
+                <li><strong>Q4 2024:</strong> Public platform launch</li>
+                <li><strong>Q1 2025:</strong> Mobile app and advanced features</li>
+                <li><strong>2025+:</strong> Multi-chain expansion and ecosystem growth</li>
+            </ul>
+        </div>
+
+        <!-- Slide 10: Team & Advisors -->
+        <div class="slide">
+            <h2>Team & Advisors</h2>
+            
+            <div class="team-grid">
+                <div class="team-member">
+                    <h4>Co-Founder & CEO</h4>
+                    <div class="team-role">Product & Strategy</div>
+                    <p>Experienced in crypto product development and community building</p>
+                </div>
+                <div class="team-member">
+                    <h4>Co-Founder & CTO</h4>
+                    <div class="team-role">Technical Development</div>
+                    <p>Blockchain developer with expertise in smart contracts and DeFi</p>
+                </div>
+                <div class="team-member">
+                    <h4>Lead Designer</h4>
+                    <div class="team-role">UI/UX & Branding</div>
+                    <p>Web3 design specialist focused on user experience</p>
+                </div>
+            </div>
+
+            <h3>Advisory Board</h3>
+            <ul>
+                <li><strong>Kaspa Ecosystem Leaders:</strong> Core community members and developers</li>
+                <li><strong>DeFi Experts:</strong> Smart contract security and tokenomics advisors</li>
+                <li><strong>Community Growth:</strong> Social media and community management specialists</li>
+                <li><strong>Business Development:</strong> Partnership and growth strategy advisors</li>
+            </ul>
+        </div>
+
+        <!-- Slide 11: Funding & Call to Action -->
+        <div class="slide">
+            <h2>Investment Opportunity</h2>
+            
+            <div class="market-stats">
+                <div class="stat-card">
+                    <div class="stat-number">$500K</div>
+                    <div class="stat-label">Seed Round Target</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">18 months</div>
+                    <div class="stat-label">Runway to Profitability</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">10x</div>
+                    <div class="stat-label">Potential ROI at Scale</div>
+                </div>
+            </div>
+
+            <h3>Use of Funds</h3>
+            <ul>
+                <li><strong>60%</strong> Product Development - Smart contracts, platform, mobile app</li>
+                <li><strong>25%</strong> Marketing & Growth - Community building, partnerships</li>
+                <li><strong>10%</strong> Operations - Team, legal, compliance</li>
+                <li><strong>5%</strong> Reserve - Contingency and strategic opportunities</li>
+            </ul>
+
+            <div class="cta-section">
+                <h3>Ready to revolutionize memecoin creation?</h3>
+                <a href="mailto:investors@gemlaunch.fun" class="cta-button">Contact Us</a>
+                <p>investors@gemlaunch.fun • t.me/gemlaunchio</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="nav-controls">
+        <button class="nav-btn prev">← Previous</button>
+        <span class="slide-indicator">1 / 11</span>
+        <button class="nav-btn next">Next →</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const totalSlides = 11;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            const dots = document.querySelectorAll('.dot');
+            
+            // Wrap around if needed
+            if (n >= totalSlides) currentSlide = 0;
+            if (n < 0) currentSlide = totalSlides - 1;
+            
+            // Hide all slides
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+            });
+            
+            // Remove active from all dots
+            dots.forEach(dot => {
+                dot.classList.remove('active');
+            });
+            
+            // Show current slide and activate dot
+            slides[currentSlide].classList.add('active');
+            dots[currentSlide].classList.add('active');
+            
+            // Update navigation
+            updateNavigation();
+        }
+
+        function updateNavigation() {
+            const prevBtn = document.querySelector('.prev');
+            const nextBtn = document.querySelector('.next');
+            const indicator = document.querySelector('.slide-indicator');
+            
+            indicator.textContent = `${currentSlide + 1} / ${totalSlides}`;
+            
+            // Disable buttons at edges (optional - remove if you want infinite loop)
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === totalSlides - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        }
+
+        // Event listeners
+        document.querySelector('.next').addEventListener('click', nextSlide);
+        document.querySelector('.prev').addEventListener('click', prevSlide);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            }
+        });
+
+        // Dot navigation
+        document.querySelectorAll('.dot').forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                currentSlide = index;
+                showSlide(currentSlide);
+            });
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>

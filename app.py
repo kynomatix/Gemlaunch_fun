@@ -19,6 +19,11 @@ def docs():
     """Documentation page for Gemlaunch.fun"""
     return render_template('docs.html')
 
+@app.route('/pitch-deck')
+def pitch_deck():
+    """Investor pitch deck for Gemlaunch.fun"""
+    return render_template('pitch-deck.html')
+
 @app.route('/health')
 def health():
     """Health check endpoint"""
