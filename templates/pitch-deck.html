@@ -12,9 +12,25 @@
 
         body {
             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #000;
+            background: linear-gradient(135deg, #000 0%, #001122 50%, #000 100%);
             color: #fff;
             overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 168, 168, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 255, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
         }
 
         /* Slide Container */
@@ -34,14 +50,30 @@
             max-width: 1200px;
             height: 85vh;
             display: none;
-            animation: slideIn 0.5s ease-out;
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 20, 20, 0.95));
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 60px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 25px 50px rgba(0, 255, 255, 0.1);
+            animation: slideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 30, 30, 0.95));
+            border: 2px solid;
+            border-image: linear-gradient(135deg, rgba(0, 255, 255, 0.5), rgba(0, 168, 168, 0.2)) 1;
+            border-radius: 25px;
+            padding: 50px 60px;
+            backdrop-filter: blur(25px);
+            box-shadow: 
+                0 25px 50px rgba(0, 255, 255, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
             overflow-y: auto;
+            position: relative;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.03) 0%, transparent 50%);
+            border-radius: 25px;
+            pointer-events: none;
         }
 
         .slide.active {
@@ -144,21 +176,88 @@
 
         /* Title Slide */
         .title-slide {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            grid-template-rows: auto 1fr auto auto;
+            gap: 2rem;
+            height: 100%;
             align-items: center;
             text-align: center;
         }
 
         .logo-container {
-            margin-bottom: 2rem;
+            grid-column: 2;
+            grid-row: 1;
             animation: float 3s ease-in-out infinite;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05));
+            border: 2px dashed rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .mascot-space {
+            grid-column: 1;
+            grid-row: 2;
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            animation: pulseGlow 2s ease-in-out infinite alternate;
+            margin: auto;
+        }
+
+        .hero-platform-space {
+            grid-column: 3;
+            grid-row: 2;
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            animation: pulseGlow 2s ease-in-out infinite alternate;
+            animation-delay: 1s;
+            margin: auto;
+        }
+
+        .title-content {
+            grid-column: 2;
+            grid-row: 2;
+            z-index: 10;
+        }
+
+        .title-stats {
+            grid-column: 1 / -1;
+            grid-row: 3;
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        @keyframes pulseGlow {
+            0% { 
+                box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+                transform: scale(1);
+            }
+            100% { 
+                box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+                transform: scale(1.02);
+            }
         }
 
         .tagline {
@@ -237,21 +336,92 @@
         }
 
         .feature-item {
-            display: flex;
-            align-items: start;
-            gap: 1rem;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+
+        .feature-item::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .feature-item:hover::before {
+            opacity: 1;
+            transform: translate(-25%, -25%);
         }
 
         .feature-icon {
-            font-size: 2rem;
+            font-size: 2.5rem;
             color: #00ffff;
-            min-width: 40px;
+            margin-bottom: 1rem;
+            display: block;
+            text-align: center;
+        }
+
+        .feature-content {
+            text-align: center;
+            position: relative;
+            z-index: 2;
         }
 
         .feature-content h4 {
             color: #00ffff;
-            margin-bottom: 0.5rem;
-            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .feature-content p {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+        }
+
+        /* Product Features Layout */
+        .product-features-slide {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        .features-mascot-space {
+            width: 280px;
+            height: 400px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            animation: pulseGlow 3s ease-in-out infinite alternate;
+            position: sticky;
+            top: 2rem;
+        }
+
+        .features-content {
+            flex: 1;
         }
 
         /* Business Model */
@@ -305,33 +475,74 @@
             font-size: 1.5rem;
         }
 
+        /* How It Works Layout */
+        .how-it-works-slide {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        .roadmap-mascot-space {
+            width: 300px;
+            height: 450px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            animation: pulseGlow 2.5s ease-in-out infinite alternate;
+            position: sticky;
+            top: 2rem;
+        }
+
+        .roadmap-content-area {
+            flex: 1;
+        }
+
         /* Roadmap */
         .roadmap {
             display: flex;
             justify-content: space-between;
-            margin: 2rem 0;
+            margin: 3rem 0;
             position: relative;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), transparent);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(0, 255, 255, 0.1);
         }
 
         .roadmap::before {
             content: '';
             position: absolute;
-            top: 30px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #00ffff, #00a8a8);
+            top: 50px;
+            left: 5%;
+            right: 5%;
+            height: 3px;
+            background: linear-gradient(90deg, #00ffff, #00a8a8, #00ffff);
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
         }
 
         .roadmap-item {
             flex: 1;
             text-align: center;
             position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .roadmap-item:hover {
+            transform: translateY(-5px);
         }
 
         .roadmap-dot {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             background: linear-gradient(135deg, #00ffff, #00a8a8);
             border-radius: 50%;
             margin: 0 auto 1rem;
@@ -341,61 +552,254 @@
             font-weight: bold;
             color: #000;
             position: relative;
-            z-index: 1;
+            z-index: 2;
+            font-size: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .roadmap-item:hover .roadmap-dot {
+            box-shadow: 0 10px 25px rgba(0, 255, 255, 0.5);
+            transform: scale(1.1);
         }
 
         .roadmap-content {
-            background: rgba(0, 255, 255, 0.05);
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 1rem;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
             margin-top: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .roadmap-content::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .roadmap-item:hover .roadmap-content::before {
+            opacity: 1;
+            transform: translate(-25%, -25%);
+        }
+
+        .roadmap-content h4 {
+            color: #00ffff;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .roadmap-content p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
+            position: relative;
+            z-index: 2;
         }
 
         /* Team */
+        .team-slide {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        .team-mascot-space {
+            width: 380px;
+            height: 500px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            animation: pulseGlow 4s ease-in-out infinite alternate;
+            position: sticky;
+            top: 2rem;
+        }
+
+        .team-content {
+            flex: 1;
+        }
+
         .team-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 2rem;
             margin: 2rem 0;
         }
 
         .team-member {
             text-align: center;
-            padding: 1.5rem;
-            background: rgba(0, 255, 255, 0.05);
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
             border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 15px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .team-member:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+
+        .team-member::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .team-member:hover::before {
+            opacity: 1;
+            transform: translate(-25%, -25%);
         }
 
         .team-role {
             color: #00ffff;
             font-weight: bold;
-            margin: 0.5rem 0;
+            margin: 1rem 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+
+        .team-member h4 {
+            color: #fff;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .team-member p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Final Presale Slide Layout */
+        .presale-slide {
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            gap: 3rem;
+            height: 100%;
+            align-items: center;
+        }
+
+        .presale-left-space {
+            width: 320px;
+            height: 500px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(255, 215, 0, 0.6);
+            border-radius: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 215, 0, 0.8);
+            font-size: 14px;
+            text-align: center;
+            animation: goldGlow 3s ease-in-out infinite alternate;
+        }
+
+        .presale-right-space {
+            width: 320px;
+            height: 500px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(0, 168, 168, 0.03));
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 14px;
+            text-align: center;
+            animation: pulseGlow 3.5s ease-in-out infinite alternate;
+        }
+
+        .presale-content {
+            flex: 1;
+            text-align: center;
+        }
+
+        @keyframes goldGlow {
+            0% { 
+                box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+                transform: scale(1);
+            }
+            100% { 
+                box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+                transform: scale(1.02);
+            }
         }
 
         /* CTA */
         .cta-section {
             text-align: center;
-            margin-top: 3rem;
+            margin-top: 2rem;
         }
 
         .cta-button {
             display: inline-block;
-            padding: 1.2rem 3rem;
-            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            padding: 1.5rem 4rem;
+            background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
             color: #000;
             text-decoration: none;
             border-radius: 50px;
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             font-weight: bold;
             transition: all 0.3s;
-            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            transition: all 0.6s;
+            opacity: 0;
+        }
+
+        .cta-button:hover::before {
+            animation: shimmer 1.5s ease-in-out;
         }
 
         .cta-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(0, 255, 255, 0.5);
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 20px 50px rgba(255, 215, 0, 0.6);
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) rotate(45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%) rotate(45deg); opacity: 0; }
         }
 
         /* Lists */
@@ -582,22 +986,44 @@
         <!-- Slide 1: Title -->
         <div class="slide active title-slide">
             <div class="logo-container">
+                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 168, 168, 0.1)); border: 2px dashed rgba(0, 255, 255, 0.5); border-radius: 15px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.8); font-size: 12px;">💎<br>Logo</div>
                 <h1>Gemlaunch.fun</h1>
+                <p style="color: rgba(0, 255, 255, 0.7); font-size: 0.9rem; margin-top: 0.5rem;">Official Logo Placement</p>
             </div>
-            <p class="tagline">The Premier AI-Powered Memecoin Launchpad on Kaspa</p>
-            <p class="subtitle">Democratizing token launches with Gemmy, your AI assistant</p>
-            <div class="market-stats" style="margin-top: 4rem;">
-                <div class="stat-card">
-                    <div class="stat-number">First</div>
-                    <div class="stat-label">Mover on Kaspa</div>
+            
+            <div class="mascot-space">
+                <div>
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🤖</div>
+                    <div>Gemmy Mascot<br>Animation Space</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">$70K</div>
-                    <div class="stat-label">Auto-Graduation</div>
+            </div>
+            
+            <div class="title-content">
+                <p class="tagline">The Premier AI-Powered Memecoin Launchpad on Kaspa</p>
+                <p class="subtitle">Democratizing token launches with Gemmy, your AI assistant</p>
+            </div>
+            
+            <div class="hero-platform-space">
+                <div>
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🚀</div>
+                    <div>Platform Hero<br>Demo Space</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">1%</div>
-                    <div class="stat-label">Platform Fee</div>
+            </div>
+            
+            <div class="title-stats">
+                <div class="market-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">First</div>
+                        <div class="stat-label">Mover on Kaspa</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">$70K</div>
+                        <div class="stat-label">Auto-Graduation</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1%</div>
+                        <div class="stat-label">Platform Fee</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -668,48 +1094,62 @@
 
         <!-- Slide 4: Product Features -->
         <div class="slide">
-            <h2>Product Features</h2>
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <div class="feature-icon">🤖</div>
-                    <div class="feature-content">
-                        <h4>Gemmy AI Assistant</h4>
-                        <p>Generate names, create marketing content, explain complex concepts</p>
-                    </div>
+            <div class="product-features-slide">
+                <div class="features-mascot-space">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #00ffff; margin-bottom: 1rem;">Gemmy AI Assistant</div>
+                    <div>Interactive Demo<br>Animation Space</div>
+                    <div style="margin-top: 2rem; font-size: 1.5rem;">⚡</div>
+                    <div style="margin-top: 0.5rem; font-size: 12px;">Platform Features<br>Showcase</div>
                 </div>
-                <div class="feature-item">
-                    <div class="feature-icon">⚡</div>
-                    <div class="feature-content">
-                        <h4>Lightning Fast</h4>
-                        <p>100ms block times, 10 blocks per second throughput</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🛡️</div>
-                    <div class="feature-content">
-                        <h4>Rug-Proof Design</h4>
-                        <p>Bonding curve mechanics, locked liquidity, transparent launches</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">💬</div>
-                    <div class="feature-content">
-                        <h4>Built-in Social</h4>
-                        <p>Token-specific chat rooms, global feed, social sharing</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🎮</div>
-                    <div class="feature-content">
-                        <h4>Gamification</h4>
-                        <p>Points system, leaderboards, achievements, seasonal airdrops</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🔄</div>
-                    <div class="feature-content">
-                        <h4>Auto-Graduation</h4>
-                        <p>Seamless DEX listing at $70K market cap</p>
+                
+                <div class="features-content">
+                    <h2>Product Features</h2>
+                    <p class="subtitle">Revolutionary memecoin creation powered by AI and Kaspa's speed</p>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <div class="feature-icon">🤖</div>
+                            <div class="feature-content">
+                                <h4>Gemmy AI Assistant</h4>
+                                <p>Generate names, create marketing content, explain complex concepts</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">⚡</div>
+                            <div class="feature-content">
+                                <h4>Lightning Fast</h4>
+                                <p>100ms block times, 10 blocks per second throughput</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🛡️</div>
+                            <div class="feature-content">
+                                <h4>Rug-Proof Design</h4>
+                                <p>Bonding curve mechanics, locked liquidity, transparent launches</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">💬</div>
+                            <div class="feature-content">
+                                <h4>Built-in Social</h4>
+                                <p>Token-specific chat rooms, global feed, social sharing</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🎮</div>
+                            <div class="feature-content">
+                                <h4>Gamification</h4>
+                                <p>Points system, leaderboards, achievements, seasonal airdrops</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🔄</div>
+                            <div class="feature-content">
+                                <h4>Auto-Graduation</h4>
+                                <p>Seamless DEX listing at $70K market cap</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -717,55 +1157,69 @@
 
         <!-- Slide 5: How It Works -->
         <div class="slide">
-            <h2>How It Works</h2>
-            <p class="subtitle">Complete launch journey in 5 simple steps</p>
-            
-            <div class="roadmap">
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">1</div>
-                    <div class="roadmap-content">
-                        <h4>Create</h4>
-                        <p>30-second setup</p>
+            <div class="how-it-works-slide">
+                <div class="roadmap-content-area">
+                    <h2>How It Works</h2>
+                    <p class="subtitle">Complete launch journey in 5 simple steps powered by AI</p>
+                    
+                    <div class="roadmap">
+                        <div class="roadmap-item">
+                            <div class="roadmap-dot">1</div>
+                            <div class="roadmap-content">
+                                <h4>Create</h4>
+                                <p>30-second setup with Gemmy AI</p>
+                            </div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-dot">2</div>
+                            <div class="roadmap-content">
+                                <h4>Launch</h4>
+                                <p>$1K fair start bonding curve</p>
+                            </div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-dot">3</div>
+                            <div class="roadmap-content">
+                                <h4>Trade</h4>
+                                <p>Community-driven price discovery</p>
+                            </div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-dot">4</div>
+                            <div class="roadmap-content">
+                                <h4>Build</h4>
+                                <p>Community growth & engagement</p>
+                            </div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-dot">5</div>
+                            <div class="roadmap-content">
+                                <h4>Graduate</h4>
+                                <p>Automatic DEX listing at $70K</p>
+                            </div>
+                        </div>
                     </div>
+
+                    <h3>Bonding Curve Mechanics</h3>
+                    <ul>
+                        <li>Starting market cap: ~$1,000 (algorithmic, no upfront capital)</li>
+                        <li>Mathematical formula: x*y=k (proven model)</li>
+                        <li>Graduation threshold: ~$70,000 market cap</li>
+                        <li>Automatic DEX deployment with locked liquidity</li>
+                        <li>Creator can reserve up to 25% for future use</li>
+                    </ul>
                 </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">2</div>
-                    <div class="roadmap-content">
-                        <h4>Launch</h4>
-                        <p>$1K fair start</p>
-                    </div>
-                </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">3</div>
-                    <div class="roadmap-content">
-                        <h4>Trade</h4>
-                        <p>Bonding curve</p>
-                    </div>
-                </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">4</div>
-                    <div class="roadmap-content">
-                        <h4>Build</h4>
-                        <p>Community growth</p>
-                    </div>
-                </div>
-                <div class="roadmap-item">
-                    <div class="roadmap-dot">5</div>
-                    <div class="roadmap-content">
-                        <h4>Graduate</h4>
-                        <p>DEX listing</p>
-                    </div>
+                
+                <div class="roadmap-mascot-space">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #00ffff; margin-bottom: 1rem;">Launch Process</div>
+                    <div>Step-by-Step<br>Animation Space</div>
+                    <div style="margin-top: 3rem; font-size: 2rem;">🤖</div>
+                    <div style="margin-top: 1rem; font-size: 14px;">Gemmy AI<br>Guide Demo</div>
+                    <div style="margin-top: 2rem; font-size: 1.5rem;">📈</div>
+                    <div style="margin-top: 0.5rem; font-size: 12px;">Curve<br>Visualization</div>
                 </div>
             </div>
-
-            <h3>Bonding Curve Mechanics</h3>
-            <ul>
-                <li>Starting market cap: ~$1,000 (algorithmic, no upfront capital)</li>
-                <li>Mathematical formula: x*y=k (proven model)</li>
-                <li>Graduation threshold: ~$70,000 market cap</li>
-                <li>Automatic DEX deployment with locked liquidity</li>
-                <li>Creator can reserve up to 25% for future use</li>
-            </ul>
         </div>
 
         <!-- Slide 6: Business Model -->
@@ -994,96 +1448,135 @@
 
         <!-- Slide 10: Team & Advisors -->
         <div class="slide">
-            <h2>Team & Advisors</h2>
-            
-            <h3>Core Team</h3>
-            <div class="team-grid">
-                <div class="team-member">
-                    <div style="width: 80px; height: 80px; background: rgba(0, 255, 255, 0.1); border: 2px dashed rgba(0, 255, 255, 0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.5); font-size: 12px;">Image</div>
-                    <h4>Jono Mars</h4>
-                    <div class="team-role">Founder</div>
-                    <p>15+ years in IT & Marketing, 9 years in Crypto. Driving innovation and impactful solutions for a decentralized future.</p>
-                </div>
-                <div class="team-member">
-                    <div style="width: 80px; height: 80px; background: rgba(0, 255, 255, 0.1); border: 2px dashed rgba(0, 255, 255, 0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.5); font-size: 12px;">Image</div>
-                    <h4>Vivi Park</h4>
-                    <div class="team-role">Co-Founder</div>
-                    <p>Experienced marketing leader in gaming, blockchain, and NFTs. Expert in social media growth, community building, and strategic crypto initiatives.</p>
-                </div>
-                <div class="team-member">
-                    <div style="width: 80px; height: 80px; background: rgba(0, 255, 255, 0.1); border: 2px dashed rgba(0, 255, 255, 0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.5); font-size: 12px;">Image</div>
-                    <h4>Akash Deshmukh</h4>
-                    <div class="team-role">Chief Marketing Officer</div>
-                    <p>5 years in Web3, launched 25+ IDOs and managed marketing for 50+ crypto projects. Led Reef's viral campaigns and worked with top agencies like Momentum 6.</p>
-                </div>
-            </div>
+            <div class="team-slide">
+                <div class="team-content">
+                    <h2>Team & Advisors</h2>
+                    <p class="subtitle">Experienced leaders driving the future of memecoin creation</p>
+                    
+                    <h3>Core Team</h3>
+                    <div class="team-grid">
+                        <div class="team-member">
+                            <div style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 2px dashed rgba(0, 255, 255, 0.4); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 12px;">👨‍💼<br>Image</div>
+                            <h4>Jono Mars</h4>
+                            <div class="team-role">Founder</div>
+                            <p>15+ years in IT & Marketing, 9 years in Crypto. Driving innovation and impactful solutions for a decentralized future.</p>
+                        </div>
+                        <div class="team-member">
+                            <div style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 2px dashed rgba(0, 255, 255, 0.4); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 12px;">👩‍💼<br>Image</div>
+                            <h4>Vivi Park</h4>
+                            <div class="team-role">Co-Founder</div>
+                            <p>Experienced marketing leader in gaming, blockchain, and NFTs. Expert in social media growth, community building, and strategic crypto initiatives.</p>
+                        </div>
+                        <div class="team-member">
+                            <div style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 2px dashed rgba(0, 255, 255, 0.4); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 12px;">👨‍💼<br>Image</div>
+                            <h4>Akash Deshmukh</h4>
+                            <div class="team-role">Chief Marketing Officer</div>
+                            <p>5 years in Web3, launched 25+ IDOs and managed marketing for 50+ crypto projects. Led Reef's viral campaigns and worked with top agencies like Momentum 6.</p>
+                        </div>
+                    </div>
 
-            <h3>Advisory Board</h3>
-            <div class="team-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 600px; margin: 0 auto;">
-                <div class="team-member">
-                    <div style="width: 80px; height: 80px; background: rgba(0, 255, 255, 0.1); border: 2px dashed rgba(0, 255, 255, 0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.5); font-size: 12px;">Image</div>
-                    <h4>Jayse Sanderson</h4>
-                    <div class="team-role">Advisor</div>
-                    <p>10 years in Crypto, 18 years in Tech Industry. Certified Blockchain Pro seeking to boost DeFi use cases and create crypto solutions for all.</p>
+                    <h3>Advisory Board</h3>
+                    <div class="team-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 600px; margin: 0 auto;">
+                        <div class="team-member">
+                            <div style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 2px dashed rgba(0, 255, 255, 0.4); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 12px;">🎯<br>Image</div>
+                            <h4>Jayse Sanderson</h4>
+                            <div class="team-role">Advisor</div>
+                            <p>10 years in Crypto, 18 years in Tech Industry. Certified Blockchain Pro seeking to boost DeFi use cases and create crypto solutions for all.</p>
+                        </div>
+                        <div class="team-member">
+                            <div style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 2px dashed rgba(0, 255, 255, 0.4); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 12px;">🎮<br>Image</div>
+                            <h4>James Lee</h4>
+                            <div class="team-role">Web3 Advisor</div>
+                            <p>Experienced web3, blockchain game advisor and producer with a passion for diverse gaming genres. Offering expert insights and personalized strategies to enhance blockchain experiences.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="team-member">
-                    <div style="width: 80px; height: 80px; background: rgba(0, 255, 255, 0.1); border: 2px dashed rgba(0, 255, 255, 0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.5); font-size: 12px;">Image</div>
-                    <h4>James Lee</h4>
-                    <div class="team-role">Web3 Advisor</div>
-                    <p>Experienced web3, blockchain game advisor and producer with a passion for diverse gaming genres. Offering expert insights and personalized strategies to enhance blockchain experiences.</p>
+                
+                <div class="team-mascot-space">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">👥</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #00ffff; margin-bottom: 1rem;">Team Showcase</div>
+                    <div>Professional Photos<br>& Branding Space</div>
+                    <div style="margin-top: 3rem; font-size: 2rem;">🤖</div>
+                    <div style="margin-top: 1rem; font-size: 14px;">Gemmy Team<br>Introduction</div>
+                    <div style="margin-top: 2rem; font-size: 1.5rem;">🏆</div>
+                    <div style="margin-top: 0.5rem; font-size: 12px;">Achievement<br>Highlights</div>
                 </div>
             </div>
         </div>
 
         <!-- Slide 11: GEM Token Presale -->
         <div class="slide">
-            <h2>🔥 GEM Token Presale</h2>
-            <p class="subtitle">Your chance to own the future of memecoin creation</p>
-            
-            <div class="market-stats">
-                <div class="stat-card">
-                    <div class="stat-number">$500K</div>
-                    <div class="stat-label">Target Raise</div>
+            <div class="presale-slide">
+                <div class="presale-left-space">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">💎</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #FFD700; margin-bottom: 1rem;">GEM Token</div>
+                    <div>Token Animation<br>& Branding Space</div>
+                    <div style="margin-top: 3rem; font-size: 2rem;">📈</div>
+                    <div style="margin-top: 1rem; font-size: 14px;">ROI Projection<br>Charts</div>
+                    <div style="margin-top: 2rem; font-size: 1.5rem;">🏆</div>
+                    <div style="margin-top: 0.5rem; font-size: 12px;">Success<br>Stories</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">18 months</div>
-                    <div class="stat-label">Runway to Profitability</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">10x</div>
-                    <div class="stat-label">Potential ROI at Scale</div>
-                </div>
-            </div>
+                
+                <div class="presale-content">
+                    <h2>🔥 GEM Token Presale</h2>
+                    <p class="subtitle">Your chance to own the future of memecoin creation</p>
+                    
+                    <div class="market-stats">
+                        <div class="stat-card">
+                            <div class="stat-number">$500K</div>
+                            <div class="stat-label">Target Raise</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">18mo</div>
+                            <div class="stat-label">Runway to Profitability</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">10x</div>
+                            <div class="stat-label">Potential ROI at Scale</div>
+                        </div>
+                    </div>
 
-            <h3>Use of Funds</h3>
-            <div class="revenue-streams">
-                <div class="revenue-card">
-                    <div class="revenue-percentage">60%</div>
-                    <h4>Product Development</h4>
-                    <p>Smart contracts, platform, mobile app</p>
-                </div>
-                <div class="revenue-card">
-                    <div class="revenue-percentage">25%</div>
-                    <h4>Marketing & Growth</h4>
-                    <p>Community building, partnerships</p>
-                </div>
-                <div class="revenue-card">
-                    <div class="revenue-percentage">10%</div>
-                    <h4>Operations</h4>
-                    <p>Team, legal, compliance</p>
-                </div>
-                <div class="revenue-card">
-                    <div class="revenue-percentage">5%</div>
-                    <h4>Reserve</h4>
-                    <p>Strategic opportunities</p>
-                </div>
-            </div>
+                    <h3>Use of Funds</h3>
+                    <div class="revenue-streams" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="revenue-card">
+                            <div class="revenue-percentage">60%</div>
+                            <h4>Product Development</h4>
+                            <p>Smart contracts, platform, mobile app</p>
+                        </div>
+                        <div class="revenue-card">
+                            <div class="revenue-percentage">25%</div>
+                            <h4>Marketing & Growth</h4>
+                            <p>Community building, partnerships</p>
+                        </div>
+                        <div class="revenue-card">
+                            <div class="revenue-percentage">10%</div>
+                            <h4>Operations</h4>
+                            <p>Team, legal, compliance</p>
+                        </div>
+                        <div class="revenue-card">
+                            <div class="revenue-percentage">5%</div>
+                            <h4>Reserve</h4>
+                            <p>Strategic opportunities</p>
+                        </div>
+                    </div>
 
-            <div class="cta-section">
-                <h3>Ready to join the GEM Token Presale?</h3>
-                <a href="https://presale.gemlaunch.fun" class="cta-button" target="_blank">Join Presale Now</a>
-                <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.8); font-size: 1.1rem;">presale.gemlaunch.fun • t.me/gemlaunchio</p>
-                <p style="margin-top: 0.5rem; color: rgba(0, 255, 255, 0.8); font-size: 0.9rem;">⚡ Early bird bonus available for first 48 hours</p>
+                    <div class="cta-section">
+                        <h3>Ready to join the GEM Token Presale?</h3>
+                        <a href="https://presale.gemlaunch.fun" class="cta-button" target="_blank">Join Presale Now</a>
+                        <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.8); font-size: 1.1rem;">presale.gemlaunch.fun • t.me/gemlaunchio</p>
+                        <p style="margin-top: 0.5rem; color: rgba(0, 255, 255, 0.8); font-size: 0.9rem;">⚡ Early bird bonus available for first 48 hours</p>
+                    </div>
+                </div>
+                
+                <div class="presale-right-space">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #00ffff; margin-bottom: 1rem;">Platform Demo</div>
+                    <div>Live Platform<br>Screenshot Space</div>
+                    <div style="margin-top: 3rem; font-size: 2rem;">🤖</div>
+                    <div style="margin-top: 1rem; font-size: 14px;">Gemmy AI<br>Features</div>
+                    <div style="margin-top: 2rem; font-size: 1.5rem;">⚡</div>
+                    <div style="margin-top: 0.5rem; font-size: 12px;">Speed<br>Comparison</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1095,47 +1588,6 @@
         <button class="nav-btn next">Next →</button>
     </div>
 
-    <script>
-        let currentSlide = 0;
-        const totalSlides = 11;
 
-        function showSlide(n) {
-            const slides = document.querySelectorAll('.slide');
-            
-            if (n >= totalSlides) currentSlide = 0;
-            if (n < 0) currentSlide = totalSlides - 1;
-            
-            slides.forEach(slide => slide.classList.remove('active'));
-            slides[currentSlide].classList.add('active');
-            
-            const indicator = document.querySelector('.slide-indicator');
-            indicator.textContent = `${currentSlide + 1} / ${totalSlides}`;
-        }
-
-        function nextSlide() {
-            currentSlide++;
-            showSlide(currentSlide);
-        }
-
-        function prevSlide() {
-            currentSlide--;
-            showSlide(currentSlide);
-        }
-
-        document.querySelector('.next').addEventListener('click', nextSlide);
-        document.querySelector('.prev').addEventListener('click', prevSlide);
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowRight' || e.key === ' ') {
-                e.preventDefault();
-                nextSlide();
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                prevSlide();
-            }
-        });
-
-        showSlide(0);
-    </script>
 </body>
 </html>
