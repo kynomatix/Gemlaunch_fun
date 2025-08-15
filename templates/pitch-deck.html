@@ -44,40 +44,25 @@
             overflow: hidden;
         }
 
-        /* Individual Slides - Responsive 16:9 aspect ratio */
+        /* Individual Slides - 16:9 aspect ratio */
         .slide {
             position: absolute;
-            width: min(90vw, 1400px);
-            height: min(calc(90vw * 9 / 16), 85vh, calc(1400px * 9 / 16));
+            width: 90vw;
+            max-width: 1400px;
+            height: calc(90vw * 9 / 16);
+            max-height: 85vh;
             display: none;
             animation: slideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 30, 30, 0.95));
-            border: 0.125rem solid;
+            border: 2px solid;
             border-image: linear-gradient(135deg, rgba(0, 255, 255, 0.5), rgba(0, 168, 168, 0.2)) 1;
-            border-radius: clamp(15px, 2vw, 25px);
-            padding: clamp(20px, 4vw, 60px) clamp(15px, 4vw, 60px);
+            border-radius: 25px;
+            padding: 40px 60px;
             backdrop-filter: blur(25px);
             box-shadow: 
-                0 1.5rem 3rem rgba(0, 255, 255, 0.15),
+                0 25px 50px rgba(0, 255, 255, 0.15),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(0, 255, 255, 0.5) transparent;
-        }
-
-        /* Custom scrollbar for webkit browsers */
-        .slide::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .slide::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .slide::-webkit-scrollbar-thumb {
-            background: rgba(0, 255, 255, 0.5);
-            border-radius: 3px;
+            overflow: hidden;
         }
 
         .slide::before {
@@ -107,18 +92,18 @@
             }
         }
 
-        /* Responsive Navigation */
+        /* Navigation */
         .nav-controls {
             position: fixed;
-            bottom: clamp(15px, 3vw, 30px);
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: clamp(10px, 2vw, 20px);
+            gap: 20px;
             z-index: 1000;
             background: rgba(0, 0, 0, 0.9);
-            padding: clamp(10px, 2vw, 15px) clamp(20px, 4vw, 30px);
-            border-radius: clamp(25px, 5vw, 50px);
+            padding: 15px 30px;
+            border-radius: 50px;
             border: 1px solid rgba(0, 255, 255, 0.3);
         }
 
@@ -126,11 +111,10 @@
             background: linear-gradient(135deg, #00ffff, #00a8a8);
             border: none;
             color: #000;
-            padding: clamp(8px, 1.5vw, 10px) clamp(15px, 3vw, 20px);
-            border-radius: clamp(15px, 3vw, 25px);
+            padding: 10px 20px;
+            border-radius: 25px;
             cursor: pointer;
             font-weight: bold;
-            font-size: clamp(0.8rem, 1.5vw, 1rem);
             transition: all 0.3s;
         }
 
@@ -151,55 +135,44 @@
             align-items: center;
         }
 
-        /* Responsive Typography */
+        /* Typography */
         h1 {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            margin-bottom: clamp(0.5rem, 2vw, 1rem);
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
             background: linear-gradient(135deg, #00ffff, #00a8a8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 900;
-            letter-spacing: clamp(-2px, -0.3vw, -1px);
-            text-align: center;
-            line-height: 1.1;
+            letter-spacing: -2px;
         }
 
         h2 {
-            font-size: clamp(1.5rem, 4vw, 2.8rem);
-            margin-bottom: clamp(0.8rem, 2vw, 1.5rem);
+            font-size: 2.2rem;
+            margin-bottom: 1.2rem;
             color: #00ffff;
-            font-weight: 600;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-            text-align: center;
+            font-weight: 800;
+            letter-spacing: -1px;
         }
 
         h3 {
-            font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+            font-size: 1.8rem;
             color: #00ffff;
-            margin: clamp(1rem, 2vw, 1.5rem) 0 clamp(0.5rem, 1.5vw, 1rem) 0;
-            font-weight: 500;
-        }
-
-        h4 {
-            font-size: clamp(1rem, 2vw, 1.3rem);
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
-            font-weight: 500;
-        }
-
-        p, li {
-            font-size: clamp(0.9rem, 1.5vw, 1.1rem);
-            color: rgba(255, 255, 255, 0.8);
-            line-height: 1.6;
-            margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
+            margin: 1.5rem 0 1rem 0;
+            font-weight: 700;
         }
 
         .subtitle {
-            font-size: clamp(1rem, 2vw, 1.3rem);
-            color: rgba(255, 255, 255, 0.7);
-            text-align: center;
-            margin-bottom: clamp(1rem, 3vw, 2rem);
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
             font-weight: 300;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1rem;
         }
 
         /* Title Slide */
@@ -243,17 +216,17 @@
             margin: 1rem 0;
         }
 
-        /* Responsive Problem/Solution Layout */
+        /* Problem/Solution Layout */
         .problem-solution {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: clamp(1.5rem, 4vw, 3rem);
-            margin-top: clamp(1rem, 3vw, 2rem);
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 2rem;
         }
 
         .problem-box, .solution-box {
-            padding: clamp(1rem, 3vw, 2rem);
-            border-radius: clamp(10px, 2vw, 15px);
+            padding: 2rem;
+            border-radius: 15px;
             border: 1px solid rgba(0, 255, 255, 0.2);
         }
 
@@ -267,19 +240,19 @@
             border-color: rgba(0, 255, 100, 0.3);
         }
 
-        /* Responsive Market Stats */
+        /* Market Stats */
         .market-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: clamp(1rem, 3vw, 2rem);
-            margin: clamp(1.5rem, 3vw, 2rem) 0;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
         }
 
         .stat-card {
             background: rgba(0, 255, 255, 0.05);
             border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: clamp(15px, 2vw, 20px);
-            padding: clamp(1rem, 3vw, 2rem);
+            border-radius: 15px;
+            padding: 2rem;
             text-align: center;
             transition: all 0.3s;
         }
@@ -291,7 +264,7 @@
         }
 
         .stat-number {
-            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-size: 3rem;
             font-weight: bold;
             background: linear-gradient(135deg, #00ffff, #00a8a8);
             -webkit-background-clip: text;
@@ -300,16 +273,16 @@
 
         .stat-label {
             color: rgba(255, 255, 255, 0.7);
-            margin-top: clamp(0.3rem, 1vw, 0.5rem);
-            font-size: clamp(0.9rem, 1.5vw, 1rem);
+            margin-top: 0.5rem;
+            font-size: 1rem;
         }
 
-        /* Responsive Feature Grid */
+        /* Feature Grid */
         .feature-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: clamp(1rem, 3vw, 2rem);
-            margin: clamp(1rem, 3vw, 2rem) 0;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
         }
 
         .feature-item {
@@ -1370,97 +1343,6 @@
 
         .timeline-item:hover .milestone-pulse {
             animation: pulse 1s infinite !important;
-        }
-
-        /* Mobile and Tablet Media Queries */
-        @media (max-width: 768px) {
-            .slide {
-                width: 95vw;
-                height: auto;
-                min-height: 80vh;
-                padding: clamp(15px, 4vw, 25px);
-                border-radius: 15px;
-            }
-
-            .timeline-items {
-                flex-direction: column;
-                align-items: center;
-                gap: 2rem;
-            }
-
-            .timeline-line {
-                display: none;
-            }
-
-            .market-stats {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .feature-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .problem-solution {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-
-            .revenue-streams {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-
-            .comparison-table {
-                font-size: 0.8rem;
-            }
-
-            .comparison-table th,
-            .comparison-table td {
-                padding: 0.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .slide {
-                width: 98vw;
-                padding: 15px;
-                border-radius: 10px;
-            }
-
-            .nav-controls {
-                bottom: 10px;
-                padding: 8px 15px;
-                gap: 10px;
-            }
-
-            .nav-btn {
-                padding: 6px 12px;
-                font-size: 0.8rem;
-            }
-
-            .revenue-streams {
-                grid-template-columns: 1fr;
-            }
-
-            h1 {
-                font-size: 1.8rem;
-            }
-
-            h2 {
-                font-size: 1.4rem;
-            }
-
-            .stat-number {
-                font-size: 1.5rem;
-            }
-        }
-
-        /* Large Screen Optimizations */
-        @media (min-width: 1600px) {
-            .slide {
-                max-width: 1600px;
-            }
         }
 
         @keyframes slideInUp {
