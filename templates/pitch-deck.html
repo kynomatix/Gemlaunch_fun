@@ -1659,30 +1659,43 @@
                         <line x1="50" y1="250" x2="350" y2="250" stroke="rgba(0, 255, 255, 0.5)" stroke-width="2"/>
                         <line x1="50" y1="250" x2="50" y2="50" stroke="rgba(0, 255, 255, 0.5)" stroke-width="2"/>
                         
-                        <!-- Bonding Curve -->
-                        <path d="M 50 240 Q 100 220 150 180 Q 200 140 250 110 Q 300 85 350 70" 
+                        <!-- Bonding Curve (x*y=k hyperbola) -->
+                        <path d="M 70 220 C 90 200 120 160 150 130 C 180 105 210 90 240 80 C 270 72 300 68 330 66" 
                               fill="none" 
                               stroke="#00ffff" 
-                              stroke-width="3"
+                              stroke-width="4"
                               stroke-linecap="round"/>
                         
-                        <!-- Graduation line -->
-                        <line x1="280" y1="50" x2="280" y2="250" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="5,5"/>
-                        
                         <!-- Labels -->
-                        <text x="200" y="275" text-anchor="middle" fill="rgba(255, 255, 255, 0.8)" font-size="12">Market Cap</text>
-                        <text x="25" y="150" text-anchor="middle" fill="rgba(255, 255, 255, 0.8)" font-size="12" transform="rotate(-90, 25, 150)">Price</text>
+                        <text x="200" y="275" text-anchor="middle" fill="rgba(255, 255, 255, 0.8)" font-size="12">Token Supply</text>
+                        <text x="25" y="150" text-anchor="middle" fill="rgba(255, 255, 255, 0.8)" font-size="12" transform="rotate(-90, 25, 150)">Token Price</text>
                         
-                        <!-- Key points -->
-                        <circle cx="60" cy="235" r="4" fill="#00ffff"/>
-                        <text x="60" y="265" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-size="10">$1K</text>
+                        <!-- Token Launch Point (start of curve) -->
+                        <circle cx="70" cy="220" r="5" fill="#00ff00"/>
+                        <text x="70" y="245" text-anchor="middle" fill="#00ff00" font-size="11" font-weight="bold">Launch</text>
+                        <text x="70" y="260" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-size="10">$1K</text>
                         
-                        <circle cx="280" cy="85" r="4" fill="#ff6b6b"/>
-                        <text x="280" y="45" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-size="10">$70K</text>
-                        <text x="280" y="30" text-anchor="middle" fill="#ff6b6b" font-size="9">DEX</text>
+                        <!-- DEX Graduation Point (end of curve) -->
+                        <circle cx="330" cy="66" r="5" fill="#ff6b6b"/>
+                        <text x="330" y="45" text-anchor="middle" fill="#ff6b6b" font-size="11" font-weight="bold">DEX</text>
+                        <text x="330" y="30" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-size="10">$70K</text>
                         
-                        <!-- Title -->
-                        <text x="200" y="25" text-anchor="middle" fill="#00ffff" font-size="14" font-weight="bold">Bonding Curve Model</text>
+                        <!-- Formula -->
+                        <text x="200" y="25" text-anchor="middle" fill="#00ffff" font-size="14" font-weight="bold">x × y = k</text>
+                        
+                        <!-- Arrow showing progression -->
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                    refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="rgba(0, 255, 255, 0.6)" />
+                            </marker>
+                        </defs>
+                        <path d="M 120 180 Q 180 120 280 80" 
+                              fill="none" 
+                              stroke="rgba(0, 255, 255, 0.4)" 
+                              stroke-width="2" 
+                              stroke-dasharray="5,5"
+                              marker-end="url(#arrowhead)"/>
                     </svg>
                 </div>
             </div>
