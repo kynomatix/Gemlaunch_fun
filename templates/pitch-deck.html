@@ -937,6 +937,24 @@
         .slide.active h3 {
             opacity: 1;
         }
+
+        /* Gemmy market opportunity animations */
+        .gemmy-market {
+            animation: floatGemmy 3s ease-in-out infinite;
+        }
+
+        @keyframes floatGemmy {
+            0%, 100% {
+                transform: translateY(0px) scale(1);
+            }
+            50% {
+                transform: translateY(-10px) scale(1.02);
+            }
+        }
+
+        .slide.active .gemmy-market {
+            animation: slideInRight 0.8s ease-out 0.5s both, floatGemmy 3s ease-in-out 1.3s infinite;
+        }
     </style>
 </head>
 <body>
@@ -1191,36 +1209,59 @@
         <!-- Slide 3: Market Opportunity -->
         <div class="slide">
             <h2>Market Opportunity</h2>
-            <div class="market-stats">
-                <div class="stat-card">
-                    <div class="stat-number">$2.4B</div>
-                    <div class="stat-label">Memecoin Market Cap</div>
+            
+            <div style="display: flex; gap: 3rem; align-items: flex-start; margin-top: 2rem;">
+                <!-- Left side content -->
+                <div style="flex: 1;">
+                    <div class="market-stats">
+                        <div class="stat-card">
+                            <div class="stat-number">$2.4B</div>
+                            <div class="stat-label">Memecoin Market Cap</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">$8B+</div>
+                            <div class="stat-label">Daily Trading Volume</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">500K+</div>
+                            <div class="stat-label">Active Traders</div>
+                        </div>
+                    </div>
+                    
+                    <h3>TAM Analysis</h3>
+                    <ul>
+                        <li><strong>Total Addressable Market:</strong> $50B+ memecoin ecosystem</li>
+                        <li><strong>Serviceable Addressable Market:</strong> $5B Kaspa ecosystem potential</li>
+                        <li><strong>Serviceable Obtainable Market:</strong> $500M in first 2 years</li>
+                    </ul>
+
+                    <h3>Why Kaspa?</h3>
+                    <ul>
+                        <li>Fastest growing L1 blockchain - 10 blocks per second</li>
+                        <li>Underserved ecosystem hungry for DeFi infrastructure</li>
+                        <li>Ultra-low fees enable micro-transactions</li>
+                        <li>BlockDAG architecture supports massive scale</li>
+                        <li>Limited competition - early market opportunity</li>
+                    </ul>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">$8B+</div>
-                    <div class="stat-label">Daily Trading Volume</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">500K+</div>
-                    <div class="stat-label">Active Traders</div>
+                
+                <!-- Right side - Gemmy -->
+                <div style="flex: 0 0 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px;">
+                    <img src="/static/images/gemmy.png" alt="Gemmy Mascot" style="
+                        width: 280px;
+                        height: auto;
+                        filter: drop-shadow(0 10px 30px rgba(0, 255, 255, 0.3));
+                        transition: all 0.6s ease;
+                    " class="gemmy-market">
+                    <p style="
+                        color: rgba(0, 255, 255, 0.8);
+                        font-size: 1.1rem;
+                        text-align: center;
+                        margin-top: 1rem;
+                        font-weight: 600;
+                    ">Gemmy guides users<br>through market opportunities</p>
                 </div>
             </div>
-            
-            <h3>TAM Analysis</h3>
-            <ul>
-                <li><strong>Total Addressable Market:</strong> $50B+ memecoin ecosystem</li>
-                <li><strong>Serviceable Addressable Market:</strong> $5B Kaspa ecosystem potential</li>
-                <li><strong>Serviceable Obtainable Market:</strong> $500M in first 2 years</li>
-            </ul>
-
-            <h3>Why Kaspa?</h3>
-            <ul>
-                <li>Fastest growing L1 blockchain - 10 blocks per second</li>
-                <li>Underserved ecosystem hungry for DeFi infrastructure</li>
-                <li>Ultra-low fees enable micro-transactions</li>
-                <li>BlockDAG architecture supports massive scale</li>
-                <li>Limited competition - early market opportunity</li>
-            </ul>
         </div>
 
         <!-- Slide 4: Product Features -->
