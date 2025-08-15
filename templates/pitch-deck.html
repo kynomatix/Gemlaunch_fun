@@ -683,6 +683,46 @@
             background: #00ffff;
             box-shadow: 0 0 10px #00ffff;
         }
+
+        /* Sub-navigation for slides with multiple pages */
+        .sub-navigation {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0 2rem;
+            gap: 8px;
+        }
+
+        .sub-dot {
+            height: 10px;
+            width: 10px;
+            background-color: rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .sub-dot.active {
+            background-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            border-color: rgba(0, 255, 255, 0.8);
+        }
+
+        .sub-dot:hover:not(.active) {
+            background-color: rgba(0, 255, 255, 0.6);
+        }
+
+        /* Sub-slides within a slide */
+        .sub-slide {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .sub-slide.active {
+            display: block;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -739,6 +779,34 @@
         function prevSlide() {
             currentSlide--;
             showSlide(currentSlide);
+        }
+
+        // Sub-slide navigation function
+        function showSubSlide(slideIndex, subSlideIndex) {
+            // Get the current slide
+            const slide = document.querySelectorAll('.slide')[slideIndex];
+            if (!slide) return;
+            
+            // Hide all sub-slides in this slide
+            const subSlides = slide.querySelectorAll('.sub-slide');
+            const subDots = slide.querySelectorAll('.sub-dot');
+            
+            subSlides.forEach(subSlide => {
+                subSlide.classList.remove('active');
+            });
+            
+            subDots.forEach(subDot => {
+                subDot.classList.remove('active');
+            });
+            
+            // Show the selected sub-slide
+            if (subSlides[subSlideIndex]) {
+                subSlides[subSlideIndex].classList.add('active');
+            }
+            
+            if (subDots[subSlideIndex]) {
+                subDots[subSlideIndex].classList.add('active');
+            }
         }
 
         // Initialize on page load
@@ -889,51 +957,73 @@
         </div>
 
         <!-- Slide 4: Product Features -->
-        <div class="slide">
+        <div class="slide" data-has-substeps="true">
             <h2>Product Features</h2>
             <p class="subtitle">Revolutionary memecoin creation powered by AI and Kaspa's speed</p>
             
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <img src="/static/images/gemmyhead.png" alt="Gemmy AI" style="width: 60px; height: 60px; display: block; margin: 0 auto 1rem; border-radius: 50%;">
-                    <div class="feature-content">
-                        <h4>Gemmy AI Assistant</h4>
-                        <p>Generate names, create marketing content, explain complex concepts</p>
+            <!-- Sub-slide navigation -->
+            <div class="sub-navigation">
+                <div class="sub-dot active" onclick="showSubSlide(4, 0)"></div>
+                <div class="sub-dot" onclick="showSubSlide(4, 1)"></div>
+                <div class="sub-dot" onclick="showSubSlide(4, 2)"></div>
+            </div>
+            
+            <!-- Sub-slide 1: AI & Speed -->
+            <div class="sub-slide active">
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <img src="/static/images/gemmyhead.png" alt="Gemmy AI" style="width: 60px; height: 60px; display: block; margin: 0 auto 1rem; border-radius: 50%;">
+                        <div class="feature-content">
+                            <h4>Gemmy AI Assistant</h4>
+                            <p>Generate names, create marketing content, explain complex concepts</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-content">
+                            <h4>Lightning Fast</h4>
+                            <p>100ms block times, 10 blocks per second throughput</p>
+                        </div>
                     </div>
                 </div>
-                <div class="feature-item">
-                    <div class="feature-icon">⚡</div>
-                    <div class="feature-content">
-                        <h4>Lightning Fast</h4>
-                        <p>100ms block times, 10 blocks per second throughput</p>
+            </div>
+            
+            <!-- Sub-slide 2: Security & Social -->
+            <div class="sub-slide">
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🛡️</div>
+                        <div class="feature-content">
+                            <h4>Rug-Proof Design</h4>
+                            <p>Bonding curve mechanics, locked liquidity, transparent launches</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💬</div>
+                        <div class="feature-content">
+                            <h4>Built-in Social</h4>
+                            <p>Token-specific chat rooms, global feed, social sharing</p>
+                        </div>
                     </div>
                 </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🛡️</div>
-                    <div class="feature-content">
-                        <h4>Rug-Proof Design</h4>
-                        <p>Bonding curve mechanics, locked liquidity, transparent launches</p>
+            </div>
+            
+            <!-- Sub-slide 3: Advanced Features -->
+            <div class="sub-slide">
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🎮</div>
+                        <div class="feature-content">
+                            <h4>Gamification</h4>
+                            <p>Points system, leaderboards, achievements, seasonal airdrops</p>
+                        </div>
                     </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">💬</div>
-                    <div class="feature-content">
-                        <h4>Built-in Social</h4>
-                        <p>Token-specific chat rooms, global feed, social sharing</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🎮</div>
-                    <div class="feature-content">
-                        <h4>Gamification</h4>
-                        <p>Points system, leaderboards, achievements, seasonal airdrops</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🔄</div>
-                    <div class="feature-content">
-                        <h4>Auto-Graduation</h4>
-                        <p>Seamless DEX listing at $70K market cap</p>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔄</div>
+                        <div class="feature-content">
+                            <h4>Auto-Graduation</h4>
+                            <p>Seamless DEX listing at $70K market cap</p>
+                        </div>
                     </div>
                 </div>
             </div>
