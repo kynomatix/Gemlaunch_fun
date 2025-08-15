@@ -2,7 +2,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemlaunch.fun - Investor Pitch Deck</title>
+    <title>Gemlaunch.fun - GEM Token Presale Deck</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,9 +13,22 @@
 
         body {
             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #000;
+            background: radial-gradient(circle at 50% 50%, #001a1a 0%, #000 70%);
             color: #fff;
             overflow: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="%2300ffff" opacity="0.3"><animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" repeatCount="indefinite"/></circle><circle cx="80" cy="40" r="1" fill="%2300ffff" opacity="0.5"><animate attributeName="opacity" values="0.5;1;0.5" dur="4s" repeatCount="indefinite"/></circle><circle cx="60" cy="80" r="1" fill="%2300ffff" opacity="0.4"><animate attributeName="opacity" values="0.4;0.9;0.4" dur="5s" repeatCount="indefinite"/></circle></svg>');
+            opacity: 0.1;
+            z-index: -1;
         }
 
         /* Slide Container */
@@ -34,14 +48,30 @@
             max-width: 1200px;
             height: 85vh;
             display: none;
-            animation: slideIn 0.5s ease-out;
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 20, 20, 0.95));
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 60px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 25px 50px rgba(0, 255, 255, 0.1);
+            animation: slideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98), rgba(0, 26, 26, 0.95), rgba(0, 51, 51, 0.92));
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            border-radius: 25px;
+            padding: 50px;
+            backdrop-filter: blur(30px);
+            box-shadow: 
+                0 25px 50px rgba(0, 255, 255, 0.15),
+                0 0 0 1px rgba(0, 255, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             overflow-y: auto;
+            position: relative;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00ffff, #ff6b35, #00ffff);
+            border-radius: 25px 25px 0 0;
         }
 
         .slide.active {
@@ -104,35 +134,233 @@
 
         /* Typography */
         h1 {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #00ffff, #00a8a8);
+            font-size: 4.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #00ffff 0%, #ff6b35 50%, #00ffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
             font-weight: 900;
-            letter-spacing: -2px;
+            letter-spacing: -3px;
+            text-align: center;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { 
+                filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.3));
+            }
+            to { 
+                filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6));
+            }
         }
 
         h2 {
-            font-size: 3rem;
-            margin-bottom: 2rem;
+            font-size: 3.2rem;
+            margin-bottom: 2.5rem;
             color: #00ffff;
             font-weight: 800;
             letter-spacing: -1px;
+            text-align: center;
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00ffff, transparent);
         }
 
         h3 {
-            font-size: 1.8rem;
+            font-size: 2rem;
             color: #00ffff;
             margin: 1.5rem 0 1rem 0;
             font-weight: 700;
         }
 
         .subtitle {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 3rem;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* Image Placeholder Styles */
+        .image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 107, 53, 0.1));
+            border: 2px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: rgba(0, 255, 255, 0.6);
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-placeholder:hover {
+            border-color: rgba(0, 255, 255, 0.8);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(255, 107, 53, 0.15));
+            transform: scale(1.02);
+        }
+
+        .image-placeholder::before {
+            content: '📸';
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+
+        .hero-image-placeholder {
+            width: 400px;
+            height: 300px;
+            margin: 0 auto 30px;
+        }
+
+        .feature-image-placeholder {
+            width: 100%;
+            height: 150px;
+            margin: 15px 0;
+        }
+
+        /* Competitive Advantage Styles */
+        .competitive-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .advantage-card {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(255, 107, 53, 0.05));
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .advantage-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .advantage-card:hover::before {
+            left: 100%;
+        }
+
+        .advantage-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 15px 40px rgba(0, 255, 255, 0.2);
+        }
+
+        .advantage-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .advantage-card h4 {
+            color: #00ffff;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .moat-section {
+            margin-top: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 107, 53, 0.1));
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            text-align: center;
+        }
+
+        .moat-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .moat-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .moat-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #ff6b35;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+        }
+
+        .moat-label {
+            font-size: 1rem;
             color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 2rem;
-            font-weight: 300;
+            margin-top: 0.5rem;
+        }
+
+        /* Presale Highlight Styles */
+        .presale-highlight {
+            margin-top: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 107, 53, 0.1));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .presale-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .presale-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .presale-number {
+            font-size: 2.8rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFD700, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .presale-label {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 0.5rem;
+            font-weight: 600;
         }
 
         p {
@@ -581,23 +809,27 @@
     <div class="deck-container">
         <!-- Slide 1: Title -->
         <div class="slide active title-slide">
-            <div class="logo-container">
-                <h1>Gemlaunch.fun</h1>
+            <div class="image-placeholder hero-image-placeholder">
+                Gemlaunch.fun Logo & Gemmy Mascot
             </div>
-            <p class="tagline">The Premier AI-Powered Memecoin Launchpad on Kaspa</p>
-            <p class="subtitle">Democratizing token launches with Gemmy, your AI assistant</p>
-            <div class="market-stats" style="margin-top: 4rem;">
-                <div class="stat-card">
-                    <div class="stat-number">First</div>
-                    <div class="stat-label">Mover on Kaspa</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">$70K</div>
-                    <div class="stat-label">Auto-Graduation</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">1%</div>
-                    <div class="stat-label">Platform Fee</div>
+            <h1>GEM Token Presale</h1>
+            <p class="tagline">🚀 Join the Kaspa Memecoin Revolution</p>
+            <p class="subtitle">Be an early investor in the platform that will revolutionize token creation on the fastest blockchain</p>
+            
+            <div class="presale-highlight">
+                <div class="presale-stats">
+                    <div class="presale-stat">
+                        <span class="presale-number">$500K</span>
+                        <span class="presale-label">Target Raise</span>
+                    </div>
+                    <div class="presale-stat">
+                        <span class="presale-number">30%</span>
+                        <span class="presale-label">For Community</span>
+                    </div>
+                    <div class="presale-stat">
+                        <span class="presale-number">Q1 2025</span>
+                        <span class="presale-label">Platform Launch</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -805,73 +1037,65 @@
             </ul>
         </div>
 
-        <!-- Slide 7: Competitive Analysis -->
+        <!-- Slide 7: Competitive Advantage -->
         <div class="slide">
-            <h2>Competitive Advantage</h2>
+            <h2>Why Gemlaunch.fun Will Dominate</h2>
+            <p class="subtitle">The future of memecoin creation is here</p>
             
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Feature</th>
-                        <th>Gemlaunch.fun</th>
-                        <th>Pump.fun</th>
-                        <th>Traditional DEX</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Kaspa Native</td>
-                        <td class="check">✓</td>
-                        <td class="cross">✗</td>
-                        <td class="cross">✗</td>
-                    </tr>
-                    <tr>
-                        <td>AI Assistant</td>
-                        <td class="check">✓</td>
-                        <td class="cross">✗</td>
-                        <td class="cross">✗</td>
-                    </tr>
-                    <tr>
-                        <td>No-Code Launch</td>
-                        <td class="check">✓</td>
-                        <td class="check">✓</td>
-                        <td class="cross">✗</td>
-                    </tr>
-                    <tr>
-                        <td>Community Revenue Share</td>
-                        <td class="check">✓</td>
-                        <td class="cross">✗</td>
-                        <td class="cross">✗</td>
-                    </tr>
-                    <tr>
-                        <td>Built-in Social</td>
-                        <td class="check">✓</td>
-                        <td class="check">✓</td>
-                        <td class="cross">✗</td>
-                    </tr>
-                    <tr>
-                        <td>Auto DEX Graduation</td>
-                        <td class="check">✓</td>
-                        <td class="check">✓</td>
-                        <td>N/A</td>
-                    </tr>
-                    <tr>
-                        <td>Fee</td>
-                        <td>1%</td>
-                        <td>1%</td>
-                        <td>0.3%+</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="image-placeholder hero-image-placeholder">
+                Platform Comparison Infographic
+            </div>
 
-            <h3>Our Moat</h3>
-            <ul>
-                <li>First-mover advantage in Kaspa ecosystem</li>
-                <li>Strategic partnership with Kaspa Finance DEX</li>
-                <li>AI-powered user experience barrier</li>
-                <li>Network effects from gamification system</li>
-                <li>Community loyalty through revenue sharing</li>
-            </ul>
+            <div class="competitive-grid">
+                <div class="advantage-card">
+                    <div class="advantage-icon">⚡</div>
+                    <h4>Kaspa's Lightning Speed</h4>
+                    <p>~100ms block times vs Solana's ~400ms. Other blockchains feel stale and bloated in comparison.</p>
+                </div>
+                <div class="advantage-card">
+                    <div class="advantage-icon">🤖</div>
+                    <h4>AI Assistant (Gemmy)</h4>
+                    <p>First platform with built-in AI guidance for token creation, marketing, and community building.</p>
+                </div>
+                <div class="advantage-card">
+                    <div class="advantage-icon">💎</div>
+                    <h4>Community Revenue Share</h4>
+                    <p>30% of all fees go to GEM buyback & burn. Token holders profit from platform success.</p>
+                </div>
+                <div class="advantage-card">
+                    <div class="advantage-icon">🎯</div>
+                    <h4>First-Mover Advantage</h4>
+                    <p>Kaspa's ecosystem is undersaturated compared to oversaturated Solana/Ethereum markets.</p>
+                </div>
+                <div class="advantage-card">
+                    <div class="advantage-icon">🚀</div>
+                    <h4>Kaspa Finance Partnership</h4>
+                    <p>Automatic DEX deployment ensures seamless graduation to major DEX trading.</p>
+                </div>
+                <div class="advantage-card">
+                    <div class="advantage-icon">🏆</div>
+                    <h4>Gamified Experience</h4>
+                    <p>Leaderboard points, seasonal airdrops, and achievements drive engagement.</p>
+                </div>
+            </div>
+
+            <div class="moat-section">
+                <h3>🏰 Our Unbreakable Moat</h3>
+                <div class="moat-stats">
+                    <div class="moat-stat">
+                        <span class="moat-number">10x</span>
+                        <span class="moat-label">Faster than Solana</span>
+                    </div>
+                    <div class="moat-stat">
+                        <span class="moat-number">1st</span>
+                        <span class="moat-label">AI-powered platform</span>
+                    </div>
+                    <div class="moat-stat">
+                        <span class="moat-number">30%</span>
+                        <span class="moat-label">Revenue to community</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Slide 8: Traction & Milestones -->
@@ -1040,9 +1264,10 @@
             </div>
         </div>
 
-        <!-- Slide 11: Investment Opportunity -->
+        <!-- Slide 11: Presale Opportunity -->
         <div class="slide">
-            <h2>Investment Opportunity</h2>
+            <h2>🔥 GEM Token Presale</h2>
+            <p class="subtitle">Your chance to own the future of memecoin creation</p>
             
             <div class="market-stats">
                 <div class="stat-card">
@@ -1083,10 +1308,15 @@
                 </div>
             </div>
 
+            <div class="image-placeholder feature-image-placeholder">
+                Presale Portal Screenshot
+            </div>
+
             <div class="cta-section">
-                <h3>Ready to revolutionize memecoin creation on Kaspa?</h3>
-                <a href="mailto:investors@gemlaunch.fun" class="cta-button">Contact Us</a>
-                <p style="margin-top: 1rem; color: rgba(255,255,255,0.7);">investors@gemlaunch.fun • t.me/gemlaunchio</p>
+                <h3>Ready to join the GEM Token Presale?</h3>
+                <a href="https://presale.gemlaunch.fun" class="cta-button" target="_blank" style="background: linear-gradient(135deg, #FFD700, #ff6b35); color: #000; text-decoration: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3); transition: all 0.3s ease;">Join Presale Now</a>
+                <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.8); font-size: 1.1rem;">presale.gemlaunch.fun • t.me/gemlaunchio</p>
+                <p style="margin-top: 0.5rem; color: rgba(0, 255, 255, 0.8); font-size: 0.9rem;">⚡ Early bird bonus available for first 48 hours</p>
             </div>
         </div>
     </div>
@@ -1098,87 +1328,6 @@
         <button class="nav-btn next">Next →</button>
     </div>
 
-    <script>
-        let currentSlide = 0;
-        const totalSlides = 11;
 
-        function showSlide(n) {
-            const slides = document.querySelectorAll('.slide');
-            const dots = document.querySelectorAll('.dot');
-            
-            // Wrap around if needed
-            if (n >= totalSlides) currentSlide = 0;
-            if (n < 0) currentSlide = totalSlides - 1;
-            
-            // Hide all slides
-            slides.forEach(slide => {
-                slide.classList.remove('active');
-            });
-            
-            // Remove active from all dots
-            dots.forEach(dot => {
-                dot.classList.remove('active');
-            });
-            
-            // Show current slide and activate dot
-            slides[currentSlide].classList.add('active');
-            if (dots[currentSlide]) {
-                dots[currentSlide].classList.add('active');
-            }
-            
-            // Update navigation
-            updateNavigation();
-        }
-
-        function updateNavigation() {
-            const prevBtn = document.querySelector('.prev');
-            const nextBtn = document.querySelector('.next');
-            const indicator = document.querySelector('.slide-indicator');
-            
-            indicator.textContent = `${currentSlide + 1} / ${totalSlides}`;
-            
-            // Allow wrapping
-            prevBtn.disabled = false;
-            nextBtn.disabled = false;
-        }
-
-        function nextSlide() {
-            currentSlide++;
-            if (currentSlide >= totalSlides) currentSlide = 0;
-            showSlide(currentSlide);
-        }
-
-        function prevSlide() {
-            currentSlide--;
-            if (currentSlide < 0) currentSlide = totalSlides - 1;
-            showSlide(currentSlide);
-        }
-
-        // Event listeners
-        document.querySelector('.next').addEventListener('click', nextSlide);
-        document.querySelector('.prev').addEventListener('click', prevSlide);
-
-        // Keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowRight' || e.key === ' ') {
-                e.preventDefault();
-                nextSlide();
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                prevSlide();
-            }
-        });
-
-        // Dot navigation
-        document.querySelectorAll('.dot').forEach((dot, index) => {
-            dot.addEventListener('click', () => {
-                currentSlide = index;
-                showSlide(currentSlide);
-            });
-        });
-
-        // Initialize
-        showSlide(0);
-    </script>
 </body>
 </html>
