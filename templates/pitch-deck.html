@@ -1195,47 +1195,6 @@
         <button class="nav-btn next">Next →</button>
     </div>
 
-    <script>
-        let currentSlide = 0;
-        const totalSlides = 11;
 
-        function showSlide(n) {
-            const slides = document.querySelectorAll('.slide');
-            
-            if (n >= totalSlides) currentSlide = 0;
-            if (n < 0) currentSlide = totalSlides - 1;
-            
-            slides.forEach(slide => slide.classList.remove('active'));
-            slides[currentSlide].classList.add('active');
-            
-            const indicator = document.querySelector('.slide-indicator');
-            indicator.textContent = `${currentSlide + 1} / ${totalSlides}`;
-        }
-
-        function nextSlide() {
-            currentSlide++;
-            showSlide(currentSlide);
-        }
-
-        function prevSlide() {
-            currentSlide--;
-            showSlide(currentSlide);
-        }
-
-        document.querySelector('.next').addEventListener('click', nextSlide);
-        document.querySelector('.prev').addEventListener('click', prevSlide);
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowRight' || e.key === ' ') {
-                e.preventDefault();
-                nextSlide();
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                prevSlide();
-            }
-        });
-
-        showSlide(0);
-    </script>
 </body>
 </html>
