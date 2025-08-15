@@ -561,6 +561,12 @@
             font-size: 0.95rem;
             line-height: 1.5;
         }
+        
+        .team-desc {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem !important;
+            line-height: 1.6;
+        }
 
 
 
@@ -1247,8 +1253,8 @@
             
             <!-- Sub-slide navigation -->
             <div class="sub-navigation">
-                <div class="sub-dot active" onclick="showSubSlide(7, 0)"></div>
-                <div class="sub-dot" onclick="showSubSlide(7, 1)"></div>
+                <div class="sub-dot active" onclick="showSubSlide(6, 0)"></div>
+                <div class="sub-dot" onclick="showSubSlide(6, 1)"></div>
             </div>
             
             <!-- Sub-slide 1: Current Status -->
@@ -1311,93 +1317,127 @@
         </div>
 
         <!-- Slide 9: GEM Token -->
-        <div class="slide">
+        <div class="slide" data-has-substeps="true">
             <h2>GEM Token Economics</h2>
             <p class="subtitle">Platform governance and value accrual</p>
             
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <div class="feature-icon">🏛️</div>
-                    <div class="feature-content">
-                        <h4>Governance</h4>
-                        <p>Vote on platform parameters, fee distribution, new features</p>
+            <!-- Sub-slide navigation -->
+            <div class="sub-navigation">
+                <div class="sub-dot active" onclick="showSubSlide(7, 0)"></div>
+                <div class="sub-dot" onclick="showSubSlide(7, 1)"></div>
+            </div>
+            
+            <!-- Sub-slide 1: Token Utility -->
+            <div class="sub-slide active">
+                <h3>Token Utility</h3>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🏛️</div>
+                        <div class="feature-content">
+                            <h4>Governance</h4>
+                            <p>Vote on platform parameters, fee distribution, new features</p>
+                        </div>
                     </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">💎</div>
-                    <div class="feature-content">
-                        <h4>Deflationary</h4>
-                        <p>30% of fees used for buyback & burn</p>
+                    <div class="feature-item">
+                        <div class="feature-icon">💎</div>
+                        <div class="feature-content">
+                            <h4>Deflationary</h4>
+                            <p>30% of fees used for buyback & burn</p>
+                        </div>
                     </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🎁</div>
-                    <div class="feature-content">
-                        <h4>Staking Rewards</h4>
-                        <p>Earn from platform revenue share</p>
+                    <div class="feature-item">
+                        <div class="feature-icon">🎁</div>
+                        <div class="feature-content">
+                            <h4>Staking Rewards</h4>
+                            <p>Earn from platform revenue share</p>
+                        </div>
                     </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">⚡</div>
-                    <div class="feature-content">
-                        <h4>Fee Discounts</h4>
-                        <p>Reduced trading fees for holders</p>
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-content">
+                            <h4>Fee Discounts</h4>
+                            <p>Reduced trading fees for holders</p>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <h3>Token Distribution</h3>
-            <div class="revenue-streams">
-                <div class="revenue-card">
-                    <div class="revenue-percentage">30%</div>
-                    <h4>Presale</h4>
-                    <p>Community early access</p>
-                </div>
-                <div class="revenue-card">
-                    <div class="revenue-percentage">50%</div>
-                    <h4>Community Rewards</h4>
-                    <p>Airdrops, incentives</p>
-                </div>
-                <div class="revenue-card">
-                    <div class="revenue-percentage">15%</div>
-                    <h4>Team & Advisors</h4>
-                    <p>Vested over 3 years</p>
-                </div>
-                <div class="revenue-card">
-                    <div class="revenue-percentage">5%</div>
-                    <h4>Development Fund</h4>
-                    <p>Future development</p>
+            
+            <!-- Sub-slide 2: Token Distribution -->
+            <div class="sub-slide">
+                <h3>Token Distribution</h3>
+                <div class="revenue-streams">
+                    <div class="revenue-card">
+                        <div class="revenue-percentage">30%</div>
+                        <h4>Presale</h4>
+                        <p>Community early access</p>
+                    </div>
+                    <div class="revenue-card">
+                        <div class="revenue-percentage">50%</div>
+                        <h4>Community Rewards</h4>
+                        <p>Airdrops, incentives</p>
+                    </div>
+                    <div class="revenue-card">
+                        <div class="revenue-percentage">15%</div>
+                        <h4>Team & Advisors</h4>
+                        <p>Vested over 3 years</p>
+                    </div>
+                    <div class="revenue-card">
+                        <div class="revenue-percentage">5%</div>
+                        <h4>Development Fund</h4>
+                        <p>Future development</p>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Slide 10: Core Team -->
-        <div class="slide">
+        <div class="slide" data-has-substeps="true">
             <h2>Experienced Team</h2>
             <p class="subtitle">Experienced team with backgrounds in blockchain, finance, and tech</p>
             
-            <h3>Leadership Team</h3>
-            <div class="team-grid">
-                <div class="team-member">
-                    <img src="/static/images/jono.jpg" alt="Jono Mars" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 15px; display: block; border: 3px solid rgba(0, 255, 255, 0.5);">
-                    <h4>Jono Mars</h4>
-                    <div class="team-role">Founder</div>
-                    <p><strong>10+ years in fintech.</strong> 15+ years in IT & Marketing, 9 years in Crypto. Driving innovation and impactful solutions for a decentralized future.</p>
-                </div>
-                <div class="team-member">
-                    <img src="/static/images/vivi.jpg" alt="Vivi Park" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 15px; display: block; border: 3px solid rgba(0, 255, 255, 0.5);">
-                    <h4>Vivi Park</h4>
-                    <div class="team-role">Co-Founder & Tech Lead</div>
-                    <p><strong>Architect of successful blockchain protocols.</strong> Experienced marketing leader in gaming, blockchain, and NFTs. Expert in social media growth, community building, and strategic crypto initiatives.</p>
-                </div>
-                <div class="team-member">
-                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 3px solid rgba(0, 255, 255, 0.5); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 32px;">👨‍💼</div>
-                    <h4>Akash Deshmukh</h4>
-                    <div class="team-role">Chief Marketing Officer</div>
-                    <p><strong>Growth leader for multiple DeFi projects.</strong> 5 years in Web3, launched 25+ IDOs and managed marketing for 50+ crypto projects. Led Reef's viral campaigns and worked with top agencies like Momentum 6.</p>
+            <!-- Sub-slide navigation -->
+            <div class="sub-navigation">
+                <div class="sub-dot active" onclick="showSubSlide(8, 0)"></div>
+                <div class="sub-dot" onclick="showSubSlide(8, 1)"></div>
+            </div>
+            
+            <!-- Sub-slide 1: Leadership Team -->
+            <div class="sub-slide active">
+                <h3>Leadership Team</h3>
+                <div class="team-grid">
+                    <div class="team-member">
+                        <img src="/static/images/jono.jpg" alt="Jono Mars" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 15px; display: block; border: 3px solid rgba(0, 255, 255, 0.5);">
+                        <h4>Jono Mars</h4>
+                        <div class="team-role">Founder</div>
+                        <p class="team-desc"><strong>10+ years in fintech.</strong> 15+ years in IT & Marketing, 9 years in Crypto. Driving innovation and impactful solutions for a decentralized future.</p>
+                    </div>
+                    <div class="team-member">
+                        <img src="/static/images/vivi.jpg" alt="Vivi Park" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 15px; display: block; border: 3px solid rgba(0, 255, 255, 0.5);">
+                        <h4>Vivi Park</h4>
+                        <div class="team-role">Co-Founder & Tech Lead</div>
+                        <p class="team-desc"><strong>Architect of successful blockchain protocols.</strong> Experienced marketing leader in gaming, blockchain, and NFTs. Expert in social media growth, community building, and strategic crypto initiatives.</p>
+                    </div>
                 </div>
             </div>
-
+            
+            <!-- Sub-slide 2: Additional Team -->
+            <div class="sub-slide">
+                <h3>Key Team Members</h3>
+                <div class="team-grid">
+                    <div class="team-member">
+                        <div style="width: 120px; height: 120px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 3px solid rgba(0, 255, 255, 0.5); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.7); font-size: 32px;">👨‍💼</div>
+                        <h4>Akash Deshmukh</h4>
+                        <div class="team-role">Chief Marketing Officer</div>
+                        <p class="team-desc"><strong>Growth leader for multiple DeFi projects.</strong> 5 years in Web3, launched 25+ IDOs and managed marketing for 50+ crypto projects. Led Reef's viral campaigns and worked with top agencies like Momentum 6.</p>
+                    </div>
+                    <div class="team-member" style="opacity: 0.6;">
+                        <div style="width: 120px; height: 120px; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05)); border: 3px solid rgba(0, 255, 255, 0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: rgba(0, 255, 255, 0.5); font-size: 24px;">+</div>
+                        <h4 style="color: rgba(255,255,255,0.6);">Additional Hire</h4>
+                        <div class="team-role" style="color: rgba(255,255,255,0.4);">Coming Soon</div>
+                        <p class="team-desc" style="color: rgba(255,255,255,0.4);">Expanding team with additional talent</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Slide 11: Advisory Board -->
