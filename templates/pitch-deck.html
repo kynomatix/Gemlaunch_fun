@@ -728,6 +728,7 @@
 <body>
     <script>
         let currentSlide = 0;
+        let currentSubSlide = 0;
         const totalSlides = 12;
 
         function showSlide(n) {
@@ -737,6 +738,9 @@
             // Wrap around if needed
             if (n >= totalSlides) currentSlide = 0;
             if (n < 0) currentSlide = totalSlides - 1;
+            
+            // Reset sub-slide when changing main slides
+            currentSubSlide = 0;
             
             // Hide all slides immediately
             slides.forEach(slide => {
@@ -753,6 +757,12 @@
             if (slides[currentSlide]) {
                 slides[currentSlide].style.display = 'block';
                 slides[currentSlide].classList.add('active');
+                
+                // Initialize sub-slides if they exist
+                const hasSubSteps = slides[currentSlide].getAttribute('data-has-substeps');
+                if (hasSubSteps) {
+                    showSubSlide(currentSlide, currentSubSlide);
+                }
             }
             if (dots[currentSlide]) {
                 dots[currentSlide].classList.add('active');
@@ -772,12 +782,50 @@
         }
 
         function nextSlide() {
+            const currentSlideEl = document.querySelectorAll('.slide')[currentSlide];
+            const hasSubSteps = currentSlideEl && currentSlideEl.getAttribute('data-has-substeps');
+            
+            if (hasSubSteps) {
+                const subSlides = currentSlideEl.querySelectorAll('.sub-slide');
+                const maxSubSlides = subSlides.length;
+                
+                if (currentSubSlide < maxSubSlides - 1) {
+                    // Move to next sub-slide
+                    currentSubSlide++;
+                    showSubSlide(currentSlide, currentSubSlide);
+                    return;
+                }
+            }
+            
+            // Move to next main slide
             currentSlide++;
+            currentSubSlide = 0;
             showSlide(currentSlide);
         }
 
         function prevSlide() {
+            const currentSlideEl = document.querySelectorAll('.slide')[currentSlide];
+            const hasSubSteps = currentSlideEl && currentSlideEl.getAttribute('data-has-substeps');
+            
+            if (hasSubSteps && currentSubSlide > 0) {
+                // Move to previous sub-slide
+                currentSubSlide--;
+                showSubSlide(currentSlide, currentSubSlide);
+                return;
+            }
+            
+            // Move to previous main slide
             currentSlide--;
+            
+            // If the previous slide has sub-steps, go to its last sub-slide
+            const prevSlideEl = document.querySelectorAll('.slide')[currentSlide];
+            if (prevSlideEl && prevSlideEl.getAttribute('data-has-substeps')) {
+                const subSlides = prevSlideEl.querySelectorAll('.sub-slide');
+                currentSubSlide = subSlides.length - 1;
+            } else {
+                currentSubSlide = 0;
+            }
+            
             showSlide(currentSlide);
         }
 
@@ -806,6 +854,11 @@
             
             if (subDots[subSlideIndex]) {
                 subDots[subSlideIndex].classList.add('active');
+            }
+            
+            // Update current sub-slide tracker
+            if (slideIndex === currentSlide) {
+                currentSubSlide = subSlideIndex;
             }
         }
 
@@ -963,9 +1016,9 @@
             
             <!-- Sub-slide navigation -->
             <div class="sub-navigation">
-                <div class="sub-dot active" onclick="showSubSlide(4, 0)"></div>
-                <div class="sub-dot" onclick="showSubSlide(4, 1)"></div>
-                <div class="sub-dot" onclick="showSubSlide(4, 2)"></div>
+                <div class="sub-dot active" onclick="showSubSlide(3, 0)"></div>
+                <div class="sub-dot" onclick="showSubSlide(3, 1)"></div>
+                <div class="sub-dot" onclick="showSubSlide(3, 2)"></div>
             </div>
             
             <!-- Sub-slide 1: AI & Speed -->
