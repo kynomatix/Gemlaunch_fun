@@ -44,19 +44,20 @@
             overflow: hidden;
         }
 
-        /* Individual Slides */
+        /* Individual Slides - 16:9 aspect ratio */
         .slide {
             position: absolute;
-            width: 90%;
-            max-width: 1200px;
-            height: 100vh;
+            width: 90vw;
+            max-width: 1400px;
+            height: calc(90vw * 9 / 16);
+            max-height: 80vh;
             display: none;
             animation: slideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 30, 30, 0.95));
             border: 2px solid;
             border-image: linear-gradient(135deg, rgba(0, 255, 255, 0.5), rgba(0, 168, 168, 0.2)) 1;
             border-radius: 25px;
-            padding: 60px;
+            padding: 40px 60px;
             backdrop-filter: blur(25px);
             box-shadow: 
                 0 25px 50px rgba(0, 255, 255, 0.15),
@@ -146,8 +147,8 @@
         }
 
         h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1.5rem;
+            font-size: 2.2rem;
+            margin-bottom: 1.2rem;
             color: #00ffff;
             font-weight: 800;
             letter-spacing: -1px;
@@ -798,17 +799,19 @@
     <div class="deck-container">
         <!-- Slide 1: Title -->
         <div class="slide title-slide">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <img src="/static/images/logo.png" alt="Gemlaunch.fun Logo" style="max-width: 300px; height: auto; margin: 0 auto; display: block;">
+            <div style="text-align: center; margin-top: 10%; margin-bottom: 4rem;">
+                <img src="/static/images/logo.png" alt="Gemlaunch.fun Logo" style="max-width: 500px; height: auto; margin: 0 auto; display: block;">
             </div>
             
-            <p class="tagline">The Premier AI-Powered Memecoin Launchpad on Kaspa</p>
-            <p class="subtitle">Democratizing token launches with Gemmy, your AI assistant</p>
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <p class="tagline">The Premier AI-Powered Memecoin Launchpad on Kaspa</p>
+                <p class="subtitle">Democratizing token launches with Gemmy, your AI assistant</p>
+            </div>
             
             <div class="market-stats" style="margin-top: 3rem;">
                 <div class="stat-card">
-                    <div class="stat-number">First</div>
-                    <div class="stat-label">Mover on Kaspa</div>
+                    <div class="stat-number">AI-Powered</div>
+                    <div class="stat-label">Launch Assistant</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">$70K</div>
@@ -881,7 +884,7 @@
                 <li>Underserved ecosystem hungry for DeFi infrastructure</li>
                 <li>Ultra-low fees enable micro-transactions</li>
                 <li>BlockDAG architecture supports massive scale</li>
-                <li>Zero competition - complete first-mover advantage</li>
+                <li>Limited competition - early market opportunity</li>
             </ul>
         </div>
 
@@ -1087,7 +1090,7 @@
 
             <h3>Our Moat</h3>
             <ul>
-                <li>First-mover advantage in Kaspa ecosystem</li>
+                <li>Early market entry in Kaspa ecosystem</li>
                 <li>Strategic partnership with Kaspa Finance DEX</li>
                 <li>AI-powered user experience barrier</li>
                 <li>Network effects from gamification system</li>
