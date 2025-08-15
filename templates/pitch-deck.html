@@ -954,6 +954,11 @@
 
         .slide.active .gemmy-market {
             animation: slideInRight 0.8s ease-out 0.5s both, floatGemmy 3s ease-in-out 1.3s infinite;
+            transform: scaleX(-1);
+        }
+
+        .slide.active .gemmy-market:hover {
+            transform: scaleX(-1) scale(1.05);
         }
     </style>
 </head>
@@ -1248,20 +1253,14 @@
                 </div>
                 
                 <!-- Right side - Gemmy vertically centered -->
-                <div style="flex: 0 0 280px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="flex: 0 0 320px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                     <img src="/static/images/gemmy.png" alt="Gemmy Mascot" style="
-                        width: 260px;
+                        width: 320px;
                         height: auto;
                         filter: drop-shadow(0 10px 30px rgba(0, 255, 255, 0.3));
                         transition: all 0.6s ease;
+                        transform: scaleX(-1);
                     " class="gemmy-market">
-                    <p style="
-                        color: rgba(0, 255, 255, 0.8);
-                        font-size: 1rem;
-                        text-align: center;
-                        margin-top: 1rem;
-                        font-weight: 600;
-                    ">Gemmy guides users<br>through market opportunities</p>
                 </div>
             </div>
         </div>
