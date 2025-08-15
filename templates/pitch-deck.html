@@ -293,6 +293,10 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            text-align: center;
         }
 
         .feature-item:hover {
@@ -330,6 +334,9 @@
             text-align: center;
             position: relative;
             z-index: 2;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .feature-content h4 {
@@ -342,6 +349,19 @@
         .feature-content p {
             color: rgba(255, 255, 255, 0.8);
             line-height: 1.6;
+        }
+        
+        .feature-content ul {
+            text-align: left;
+            padding-left: 1.2rem;
+            margin: 0.5rem 0;
+            flex: 1;
+        }
+        
+        .feature-content li {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
         }
 
 
@@ -1034,14 +1054,26 @@
                         <img src="/static/images/gemmyhead.png" alt="Gemmy AI" style="width: 60px; height: 60px; display: block; margin: 0 auto 1rem; border-radius: 50%;">
                         <div class="feature-content">
                             <h4>Gemmy AI Assistant</h4>
-                            <p>Generate names, create marketing content, explain complex concepts</p>
+                            <ul>
+                                <li>Generate creative token names and symbols</li>
+                                <li>Create compelling marketing content</li>
+                                <li>Explain complex blockchain concepts</li>
+                                <li>Provide real-time trading insights</li>
+                                <li>Guide users through the launch process</li>
+                            </ul>
                         </div>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">⚡</div>
                         <div class="feature-content">
                             <h4>Lightning Fast</h4>
-                            <p>100ms block times, 10 blocks per second throughput</p>
+                            <ul>
+                                <li>~100ms block times for instant confirmation</li>
+                                <li>10 blocks per second throughput</li>
+                                <li>No network congestion delays</li>
+                                <li>Real-time trading experience</li>
+                                <li>Seamless user interaction</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -1054,14 +1086,26 @@
                         <div class="feature-icon">🛡️</div>
                         <div class="feature-content">
                             <h4>Rug-Proof Design</h4>
-                            <p>Bonding curve mechanics, locked liquidity, transparent launches</p>
+                            <ul>
+                                <li>Bonding curve mechanics prevent rugs</li>
+                                <li>Locked liquidity for holder protection</li>
+                                <li>Transparent launch process</li>
+                                <li>No dev allocation or pre-mine</li>
+                                <li>Community-controlled progression</li>
+                            </ul>
                         </div>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">💬</div>
                         <div class="feature-content">
-                            <h4>Built-in Social</h4>
-                            <p>Token-specific chat rooms, global feed, social sharing</p>
+                            <h4>Built-in Social Layer</h4>
+                            <ul>
+                                <li>Token-specific chat rooms</li>
+                                <li>Global community feed with $cashtags</li>
+                                <li>Social sharing and viral mechanics</li>
+                                <li>Real-time holder communication</li>
+                                <li>Community building tools</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -1073,15 +1117,27 @@
                     <div class="feature-item">
                         <div class="feature-icon">🎮</div>
                         <div class="feature-content">
-                            <h4>Gamification</h4>
-                            <p>Points system, leaderboards, achievements, seasonal airdrops</p>
+                            <h4>Gamified Experience</h4>
+                            <ul>
+                                <li>Gemlaunch Leaderboard points system</li>
+                                <li>Trading achievements and badges</li>
+                                <li>Seasonal airdrop rewards</li>
+                                <li>Creator reputation scoring</li>
+                                <li>Community challenges and events</li>
+                            </ul>
                         </div>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">🔄</div>
                         <div class="feature-content">
                             <h4>Auto-Graduation</h4>
-                            <p>Seamless DEX listing at $70K market cap</p>
+                            <ul>
+                                <li>Automatic DEX listing at $70K market cap</li>
+                                <li>Seamless Kaspa Finance integration</li>
+                                <li>Liquidity migration from bonding curve</li>
+                                <li>No manual intervention required</li>
+                                <li>Continued community trading</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
