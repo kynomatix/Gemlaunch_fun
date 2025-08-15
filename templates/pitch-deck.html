@@ -749,6 +749,194 @@
             display: block;
             opacity: 1;
         }
+
+        /* Entrance animations for slide elements */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            70% {
+                transform: scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Auto-animations for active slides */
+        .slide.active .feature-item:nth-child(1) {
+            animation: slideInLeft 0.8s ease-out 0.2s both;
+        }
+
+        .slide.active .feature-item:nth-child(2) {
+            animation: slideInRight 0.8s ease-out 0.4s both;
+        }
+
+        .slide.active .feature-item:nth-child(3) {
+            animation: slideInLeft 0.8s ease-out 0.6s both;
+        }
+
+        .slide.active .feature-item:nth-child(4) {
+            animation: slideInRight 0.8s ease-out 0.8s both;
+        }
+
+        .slide.active .team-member:nth-child(1) {
+            animation: slideUp 0.8s ease-out 0.3s both;
+        }
+
+        .slide.active .team-member:nth-child(2) {
+            animation: slideUp 0.8s ease-out 0.5s both;
+        }
+
+        .slide.active .team-member:nth-child(3) {
+            animation: slideUp 0.8s ease-out 0.7s both;
+        }
+
+        .slide.active .stat-card:nth-child(1) {
+            animation: bounceIn 0.8s ease-out 0.2s both;
+        }
+
+        .slide.active .stat-card:nth-child(2) {
+            animation: bounceIn 0.8s ease-out 0.4s both;
+        }
+
+        .slide.active .stat-card:nth-child(3) {
+            animation: bounceIn 0.8s ease-out 0.6s both;
+        }
+
+        .slide.active .metric-card:nth-child(1) {
+            animation: fadeInScale 0.8s ease-out 0.2s both;
+        }
+
+        .slide.active .metric-card:nth-child(2) {
+            animation: fadeInScale 0.8s ease-out 0.4s both;
+        }
+
+        .slide.active .metric-card:nth-child(3) {
+            animation: fadeInScale 0.8s ease-out 0.6s both;
+        }
+
+        .slide.active .metric-card:nth-child(4) {
+            animation: fadeInScale 0.8s ease-out 0.8s both;
+        }
+
+        .slide.active .revenue-card:nth-child(1) {
+            animation: slideUp 0.8s ease-out 0.2s both;
+        }
+
+        .slide.active .revenue-card:nth-child(2) {
+            animation: slideUp 0.8s ease-out 0.4s both;
+        }
+
+        .slide.active .revenue-card:nth-child(3) {
+            animation: slideUp 0.8s ease-out 0.6s both;
+        }
+
+        .slide.active .revenue-card:nth-child(4) {
+            animation: slideUp 0.8s ease-out 0.8s both;
+        }
+
+        .slide.active .roadmap-item:nth-child(1) {
+            animation: slideUp 0.8s ease-out 0.3s both;
+        }
+
+        .slide.active .roadmap-item:nth-child(2) {
+            animation: slideUp 0.8s ease-out 0.5s both;
+        }
+
+        .slide.active .roadmap-item:nth-child(3) {
+            animation: slideUp 0.8s ease-out 0.7s both;
+        }
+
+        .slide.active .roadmap-item:nth-child(4) {
+            animation: slideUp 0.8s ease-out 0.9s both;
+        }
+
+        /* Headers and subtitles animations */
+        .slide.active h2 {
+            animation: slideUp 0.8s ease-out 0.1s both;
+        }
+
+        .slide.active .subtitle {
+            animation: slideUp 0.8s ease-out 0.2s both;
+        }
+
+        .slide.active h3 {
+            animation: slideUp 0.8s ease-out 0.4s both;
+        }
+
+        /* Initially hide animated elements */
+        .feature-item,
+        .team-member,
+        .stat-card,
+        .metric-card,
+        .revenue-card,
+        .roadmap-item {
+            opacity: 0;
+        }
+
+        .slide h2,
+        .slide .subtitle,
+        .slide h3 {
+            opacity: 0;
+        }
+
+        /* Show elements when slide is active */
+        .slide.active h2,
+        .slide.active .subtitle,
+        .slide.active h3 {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
