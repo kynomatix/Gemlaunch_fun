@@ -239,12 +239,34 @@
             grid-template-columns: 1fr 1fr;
             gap: 3rem;
             margin-top: 2rem;
+            height: calc(100vh - 200px);
+            min-height: 600px;
         }
 
         .problem-box, .solution-box {
-            padding: 2rem;
+            padding: 2.5rem;
             border-radius: 15px;
             border: 1px solid rgba(0, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .problem-box ul, .solution-box ul {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin: 1rem 0;
+            flex: 1;
+        }
+
+        .problem-box li, .solution-box li {
+            margin-bottom: 0.8rem;
+            padding-left: 0.5rem;
+        }
+
+        .problem-box h3, .solution-box h3 {
+            font-size: 1.6rem;
+            margin-bottom: 1.5rem;
         }
 
         .problem-box {
@@ -1682,23 +1704,29 @@
                 <div class="problem-box">
                     <h3>🚫 Current Challenges</h3>
                     <ul>
+                        <li>No transparent reputation layer</li>
                         <li>Kaspa ecosystem lacks memecoin infrastructure</li>
-                        <li>High barriers to entry for creators (technical complexity)</li>
-                        <li>Existing platforms extract value, don't reinvest</li>
-                        <li>No fair launch mechanisms - prone to rugs</li>
-                        <li>Fragmented experience between launch and trading</li>
-                        <li>Zero guidance for non-technical users</li>
+                        <li>Liquidity fragility leaves projects open to manipulation</li>
+                        <li>High barriers for creators without technical expertise</li>
+                        <li>Existing platforms extract fees but don't reinvest into ecosystem growth</li>
+                        <li>Fair launch tools exist elsewhere but are siloed and extractive</li>
+                        <li>Fragmented experience between launch, graduation, and trading</li>
+                        <li>No incentive layer to sustain ongoing community engagement</li>
+                        <li>Zero guidance or education for first-time creators and traders</li>
                     </ul>
                 </div>
                 <div class="solution-box">
-                    <h3>✅ Our Solution</h3>
+                    <h3>✅ Our Solutions</h3>
                     <ul>
+                        <li>Gamified leaderboard and rewards</li>
                         <li>First complete launchpad on Kaspa</li>
-                        <li>No-code, 30-second token creation</li>
-                        <li>Community-first fee distribution model</li>
                         <li>Bonding curve ensures fair launches</li>
-                        <li>Integrated DEX listing at graduation</li>
-                        <li>AI assistant guides every step</li>
+                        <li>No-code, 30-second token creation</li>
+                        <li>Kaspa Finance trading integration at graduation</li>
+                        <li>AI assistant guides every step of the journey</li>
+                        <li>Community-first fee model with redistribution</li>
+                        <li>Fee revenue reinvested into Kaspa ecosystem infrastructure</li>
+                        <li>Reserved token allocations with vesting, airdrops, and distribution tools</li>
                     </ul>
                 </div>
             </div>
