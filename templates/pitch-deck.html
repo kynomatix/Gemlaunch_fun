@@ -273,15 +273,15 @@
             transform-style: preserve-3d;
         }
 
-        .slide.active .flip-card[data-flip-delay="1"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 3.5s forwards; }
-        .slide.active .flip-card[data-flip-delay="2"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 3.7s forwards; }
-        .slide.active .flip-card[data-flip-delay="3"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 3.9s forwards; }
-        .slide.active .flip-card[data-flip-delay="4"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 4.1s forwards; }
-        .slide.active .flip-card[data-flip-delay="5"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 4.3s forwards; }
-        .slide.active .flip-card[data-flip-delay="6"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 4.5s forwards; }
-        .slide.active .flip-card[data-flip-delay="7"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 4.7s forwards; }
-        .slide.active .flip-card[data-flip-delay="8"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 4.9s forwards; }
-        .slide.active .flip-card[data-flip-delay="9"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 5.1s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="1"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.1s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="2"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.2s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="3"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.3s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="4"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.4s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="5"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.5s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="6"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.6s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="7"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.7s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="8"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.8s forwards; }
+        .slide.flipped .flip-card[data-flip-delay="9"] .flip-card-inner { animation: flipCard 0.8s ease-in-out 0.9s forwards; }
 
         @keyframes flipCard {
             0% { transform: rotateY(0); }
@@ -1559,6 +1559,12 @@
             const currentSlideEl = document.querySelectorAll('.slide')[currentSlide];
             const hasSubSteps = currentSlideEl && currentSlideEl.getAttribute('data-has-substeps');
             
+            // Check if this is the problem slide and hasn't been flipped yet
+            if (currentSlideEl && currentSlideEl.id === 'problemSlide' && !currentSlideEl.classList.contains('flipped')) {
+                currentSlideEl.classList.add('flipped');
+                return;
+            }
+            
             if (hasSubSteps) {
                 const subSlides = currentSlideEl.querySelectorAll('.sub-slide');
                 const maxSubSlides = subSlides.length;
@@ -1751,9 +1757,9 @@
         </div>
 
         <!-- Slide 2: Problem -->
-        <div class="slide">
+        <div class="slide" id="problemSlide">
             <h2>The Problem</h2>
-            <p class="subtitle">Watch our solutions emerge to address each challenge</p>
+            <p class="subtitle">Read the challenges, then press next to see our solutions</p>
             
             <div class="flip-cards-container">
                 <!-- Card 1 -->
