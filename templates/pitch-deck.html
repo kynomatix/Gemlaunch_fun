@@ -387,21 +387,33 @@
         .revenue-streams {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 2rem;
-            margin: 2rem 0;
+            gap: 1rem;
+            margin: 1.5rem 0;
         }
 
         .revenue-card {
             background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05));
             border: 1px solid rgba(0, 255, 255, 0.3);
             border-radius: 15px;
-            padding: 1.5rem;
+            padding: 1rem;
+        }
+
+        .revenue-card h4 {
+            font-size: 1.1rem;
+            margin: 0.5rem 0;
+        }
+
+        .revenue-card p {
+            font-size: 0.9rem;
+            margin: 0;
+            color: rgba(255, 255, 255, 0.8);
         }
 
         .revenue-percentage {
-            font-size: 2.5rem;
+            font-size: 2rem;
             color: #00ffff;
             font-weight: bold;
+            margin-bottom: 0.5rem;
         }
 
         /* Competitive Analysis */
@@ -1962,11 +1974,11 @@
                 </div>
             </div>
 
-            <h3>Revenue Projections</h3>
-            <ul>
-                <li>Year 1: $2M revenue (2,000 launches, $100K avg volume)</li>
-                <li>Year 2: $10M revenue (10,000 launches, scale effects)</li>
-                <li>Year 3: $50M revenue (market leadership position)</li>
+            <h3 style="margin-top: 1.5rem; margin-bottom: 1rem;">Revenue Projections</h3>
+            <ul style="margin: 0.5rem 0;">
+                <li style="padding: 0.4rem 0;">Year 1: $2M revenue (2,000 launches, $100K avg volume)</li>
+                <li style="padding: 0.4rem 0;">Year 2: $10M revenue (10,000 launches, scale effects)</li>
+                <li style="padding: 0.4rem 0;">Year 3: $50M revenue (market leadership position)</li>
             </ul>
         </div>
 
