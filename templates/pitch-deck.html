@@ -476,6 +476,15 @@
             border: 1px solid rgba(0, 255, 255, 0.3);
             border-radius: 15px;
             padding: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .revenue-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 255, 255, 0.6);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 168, 168, 0.08));
+            box-shadow: 0 15px 35px rgba(0, 255, 255, 0.25);
         }
 
         .revenue-card h4 {
@@ -524,6 +533,19 @@
         .cross {
             color: #ff0044;
             font-size: 1.5rem;
+        }
+
+        /* Moat cards hover effects */
+        .moat-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .moat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 255, 255, 0.6) !important;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 168, 168, 0.08)) !important;
+            box-shadow: 0 15px 35px rgba(0, 255, 255, 0.25);
         }
 
 
@@ -785,6 +807,15 @@
             border: 1px solid rgba(0, 255, 255, 0.3);
             border-radius: 15px;
             padding: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 255, 255, 0.6);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 168, 168, 0.08));
+            box-shadow: 0 15px 35px rgba(0, 255, 255, 0.25);
         }
 
         .metric-value {
@@ -2293,27 +2324,27 @@
 
             <h3>Our Moat</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
-                <div style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                <div class="moat-card" style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
                     <h4 style="color: #00ffff; margin-bottom: 0.5rem; font-size: 1rem;">🏁 First Mover</h4>
                     <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem;">Early market entry in Kaspa ecosystem</p>
                 </div>
-                <div style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                <div class="moat-card" style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
                     <h4 style="color: #00ffff; margin-bottom: 0.5rem; font-size: 1rem;">🤝 Partnership</h4>
                     <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem;">Strategic partnership with Kaspa Finance DEX</p>
                 </div>
-                <div style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                <div class="moat-card" style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
                     <h4 style="color: #00ffff; margin-bottom: 0.5rem; font-size: 1rem;">🤖 AI Barrier</h4>
                     <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem;">AI-powered user experience barrier</p>
                 </div>
-                <div style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                <div class="moat-card" style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
                     <h4 style="color: #00ffff; margin-bottom: 0.5rem; font-size: 1rem;">🎮 Network Effects</h4>
                     <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem;">Gamification system creates network effects</p>
                 </div>
-                <div style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                <div class="moat-card" style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
                     <h4 style="color: #00ffff; margin-bottom: 0.5rem; font-size: 1rem;">💎 Community Loyalty</h4>
                     <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem;">Revenue sharing builds strong community loyalty and retention</p>
                 </div>
-                <div style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                <div class="moat-card" style="background: rgba(0, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 255, 255, 0.2);">
                     <h4 style="color: #00ffff; margin-bottom: 0.5rem; font-size: 1rem;">⚡ Technical Excellence</h4>
                     <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 0.85rem;">~100ms block times vs competitors' 250ms+</p>
                 </div>
@@ -2344,7 +2375,7 @@
                     </div>
                     <div class="metric-card">
                         <div class="metric-value">$500K</div>
-                        <div class="metric-label">Seed Round Target</div>
+                        <div class="metric-label">Presale Target</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-value">5,000+</div>
