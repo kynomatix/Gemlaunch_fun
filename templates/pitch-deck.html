@@ -671,6 +671,24 @@
             animation: shineGlow 0.6s ease-out 1.8s both;
         }
 
+        /* Gemmy Banner Animation and Hover */
+        .gemmy-banner {
+            transition: all 0.3s ease;
+        }
+
+        .gemmy-banner:hover {
+            transform: translateY(-8px) scale(1.02);
+        }
+
+        .gemmy-banner:hover img {
+            box-shadow: 0 20px 40px rgba(0, 255, 255, 0.4);
+            border-radius: 15px;
+        }
+
+        .slide.active .gemmy-banner {
+            animation: slideUp 0.8s ease-out 1.2s both;
+        }
+
 
 
         /* Roadmap */
@@ -1263,7 +1281,8 @@
         .metric-card,
         .revenue-card,
         .roadmap-item,
-        .distribution-card {
+        .distribution-card,
+        .gemmy-banner {
             opacity: 0;
         }
 
@@ -2508,8 +2527,8 @@
                 </div>
                 
                 <!-- Gemmy Kaspa Banner -->
-                <div style="margin-top: 2rem;">
-                    <img src="/static/images/gemmy_kaspa_banner.jpg" alt="Gemmy Kaspa Banner" style="width: 100%; height: auto; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2);">
+                <div class="gemmy-banner" style="margin-top: 2rem; opacity: 0; transform: translateY(30px);">
+                    <img src="/static/images/gemmy_kaspa_banner.jpg" alt="Gemmy Kaspa Banner" style="width: 100%; height: auto; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 255, 255, 0.2); transition: all 0.3s ease; cursor: pointer;">
                 </div>
             </div>
             
