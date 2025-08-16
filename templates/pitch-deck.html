@@ -548,6 +548,127 @@
             box-shadow: 0 15px 35px rgba(0, 255, 255, 0.25);
         }
 
+        /* Token Distribution Cards */
+        .distribution-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .distribution-card {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(0, 168, 168, 0.05));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 2rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .distribution-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+
+        .distribution-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 255, 255, 0.6);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(0, 168, 168, 0.08));
+            box-shadow: 0 15px 35px rgba(0, 255, 255, 0.25);
+        }
+
+        .distribution-card:hover::before {
+            opacity: 1;
+        }
+
+        .distribution-icon {
+            font-size: 3rem;
+            min-width: 80px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .distribution-content {
+            flex: 1;
+        }
+
+        .distribution-percentage {
+            font-size: 2.5rem;
+            color: #00ffff;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .distribution-content h4 {
+            font-size: 1.4rem;
+            margin: 0.5rem 0 0.8rem 0;
+            color: #fff;
+        }
+
+        .distribution-content p {
+            font-size: 1rem;
+            margin: 0;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+        }
+
+        /* Distribution card animations */
+        .slide.active .distribution-card:nth-child(1) {
+            animation: 
+                slideInLeft 0.8s ease-out 0.2s both,
+                shineEffect 0.6s ease-out 1.2s both;
+        }
+
+        .slide.active .distribution-card:nth-child(1)::before {
+            animation: shineGlow 0.6s ease-out 1.2s both;
+        }
+
+        .slide.active .distribution-card:nth-child(2) {
+            animation: 
+                slideInRight 0.8s ease-out 0.4s both,
+                shineEffect 0.6s ease-out 1.4s both;
+        }
+
+        .slide.active .distribution-card:nth-child(2)::before {
+            animation: shineGlow 0.6s ease-out 1.4s both;
+        }
+
+        .slide.active .distribution-card:nth-child(3) {
+            animation: 
+                slideInLeft 0.8s ease-out 0.6s both,
+                shineEffect 0.6s ease-out 1.6s both;
+        }
+
+        .slide.active .distribution-card:nth-child(3)::before {
+            animation: shineGlow 0.6s ease-out 1.6s both;
+        }
+
+        .slide.active .distribution-card:nth-child(4) {
+            animation: 
+                slideInRight 0.8s ease-out 0.8s both,
+                shineEffect 0.6s ease-out 1.8s both;
+        }
+
+        .slide.active .distribution-card:nth-child(4)::before {
+            animation: shineGlow 0.6s ease-out 1.8s both;
+        }
+
 
 
         /* Roadmap */
@@ -1139,7 +1260,8 @@
         .stat-card,
         .metric-card,
         .revenue-card,
-        .roadmap-item {
+        .roadmap-item,
+        .distribution-card {
             opacity: 0;
         }
 
@@ -2497,26 +2619,38 @@
             <!-- Sub-slide 2: Token Distribution -->
             <div class="sub-slide">
                 <h3>Token Distribution</h3>
-                <div class="revenue-streams">
-                    <div class="revenue-card">
-                        <div class="revenue-percentage">30%</div>
-                        <h4>Presale</h4>
-                        <p>Community early access</p>
+                <div class="distribution-grid">
+                    <div class="distribution-card">
+                        <div class="distribution-icon">🎯</div>
+                        <div class="distribution-content">
+                            <div class="distribution-percentage">30%</div>
+                            <h4>Presale</h4>
+                            <p>Community early access funding to build the future of memecoin launches</p>
+                        </div>
                     </div>
-                    <div class="revenue-card">
-                        <div class="revenue-percentage">50%</div>
-                        <h4>Community Rewards</h4>
-                        <p>Airdrops, incentives</p>
+                    <div class="distribution-card">
+                        <div class="distribution-icon">🎁</div>
+                        <div class="distribution-content">
+                            <div class="distribution-percentage">50%</div>
+                            <h4>Community Rewards</h4>
+                            <p>Airdrops, leaderboard incentives, and ecosystem growth initiatives</p>
+                        </div>
                     </div>
-                    <div class="revenue-card">
-                        <div class="revenue-percentage">15%</div>
-                        <h4>Team & Advisors</h4>
-                        <p>Vested over 3 years</p>
+                    <div class="distribution-card">
+                        <div class="distribution-icon">👥</div>
+                        <div class="distribution-content">
+                            <div class="distribution-percentage">15%</div>
+                            <h4>Team & Advisors</h4>
+                            <p>Vested over 3 years to ensure long-term commitment and alignment</p>
+                        </div>
                     </div>
-                    <div class="revenue-card">
-                        <div class="revenue-percentage">5%</div>
-                        <h4>Development Fund</h4>
-                        <p>Future development</p>
+                    <div class="distribution-card">
+                        <div class="distribution-icon">🔧</div>
+                        <div class="distribution-content">
+                            <div class="distribution-percentage">5%</div>
+                            <h4>Development Fund</h4>
+                            <p>Future platform development, security audits, and emergency reserves</p>
+                        </div>
                     </div>
                 </div>
             </div>
