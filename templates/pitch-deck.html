@@ -332,6 +332,10 @@
             transform: rotateY(180deg);
         }
 
+        .flip-card.clicked .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
         /* Market Stats */
         .market-stats {
             display: grid;
@@ -1535,6 +1539,11 @@
                 // Reset problem slide to show problems when navigating to it
                 if (slides[currentSlide].id === 'problemSlide') {
                     slides[currentSlide].classList.remove('flipped');
+                    // Reset individual card clicks
+                    const flipCards = slides[currentSlide].querySelectorAll('.flip-card');
+                    flipCards.forEach(card => {
+                        card.classList.remove('clicked');
+                    });
                 }
                 
                 // Initialize sub-slides if they exist
@@ -1708,6 +1717,14 @@
             
             // Initialize first slide
             showSlide(0);
+            
+            // Add click handlers for flip cards
+            document.addEventListener('click', function(e) {
+                const flipCard = e.target.closest('.flip-card');
+                if (flipCard) {
+                    flipCard.classList.toggle('clicked');
+                }
+            });
         });
     </script>
     <!-- Progress Indicator -->
