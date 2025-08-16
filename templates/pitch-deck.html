@@ -1532,6 +1532,11 @@
                 slides[currentSlide].style.display = 'block';
                 slides[currentSlide].classList.add('active');
                 
+                // Reset problem slide to show problems when navigating to it
+                if (slides[currentSlide].id === 'problemSlide') {
+                    slides[currentSlide].classList.remove('flipped');
+                }
+                
                 // Initialize sub-slides if they exist
                 const hasSubSteps = slides[currentSlide].getAttribute('data-has-substeps');
                 if (hasSubSteps) {
