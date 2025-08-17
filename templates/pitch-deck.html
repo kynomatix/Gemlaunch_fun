@@ -25,13 +25,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
+            z-index: 1;
             pointer-events: none;
         }
         
         .bg-animation canvas {
             display: block;
-            opacity: 0.4;
+            opacity: 0.6;
         }
 
         body::before {
@@ -59,11 +59,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.2) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(0, 168, 168, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
-                linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            background: transparent;
             z-index: 10;
         }
 
@@ -86,12 +82,12 @@
             height: 1080px;
             display: none;
             animation: slideIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 30, 30, 0.95));
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.75), rgba(0, 30, 30, 0.75));
             border: 4px solid;
             border-image: linear-gradient(135deg, rgba(0, 255, 255, 0.5), rgba(0, 168, 168, 0.2)) 1;
             border-radius: 30px;
             padding: 80px 120px;
-            backdrop-filter: blur(25px);
+            backdrop-filter: blur(15px);
             box-shadow: 
                 0 25px 50px rgba(0, 255, 255, 0.15),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -139,6 +135,15 @@
             padding: 15px 30px;
             border-radius: 50px;
             border: 1px solid rgba(0, 255, 255, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .nav-controls.show,
+        body:hover .nav-controls {
+            opacity: 1;
+            visibility: visible;
         }
 
         .nav-btn {
@@ -1761,6 +1766,15 @@
             const nextBtn = document.querySelector('.nav-btn.next');
             if (prevBtn) prevBtn.disabled = false;
             if (nextBtn) nextBtn.disabled = false;
+            
+            // Show nav controls briefly when slide changes
+            const navControls = document.querySelector('.nav-controls');
+            if (navControls) {
+                navControls.classList.add('show');
+                setTimeout(() => {
+                    navControls.classList.remove('show');
+                }, 3000); // Hide after 3 seconds
+            }
         }
 
         function nextSlide() {
