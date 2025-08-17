@@ -1055,22 +1055,41 @@
         }
 
         .sub-dot {
-            height: 10px;
-            width: 10px;
+            height: 16px;
+            width: 16px;
             background-color: rgba(0, 255, 255, 0.3);
             border-radius: 50%;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            padding: 14px;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
+        
+        .sub-dot::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
         }
 
-        .sub-dot.active {
+        .sub-dot.active::before {
             background-color: #00ffff;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
             border-color: rgba(0, 255, 255, 0.8);
         }
 
-        .sub-dot:hover:not(.active) {
+        .sub-dot:hover:not(.active)::before {
             background-color: rgba(0, 255, 255, 0.6);
         }
 
@@ -1974,6 +1993,27 @@
                 const flipCard = e.target.closest('.flip-card');
                 if (flipCard) {
                     flipCard.classList.toggle('clicked');
+                }
+            });
+            
+            // Add mobile-friendly touch event handlers for sub-dots
+            document.addEventListener('click', function(e) {
+                const subDot = e.target.closest('.sub-dot');
+                if (subDot && subDot.onclick) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    subDot.onclick.call(subDot, e);
+                }
+            });
+            
+            // Add touch event handlers for better mobile support
+            document.addEventListener('touchstart', function(e) {
+                const subDot = e.target.closest('.sub-dot');
+                if (subDot) {
+                    e.preventDefault();
+                    if (subDot.onclick) {
+                        subDot.onclick.call(subDot, e);
+                    }
                 }
             });
         });
