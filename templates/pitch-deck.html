@@ -1749,6 +1749,33 @@
                 transform: scaleX(1);
             }
         }
+
+        /* Market Analysis Animations */
+        .market-analysis-section {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .slide.active .market-analysis-section {
+            animation: slideInUp 0.8s ease-out 1.2s both;
+        }
+
+        .tam-analysis, .why-kaspa, .gemmy-section {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .slide.active .tam-analysis {
+            animation: slideInUp 0.6s ease-out 1.5s both;
+        }
+
+        .slide.active .why-kaspa {
+            animation: slideInUp 0.6s ease-out 1.7s both;
+        }
+
+        .slide.active .gemmy-section {
+            animation: slideInUp 0.6s ease-out 1.9s both;
+        }
     </style>
 </head>
 <body>
@@ -2233,9 +2260,9 @@
             </div>
             
             <!-- Bottom section with two columns and Gemmy -->
-            <div style="display: flex; gap: 3rem; align-items: flex-start; margin-top: 2.5rem;">
+            <div class="market-analysis-section" style="display: flex; gap: 3rem; align-items: flex-start; margin-top: 2.5rem;">
                 <!-- Left column - TAM Analysis -->
-                <div style="flex: 1;">
+                <div class="tam-analysis" style="flex: 1;">
                     <h3 style="margin-bottom: 1.5rem; color: #00ffff; font-size: 2rem;">TAM Analysis</h3>
                     <ul style="list-style: none; padding: 0; font-size: 1.1rem; line-height: 1.8;">
                         <li style="margin-bottom: 1rem; padding: 1rem; background: rgba(0, 255, 255, 0.05); border-radius: 8px; border-left: 4px solid #00ffff;"><strong>Total Addressable Market:</strong> $50B+ memecoin ecosystem</li>
@@ -2245,7 +2272,7 @@
                 </div>
 
                 <!-- Right column - Why Kaspa -->
-                <div style="flex: 1;">
+                <div class="why-kaspa" style="flex: 1;">
                     <h3 style="margin-bottom: 1.5rem; color: #00ffff; font-size: 2rem;">Why Kaspa?</h3>
                     <ul style="list-style: none; padding: 0; font-size: 1.1rem; line-height: 1.8;">
                         <li style="margin-bottom: 1rem; padding: 1rem; background: rgba(0, 255, 255, 0.05); border-radius: 8px; border-left: 4px solid #00ffff;">Fastest growing L1 blockchain - 10 blocks per second</li>
@@ -2257,7 +2284,7 @@
                 </div>
                 
                 <!-- Gemmy on the right side -->
-                <div style="flex: 0 0 350px; display: flex; justify-content: center; align-items: center;">
+                <div class="gemmy-section" style="flex: 0 0 350px; display: flex; justify-content: center; align-items: center;">
                     <img src="/static/images/gemmy_left.png" alt="Gemmy Mascot" style="
                         width: 350px;
                         height: auto;
