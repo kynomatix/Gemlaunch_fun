@@ -1788,12 +1788,14 @@
             const slides = document.querySelectorAll('.slide');
             const dots = document.querySelectorAll('.dot');
             
-            // Wrap around if needed
-            if (n >= totalSlides) currentSlide = 0;
-            if (n < 0) currentSlide = totalSlides - 1;
-            
-            // Reset sub-slide when changing main slides
-            currentSubSlide = 0;
+            // Wrap around if needed and set currentSlide to the correct value
+            if (n >= totalSlides) {
+                currentSlide = 0;
+            } else if (n < 0) {
+                currentSlide = totalSlides - 1;
+            } else {
+                currentSlide = n;
+            }
             
             // Hide all slides immediately
             slides.forEach(slide => {
@@ -1886,10 +1888,10 @@
                 }
             }
             
-            // Move to next main slide
-            currentSlide++;
+            // Move to next main slide - let showSlide handle bounds checking
+            const nextSlideIndex = currentSlide + 1;
             currentSubSlide = 0;
-            showSlide(currentSlide);
+            showSlide(nextSlideIndex);
         }
 
         function previousSlide() {
@@ -1903,19 +1905,25 @@
                 return;
             }
             
-            // Move to previous main slide
-            currentSlide--;
+            // Calculate previous slide index - let showSlide handle bounds checking
+            const prevSlideIndex = currentSlide - 1;
             
-            // If the previous slide has sub-steps, go to its last sub-slide
-            const prevSlideEl = document.querySelectorAll('.slide')[currentSlide];
-            if (prevSlideEl && prevSlideEl.getAttribute('data-has-substeps')) {
-                const subSlides = prevSlideEl.querySelectorAll('.sub-slide');
+            // Calculate what currentSlide will be after showSlide processes bounds
+            let targetSlideIndex = prevSlideIndex;
+            if (prevSlideIndex < 0) {
+                targetSlideIndex = totalSlides - 1;
+            }
+            
+            // If the target slide has sub-steps, go to its last sub-slide
+            const targetSlideEl = document.querySelectorAll('.slide')[targetSlideIndex];
+            if (targetSlideEl && targetSlideEl.getAttribute('data-has-substeps')) {
+                const subSlides = targetSlideEl.querySelectorAll('.sub-slide');
                 currentSubSlide = subSlides.length - 1;
             } else {
                 currentSubSlide = 0;
             }
             
-            showSlide(currentSlide);
+            showSlide(prevSlideIndex);
         }
 
         // Sub-slide navigation function
