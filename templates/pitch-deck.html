@@ -155,8 +155,23 @@
             transition: all 0.3s ease;
         }
 
-        .nav-controls.show,
-        body:hover .nav-controls {
+        .nav-controls.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Hover area at bottom of screen only */
+        .nav-hover-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            z-index: 999;
+            pointer-events: auto;
+        }
+
+        .nav-controls:hover {
             opacity: 1;
             visibility: visible;
         }
@@ -1972,6 +1987,9 @@
     <!-- Animated background with particles -->
     <div class="bg-animation" id="particles-js"></div>
     
+    <!-- Hover area for navigation controls -->
+    <div class="nav-hover-area"></div>
+    
     <div class="deck-container">
         <div class="slide-scaler" id="slideScaler">
         <!-- Slide 1: Title -->
@@ -2878,15 +2896,39 @@
     </div>
 
     <!-- Navigation Controls -->
-    <div class="nav-controls">
-        <button class="nav-btn prev">← Previous</button>
+    <div class="nav-controls" id="nav-controls">
+        <button class="nav-btn prev" onclick="previousSlide()">← Previous</button>
         <span class="slide-indicator">1 / 12</span>
-        <button class="nav-btn next">Next →</button>
+        <button class="nav-btn next" onclick="nextSlide()">Next →</button>
     </div>
 
     <!-- Particles.js Library -->
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script>
+        // Bottom hover area for navigation controls
+        document.addEventListener('DOMContentLoaded', function() {
+            const navHoverArea = document.querySelector('.nav-hover-area');
+            const navControls = document.getElementById('nav-controls');
+            
+            if (navHoverArea && navControls) {
+                navHoverArea.addEventListener('mouseenter', function() {
+                    navControls.classList.add('show');
+                });
+                
+                navHoverArea.addEventListener('mouseleave', function() {
+                    navControls.classList.remove('show');
+                });
+                
+                navControls.addEventListener('mouseenter', function() {
+                    navControls.classList.add('show');
+                });
+                
+                navControls.addEventListener('mouseleave', function() {
+                    navControls.classList.remove('show');
+                });
+            }
+        });
+        
         // Initialize particles.js
         particlesJS('particles-js', {
             particles: {
@@ -2936,7 +2978,7 @@
                 },
                 move: {
                     enable: true,
-                    speed: 6,
+                    speed: 2.5,
                     direction: 'none',
                     random: false,
                     straight: false,
