@@ -1985,15 +1985,23 @@
             window.addEventListener('orientationchange', function() {
                 setTimeout(scaleToViewport, 100); // Delay for orientation change
             });
-            // Set up button clicks
+            // Set up button clicks with event isolation
             const prevBtn = document.querySelector('.nav-btn.prev');
             const nextBtn = document.querySelector('.nav-btn.next');
             
             if (prevBtn) {
-                prevBtn.addEventListener('click', previousSlide);
+                prevBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    previousSlide();
+                });
             }
             if (nextBtn) {
-                nextBtn.addEventListener('click', nextSlide);
+                nextBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    nextSlide();
+                });
             }
             
             // Set up dot clicks
@@ -2001,8 +2009,8 @@
             dots.forEach((dot, index) => {
                 dot.style.cursor = 'pointer';
                 dot.addEventListener('click', () => {
-                    currentSlide = index;
-                    showSlide(currentSlide);
+                    currentSubSlide = 0;
+                    showSlide(index);
                 });
             });
             
@@ -2031,20 +2039,20 @@
                 }
             });
             
-            // Add mobile-friendly touch event handlers for sub-dots
+            // Add mobile-friendly touch event handlers for sub-dots only
             document.addEventListener('click', function(e) {
                 const subDot = e.target.closest('.sub-dot');
-                if (subDot && subDot.onclick) {
+                if (subDot && subDot.onclick && !e.target.closest('.nav-btn')) {
                     e.preventDefault();
                     e.stopPropagation();
                     subDot.onclick.call(subDot, e);
                 }
             });
             
-            // Add touch event handlers for better mobile support
+            // Add touch event handlers for better mobile support (sub-dots only)
             document.addEventListener('touchstart', function(e) {
                 const subDot = e.target.closest('.sub-dot');
-                if (subDot) {
+                if (subDot && !e.target.closest('.nav-btn')) {
                     e.preventDefault();
                     if (subDot.onclick) {
                         subDot.onclick.call(subDot, e);
