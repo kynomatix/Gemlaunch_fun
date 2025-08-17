@@ -1529,6 +1529,10 @@
             animation: slideInUp 0.6s ease-out 4.3s both;
         }
 
+        .slide.active .bonding-gemmy {
+            animation: slideUp 0.8s ease-out 4.8s both, floatGemmy 3s ease-in-out 5.6s infinite;
+        }
+
         .slide.active .bonding-curve-chart {
             animation: slideUp 0.8s ease-out 5.1s both;
         }
@@ -2477,7 +2481,7 @@
                 </div>
                 
                 <!-- Small Gemmy to the left of chart -->
-                <div style="flex: 0 0 auto; display: flex; align-items: center; margin-top: 6rem;">
+                <div class="bonding-gemmy" style="flex: 0 0 auto; display: flex; align-items: center; margin-top: 6rem; opacity: 0; transform: translateY(30px);">
                     <img src="/static/images/Gemmy_07_1755401303130.png" alt="Gemmy Mascot" style="
                         width: 240px;
                         height: auto;
