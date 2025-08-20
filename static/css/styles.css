@@ -486,6 +486,12 @@ header nav > div:last-child {
 .section {
     padding: 80px 0;
     position: relative;
+    z-index: 1;
+}
+
+.section:first-of-type {
+    background: transparent;
+    z-index: 0;
 }
 
 .section-title {
