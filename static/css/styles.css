@@ -235,13 +235,14 @@ header nav > div:last-child {
 
 .hero::before {
     content: '';
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: -200px;
-    background: radial-gradient(ellipse at center top, rgba(32, 178, 170, 0.06) 0%, rgba(32, 178, 170, 0.03) 30%, rgba(32, 178, 170, 0.015) 50%, rgba(32, 178, 170, 0.008) 70%, transparent 90%);
+    height: 150vh;
+    background: radial-gradient(ellipse 800px 600px at center 35%, rgba(32, 178, 170, 0.06) 0%, rgba(32, 178, 170, 0.03) 30%, rgba(32, 178, 170, 0.015) 50%, rgba(32, 178, 170, 0.008) 70%, transparent 100%);
     z-index: -1;
+    pointer-events: none;
 }
 
 .hero-content {
