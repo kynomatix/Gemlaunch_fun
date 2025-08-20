@@ -239,8 +239,8 @@ header nav > div:last-child {
     top: 0;
     left: 0;
     right: 0;
-    bottom: -100px;
-    background: radial-gradient(circle at center, rgba(32, 178, 170, 0.1) 0%, transparent 80%);
+    bottom: 0;
+    background: radial-gradient(ellipse at center, rgba(32, 178, 170, 0.08) 0%, rgba(32, 178, 170, 0.04) 40%, rgba(32, 178, 170, 0.02) 60%, transparent 85%);
     z-index: -1;
 }
 
