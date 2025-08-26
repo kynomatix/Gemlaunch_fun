@@ -3,6 +3,18 @@
 gemlaunch.fun is a web platform designed to enable the creation and launch of memecoins on the Kaspa blockchain. The project aims to democratize memecoin creation by providing a no-code solution for launching community-driven tokens with fair launch mechanisms. The platform leverages Kaspa's high-performance L1 blockchain capabilities to offer fast transaction processing for memecoin operations.
 
 ## Recent Changes
+- **MAJOR ARCHITECTURAL CHANGE (Aug 26, 2025)**: Converted from Python Flask to Node.js Express
+  - Backend migrated from Python/Flask to JavaScript/Express for easier maintenance
+  - Template syntax converted from Jinja2 to EJS (configured to use .html files)
+  - All routes preserved: /, /docs, /pitch-deck, /health
+  - All functionality and front-end appearance remain identical
+  - Static file serving maintained at /static/ paths
+  - Conversion tested and verified - all endpoints return proper responses
+- Updated pitch deck "Anti-Rug & Bot Protection" feature in Security & Social sub-slide
+- Enhanced traction metrics: "1B Total Supply" → "1 Billion GEM Token Supply"
+- Updated community metric to "Community Member Exposure" (reflecting Kaspa Finance partnership)
+- Fixed documentation competitive positioning: "First-Mover" → "Early Pioneer Advantage"
+- Removed exclusivity claims to reflect competitive landscape reality
 - Created separate documentation page with GitBook-style tabbed interface
 - Moved comprehensive documentation to its own route (/docs)
 - Integrated actual project documentation content (no placeholder data)
@@ -53,8 +65,8 @@ Preferred communication style: Simple, everyday language.
 # System Architecture
 
 ## Frontend Architecture
-The application uses a traditional server-side rendered approach with Flask templating. The frontend is built with:
-- **HTML Templates**: Jinja2 templating engine for dynamic content rendering
+The application uses a traditional server-side rendered approach with Express templating. The frontend is built with:
+- **HTML Templates**: EJS templating engine configured to use .html files for dynamic content rendering
 - **CSS Framework**: Custom CSS with modern design patterns including CSS Grid, Flexbox, and CSS animations
 - **JavaScript**: Vanilla JavaScript for interactive features and animations
 - **Particle System**: Custom particle effects using particles.js for visual enhancement
@@ -63,11 +75,12 @@ The application uses a traditional server-side rendered approach with Flask temp
 - **Responsive Design**: Mobile-first approach with viewport-based scaling
 
 ## Backend Architecture
-The backend follows a minimal Flask application structure:
-- **Web Framework**: Flask as the primary web framework
+The backend follows a minimal Node.js Express application structure:
+- **Web Framework**: Express.js as the primary web framework
 - **Routing**: Simple route-based architecture with dedicated endpoints for health checks and main pages
-- **Configuration**: Environment-based configuration for session management
-- **Logging**: Built-in Python logging for debugging and monitoring
+- **Template Engine**: EJS configured to render .html files
+- **Static File Serving**: Express static middleware for CSS, JavaScript, and image assets
+- **Configuration**: Environment-based configuration for port management
 
 ## Design Patterns
 - **MVC Pattern**: Separation of concerns with templates (views), Flask routes (controllers), and potential future models
@@ -82,8 +95,8 @@ The backend follows a minimal Flask application structure:
 # External Dependencies
 
 ## Core Dependencies
-- **Flask**: Python web framework for application structure and routing
-- **Jinja2**: Template engine (included with Flask) for dynamic HTML rendering
+- **Express.js**: Node.js web framework for application structure and routing
+- **EJS**: Template engine configured to render .html files for dynamic content
 
 ## Frontend Libraries
 - **Font Awesome 6.0.0**: Icon library via CDN for UI elements and social media icons
@@ -99,6 +112,6 @@ The backend follows a minimal Flask application structure:
 - **Documentation Platform**: Separate docs site (docs.gemlaunch.fun)
 
 ## Development Environment
-- **Python Runtime**: Flask application requires Python environment
-- **Static File Serving**: Flask development server for CSS/JS asset delivery
-- **Environment Variables**: SESSION_SECRET for Flask session management
+- **Node.js Runtime**: Express application requires Node.js environment
+- **Static File Serving**: Express static middleware for CSS/JS asset delivery
+- **Environment Variables**: PORT for server configuration (defaults to 5000)
