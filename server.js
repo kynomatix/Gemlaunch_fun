@@ -29,6 +29,28 @@ app.get('/health', (req, res) => {
     res.json({ status: 'healthy' });
 });
 
+// Analytics route (placeholder for your bubble chart)
+app.get('/analytics', (req, res) => {
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Analytics - gemlaunch.fun</title>
+        <link rel="stylesheet" href="/static/css/styles.css">
+    </head>
+    <body>
+        <div style="text-align: center; padding: 50px;">
+            <h1>Analytics Dashboard</h1>
+            <p>Bubble chart visualization will be added here.</p>
+            <a href="/" style="color: #20B2AA;">← Back to Home</a>
+        </div>
+    </body>
+    </html>
+    `);
+});
+
 // Start server
 app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
