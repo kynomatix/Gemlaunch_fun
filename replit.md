@@ -3,6 +3,14 @@
 gemlaunch.fun is a web platform designed to enable the creation and launch of memecoins on the Kaspa blockchain. The project aims to democratize memecoin creation by providing a no-code solution for launching community-driven tokens with fair launch mechanisms. The platform leverages Kaspa's high-performance L1 blockchain capabilities to offer fast transaction processing for memecoin operations.
 
 ## Recent Changes
+- **DEPLOYMENT FIX (Aug 27, 2025)**: Fixed critical deployment issues by creating proper production configuration
+  - Added missing requirements.txt file with Flask and gunicorn dependencies
+  - Created WSGI production entry point (wsgi.py) 
+  - Added Procfile for deployment platforms (Heroku, Railway, etc.)
+  - Added runtime.txt specifying Python version
+  - Removed conflicting Node.js files to eliminate deployment confusion
+  - Added production security configurations
+  - Now ready for live deployment on any platform
 - **MAJOR ARCHITECTURAL CHANGE (Aug 26, 2025)**: Converted from Python Flask to Node.js Express
   - Backend migrated from Python/Flask to JavaScript/Express for easier maintenance
   - Template syntax converted from Jinja2 to EJS (configured to use .html files)

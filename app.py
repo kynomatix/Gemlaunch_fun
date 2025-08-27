@@ -3,7 +3,16 @@ from flask import Flask, render_template, jsonify
 
 # Create Flask app with proper template configuration
 app = Flask(__name__, template_folder='templates', static_folder='static')
-app.secret_key = os.environ.get("SESSION_SECRET", "development-secret")
+
+# Production-ready configuration
+app.secret_key = os.environ.get("SESSION_SECRET", "your-production-secret-key-here")
+
+# Security configurations for production
+app.config.update(
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+)
 
 # Configure Jinja2 to use the same syntax as EJS templates
 @app.route('/')
