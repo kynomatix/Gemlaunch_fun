@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>gemlaunch.fun - The Kaspa Memecoin Revolution</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -18,7 +18,7 @@
         <div class="container">
             <nav>
                 <div>
-                    <img src="/static/images/logo.png" alt="Gemlaunch.fun Logo" class="logo-image">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
                 </div>
                 <div>
                     <a href="#about" class="nav-link">About</a>
@@ -27,7 +27,7 @@
                     <a href="/docs" class="nav-link">Documentation</a>
                     <a href="#community" class="nav-link">Community</a>
                     <a href="https://t.me/gemlaunchio" class="nav-link"><i class="fab fa-telegram"></i></a>
-                    <a href="https://x.com/Gemlaunch_fun" class="nav-link"><i class="fab fa-twitter"></i></a>
+                    <a href="https://x.com/gemlaunchio" class="nav-link"><i class="fab fa-twitter"></i></a>
                 </div>
             </nav>
         </div>
@@ -55,7 +55,7 @@
                 <!-- Gemmy Mascot -->
                 <div class="mascot-container">
                     <div class="mascot-card">
-                        <img src="/static/images/gemmy.png" alt="Gemmy - Your AI Launch Assistant" class="mascot-image">
+                        <img src="{{ url_for('static', filename='images/gemmy.png') }}" alt="Gemmy - Your AI Launch Assistant" class="mascot-image">
                         <h3>Meet Gemmy</h3>
                         <p>Your AI-powered launch companion</p>
                     </div>
@@ -159,7 +159,7 @@
                 </div>
                 <div class="feature glass-card" data-aos="fade-up" data-aos-delay="400">
                     <div class="feature-icon">
-                        <img src="/static/images/gemmyhead.png" alt="Gemmy AI Assistant" style="width: 48px; height: 48px;">
+                        <img src="{{ url_for('static', filename='images/gemmyhead.png') }}" alt="Gemmy AI Assistant" style="width: 48px; height: 48px;">
                     </div>
                     <h3>Meet Gemmy - AI Assistant</h3>
                     <ul>
@@ -298,7 +298,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <img src="/static/images/logo.png?v=2" alt="Gemlaunch.fun Logo" class="footer-logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}?v=2" alt="Gemlaunch.fun Logo" class="footer-logo">
                     <p>Democratizing memecoin creation on Kaspa</p>
                 </div>
                 
@@ -307,7 +307,7 @@
                         <h4>Platform</h4>
                         <a href="#launch">Launch Token</a>
                         <a href="#explore">Explore Tokens</a>
-                        <a href="/analytics">Analytics</a>
+                        <a href="#analytics">Analytics</a>
                     </div>
                     <div class="footer-column">
                         <h4>Resources</h4>
@@ -318,7 +318,7 @@
                     <div class="footer-column">
                         <h4>Community</h4>
                         <a href="https://t.me/gemlaunchio">Telegram</a>
-                        <a href="https://x.com/Gemlaunch_fun">Twitter</a>
+                        <a href="https://x.com/gemlaunchio">Twitter</a>
                         <a href="https://discord.gg/gemlaunchfun">Discord</a>
                     </div>
                 </div>
@@ -332,7 +332,7 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="/static/js/particles.js"></script>
-    <script src="/static/js/main.js"></script>
+    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

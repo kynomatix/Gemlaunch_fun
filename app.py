@@ -1,26 +1,33 @@
 import os
-from flask import Flask, render_template, jsonify
+import logging
+from flask import Flask, render_template
 
-# Create Flask app with proper template configuration
-app = Flask(__name__, template_folder='templates', static_folder='static')
-app.secret_key = os.environ.get("SESSION_SECRET", "development-secret")
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
-# Configure Jinja2 to use the same syntax as EJS templates
+# Create the app
+app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
+
 @app.route('/')
 def index():
+    """Main landing page for Gemlaunch.fun"""
     return render_template('index.html')
 
 @app.route('/docs')
 def docs():
+    """Documentation page for Gemlaunch.fun"""
     return render_template('docs.html')
 
 @app.route('/pitch-deck')
 def pitch_deck():
+    """Investor pitch deck for Gemlaunch.fun"""
     return render_template('pitch-deck.html')
 
 @app.route('/health')
 def health():
-    return jsonify({"status": "healthy"})
+    """Health check endpoint"""
+    return {'status': 'healthy'}
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
