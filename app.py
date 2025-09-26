@@ -178,10 +178,11 @@ def verify_signature():
         })
         
     except Exception as e:
-        # Clear any partial session data if session_key is defined
+        # Clear any partial session data if session_key was defined
         try:
-            if 'session_key' in locals() and session_key:
-                session.pop(session_key, None)
+            for key in list(session.keys()):
+                if key.startswith('auth_nonce_'):
+                    session.pop(key, None)
         except:
             pass
         return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
@@ -401,7 +402,7 @@ def profile():
         db.session.commit()
     
     if request.method == 'POST':
-        # Handle profile update
+        # Handle profile update in a single transaction
         try:
             # Update User model fields
             if 'display_name' in request.form:
@@ -410,15 +411,21 @@ def profile():
             # Update UserProfile model fields
             if 'bio' in request.form:
                 user_profile.bio = request.form['bio'].strip()
+                
+            # Handle username with proper validation feedback
             if 'username' in request.form:
                 username = request.form['username'].strip()
-                # Check if username is unique (excluding current user)
-                existing = UserProfile.query.filter(
-                    UserProfile.username == username,
-                    UserProfile.user_id != user.id
-                ).first()
-                if not existing and username:
+                if username:
+                    # Check if username is unique (excluding current user)
+                    existing = UserProfile.query.filter(
+                        UserProfile.username == username,
+                        UserProfile.user_id != user.id
+                    ).first()
+                    if existing:
+                        flash('Username already taken. Please choose a different one.', 'error')
+                        return redirect(url_for('profile'))
                     user_profile.username = username
+                    
             if 'profile_picture_url' in request.form:
                 user_profile.profile_picture_url = request.form['profile_picture_url'].strip()
             if 'twitter_handle' in request.form:
@@ -432,10 +439,7 @@ def profile():
             user_profile.is_profile_public = 'is_profile_public' in request.form
             user_profile.show_wallet_address = 'show_wallet_address' in request.form
             
-            # Save to database
-            db.session.commit()
-            
-            # Add activity log
+            # Add activity log before committing
             activity = Activity()
             activity.user_id = user.id
             activity.activity_type = 'profile_updated'
@@ -443,6 +447,8 @@ def profile():
             activity.description = 'Updated profile information'
             activity.points_earned = 0
             db.session.add(activity)
+            
+            # Commit all changes in a single transaction
             db.session.commit()
             
             flash('Profile updated successfully!', 'success')
