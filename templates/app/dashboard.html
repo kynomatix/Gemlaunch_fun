@@ -256,7 +256,10 @@
                     <a href="/app/create" class="nav-link">Create Token</a>
                     <a href="/app/tokens" class="nav-link">Marketplace</a>
                     <a href="/docs" class="nav-link">Documentation</a>
-                    <a href="/logout" class="nav-link">Logout</a>
+                    <div class="wallet-info-nav">
+                        <span class="wallet-address">{{ user.wallet_address[:8] }}...{{ user.wallet_address[-6:] }}</span>
+                        <button onclick="disconnectWallet()" class="nav-link wallet-disconnect">Disconnect</button>
+                    </div>
                 </div>
             </nav>
         </div>
@@ -267,7 +270,7 @@
         <div class="container">
             <!-- Welcome Header -->
             <div class="dashboard-header">
-                <h1>Welcome back, {{ user.username }}! 🚀</h1>
+                <h1>Welcome back, {{ user.display_name or "Kaspa Trader" }}! 🚀</h1>
                 <p>Ready to launch your next memecoin on Kaspa?</p>
                 
                 <div class="user-stats">
@@ -427,5 +430,74 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        // Wallet disconnect functionality
+        async function disconnectWallet() {
+            try {
+                const response = await fetch('/api/disconnect-wallet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Redirect to connect wallet page
+                    window.location.href = '/app';
+                } else {
+                    console.error('Failed to disconnect wallet');
+                }
+                
+            } catch (error) {
+                console.error('Disconnect error:', error);
+            }
+        }
+    </script>
+    
+    <style>
+        .wallet-info-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .wallet-address {
+            color: #20B2AA;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+        }
+        
+        .wallet-disconnect {
+            background: rgba(255, 50, 50, 0.1) !important;
+            color: #FF5252 !important;
+            border: 1px solid rgba(255, 50, 50, 0.3) !important;
+            padding: 0.5rem 1rem !important;
+            border-radius: 8px !important;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none !important;
+        }
+        
+        .wallet-disconnect:hover {
+            background: rgba(255, 50, 50, 0.2) !important;
+            border-color: rgba(255, 50, 50, 0.5) !important;
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 768px) {
+            .wallet-info-nav {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+            }
+        }
+    </style>
 </body>
 </html>

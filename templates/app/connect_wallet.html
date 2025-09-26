@@ -207,30 +207,61 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.15.0/web3.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
+        // Kasplex zkEVM Testnet Configuration
+        const KASPLEX_TESTNET = {
+            chainId: '0x2A', // Chain ID for Kasplex testnet (42 in decimal)
+            chainName: 'Kasplex zkEVM Testnet',
+            nativeCurrency: {
+                name: 'KAS',
+                symbol: 'KAS',
+                decimals: 18
+            },
+            rpcUrls: ['https://rpc-testnet.kasplex.org'],
+            blockExplorerUrls: ['https://explorer-testnet.kasplex.org']
+        };
+        
         // Wallet connection functions
         async function connectKastle() {
             try {
                 showConnecting('Kastle Wallet');
                 
-                // Check if Kastle wallet is available
-                if (typeof window.kastle === 'undefined') {
-                    throw new Error('Kastle wallet not found. Please install Kastle wallet.');
+                // Check if Kastle wallet is available (using Kasplex Kiwi SDK integration)
+                if (typeof window.kastle === 'undefined' && typeof window.kasware === 'undefined') {
+                    // Fallback: try to load Kasplex SDK
+                    try {
+                        await loadKasplexSDK();
+                        const wallet = await connectNativeKaspa();
+                        if (wallet && wallet.address) {
+                            await connectWallet(wallet.address, 'kastle');
+                            return;
+                        }
+                    } catch (sdkError) {
+                        console.error('Kasplex SDK error:', sdkError);
+                    }
+                    throw new Error('Kastle wallet not found. Please install Kastle wallet or Kasware.');
                 }
                 
-                // Request wallet connection
-                const accounts = await window.kastle.request({
-                    method: 'kas_requestAccounts'
-                });
+                // Try Kastle wallet first
+                let accounts = null;
+                if (typeof window.kastle !== 'undefined') {
+                    accounts = await window.kastle.request({
+                        method: 'kas_requestAccounts'
+                    });
+                } else if (typeof window.kasware !== 'undefined') {
+                    // Fallback to Kasware
+                    accounts = await window.kasware.requestAccounts();
+                }
                 
                 if (accounts && accounts.length > 0) {
                     const walletAddress = accounts[0];
                     await connectWallet(walletAddress, 'kastle');
                 } else {
-                    throw new Error('No accounts found in Kastle wallet');
+                    throw new Error('No accounts found in Kaspa wallet');
                 }
                 
             } catch (error) {
@@ -249,12 +280,30 @@
                     throw new Error('MetaMask not found. Please install MetaMask.');
                 }
                 
+                // Try to add Kasplex network to MetaMask
+                try {
+                    await addKasplexNetwork();
+                } catch (networkError) {
+                    console.warn('Failed to add Kasplex network:', networkError);
+                    // Continue anyway - user might have network already
+                }
+                
                 // Request wallet connection
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
                 
                 if (accounts && accounts.length > 0) {
+                    // Switch to Kasplex network
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: KASPLEX_TESTNET.chainId }],
+                        });
+                    } catch (switchError) {
+                        console.warn('Failed to switch to Kasplex network:', switchError);
+                    }
+                    
                     const walletAddress = accounts[0];
                     await connectWallet(walletAddress, 'metamask');
                 } else {
@@ -265,6 +314,53 @@
                 console.error('MetaMask connection error:', error);
                 showError(error.message || 'Failed to connect to MetaMask');
                 hideConnecting();
+            }
+        }
+        
+        // Add Kasplex network to MetaMask
+        async function addKasplexNetwork() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [KASPLEX_TESTNET]
+                });
+                console.log('Kasplex network added successfully');
+            } catch (error) {
+                if (error.code === 4902) {
+                    console.log('Kasplex network already exists');
+                } else {
+                    throw error;
+                }
+            }
+        }
+        
+        // Native Kaspa connection using Kasplex SDK
+        async function loadKasplexSDK() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@kasplex/kiwi-web@latest/dist/kiwi-web.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        async function connectNativeKaspa() {
+            try {
+                // This is a simplified version - actual implementation would depend on the SDK
+                if (typeof window.Kiwi !== 'undefined') {
+                    // Initialize Kasplex SDK
+                    const kiwi = new window.Kiwi();
+                    await kiwi.connect('testnet');
+                    
+                    // Get wallet address
+                    const wallet = await kiwi.getWallet();
+                    return { address: wallet.address };
+                }
+                throw new Error('Kasplex SDK not available');
+            } catch (error) {
+                console.error('Native Kaspa connection error:', error);
+                throw error;
             }
         }
         
