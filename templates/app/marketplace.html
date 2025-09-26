@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Token Marketplace - Gemlaunch.fun</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
+{% extends "app/base_layout.html" %}
+
+{% block title %}Token Marketplace - Gemlaunch.fun{% endblock %}
+
+{% block extra_head %}
+<style>
         .marketplace-main {
             padding-top: 100px;
             min-height: 100vh;
@@ -171,34 +167,9 @@
             }
         }
     </style>
-</head>
-<body>
-    <!-- Animated background with particles -->
-    <div class="bg-animation" id="particles-js"></div>
-    <div class="floating-elements"></div>
+{% endblock %}
 
-    <!-- Header -->
-    <header>
-        <div class="container">
-            <nav>
-                <div>
-                    <img src="{{ url_for('static', filename='images/gemmy.png') }}" alt="Gemmy" class="logo-image" style="height: 35px;">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
-                </div>
-                <div>
-                    <a href="/app/tokens" class="nav-link active">Home</a>
-                    <a href="/app/create" class="nav-link">Create Token</a>
-                    <a href="https://gemlaunch.fun/analytics/" class="nav-link" target="_blank">Analytics</a>
-                    <a href="/docs" class="nav-link">Documentation</a>
-                    <a href="#" onclick="disconnectWallet()" class="nav-link">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Marketplace Main -->
-    <main class="marketplace-main">
-        <div class="container">
+{% block content %}
             <div class="marketplace-header">
                 <h1>Token Marketplace</h1>
                 <p>Discover and trade community-driven memecoins on Kaspa</p>
@@ -268,34 +239,19 @@
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
-    <script>
-        // Disconnect wallet function
-        async function disconnectWallet() {
-            try {
-                const response = await fetch('/api/disconnect-wallet', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (response.ok) {
-                    window.location.href = '/app';
-                }
-            } catch (error) {
-                console.error('Error disconnecting wallet:', error);
-            }
-        }
-        
-        // Filter functionality
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                // In a real app, this would filter the tokens
-                console.log('Filter selected:', this.textContent);
-            });
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+    // Filter functionality
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            // In a real app, this would filter the tokens
+            console.log('Filter selected:', this.textContent);
         });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

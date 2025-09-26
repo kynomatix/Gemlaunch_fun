@@ -218,14 +218,20 @@ def user_info():
 
 # App routes
 @app.route('/app')
-def app_home():
-    """Main app - redirects to marketplace (pump.fun style)"""
+def app_dashboard():
+    """Main app dashboard with user stats"""
     user = get_current_user()
     if not user:
         return render_template('app/connect_wallet.html')
     
-    # Redirect to marketplace as main home page
-    return redirect(url_for('token_marketplace'))
+    # Get user's created tokens and holdings
+    created_tokens = Token.query.filter_by(creator_id=user.id).all()
+    holdings = Holding.query.filter_by(user_id=user.id).all()
+    
+    return render_template('app/dashboard.html', 
+                         user=user, 
+                         created_tokens=created_tokens, 
+                         holdings=holdings)
 
 @app.route('/app/create', methods=['GET', 'POST'])
 def create_token():

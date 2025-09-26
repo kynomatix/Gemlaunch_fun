@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Gemlaunch.fun</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
+{% extends "app/base_layout.html" %}
+
+{% block title %}Dashboard - Gemlaunch.fun{% endblock %}
+
+{% block extra_head %}
+<style>
         /* Dashboard-specific styles */
         .dashboard-main {
             padding-top: 100px;
@@ -238,38 +234,9 @@
             }
         }
     </style>
-</head>
-<body>
-    <!-- Animated background with particles -->
-    <div class="bg-animation" id="particles-js"></div>
-    <div class="floating-elements"></div>
+{% endblock %}
 
-    <!-- Header -->
-    <header>
-        <div class="container">
-            <nav>
-                <div>
-                    <img src="{{ url_for('static', filename='images/gemmy.png') }}" alt="Gemmy" class="logo-image" style="height: 35px;">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
-                </div>
-                <div>
-                    <a href="/app" class="nav-link">Dashboard</a>
-                    <a href="/app/create" class="nav-link">Create Token</a>
-                    <a href="/app/tokens" class="nav-link">Marketplace</a>
-                    <a href="https://gemlaunch.fun/analytics/" class="nav-link" target="_blank">Analytics</a>
-                    <a href="/docs" class="nav-link">Documentation</a>
-                    <div class="wallet-info-nav">
-                        <span class="wallet-address">{{ user.wallet_address[:8] }}...{{ user.wallet_address[-6:] }}</span>
-                        <button onclick="disconnectWallet()" class="nav-link wallet-disconnect">Disconnect</button>
-                    </div>
-                </div>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Dashboard Main -->
-    <main class="dashboard-main">
-        <div class="container">
+{% block content %}
             <!-- Welcome Header -->
             <div class="dashboard-header">
                 <h1>Welcome back, {{ user.display_name or "Kaspa Trader" }}! 🚀</h1>
@@ -500,6 +467,8 @@
                 align-items: stretch;
             }
         }
-    </style>
-</body>
-</html>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
