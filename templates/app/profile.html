@@ -194,6 +194,30 @@
                 </button>
             </div>
             
+            <!-- Additional Connected Wallets -->
+            {% if connected_wallets %}
+            <div class="additional-wallets">
+                <h4>Additional Wallets</h4>
+                {% for wallet in connected_wallets %}
+                <div class="additional-wallet">
+                    <div class="wallet-info">
+                        <span class="wallet-label">{{ wallet.wallet_label or 'Unnamed' }}</span>
+                        <span class="wallet-address">{{ wallet.wallet_address[:6] }}...{{ wallet.wallet_address[-4:] }}</span>
+                        <span class="wallet-status connected">Connected {{ wallet.connected_at.strftime('%m/%d/%Y') if wallet.connected_at else '' }}</span>
+                    </div>
+                    <div class="wallet-actions">
+                        <button class="btn-copy" onclick="copyWalletAddress('{{ wallet.wallet_address }}')" title="Copy address">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn-remove" onclick="removeWallet('{{ wallet.id }}')" title="Remove wallet">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
             <div class="add-wallet-section">
                 <h3>Add Additional Wallet</h3>
                 <div class="wallet-form">
@@ -467,6 +491,88 @@
 .btn-cancel:hover {
     background: rgba(255, 255, 255, 0.2);
     color: #FFFFFF;
+}
+
+/* Additional Wallets Styles */
+.additional-wallets {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.additional-wallets h4 {
+    color: #20B2AA;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.additional-wallet {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(32, 178, 170, 0.1);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.additional-wallet:hover {
+    border-color: rgba(32, 178, 170, 0.3);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.additional-wallet .wallet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.additional-wallet .wallet-label {
+    color: #20B2AA;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.additional-wallet .wallet-address {
+    color: #CCCCCC;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.additional-wallet .wallet-status {
+    color: #888888;
+    font-size: 0.8rem;
+}
+
+.wallet-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-remove {
+    background: rgba(255, 107, 107, 0.1);
+    color: #FF6B6B;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.btn-remove:hover {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #FF6B6B;
+    transform: translateY(-2px);
 }
 
 .field-value {
@@ -1072,6 +1178,38 @@ function showSuccessMessage(message) {
     setTimeout(() => {
         notification.remove();
     }, 3000);
+}
+
+// Remove wallet function
+async function removeWallet(walletId) {
+    if (!confirm('Are you sure you want to remove this wallet?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/app/remove-wallet/${walletId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showSuccessMessage('Wallet removed successfully!');
+            
+            // Refresh page to update wallet list
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Failed to remove wallet');
+        }
+    } catch (error) {
+        console.error('Remove wallet error:', error);
+        alert(error.message || 'Failed to remove wallet. Please try again.');
+    }
 }
 </script>
 {% endblock %}

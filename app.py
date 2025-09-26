@@ -739,7 +739,7 @@ def add_wallet():
         new_wallet.user_id = user.id
         new_wallet.wallet_address = address.lower()
         new_wallet.wallet_type = 'additional'
-        new_wallet.label = label
+        new_wallet.wallet_label = label
         new_wallet.is_primary = False
         
         db.session.add(new_wallet)
@@ -771,6 +771,46 @@ def add_wallet():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to add wallet. Please try again.'}), 500
+
+@app.route('/app/remove-wallet/<int:wallet_id>', methods=['DELETE'])
+def remove_wallet(wallet_id):
+    """Remove additional wallet from user account"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        # Find the wallet and verify ownership
+        wallet = ConnectedWallet.query.filter_by(id=wallet_id, user_id=user.id).first()
+        if not wallet:
+            return jsonify({'error': 'Wallet not found or not owned by user'}), 404
+        
+        # Prevent removing primary wallet
+        if wallet.is_primary:
+            return jsonify({'error': 'Cannot remove primary wallet'}), 400
+        
+        # Remove wallet
+        db.session.delete(wallet)
+        
+        # Add activity log
+        activity = Activity()
+        activity.user_id = user.id
+        activity.activity_type = 'wallet_removed'
+        activity.title = 'Wallet Removed'
+        activity.description = f'Removed wallet: {wallet.wallet_label or "Unnamed"}'
+        activity.points_earned = 0
+        db.session.add(activity)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Wallet removed successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to remove wallet. Please try again.'}), 500
 
 # Initialize database when app starts
 init_database()
