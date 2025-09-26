@@ -477,11 +477,11 @@
                     <div class="token-stats">
                         <div class="stat-item">
                             <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
-                            <div class="stat-value" style="font-size: 0.9rem; opacity: 0.8;">${{ "%.4f"|format(token.current_price * 0.125) }}</div>
+                            <div class="stat-value" style="font-size: 0.9rem; opacity: 0.8;">${{ "%.4f"|format(token.current_price|float * 0.125) }}</div>
                             <div class="stat-label">Price</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap * 0.125 / 1000) }}K</div>
+                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap|float * 0.125 / 1000) }}K</div>
                             <div class="stat-value" style="font-size: 0.9rem; opacity: 0.8;">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
                             <div class="stat-label">Market Cap</div>
                         </div>
@@ -504,7 +504,7 @@
                             <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
                         </div>
                         <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
-                            ${{ "%.0f"|format((70000 - token.current_market_cap) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap) }} KAS) needed to graduate to Kaspa Finance DEX
+                            ${{ "%.0f"|format((70000 - token.current_market_cap|float) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap|float) }} KAS) needed to graduate to Kaspa Finance DEX
                         </p>
                     </div>
                 </div>
