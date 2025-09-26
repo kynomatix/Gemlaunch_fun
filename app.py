@@ -178,8 +178,12 @@ def verify_signature():
         })
         
     except Exception as e:
-        # Clear any partial session data
-        session.pop(session_key, None)
+        # Clear any partial session data if session_key is defined
+        try:
+            if 'session_key' in locals():
+                session.pop(session_key, None)
+        except:
+            pass
         return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
 
 @app.route('/api/disconnect-wallet', methods=['POST'])
@@ -229,7 +233,7 @@ def app_home():
 
 @app.route('/app/dashboard')
 def app_dashboard():
-    """User dashboard with stats and portfolio"""
+    """User dashboard with stats and portfolio - now includes activities and achievements"""
     user = get_current_user()
     if not user:
         return render_template('app/connect_wallet.html')
@@ -238,10 +242,28 @@ def app_dashboard():
     created_tokens = Token.query.filter_by(creator_id=user.id).all()
     holdings = Holding.query.filter_by(user_id=user.id).all()
     
+    # Get user's activities
+    activities = Activity.query.filter_by(user_id=user.id).order_by(Activity.created_at.desc()).limit(20).all()
+    
+    # Get user's achievements
+    user_achievements = UserAchievement.query.filter_by(user_id=user.id).all()
+    total_achievements = Achievement.query.count()
+    
+    # Calculate achievement points
+    achievement_points = sum(achievement.points_earned for achievement in user_achievements)
+    
+    # Get referral info for achievements
+    referral = Referral.query.filter_by(referrer_id=user.id).first()
+    
     return render_template('app/dashboard.html', 
                          user=user, 
                          created_tokens=created_tokens, 
-                         holdings=holdings)
+                         holdings=holdings,
+                         activities=activities,
+                         user_achievements=user_achievements,
+                         total_achievements=total_achievements,
+                         achievement_points=achievement_points,
+                         referral=referral)
 
 @app.route('/app/create', methods=['GET', 'POST'])
 def create_token():
@@ -354,7 +376,8 @@ def profile():
     # Get or create user profile
     user_profile = UserProfile.query.filter_by(user_id=user.id).first()
     if not user_profile:
-        user_profile = UserProfile(user_id=user.id)
+        user_profile = UserProfile()
+        user_profile.user_id = user.id
         db.session.add(user_profile)
         db.session.commit()
     
@@ -370,11 +393,10 @@ def profile():
         # Generate referral code
         import secrets
         referral_code = f"kryptoman{secrets.randbelow(10000):04d}"
-        referral = Referral(
-            referrer_id=user.id,
-            referral_code=referral_code,
-            referral_link=f"https://gemlaunch.fun/?ref={referral_code}"
-        )
+        referral = Referral()
+        referral.referrer_id = user.id
+        referral.referral_code = referral_code
+        referral.referral_link = f"https://gemlaunch.fun/?ref={referral_code}"
         db.session.add(referral)
         db.session.commit()
     
@@ -387,10 +409,18 @@ def profile():
 
 @app.route('/app/referrals')
 def referrals():
-    """Referral management and tracking page"""
+    """Referral management and tracking page - now includes profile management"""
     user = get_current_user()
     if not user:
         return render_template('app/connect_wallet.html')
+    
+    # Get or create user profile
+    user_profile = UserProfile.query.filter_by(user_id=user.id).first()
+    if not user_profile:
+        user_profile = UserProfile()
+        user_profile.user_id = user.id
+        db.session.add(user_profile)
+        db.session.commit()
     
     # Get user's referral info
     referral = Referral.query.filter_by(referrer_id=user.id).first()
@@ -398,11 +428,10 @@ def referrals():
         # Generate referral code if doesn't exist
         import secrets
         referral_code = f"kryptoman{secrets.randbelow(10000):04d}"
-        referral = Referral(
-            referrer_id=user.id,
-            referral_code=referral_code,
-            referral_link=f"https://gemlaunch.fun/?ref={referral_code}"
-        )
+        referral = Referral()
+        referral.referrer_id = user.id
+        referral.referral_code = referral_code
+        referral.referral_link = f"https://gemlaunch.fun/?ref={referral_code}"
         db.session.add(referral)
         db.session.commit()
     
@@ -411,10 +440,15 @@ def referrals():
         Referral.referrer_id == user.id
     ).all()
     
+    # Get connected wallets
+    connected_wallets = ConnectedWallet.query.filter_by(user_id=user.id).all()
+    
     return render_template('app/referrals.html', 
                          user=user, 
+                         user_profile=user_profile,
                          referral=referral,
-                         referred_users=referred_users)
+                         referred_users=referred_users,
+                         connected_wallets=connected_wallets)
 
 @app.route('/app/activities')
 def activities():

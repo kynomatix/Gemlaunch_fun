@@ -6,13 +6,132 @@
 <div class="referrals-container">
     <div class="referrals-header">
         <h1 class="referrals-title">
-            <i class="fas fa-users"></i>
-            Referral Program
+            <i class="fas fa-user-circle"></i>
+            Profile & Referrals
         </h1>
-        <p class="referrals-subtitle">Earn 50 points for every qualified referral that joins Gemlaunch.fun</p>
+        <p class="referrals-subtitle">Manage your account, wallets, and referral program</p>
     </div>
 
     <div class="referrals-grid">
+        <!-- Profile Information -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-user"></i>
+                    Profile Information
+                </h3>
+                <button class="btn-edit">
+                    <i class="fas fa-edit"></i>
+                    Edit
+                </button>
+            </div>
+            
+            <div class="profile-fields">
+                <div class="field-group">
+                    <label>Username</label>
+                    <div class="field-value">{{ (user_profile.username if user_profile else None) or user.display_name or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Display Name</label>
+                    <div class="field-value">{{ user.display_name or (user_profile.username if user_profile else None) or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Bio</label>
+                    <div class="field-value">{{ (user_profile.bio if user_profile else None) or 'No bio added yet' }}</div>
+                </div>
+                
+                <div class="verification-badges">
+                    {% if user_profile and user_profile.is_twitter_verified and user_profile.twitter_handle %}
+                    <span class="badge verified">
+                        <i class="fab fa-twitter"></i>
+                        @{{ user_profile.twitter_handle }}
+                    </span>
+                    {% endif %}
+                    
+                    {% if user_profile and user_profile.telegram_handle %}
+                    <span class="badge {{ 'verified' if user_profile.is_telegram_verified else 'unverified' }}">
+                        <i class="fab fa-telegram"></i>
+                        @{{ user_profile.telegram_handle }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Picture -->
+        <div class="profile-picture-section">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-camera"></i>
+                    Profile Picture
+                </h3>
+            </div>
+            
+            <div class="profile-picture-container">
+                <div class="profile-picture">
+                    {% if user_profile and user_profile.profile_picture_url %}
+                        <img src="{{ user_profile.profile_picture_url }}" alt="Profile Picture">
+                    {% else %}
+                        <div class="default-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                    <div class="picture-overlay">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                </div>
+                <div class="upload-info">
+                    <p>Upload an image (max 5MB)</p>
+                    <input type="file" id="profilePicture" accept="image/*" style="display: none;">
+                    <button class="btn-upload" onclick="document.getElementById('profilePicture').click();">
+                        <i class="fas fa-upload"></i>
+                        Choose File
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connected Wallets -->
+        <div class="wallets-section">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-wallet"></i>
+                    Connected Wallets
+                </h3>
+            </div>
+            
+            <div class="primary-wallet">
+                <div class="wallet-info">
+                    <span class="wallet-label">Primary</span>
+                    {% if user.wallet_address and user.wallet_address|length >= 10 %}
+                        <span class="wallet-address">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
+                        <span class="wallet-status connected">Currently connected</span>
+                    {% else %}
+                        <span class="wallet-address">No wallet connected</span>
+                        <span class="wallet-status disconnected">Connect your wallet</span>
+                    {% endif %}
+                </div>
+                <button class="btn-copy" onclick="copyWalletAddress('{{ user.wallet_address or '' }}')" {% if not user.wallet_address %}disabled{% endif %}>
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+            
+            <div class="add-wallet-section">
+                <h4>Add Additional Wallet</h4>
+                <div class="wallet-form">
+                    <input type="text" placeholder="Wallet label (e.g., Project Alpha)" class="wallet-label-input">
+                    <input type="text" placeholder="0x..." class="wallet-address-input">
+                    <button class="btn-add-wallet">
+                        <i class="fas fa-plus"></i>
+                        Add Wallet
+                    </button>
+                </div>
+                <p class="wallet-help">Add wallets for different projects. All activities will be tracked under your main account.</p>
+            </div>
+        </div>
+
         <!-- Referral Link Section -->
         <div class="referral-link-section">
             <div class="section-header">
@@ -288,12 +407,24 @@
 
 .referrals-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 2rem;
     grid-template-areas: 
-        "link stats"
-        "users users"
-        "info info";
+        "profile picture wallets"
+        "link stats users"
+        "info info info";
+}
+
+.profile-section {
+    grid-area: profile;
+}
+
+.profile-picture-section {
+    grid-area: picture;
+}
+
+.wallets-section {
+    grid-area: wallets;
 }
 
 .referral-link-section {
@@ -312,7 +443,7 @@
     grid-area: info;
 }
 
-.referral-link-section, .referral-stats-section, .referred-users-section, .program-info-section {
+.profile-section, .profile-picture-section, .wallets-section, .referral-link-section, .referral-stats-section, .referred-users-section, .program-info-section {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 20px;
     padding: 2rem;
@@ -728,11 +859,290 @@
     font-weight: 500;
 }
 
+/* Profile-specific styles */
+.btn-edit {
+    background: rgba(32, 178, 170, 0.1);
+    color: #20B2AA;
+    border: 1px solid #20B2AA;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background: rgba(32, 178, 170, 0.2);
+    transform: translateY(-2px);
+}
+
+.profile-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.field-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.field-group label {
+    color: #888888;
+    font-weight: 500;
+    min-width: 120px;
+}
+
+.field-value {
+    color: #FFFFFF;
+    font-weight: 500;
+    text-align: right;
+    flex: 1;
+}
+
+.verification-badges {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.badge.verified {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid #22c55e;
+}
+
+.badge.unverified {
+    background: rgba(156, 163, 175, 0.1);
+    color: #9ca3af;
+    border: 1px solid #9ca3af;
+}
+
+.profile-picture-container {
+    text-align: center;
+}
+
+.profile-picture {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid #20B2AA;
+    background: rgba(32, 178, 170, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.default-avatar {
+    font-size: 3rem;
+    color: #20B2AA;
+}
+
+.picture-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+    color: #FFFFFF;
+    font-size: 1.5rem;
+}
+
+.profile-picture:hover .picture-overlay {
+    opacity: 1;
+}
+
+.upload-info {
+    margin-top: 1rem;
+}
+
+.upload-info p {
+    color: #888888;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.btn-upload {
+    background: rgba(32, 178, 170, 0.1);
+    color: #20B2AA;
+    border: 1px solid #20B2AA;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 auto;
+}
+
+.btn-upload:hover {
+    background: rgba(32, 178, 170, 0.2);
+    transform: translateY(-2px);
+}
+
+.primary-wallet {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.wallet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.wallet-label {
+    color: #20B2AA;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wallet-address {
+    color: #FFFFFF;
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.wallet-status {
+    font-size: 0.85rem;
+    color: #22c55e;
+}
+
+.wallet-status.disconnected {
+    color: #f59e0b;
+}
+
+.btn-copy {
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid #20B2AA;
+    color: #20B2AA;
+    padding: 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-copy:hover {
+    background: rgba(32, 178, 170, 0.2);
+    transform: translateY(-2px);
+}
+
+.btn-copy:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.add-wallet-section h4 {
+    color: #FFFFFF;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.wallet-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.wallet-label-input, .wallet-address-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #FFFFFF;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.wallet-label-input:focus, .wallet-address-input:focus {
+    outline: none;
+    border-color: #20B2AA;
+    box-shadow: 0 0 10px rgba(32, 178, 170, 0.2);
+}
+
+.btn-add-wallet {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+    border: none;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-add-wallet:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+}
+
+.wallet-help {
+    color: #888888;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
 /* Mobile responsiveness */
+@media (max-width: 1200px) {
+    .referrals-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas: 
+            "profile picture"
+            "wallets wallets"
+            "link stats"
+            "users users"
+            "info info";
+    }
+}
+
 @media (max-width: 1024px) {
     .referrals-grid {
         grid-template-columns: 1fr;
         grid-template-areas: 
+            "profile"
+            "picture"
+            "wallets"
             "link"
             "stats"
             "users"
@@ -894,6 +1304,30 @@ function shareViaEmail() {
     const body = encodeURIComponent(`Hi there!\n\nI wanted to share something exciting with you - Gemlaunch.fun, the fastest way to launch memecoins on the Kaspa blockchain!\n\n🚀 Create tokens in just a few clicks\n💎 Trade on the fastest proof-of-work blockchain\n📈 Fair launch mechanism with graduation to DEX\n\nJoin me using this link: ${link}\n\nHappy trading!\n`);
     
     window.open(`mailto:?subject=${subject}&body=${body}`);
+}
+
+// Profile functionality
+function copyWalletAddress(address) {
+    if (!address || address === 'None' || address.trim() === '') {
+        alert('No wallet address to copy');
+        return;
+    }
+    
+    navigator.clipboard.writeText(address).then(function() {
+        // Show feedback
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.style.background = 'rgba(34, 197, 94, 0.2)';
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.style.background = '';
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Failed to copy wallet address: ', err);
+        alert('Failed to copy wallet address');
+    });
 }
 
 // Animation on load
