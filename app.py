@@ -218,8 +218,18 @@ def user_info():
 
 # App routes
 @app.route('/app')
+def app_home():
+    """Main app - redirects to marketplace (pump.fun style)"""
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
+    # Redirect to marketplace as main home page
+    return redirect(url_for('token_marketplace'))
+
+@app.route('/app/dashboard')
 def app_dashboard():
-    """Main app dashboard with user stats"""
+    """User dashboard with stats and portfolio"""
     user = get_current_user()
     if not user:
         return render_template('app/connect_wallet.html')

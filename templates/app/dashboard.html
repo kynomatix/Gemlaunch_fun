@@ -239,8 +239,8 @@
 {% block content %}
             <!-- Welcome Header -->
             <div class="dashboard-header">
-                <h1>Welcome back, {{ user.display_name or "Kaspa Trader" }}! 🚀</h1>
-                <p>Ready to launch your next memecoin on Kaspa?</p>
+                <h1>Your Dashboard</h1>
+                <p>Track your tokens, portfolio, and trading activity</p>
                 
                 <div class="user-stats">
                     <div class="stat-card">
@@ -273,6 +273,42 @@
                     Explore Marketplace
                 </a>
             </div>
+
+            <!-- Portfolio Holdings Section -->
+            {% if holdings %}
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Your Portfolio</h2>
+                </div>
+                
+                <div class="token-grid">
+                    {% for holding in holdings %}
+                        <div class="token-card">
+                            <div class="token-header">
+                                <div class="token-image">💎</div>
+                                <div class="token-info">
+                                    <h3>{{ holding.token.name }}</h3>
+                                    <div class="token-symbol">${{ holding.token.symbol }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="token-stats">
+                                <div class="token-stat">
+                                    <div class="token-stat-value">{{ "%.0f"|format(holding.amount) }}</div>
+                                    <div class="token-stat-label">Tokens Held</div>
+                                </div>
+                                <div class="token-stat">
+                                    <div class="token-stat-value">${{ "%.2f"|format(holding.current_value or 0) }}</div>
+                                    <div class="token-stat-label">Current Value</div>
+                                </div>
+                            </div>
+                            
+                            <a href="/app/token/{{ holding.token.id }}" class="token-view-btn">View Token</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Created Tokens Section -->
             <div class="dashboard-section">

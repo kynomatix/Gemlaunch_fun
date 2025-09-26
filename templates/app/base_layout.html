@@ -291,10 +291,6 @@
         <!-- Sidebar -->
         <nav class="app-sidebar" id="sidebar">
             <div class="sidebar-nav">
-                <a href="/app" class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
                 <a href="/app/tokens" class="nav-item {% if request.endpoint == 'token_marketplace' %}active{% endif %}">
                     <i class="fas fa-store"></i>
                     <span>Marketplace</span>
@@ -304,13 +300,13 @@
                     <span>Create Token</span>
                 </a>
                 {% if user %}
-                <a href="/app/portfolio" class="nav-item {% if request.endpoint == 'user_portfolio' %}active{% endif %}">
-                    <i class="fas fa-wallet"></i>
-                    <span>Portfolio</span>
+                <a href="/app/dashboard" class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
                 </a>
-                <a href="/app/achievements" class="nav-item {% if request.endpoint == 'user_achievements' %}active{% endif %}">
+                <a href="/app/leaderboard" class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}">
                     <i class="fas fa-trophy"></i>
-                    <span>Achievements</span>
+                    <span>Leaderboard</span>
                 </a>
                 {% endif %}
             </div>
