@@ -17,13 +17,14 @@
         <div class="profile-section">
             <div class="section-header">
                 <h2>Profile Information</h2>
-                <button class="btn-edit">
+                <button class="btn-edit" id="editProfileBtn" onclick="toggleEditMode()">
                     <i class="fas fa-edit"></i>
                     Edit
                 </button>
             </div>
             
-            <div class="profile-fields">
+            <!-- View Mode -->
+            <div class="profile-fields" id="profileView">
                 <div class="field-group">
                     <label>Username</label>
                     <div class="field-value">{{ (user_profile.username if user_profile else None) or user.display_name or 'Not set' }}</div>
@@ -39,21 +40,104 @@
                     <div class="field-value">{{ (user_profile.bio if user_profile else None) or 'No bio added yet' }}</div>
                 </div>
                 
-                <div class="verification-badges">
-                    {% if user_profile and user_profile.is_twitter_verified and user_profile.twitter_handle %}
-                    <span class="badge verified">
-                        <i class="fab fa-twitter"></i>
-                        @{{ user_profile.twitter_handle }}
-                    </span>
-                    {% endif %}
-                    
-                    {% if user_profile and user_profile.telegram_handle %}
-                    <span class="badge {{ 'verified' if user_profile.is_telegram_verified else 'unverified' }}">
-                        <i class="fab fa-telegram"></i>
-                        @{{ user_profile.telegram_handle }}
-                    </span>
-                    {% endif %}
+                <div class="field-group">
+                    <label>Twitter</label>
+                    <div class="field-value">{{ (user_profile.twitter_handle if user_profile else None) or 'Not set' }}</div>
                 </div>
+                
+                <div class="field-group">
+                    <label>Telegram</label>
+                    <div class="field-value">{{ (user_profile.telegram_handle if user_profile else None) or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Discord</label>
+                    <div class="field-value">{{ (user_profile.discord_handle if user_profile else None) or 'Not set' }}</div>
+                </div>
+            </div>
+            
+            <!-- Edit Mode -->
+            <div class="profile-edit-form" id="profileEdit" style="display: none;">
+                <form method="POST" action="{{ url_for('profile') }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" 
+                                   value="{{ user_profile.username if user_profile else '' }}" 
+                                   placeholder="Enter username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="display_name">Display Name</label>
+                            <input type="text" id="display_name" name="display_name" 
+                                   value="{{ user.display_name or '' }}" 
+                                   placeholder="Enter display name">
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="bio">Bio</label>
+                            <textarea id="bio" name="bio" rows="3" 
+                                     placeholder="Tell us about yourself...">{{ user_profile.bio if user_profile else '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="twitter_handle">Twitter Handle</label>
+                            <input type="text" id="twitter_handle" name="twitter_handle" 
+                                   value="{{ user_profile.twitter_handle if user_profile else '' }}" 
+                                   placeholder="@username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="telegram_handle">Telegram Handle</label>
+                            <input type="text" id="telegram_handle" name="telegram_handle" 
+                                   value="{{ user_profile.telegram_handle if user_profile else '' }}" 
+                                   placeholder="@username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="discord_handle">Discord Handle</label>
+                            <input type="text" id="discord_handle" name="discord_handle" 
+                                   value="{{ user_profile.discord_handle if user_profile else '' }}" 
+                                   placeholder="username#1234">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="profile_picture_url">Profile Picture URL</label>
+                            <input type="url" id="profile_picture_url" name="profile_picture_url" 
+                                   value="{{ user_profile.profile_picture_url if user_profile else '' }}" 
+                                   placeholder="https://...">
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <div class="privacy-settings">
+                                <h4>Privacy Settings</h4>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="is_profile_public" 
+                                           {{ 'checked' if (user_profile and user_profile.is_profile_public) else '' }}>
+                                    <span class="checkmark"></span>
+                                    Make profile public
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="show_wallet_address" 
+                                           {{ 'checked' if (user_profile and user_profile.show_wallet_address) else '' }}>
+                                    <span class="checkmark"></span>
+                                    Show wallet address
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-save"></i>
+                            Save Changes
+                        </button>
+                        <button type="button" class="btn-cancel" onclick="toggleEditMode()">
+                            <i class="fas fa-times"></i>
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -261,6 +345,128 @@
     color: #888888;
     font-weight: 500;
     min-width: 120px;
+}
+
+/* Profile Edit Form Styles */
+.profile-edit-form {
+    margin-top: 1rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    color: #20B2AA;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group textarea {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: #FFFFFF;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #20B2AA;
+    box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: #888888;
+}
+
+.privacy-settings {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.privacy-settings h4 {
+    color: #20B2AA;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    color: #CCCCCC;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 0.75rem;
+    width: 18px;
+    height: 18px;
+    accent-color: #20B2AA;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    grid-column: 1 / -1;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000000;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: #CCCCCC;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
 }
 
 .field-value {
@@ -603,10 +809,35 @@
         align-items: flex-start;
         gap: 1rem;
     }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
 <script>
+// Toggle between view and edit mode
+function toggleEditMode() {
+    const viewMode = document.getElementById('profileView');
+    const editMode = document.getElementById('profileEdit');
+    const editBtn = document.getElementById('editProfileBtn');
+    
+    if (editMode.style.display === 'none' || editMode.style.display === '') {
+        // Show edit mode
+        viewMode.style.display = 'none';
+        editMode.style.display = 'block';
+        editBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+        editBtn.classList.add('editing');
+    } else {
+        // Show view mode
+        viewMode.style.display = 'block';
+        editMode.style.display = 'none';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        editBtn.classList.remove('editing');
+    }
+}
+
 function copyWalletAddress(address) {
     if (!address || address === 'None' || address.trim() === '') {
         alert('No wallet address to copy');
