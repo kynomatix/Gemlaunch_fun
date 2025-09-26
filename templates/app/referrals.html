@@ -7,12 +7,28 @@
     <div class="referrals-header">
         <h1 class="referrals-title">
             <i class="fas fa-user-circle"></i>
-            Profile & Referrals
+            Profile
         </h1>
         <p class="referrals-subtitle">Manage your account, wallets, and referral program</p>
+        
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('profile')">
+                <i class="fas fa-user"></i>
+                Profile
+            </button>
+            <button class="tab-btn" onclick="switchTab('referrals')">
+                <i class="fas fa-link"></i>
+                Referrals
+            </button>
+        </div>
     </div>
 
-    <div class="referrals-grid">
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Profile Tab -->
+        <div id="profile-tab" class="tab-pane active">
+            <div class="referrals-grid profile-grid">
         <!-- Profile Information -->
         <div class="profile-section">
             <div class="section-header">
@@ -131,6 +147,37 @@
                 <p class="wallet-help">Add wallets for different projects. All activities will be tracked under your main account.</p>
             </div>
         </div>
+
+        <!-- Account Stats -->
+        <div class="account-stats-section">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-chart-bar"></i>
+                    Account Stats
+                </h3>
+            </div>
+            
+            <div class="account-stats-grid">
+                <div class="account-stat">
+                    <div class="stat-value">{{ "{:,}".format(user.gem_points or 0) }}</div>
+                    <div class="stat-label">Total Points</div>
+                </div>
+                <div class="account-stat">
+                    <div class="stat-value account-type">Standard</div>
+                    <div class="stat-label">Account Type</div>
+                </div>
+                <div class="account-stat">
+                    <div class="stat-value">{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else 'Recently' }}</div>
+                    <div class="stat-label">Member Since</div>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
+
+        <!-- Referrals Tab -->
+        <div id="referrals-tab" class="tab-pane">
+            <div class="referrals-grid referrals-content">
 
         <!-- Referral Link Section -->
         <div class="referral-link-section">
@@ -371,10 +418,191 @@
                 </div>
             </div>
         </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
+/* Tab Navigation Styles */
+.tab-navigation {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    border-bottom: 2px solid rgba(32, 178, 170, 0.2);
+    padding-bottom: 1rem;
+}
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    color: #CCCCCC;
+    padding: 1rem 2rem;
+    border-radius: 12px 12px 0 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    border-bottom: none;
+}
+
+.tab-btn:hover {
+    background: rgba(32, 178, 170, 0.1);
+    border-color: rgba(32, 178, 170, 0.4);
+    color: #20B2AA;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
+    border-color: #20B2AA;
+    color: #20B2AA;
+    border-bottom: 2px solid #20B2AA;
+    margin-bottom: -2px;
+}
+
+.tab-content {
+    margin-top: 2rem;
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Account Stats Styles */
+.account-stats-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.account-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.account-stat {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(32, 178, 170, 0.1);
+}
+
+.account-stat .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #20B2AA;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.account-stat .stat-value.account-type {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 1.2rem;
+}
+
+.account-stat .stat-label {
+    color: #888888;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Grid Layout Adjustments */
+.profile-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    grid-template-areas:
+        "profile-info profile-picture"
+        "wallets account-stats";
+}
+
+.profile-section {
+    grid-area: profile-info;
+}
+
+.profile-picture-section {
+    grid-area: profile-picture;
+}
+
+.wallets-section {
+    grid-area: wallets;
+}
+
+.account-stats-section {
+    grid-area: account-stats;
+}
+
+.referrals-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    grid-template-areas:
+        "referral-link referral-stats"
+        "referred-users program-info";
+}
+
+.referral-link-section {
+    grid-area: referral-link;
+}
+
+.referral-stats-section {
+    grid-area: referral-stats;
+}
+
+.referred-users-section {
+    grid-area: referred-users;
+}
+
+.program-info-section {
+    grid-area: program-info;
+}
+
+@media (max-width: 1024px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "profile-info"
+            "profile-picture"
+            "wallets"
+            "account-stats";
+    }
+    
+    .referrals-content {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "referral-link"
+            "referral-stats"
+            "referred-users"
+            "program-info";
+    }
+}
+
 .referrals-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -405,43 +633,9 @@
     font-size: 1.1rem;
 }
 
-.referrals-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 2rem;
-    grid-template-areas: 
-        "profile picture wallets"
-        "link stats users"
-        "info info info";
-}
+/* Legacy grid removed - using tab-specific grids now */
 
-.profile-section {
-    grid-area: profile;
-}
-
-.profile-picture-section {
-    grid-area: picture;
-}
-
-.wallets-section {
-    grid-area: wallets;
-}
-
-.referral-link-section {
-    grid-area: link;
-}
-
-.referral-stats-section {
-    grid-area: stats;
-}
-
-.referred-users-section {
-    grid-area: users;
-}
-
-.program-info-section {
-    grid-area: info;
-}
+/* Legacy grid-area assignments removed - using tab-specific areas now */
 
 .profile-section, .profile-picture-section, .wallets-section, .referral-link-section, .referral-stats-section, .referred-users-section, .program-info-section {
     background: rgba(255, 255, 255, 0.05);
@@ -1123,30 +1317,20 @@
     line-height: 1.4;
 }
 
-/* Mobile responsiveness */
-@media (max-width: 1200px) {
-    .referrals-grid {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas: 
-            "profile picture"
-            "wallets wallets"
-            "link stats"
-            "users users"
-            "info info";
+/* Mobile responsiveness for tabs */
+@media (max-width: 768px) {
+    .tab-btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
     }
-}
-
-@media (max-width: 1024px) {
-    .referrals-grid {
+    
+    .tab-navigation {
+        gap: 0.25rem;
+    }
+    
+    .account-stats-grid {
         grid-template-columns: 1fr;
-        grid-template-areas: 
-            "profile"
-            "picture"
-            "wallets"
-            "link"
-            "stats"
-            "users"
-            "info";
+        gap: 1rem;
     }
     
     .stats-grid {
@@ -1356,5 +1540,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300 + (index * 100));
     });
 });
+
+// Tab switching functionality
+function switchTab(tabName) {
+    // Hide all tab panes
+    document.querySelectorAll('.tab-pane').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show the selected tab
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // Add active class to the clicked button
+    document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
+}
 </script>
 {% endblock %}
