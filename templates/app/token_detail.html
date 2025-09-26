@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         .token-detail-main {
             padding-top: 80px;
@@ -476,16 +476,18 @@
                     
                     <div class="token-stats">
                         <div class="stat-item">
-                            <div class="stat-value">{{ "%.6f"|format(token.current_price) }}</div>
-                            <div class="stat-label">Price (KAS)</div>
+                            <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
+                            <div class="stat-value" style="font-size: 0.9rem; opacity: 0.8;">${{ "%.4f"|format(token.current_price * 0.125) }}</div>
+                            <div class="stat-label">Price</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap/1000) }}K</div>
+                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap * 0.125 / 1000) }}K</div>
+                            <div class="stat-value" style="font-size: 0.9rem; opacity: 0.8;">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
                             <div class="stat-label">Market Cap</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-value">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
-                            <div class="stat-label">Supply</div>
+                            <div class="stat-label">Circulating Supply</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-value">{{ token.holder_count or 0 }}</div>
@@ -502,7 +504,7 @@
                             <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
                         </div>
                         <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
-                            ${{ "%.0f"|format(70000 - token.current_market_cap) }} needed to graduate to Kaspa Finance DEX
+                            ${{ "%.0f"|format((70000 - token.current_market_cap) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap) }} KAS) needed to graduate to Kaspa Finance DEX
                         </p>
                     </div>
                 </div>
@@ -512,13 +514,13 @@
                     <div class="chart-header">
                         <h3>Price Chart</h3>
                         <div class="chart-timeframes">
-                            <button class="timeframe-btn active">1H</button>
-                            <button class="timeframe-btn">6H</button>
-                            <button class="timeframe-btn">1D</button>
-                            <button class="timeframe-btn">7D</button>
+                            <button class="timeframe-btn active" data-timeframe="1H">1H</button>
+                            <button class="timeframe-btn" data-timeframe="6H">6H</button>
+                            <button class="timeframe-btn" data-timeframe="1D">1D</button>
+                            <button class="timeframe-btn" data-timeframe="7D">7D</button>
                         </div>
                     </div>
-                    <canvas id="priceChart" style="max-height: 300px;"></canvas>
+                    <div id="tradingview-chart" style="height: 300px; background: rgba(255, 255, 255, 0.02); border-radius: 10px;"></div>
                 </div>
             </div>
 
@@ -627,47 +629,60 @@
     <script>
         let currentTradeMode = 'buy';
         const tokenPrice = {{ token.current_price }};
+        const kasToUsd = 0.125; // Mock KAS to USD exchange rate
         
-        // Initialize price chart
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        const priceChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['1h ago', '50m', '40m', '30m', '20m', '10m', 'Now'],
-                datasets: [{
-                    label: 'Price (KAS)',
-                    data: [
-                        tokenPrice * 0.8,
-                        tokenPrice * 0.9,
-                        tokenPrice * 0.85,
-                        tokenPrice * 1.1,
-                        tokenPrice * 1.05,
-                        tokenPrice * 0.95,
-                        tokenPrice
-                    ],
-                    borderColor: '#20B2AA',
-                    backgroundColor: 'rgba(32, 178, 170, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
+        // Initialize TradingView chart
+        const chart = LightweightCharts.createChart(document.getElementById('tradingview-chart'), {
+            width: document.getElementById('tradingview-chart').clientWidth,
+            height: 300,
+            layout: {
+                background: { color: 'transparent' },
+                textColor: '#CCCCCC',
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { 
-                        ticks: { color: '#CCCCCC' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    },
-                    y: { 
-                        ticks: { color: '#CCCCCC' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    }
-                }
-            }
+            grid: {
+                vertLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                horzLines: { color: 'rgba(255, 255, 255, 0.1)' },
+            },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            timeScale: {
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                timeVisible: true,
+                secondsVisible: false,
+            },
+            priceScale: {
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+            },
+        });
+
+        // Create line series for price
+        const lineSeries = chart.addLineSeries({
+            color: '#20B2AA',
+            lineWidth: 2,
+            priceFormat: {
+                type: 'price',
+                precision: 6,
+                minMove: 0.000001,
+            },
+        });
+
+        // Generate mock price data for the last hour
+        const now = Math.floor(Date.now() / 1000);
+        const priceData = [];
+        for (let i = 60; i >= 0; i--) {
+            const time = now - (i * 60); // Each point is 1 minute apart
+            const randomVariation = 0.8 + Math.random() * 0.4; // ±20% variation
+            const price = tokenPrice * randomVariation * (1 + Math.sin(i / 10) * 0.1); // Add some wave pattern
+            priceData.push({
+                time: time,
+                value: price
+            });
+        }
+        
+        lineSeries.setData(priceData);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            chart.applyOptions({ width: document.getElementById('tradingview-chart').clientWidth });
         });
         
         // Trading functions
@@ -730,6 +745,60 @@
             input.value = '';
         }
         
+        // Timeframe switching
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Update active state
+                document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const timeframe = this.dataset.timeframe;
+                updateChartTimeframe(timeframe);
+            });
+        });
+        
+        function updateChartTimeframe(timeframe) {
+            // Generate new data based on timeframe
+            const now = Math.floor(Date.now() / 1000);
+            const priceData = [];
+            let intervals, intervalSeconds;
+            
+            switch(timeframe) {
+                case '1H':
+                    intervals = 60;
+                    intervalSeconds = 60;
+                    break;
+                case '6H':
+                    intervals = 72;
+                    intervalSeconds = 300; // 5 minutes
+                    break;
+                case '1D':
+                    intervals = 96;
+                    intervalSeconds = 900; // 15 minutes
+                    break;
+                case '7D':
+                    intervals = 168;
+                    intervalSeconds = 3600; // 1 hour
+                    break;
+                default:
+                    intervals = 60;
+                    intervalSeconds = 60;
+            }
+            
+            for (let i = intervals; i >= 0; i--) {
+                const time = now - (i * intervalSeconds);
+                const randomVariation = 0.8 + Math.random() * 0.4;
+                const trendFactor = timeframe === '7D' ? (1 + (intervals - i) / intervals * 0.5) : 1; // Upward trend for 7D
+                const price = tokenPrice * randomVariation * trendFactor * (1 + Math.sin(i / 10) * 0.1);
+                priceData.push({
+                    time: time,
+                    value: price
+                });
+            }
+            
+            lineSeries.setData(priceData);
+        }
+
         // Owner functions
         function editToken() {
             alert('Edit token functionality - UI demo');
