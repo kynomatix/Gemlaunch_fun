@@ -59,6 +59,143 @@ body::-webkit-scrollbar { /* WebKit */
     display: none;
 }
 
+/* Authentication Form Styles */
+.auth-form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 2rem 0;
+}
+
+.auth-form {
+    max-width: 450px;
+    width: 100%;
+    padding: 3rem;
+    margin: 2rem;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.auth-header h1 {
+    font-size: 2.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.auth-header p {
+    color: #CCCCCC;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.auth-form-content {
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    color: #20B2AA;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #20B2AA;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.auth-footer {
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.auth-footer p {
+    color: #CCCCCC;
+    margin: 0;
+}
+
+.auth-footer a {
+    color: #20B2AA;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.auth-footer a:hover {
+    color: #00CED1;
+    text-decoration: underline;
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 1.5rem;
+}
+
+.flash-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.flash-success {
+    background: rgba(0, 255, 100, 0.1);
+    border: 1px solid rgba(0, 255, 100, 0.3);
+    color: #00FF64;
+}
+
+.flash-error {
+    background: rgba(255, 50, 50, 0.1);
+    border: 1px solid rgba(255, 50, 50, 0.3);
+    color: #FF3232;
+}
+
+.flash-info {
+    background: rgba(0, 174, 255, 0.1);
+    border: 1px solid rgba(0, 174, 255, 0.3);
+    color: #00AEFF;
+}
+
+.flash-message i {
+    font-size: 1.1rem;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;

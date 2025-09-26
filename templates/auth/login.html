@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Gemlaunch.fun</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Animated background with particles -->
+    <div class="bg-animation" id="particles-js"></div>
+    <div class="floating-elements"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <nav>
+                <div>
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
+                </div>
+                <div>
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/docs" class="nav-link">Documentation</a>
+                    <a href="/register" class="nav-link">Register</a>
+                    <a href="https://t.me/gemlaunchio" class="nav-link"><i class="fab fa-telegram"></i></a>
+                    <a href="https://x.com/Gemlaunch_fun" class="nav-link"><i class="fab fa-twitter"></i></a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Login Form -->
+    <section class="hero">
+        <div class="container">
+            <div class="auth-form-container">
+                <div class="glass-card auth-form">
+                    <div class="auth-header">
+                        <h1>Welcome Back</h1>
+                        <p>Sign in to launch your next memecoin</p>
+                    </div>
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="flash-messages">
+                                {% for category, message in messages %}
+                                    <div class="flash-message flash-{{ category }}">
+                                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'error' else 'info-circle' }}"></i>
+                                        {{ message }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" class="auth-form-content">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <span>Sign In</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </form>
+
+                    <div class="auth-footer">
+                        <p>Don't have an account? <a href="/register">Create one here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
