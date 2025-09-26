@@ -1,7 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement
 
@@ -23,16 +22,22 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize database
 db.init_app(app)
 
-# Initialize Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Please log in to access this page.'
-login_manager.login_message_category = 'info'
+def get_current_user():
+    """Get current user from session"""
+    wallet_address = session.get('wallet_address')
+    if wallet_address:
+        return User.query.filter_by(wallet_address=wallet_address.lower()).first()
+    return None
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+def require_wallet_connection(f):
+    """Decorator to require wallet connection"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not get_current_user():
+            return jsonify({'error': 'Wallet connection required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def index():
@@ -54,113 +59,92 @@ def health():
     """Health check endpoint"""
     return {'status': 'healthy'}
 
-# Authentication routes
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """User login page"""
-    if current_user.is_authenticated:
-        return redirect(url_for('app_dashboard'))
+# Wallet Authentication API
+@app.route('/api/connect-wallet', methods=['POST'])
+def connect_wallet():
+    """Connect wallet and create/login user"""
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    wallet_type = data.get('wallet_type', 'unknown')
     
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if not username or not password:
-            flash('Please enter both username and password.', 'error')
-            return render_template('auth/login.html')
-        
-        user = User.query.filter_by(username=username).first()
-        
-        if user and user.check_password(password):
-            login_user(user, remember=True)
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('app_dashboard'))
-        else:
-            flash('Invalid username or password.', 'error')
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address required'}), 400
     
-    return render_template('auth/login.html')
+    try:
+        # Create or get user
+        user = User.get_or_create_by_wallet(wallet_address, wallet_type)
+        
+        # Store in session
+        session['wallet_address'] = wallet_address.lower()
+        session['user_id'] = user.id
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'wallet_address': user.wallet_address,
+                'display_name': user.display_name,
+                'gem_points': user.gem_points
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    """User registration page"""
-    if current_user.is_authenticated:
-        return redirect(url_for('app_dashboard'))
-    
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        
-        # Validation
-        if not all([username, email, password, confirm_password]):
-            flash('All fields are required.', 'error')
-            return render_template('auth/register.html')
-        
-        if password != confirm_password:
-            flash('Passwords do not match.', 'error')
-            return render_template('auth/register.html')
-        
-        if password and len(password) < 6:
-            flash('Password must be at least 6 characters long.', 'error')
-            return render_template('auth/register.html')
-        
-        # Check if username or email already exists
-        if User.query.filter_by(username=username).first():
-            flash('Username already exists.', 'error')
-            return render_template('auth/register.html')
-        
-        if User.query.filter_by(email=email).first():
-            flash('Email already exists.', 'error')
-            return render_template('auth/register.html')
-        
-        # Create new user
-        user = User()
-        user.username = username
-        user.email = email
-        user.set_password(password)
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Registration successful! Please log in.', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('auth/register.html')
+@app.route('/api/disconnect-wallet', methods=['POST'])
+def disconnect_wallet():
+    """Disconnect wallet"""
+    session.clear()
+    return jsonify({'success': True})
 
-@app.route('/logout')
-@login_required
-def logout():
-    """User logout"""
-    logout_user()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('index'))
+@app.route('/api/user-info')
+def user_info():
+    """Get current user info"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not connected'}), 401
+    
+    return jsonify({
+        'user': {
+            'id': user.id,
+            'wallet_address': user.wallet_address,
+            'display_name': user.display_name,
+            'gem_points': user.gem_points,
+            'total_tokens_created': user.total_tokens_created,
+            'total_trading_volume': float(user.total_trading_volume or 0)
+        }
+    })
 
 # App routes
 @app.route('/app')
-@login_required
 def app_dashboard():
     """Main app dashboard"""
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
     # Get user's tokens and holdings
-    created_tokens = Token.query.filter_by(creator_id=current_user.id).order_by(Token.created_at.desc()).all()
-    holdings = Holding.query.filter_by(user_id=current_user.id).filter(Holding.token_amount > 0).all()
+    created_tokens = Token.query.filter_by(creator_id=user.id).order_by(Token.created_at.desc()).all()
+    holdings = Holding.query.filter_by(user_id=user.id).filter(Holding.token_amount > 0).all()
     
     return render_template('app/dashboard.html', 
                          created_tokens=created_tokens, 
                          holdings=holdings,
-                         user=current_user)
+                         user=user)
 
 @app.route('/app/create')
-@login_required
 def create_token():
     """Token creation page"""
-    return render_template('app/create_token.html')
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
 def token_marketplace():
     """Token marketplace - public page"""
     tokens = Token.query.filter_by(deployment_status='deployed').order_by(Token.created_at.desc()).all()
-    return render_template('app/marketplace.html', tokens=tokens)
+    user = get_current_user()
+    return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<int:token_id>')
 def token_detail(token_id):
@@ -170,15 +154,17 @@ def token_detail(token_id):
     # Get recent trades
     recent_trades = Trade.query.filter_by(token_id=token_id, tx_status='confirmed').order_by(Trade.confirmed_at.desc()).limit(10).all()
     
-    # Get user's holding if logged in
+    # Get user's holding if connected
     user_holding = None
-    if current_user.is_authenticated:
-        user_holding = Holding.query.filter_by(user_id=current_user.id, token_id=token_id).first()
+    user = get_current_user()
+    if user:
+        user_holding = Holding.query.filter_by(user_id=user.id, token_id=token_id).first()
     
     return render_template('app/token_detail.html', 
                          token=token, 
                          recent_trades=recent_trades,
-                         user_holding=user_holding)
+                         user_holding=user_holding,
+                         user=user)
 
 def init_database():
     """Initialize database tables and seed data"""

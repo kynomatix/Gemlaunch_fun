@@ -1,30 +1,30 @@
 import os
 from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
 from sqlalchemy.orm import DeclarativeBase
-from werkzeug.security import generate_password_hash, check_password_hash
 
 class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
 
-class User(UserMixin, db.Model):
-    """User model for authentication and profile management"""
+class User(db.Model):
+    """User model for wallet-based authentication"""
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(256))
     
-    # Wallet information
-    wallet_address = db.Column(db.String(128), unique=True, nullable=True, index=True)
-    wallet_connected = db.Column(db.Boolean, default=False)
+    # Wallet is the primary identifier (no email/password)
+    wallet_address = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    
+    # Optional display name
+    display_name = db.Column(db.String(64), nullable=True)
     
     # Profile information
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_seen = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Wallet type (kastle, metamask, etc.)
+    wallet_type = db.Column(db.String(32), nullable=True)
     
     # GEM points and gamification
     gem_points = db.Column(db.Integer, default=0)
@@ -35,21 +35,33 @@ class User(UserMixin, db.Model):
     tokens_created = db.relationship('Token', backref='creator', lazy='dynamic')
     trades = db.relationship('Trade', backref='user', lazy='dynamic')
     
-    def set_password(self, password):
-        """Set password hash"""
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password):
-        """Check password against hash"""
-        return check_password_hash(self.password_hash, password)
-    
     def add_gem_points(self, points):
         """Add GEM points to user"""
         self.gem_points = (self.gem_points or 0) + points
         db.session.commit()
     
+    @classmethod
+    def get_or_create_by_wallet(cls, wallet_address, wallet_type=None, display_name=None):
+        """Get existing user or create new one by wallet address"""
+        user = cls.query.filter_by(wallet_address=wallet_address.lower()).first()
+        if not user:
+            user = cls(
+                wallet_address=wallet_address.lower(),
+                wallet_type=wallet_type,
+                display_name=display_name or f"User-{wallet_address[:8]}"
+            )
+            db.session.add(user)
+            db.session.commit()
+        else:
+            # Update last seen
+            user.last_seen = datetime.now(timezone.utc)
+            if wallet_type:
+                user.wallet_type = wallet_type
+            db.session.commit()
+        return user
+    
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f'<User {self.wallet_address[:10]}...>'
 
 class Token(db.Model):
     """Token model for created memecoins"""
