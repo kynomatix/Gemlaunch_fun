@@ -366,29 +366,84 @@
         
         async function connectWallet(walletAddress, walletType) {
             try {
-                const response = await fetch('/api/connect-wallet', {
+                // Step 1: Request nonce from server
+                console.log('Requesting authentication nonce...');
+                const nonceResponse = await fetch('/api/auth/nonce', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        wallet_address: walletAddress
+                    })
+                });
+                
+                const nonceData = await nonceResponse.json();
+                
+                if (!nonceData.success) {
+                    throw new Error(nonceData.error || 'Failed to get authentication challenge');
+                }
+                
+                // Step 2: Sign the message with wallet
+                console.log('Requesting signature from wallet...');
+                let signature;
+                
+                if (walletType.toLowerCase() === 'metamask') {
+                    // MetaMask signature
+                    signature = await window.ethereum.request({
+                        method: 'personal_sign',
+                        params: [nonceData.message, walletAddress],
+                    });
+                } else if (walletType.toLowerCase() === 'kastle') {
+                    // Kastle wallet signature
+                    if (typeof window.kastle !== 'undefined') {
+                        signature = await window.kastle.request({
+                            method: 'kas_signMessage',
+                            params: {
+                                message: nonceData.message,
+                                address: walletAddress
+                            }
+                        });
+                    } else if (typeof window.kasware !== 'undefined') {
+                        signature = await window.kasware.signMessage(nonceData.message, 'utf8');
+                    } else {
+                        throw new Error('Kaspa wallet not available for signing');
+                    }
+                } else {
+                    throw new Error(`Unsupported wallet type: ${walletType}`);
+                }
+                
+                if (!signature) {
+                    throw new Error('Signature request was cancelled or failed');
+                }
+                
+                // Step 3: Verify signature with server
+                console.log('Verifying signature...');
+                const verifyResponse = await fetch('/api/auth/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         wallet_address: walletAddress,
+                        signature: signature,
                         wallet_type: walletType
                     })
                 });
                 
-                const data = await response.json();
+                const verifyData = await verifyResponse.json();
                 
-                if (data.success) {
+                if (verifyData.success) {
+                    console.log('Authentication successful!');
                     // Redirect to dashboard
                     window.location.href = '/app';
                 } else {
-                    throw new Error(data.error || 'Failed to connect wallet');
+                    throw new Error(verifyData.error || 'Signature verification failed');
                 }
                 
             } catch (error) {
-                console.error('Wallet connection error:', error);
-                showError(error.message || 'Failed to connect wallet');
+                console.error('Wallet authentication error:', error);
+                showError(error.message || 'Failed to authenticate wallet');
                 hideConnecting();
             }
         }
