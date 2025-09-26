@@ -235,7 +235,8 @@ class Holding(db.Model):
         self.last_trade = datetime.now(timezone.utc)
     
     def __repr__(self):
-        return f'<Holding {self.user.username} holds {self.token_amount} {self.token.symbol}>'
+        token = Token.query.get(self.token_id)
+        return f'<Holding {self.user.display_name} holds {self.token_amount} {token.symbol if token else "Unknown"}>'
 
 class Achievement(db.Model):
     """Achievement system for gamification"""
