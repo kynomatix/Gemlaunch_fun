@@ -166,8 +166,8 @@
 
             <!-- Network Info -->
             <div class="network-info">
-                <h4>⚡ Kasplex Testnet</h4>
-                <p>Make sure your wallet is connected to the Kasplex testnet for testing</p>
+                <h4>⚡ Compatible Networks</h4>
+                <p>Connect with any network - we'll help you switch to Kasplex Network Testnet for the best experience</p>
             </div>
 
             <!-- Error Message (hidden by default) -->
@@ -193,7 +193,7 @@
                     </div>
                     <div class="wallet-info">
                         <h3>MetaMask</h3>
-                        <p>Popular wallet with Kasplex integration</p>
+                        <p>EVM wallet - works on any network, Kasplex optional</p>
                     </div>
                 </button>
             </div>
@@ -212,17 +212,17 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
-        // Kasplex zkEVM Testnet Configuration
+        // Kasplex zkEVM Testnet Configuration (Correct values from official sources)
         const KASPLEX_TESTNET = {
-            chainId: '0x2A', // Chain ID for Kasplex testnet (42 in decimal)
-            chainName: 'Kasplex zkEVM Testnet',
+            chainId: '0x28CC4', // Chain ID 167012 in decimal
+            chainName: 'Kasplex Network Testnet',
             nativeCurrency: {
-                name: 'KAS',
+                name: 'Bridged KAS',
                 symbol: 'KAS',
                 decimals: 18
             },
-            rpcUrls: ['https://rpc-testnet.kasplex.org'],
-            blockExplorerUrls: ['https://explorer-testnet.kasplex.org']
+            rpcUrls: ['https://rpc.kasplextest.xyz'],
+            blockExplorerUrls: ['https://frontend.kasplextest.xyz']
         };
         
         // Wallet connection functions
@@ -280,35 +280,45 @@
                     throw new Error('MetaMask not found. Please install MetaMask.');
                 }
                 
-                // Try to add Kasplex network to MetaMask
-                try {
-                    await addKasplexNetwork();
-                } catch (networkError) {
-                    console.warn('Failed to add Kasplex network:', networkError);
-                    // Continue anyway - user might have network already
-                }
-                
-                // Request wallet connection
+                // Request wallet connection first
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
                 
-                if (accounts && accounts.length > 0) {
-                    // Switch to Kasplex network
-                    try {
-                        await window.ethereum.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: KASPLEX_TESTNET.chainId }],
-                        });
-                    } catch (switchError) {
-                        console.warn('Failed to switch to Kasplex network:', switchError);
-                    }
-                    
-                    const walletAddress = accounts[0];
-                    await connectWallet(walletAddress, 'metamask');
-                } else {
+                if (!accounts || accounts.length === 0) {
                     throw new Error('No accounts found in MetaMask');
                 }
+                
+                const walletAddress = accounts[0];
+                
+                // Check current network and offer to switch to Kasplex (optional)
+                try {
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    
+                    if (chainId !== KASPLEX_TESTNET.chainId) {
+                        // Ask user if they want to add/switch to Kasplex network
+                        const switchNetwork = confirm('Would you like to switch to Kasplex Network Testnet for the best experience? (You can also continue with your current network)');
+                        
+                        if (switchNetwork) {
+                            try {
+                                await addKasplexNetwork();
+                                await window.ethereum.request({
+                                    method: 'wallet_switchEthereumChain',
+                                    params: [{ chainId: KASPLEX_TESTNET.chainId }],
+                                });
+                            } catch (switchError) {
+                                console.warn('Failed to switch to Kasplex network:', switchError);
+                                // Continue with current network
+                            }
+                        }
+                    }
+                } catch (networkError) {
+                    console.warn('Network check failed:', networkError);
+                    // Continue anyway
+                }
+                
+                // Proceed with wallet connection regardless of network
+                await connectWallet(walletAddress, 'metamask');
                 
             } catch (error) {
                 console.error('MetaMask connection error:', error);
