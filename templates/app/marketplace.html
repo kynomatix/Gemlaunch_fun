@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Marketplace - Gemlaunch.fun</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        .marketplace-main {
+            padding-top: 100px;
+            min-height: 100vh;
+        }
+        
+        .marketplace-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .marketplace-header h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 25px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn.active {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            font-weight: 600;
+        }
+        
+        .tokens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .token-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .token-card:hover {
+            transform: translateY(-5px);
+            border-color: #20B2AA;
+            box-shadow: 0 10px 30px rgba(32, 178, 170, 0.2);
+        }
+        
+        .token-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .token-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .token-info h3 {
+            margin: 0;
+            color: #FFFFFF;
+            font-size: 1.2rem;
+        }
+        
+        .token-info p {
+            margin: 0;
+            color: #CCCCCC;
+            font-size: 0.9rem;
+        }
+        
+        .token-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            color: #20B2AA;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .stat-label {
+            color: #CCCCCC;
+            font-size: 0.8rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #20B2AA, #00CED1);
+            transition: width 0.3s ease;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #CCCCCC;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .marketplace-header h1 {
+                font-size: 2rem;
+            }
+            
+            .tokens-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background with particles -->
+    <div class="bg-animation" id="particles-js"></div>
+    <div class="floating-elements"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <nav>
+                <div>
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
+                </div>
+                <div>
+                    <a href="/app" class="nav-link">Dashboard</a>
+                    <a href="/app/create" class="nav-link">Create Token</a>
+                    <a href="/app/tokens" class="nav-link active">Marketplace</a>
+                    <a href="/docs" class="nav-link">Documentation</a>
+                    {% if user %}
+                        <a href="#" onclick="disconnectWallet()" class="nav-link">Logout</a>
+                    {% else %}
+                        <a href="/app" class="nav-link">Connect Wallet</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Marketplace Main -->
+    <main class="marketplace-main">
+        <div class="container">
+            <div class="marketplace-header">
+                <h1>Token Marketplace</h1>
+                <p>Discover and trade community-driven memecoins on Kaspa</p>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <button class="filter-btn active">🔥 Trending</button>
+                <button class="filter-btn">🆕 New Launches</button>
+                <button class="filter-btn">📈 Top Gainers</button>
+                <button class="filter-btn">🎯 Near Graduation</button>
+                <button class="filter-btn">💎 Graduated</button>
+            </div>
+
+            <!-- Tokens Grid -->
+            {% if tokens %}
+                <div class="tokens-grid">
+                    {% for token in tokens %}
+                        <div class="token-card" onclick="window.location.href='/app/token/{{ token.id }}'">
+                            <div class="token-header">
+                                <div class="token-avatar">
+                                    {{ token.symbol[0] if token.symbol else '?' }}
+                                </div>
+                                <div class="token-info">
+                                    <h3>{{ token.name }}</h3>
+                                    <p>${{ token.symbol }}</p>
+                                </div>
+                            </div>
+                            
+                            <p style="color: #CCCCCC; font-size: 0.9rem; margin: 1rem 0;">
+                                {{ token.description[:100] }}{{ '...' if token.description|length > 100 else '' }}
+                            </p>
+                            
+                            <div class="token-stats">
+                                <div class="stat">
+                                    <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
+                                    <div class="stat-label">Price</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-value">${{ "%.1f"|format(token.current_market_cap/1000) }}K</div>
+                                    <div class="stat-label">Market Cap</div>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+                            </div>
+                            <p style="text-align: center; color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0;">
+                                {{ "%.1f"|format(token.progress_to_graduation) }}% to DEX graduation
+                            </p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-rocket"></i>
+                    <h3>No tokens found</h3>
+                    <p>Be the first to launch a memecoin on Gemlaunch.fun!</p>
+                    <a href="/app/create" class="btn-primary" style="margin-top: 1rem;">Create First Token</a>
+                </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        // Disconnect wallet function
+        async function disconnectWallet() {
+            try {
+                const response = await fetch('/api/disconnect-wallet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/app';
+                }
+            } catch (error) {
+                console.error('Error disconnecting wallet:', error);
+            }
+        }
+        
+        // Filter functionality
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // In a real app, this would filter the tokens
+                console.log('Filter selected:', this.textContent);
+            });
+        });
+    </script>
+</body>
+</html>

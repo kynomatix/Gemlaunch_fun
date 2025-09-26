@@ -101,7 +101,7 @@ def generate_nonce():
 def verify_signature():
     """Verify wallet signature and create user session"""
     import time
-    from eth_utils import to_checksum_address
+    # from eth_utils.address import to_checksum_address
     from eth_account.messages import encode_defunct
     from eth_account import Account
     
@@ -154,7 +154,8 @@ def verify_signature():
             print(f"Warning: Native Kaspa signature verification not yet implemented for {wallet_type}")
         
         # Clear the used nonce to prevent replay attacks
-        session.pop(session_key, None)
+        if session_key:
+            session.pop(session_key, None)
         
         # Create or get user with verified wallet address
         user = User.get_or_create_by_wallet(wallet_address, wallet_type)
@@ -232,12 +233,46 @@ def app_dashboard():
                          holdings=holdings,
                          user=user)
 
-@app.route('/app/create')
+@app.route('/app/create', methods=['GET', 'POST'])
 def create_token():
-    """Token creation page"""
+    """Token creation page and form handler"""
     user = get_current_user()
     if not user:
         return render_template('app/connect_wallet.html')
+    
+    if request.method == 'POST':
+        # Handle token creation form submission (UI mockup)
+        name = request.form.get('name')
+        symbol = request.form.get('symbol')
+        description = request.form.get('description', '')
+        mode = request.form.get('mode', 'simple')
+        total_supply = request.form.get('total_supply', '1000000000')
+        reserved_percentage = request.form.get('reserved_percentage', '0')
+        
+        # Simulate token creation (this is just UI - no actual blockchain deployment)
+        try:
+            # Create mock token record
+            new_token = Token()
+            new_token.name = name
+            new_token.symbol = symbol.upper() if symbol else 'TOKEN'
+            new_token.description = description
+            new_token.creator_id = user.id
+            new_token.total_supply = int(total_supply)
+            new_token.circulating_supply = 0
+            new_token.deployment_status = 'pending'  # Mock status for UI
+            new_token.current_price = 0.001  # Mock starting price
+            new_token.current_market_cap = 1000  # Start at $1K market cap
+            
+            db.session.add(new_token)
+            db.session.commit()
+            
+            flash(f'🚀 Token "{name}" ({symbol}) created successfully! This is a UI demo - no actual blockchain deployment.', 'success')
+            return redirect(url_for('app_dashboard'))
+            
+        except Exception as e:
+            flash(f'Error creating token: {str(e)}', 'error')
+            return redirect(url_for('create_token'))
+    
     return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
