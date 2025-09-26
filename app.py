@@ -2,7 +2,7 @@ import os
 import logging
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.middleware.proxy_fix import ProxyFix
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -315,6 +315,128 @@ def token_detail(token_id):
                          recent_trades=recent_trades,
                          user_holding=user_holding,
                          user=user)
+
+# Leaderboard routes
+@app.route('/app/leaderboard')
+def leaderboard():
+    """Main leaderboard page with rankings and points"""
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
+    # Get top users by GEM points
+    top_users = User.query.order_by(User.gem_points.desc()).limit(50).all()
+    
+    # Get user's rank
+    user_rank = None
+    for i, u in enumerate(top_users, 1):
+        if u.id == user.id:
+            user_rank = i
+            break
+    
+    # If user not in top 50, calculate their actual rank
+    if user_rank is None:
+        users_above = User.query.filter(User.gem_points > user.gem_points).count()
+        user_rank = users_above + 1
+    
+    return render_template('app/leaderboard.html', 
+                         user=user, 
+                         top_users=top_users, 
+                         user_rank=user_rank)
+
+@app.route('/app/profile')
+def profile():
+    """User profile page with wallet connections and stats"""
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
+    # Get or create user profile
+    user_profile = UserProfile.query.filter_by(user_id=user.id).first()
+    if not user_profile:
+        user_profile = UserProfile(user_id=user.id)
+        db.session.add(user_profile)
+        db.session.commit()
+    
+    # Get connected wallets
+    connected_wallets = ConnectedWallet.query.filter_by(user_id=user.id).all()
+    
+    # Get user's achievements
+    user_achievements = UserAchievement.query.filter_by(user_id=user.id).all()
+    
+    # Get referral info
+    referral = Referral.query.filter_by(referrer_id=user.id).first()
+    if not referral:
+        # Generate referral code
+        import secrets
+        referral_code = f"kryptoman{secrets.randbelow(10000):04d}"
+        referral = Referral(
+            referrer_id=user.id,
+            referral_code=referral_code,
+            referral_link=f"https://gemlaunch.fun/?ref={referral_code}"
+        )
+        db.session.add(referral)
+        db.session.commit()
+    
+    return render_template('app/profile.html', 
+                         user=user, 
+                         user_profile=user_profile,
+                         connected_wallets=connected_wallets,
+                         user_achievements=user_achievements,
+                         referral=referral)
+
+@app.route('/app/referrals')
+def referrals():
+    """Referral management and tracking page"""
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
+    # Get user's referral info
+    referral = Referral.query.filter_by(referrer_id=user.id).first()
+    if not referral:
+        # Generate referral code if doesn't exist
+        import secrets
+        referral_code = f"kryptoman{secrets.randbelow(10000):04d}"
+        referral = Referral(
+            referrer_id=user.id,
+            referral_code=referral_code,
+            referral_link=f"https://gemlaunch.fun/?ref={referral_code}"
+        )
+        db.session.add(referral)
+        db.session.commit()
+    
+    # Get referred users
+    referred_users = User.query.join(Referral, Referral.referee_id == User.id).filter(
+        Referral.referrer_id == user.id
+    ).all()
+    
+    return render_template('app/referrals.html', 
+                         user=user, 
+                         referral=referral,
+                         referred_users=referred_users)
+
+@app.route('/app/activities')
+def activities():
+    """User activities and achievement progress page"""
+    user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
+    # Get user's recent activities
+    user_activities = Activity.query.filter_by(user_id=user.id).order_by(
+        Activity.created_at.desc()
+    ).limit(50).all()
+    
+    # Get available achievements and user's progress
+    all_achievements = Achievement.query.filter_by(is_active=True).all()
+    user_achievements = {ua.achievement_id: ua for ua in UserAchievement.query.filter_by(user_id=user.id).all()}
+    
+    return render_template('app/activities.html', 
+                         user=user, 
+                         user_activities=user_activities,
+                         all_achievements=all_achievements,
+                         user_achievements=user_achievements)
 
 def init_database():
     """Initialize database tables and seed data"""
