@@ -404,6 +404,27 @@ def profile():
     if request.method == 'POST':
         # Handle profile update in a single transaction
         try:
+            # Handle profile picture upload
+            if 'profile_picture' in request.files:
+                file = request.files['profile_picture']
+                if file and file.filename:
+                    # Validate file type
+                    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                    filename = file.filename.lower()
+                    if '.' in filename and filename.rsplit('.', 1)[1] in allowed_extensions:
+                        # Convert file to base64 for storage
+                        import base64
+                        file_data = file.read()
+                        if len(file_data) <= 5 * 1024 * 1024:  # 5MB limit
+                            base64_data = base64.b64encode(file_data).decode('utf-8')
+                            file_type = filename.rsplit('.', 1)[1]
+                            data_url = f"data:image/{file_type};base64,{base64_data}"
+                            user_profile.profile_picture_url = data_url
+                        else:
+                            return jsonify({'error': 'File size must be less than 5MB'}), 400
+                    else:
+                        return jsonify({'error': 'Invalid file type'}), 400
+            
             # Update User model fields
             if 'display_name' in request.form:
                 user.display_name = request.form['display_name'].strip()
@@ -683,6 +704,73 @@ def init_database():
                 
         except Exception as e:
             print(f"❌ Database initialization error: {e}")
+
+@app.route('/app/add-wallet', methods=['POST'])
+def add_wallet():
+    """Add additional wallet to user account"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
+        label = data.get('label', '').strip()
+        address = data.get('address', '').strip()
+        
+        if not label:
+            return jsonify({'error': 'Wallet label is required'}), 400
+        
+        if not address:
+            return jsonify({'error': 'Wallet address is required'}), 400
+        
+        if len(address) < 10:
+            return jsonify({'error': 'Invalid wallet address'}), 400
+        
+        # Check if wallet address already exists
+        existing_wallet = ConnectedWallet.query.filter_by(wallet_address=address.lower()).first()
+        if existing_wallet:
+            return jsonify({'error': 'This wallet address is already connected to an account'}), 400
+        
+        # Create new connected wallet
+        new_wallet = ConnectedWallet()
+        new_wallet.user_id = user.id
+        new_wallet.wallet_address = address.lower()
+        new_wallet.wallet_type = 'additional'
+        new_wallet.label = label
+        new_wallet.is_primary = False
+        
+        db.session.add(new_wallet)
+        
+        # Add activity log
+        activity = Activity()
+        activity.user_id = user.id
+        activity.activity_type = 'wallet_added'
+        activity.title = 'Additional Wallet Added'
+        activity.description = f'Added wallet: {label}'
+        activity.points_earned = 10  # Small reward for adding wallet
+        db.session.add(activity)
+        
+        # Update user's total points
+        user.gem_points = (user.gem_points or 0) + 10
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Wallet added successfully',
+            'wallet': {
+                'label': label,
+                'address': address,
+                'points_earned': 10
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to add wallet. Please try again.'}), 500
 
 # Initialize database when app starts
 init_database()

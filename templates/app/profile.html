@@ -893,5 +893,185 @@ function toggleEditMode() {
         editBtn.classList.remove('editing');
     }
 }
+
+// Profile picture upload functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const profilePictureInput = document.getElementById('profilePicture');
+    
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            // Show preview and upload
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Update profile picture preview
+                const profilePicture = document.querySelector('.profile-picture img, .profile-picture .default-avatar');
+                if (profilePicture) {
+                    if (profilePicture.tagName === 'IMG') {
+                        profilePicture.src = e.target.result;
+                    } else {
+                        // Replace default avatar with image
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = 'Profile Picture';
+                        profilePicture.parentNode.replaceChild(img, profilePicture);
+                    }
+                }
+                
+                // Upload to server using FormData
+                uploadProfilePicture(file);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // Add wallet functionality
+    const addWalletBtn = document.querySelector('.btn-add-wallet');
+    if (addWalletBtn) {
+        addWalletBtn.addEventListener('click', function() {
+            const labelInput = document.querySelector('.wallet-label-input');
+            const addressInput = document.querySelector('.wallet-address-input');
+            
+            const label = labelInput.value.trim();
+            const address = addressInput.value.trim();
+            
+            if (!label) {
+                alert('Please enter a wallet label');
+                labelInput.focus();
+                return;
+            }
+            
+            if (!address) {
+                alert('Please enter a wallet address');
+                addressInput.focus();
+                return;
+            }
+            
+            // Basic address validation (you can make this more specific for Kaspa addresses)
+            if (address.length < 10) {
+                alert('Please enter a valid wallet address');
+                addressInput.focus();
+                return;
+            }
+            
+            // Add wallet to server
+            addAdditionalWallet(label, address, labelInput, addressInput);
+        });
+    }
+});
+
+// Upload profile picture to server
+async function uploadProfilePicture(file) {
+    const formData = new FormData();
+    formData.append('profile_picture', file);
+    
+    try {
+        const response = await fetch('/app/profile', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            // Show success message
+            showSuccessMessage('Profile picture updated successfully!');
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Profile picture upload error:', error);
+        alert('Failed to upload profile picture. Please try again.');
+    }
+}
+
+// Add additional wallet
+async function addAdditionalWallet(label, address, labelInput, addressInput) {
+    const button = document.querySelector('.btn-add-wallet');
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/app/add-wallet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                label: label,
+                address: address
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Clear inputs
+            labelInput.value = '';
+            addressInput.value = '';
+            
+            // Show success message
+            showSuccessMessage('Wallet added successfully!');
+            
+            // Refresh page to show new wallet
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Failed to add wallet');
+        }
+    } catch (error) {
+        console.error('Add wallet error:', error);
+        alert(error.message || 'Failed to add wallet. Please try again.');
+    } finally {
+        // Restore button
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+// Show success message
+function showSuccessMessage(message) {
+    // Create success notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(34, 197, 94, 0.3);
+        z-index: 10000;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    `;
+    notification.innerHTML = `<i class="fas fa-check"></i> ${message}`;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
 </script>
 {% endblock %}
