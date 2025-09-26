@@ -464,7 +464,7 @@
                                     <p>Create your first memecoin on Kaspa</p>
                                     <div class="achievement-progress">
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (min(user.total_tokens_created or 0, 1) * 100)|int }}%"></div>
+                                            <div class="progress-fill" style="width: {{ (100 if (user.total_tokens_created or 0) >= 1 else ((user.total_tokens_created or 0) * 100))|int }}%"></div>
                                         </div>
                                         <span class="progress-text">{{ user.total_tokens_created or 0 }}/1 tokens</span>
                                     </div>
@@ -484,7 +484,7 @@
                                     <p>Trade $1,000 worth of tokens</p>
                                     <div class="achievement-progress">
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (min(user.total_trading_volume or 0, 1000) / 1000 * 100)|int }}%"></div>
+                                            <div class="progress-fill" style="width: {{ (100 if (user.total_trading_volume or 0) >= 1000 else ((user.total_trading_volume or 0) / 1000 * 100))|int }}%"></div>
                                         </div>
                                         <span class="progress-text">${{ "{:,.0f}".format(user.total_trading_volume or 0) }}/$1,000</span>
                                     </div>
@@ -504,7 +504,7 @@
                                     <p>Trade $10,000 worth of tokens</p>
                                     <div class="achievement-progress">
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (min(user.total_trading_volume or 0, 10000) / 10000 * 100)|int }}%"></div>
+                                            <div class="progress-fill" style="width: {{ (100 if (user.total_trading_volume or 0) >= 10000 else ((user.total_trading_volume or 0) / 10000 * 100))|int }}%"></div>
                                         </div>
                                         <span class="progress-text">${{ "{:,.0f}".format(user.total_trading_volume or 0) }}/$10,000</span>
                                     </div>
@@ -524,7 +524,7 @@
                                     <p>Launch 5 different tokens</p>
                                     <div class="achievement-progress">
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (min(user.total_tokens_created or 0, 5) / 5 * 100)|int }}%"></div>
+                                            <div class="progress-fill" style="width: {{ (100 if (user.total_tokens_created or 0) >= 5 else ((user.total_tokens_created or 0) / 5 * 100))|int }}%"></div>
                                         </div>
                                         <span class="progress-text">{{ user.total_tokens_created or 0 }}/5 tokens</span>
                                     </div>
@@ -544,7 +544,7 @@
                                     <p>Refer 10 qualified users</p>
                                     <div class="achievement-progress">
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (min(referral.qualified_signups if referral else 0, 10) / 10 * 100)|int }}%"></div>
+                                            <div class="progress-fill" style="width: {{ (100 if (referral.qualified_signups if referral else 0) >= 10 else (((referral.qualified_signups if referral else 0) / 10) * 100))|int }}%"></div>
                                         </div>
                                         <span class="progress-text">{{ referral.qualified_signups if referral else 0 }}/10 referrals</span>
                                     </div>
