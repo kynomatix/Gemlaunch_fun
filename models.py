@@ -278,4 +278,128 @@ class UserAchievement(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'achievement_id', name='unique_user_achievement'),)
     
     def __repr__(self):
-        return f'<UserAchievement {self.user.username} earned {self.achievement.name}>'
+        return f'<UserAchievement {self.user.display_name or self.user.wallet_address[:8]} earned {self.achievement.name}>'
+
+class UserProfile(db.Model):
+    """Extended user profile information for leaderboard"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    
+    # Profile details
+    bio = db.Column(db.Text)
+    profile_picture_url = db.Column(db.String(512))
+    username = db.Column(db.String(64), unique=True, nullable=True)  # Optional custom username
+    
+    # Social handles (verified)
+    twitter_handle = db.Column(db.String(64))
+    telegram_handle = db.Column(db.String(64))
+    discord_handle = db.Column(db.String(64))
+    
+    # Verification status
+    is_twitter_verified = db.Column(db.Boolean, default=False)
+    is_telegram_verified = db.Column(db.Boolean, default=False)
+    
+    # Account type and status  
+    account_type = db.Column(db.String(32), default='Standard')  # Standard, Premium, VIP
+    member_since = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Privacy settings
+    is_profile_public = db.Column(db.Boolean, default=True)
+    show_wallet_address = db.Column(db.Boolean, default=True)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('profile', uselist=False))
+    
+    def __repr__(self):
+        return f'<UserProfile {self.username or self.user.display_name}>'
+
+class ConnectedWallet(db.Model):
+    """Multiple wallet connections for users"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Wallet details
+    wallet_address = db.Column(db.String(128), nullable=False, index=True)
+    wallet_type = db.Column(db.String(32), nullable=False)  # kastle, metamask, etc.
+    wallet_label = db.Column(db.String(64))  # User-defined label
+    
+    # Status
+    is_primary = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=False)
+    connected_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    last_used = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = db.relationship('User', backref='connected_wallets')
+    
+    # Unique constraint
+    __table_args__ = (db.UniqueConstraint('user_id', 'wallet_address', name='unique_user_wallet'),)
+    
+    def __repr__(self):
+        return f'<ConnectedWallet {self.wallet_address[:10]}... ({self.wallet_type})>'
+
+class Referral(db.Model):
+    """Referral tracking system"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Referrer and referee
+    referrer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    referee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Null until signup
+    
+    # Referral details
+    referral_code = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    referral_link = db.Column(db.String(256))
+    
+    # Status and metrics
+    status = db.Column(db.String(32), default='pending')  # pending, completed, rewarded
+    clicks = db.Column(db.Integer, default=0)
+    qualified_signups = db.Column(db.Integer, default=0)
+    
+    # Rewards
+    points_earned = db.Column(db.Integer, default=0)
+    is_rewarded = db.Column(db.Boolean, default=False)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = db.Column(db.DateTime)
+    
+    # Relationships
+    referrer = db.relationship('User', foreign_keys=[referrer_id], backref='referrals_made')
+    referee = db.relationship('User', foreign_keys=[referee_id], backref='referral_used')
+    
+    def __repr__(self):
+        return f'<Referral {self.referral_code} by {self.referrer.display_name}>'
+
+class Activity(db.Model):
+    """User activity tracking for leaderboard"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Activity details
+    activity_type = db.Column(db.String(64), nullable=False)  # token_created, trade_buy, trade_sell, achievement_earned, etc.
+    title = db.Column(db.String(256), nullable=False)
+    description = db.Column(db.Text)
+    
+    # Related entities
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=True)
+    trade_id = db.Column(db.Integer, db.ForeignKey('trade.id'), nullable=True)
+    achievement_id = db.Column(db.Integer, db.ForeignKey('achievement.id'), nullable=True)
+    
+    # Activity metadata
+    points_earned = db.Column(db.Integer, default=0)
+    is_public = db.Column(db.Boolean, default=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = db.relationship('User', backref='activities')
+    token = db.relationship('Token', backref='related_activities')
+    trade = db.relationship('Trade', backref='activity_log')
+    achievement = db.relationship('Achievement', backref='activity_mentions')
+    
+    def __repr__(self):
+        return f'<Activity {self.activity_type} by {self.user.display_name}>'
