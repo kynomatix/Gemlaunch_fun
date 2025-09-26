@@ -36,7 +36,8 @@
         .topbar-left {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1rem;
+            position: relative;
         }
         
         .sidebar-toggle {
@@ -45,15 +46,18 @@
             color: #20B2AA;
             font-size: 1.2rem;
             cursor: pointer;
-            padding: 0.7rem;
+            padding: 0;
             border-radius: 8px;
             transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 44px;
-            height: 44px;
-            margin-left: 8px;
+            width: 60px;
+            height: 60px;
+            margin-left: 0;
+            position: absolute;
+            left: 0;
+            top: 0;
         }
         
         .sidebar-toggle:hover {
@@ -69,6 +73,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            margin-left: 70px;
         }
         
         .app-logo img {
