@@ -200,8 +200,9 @@ class Holding(db.Model):
     @property
     def current_value(self):
         """Current value of holdings"""
-        if self.token and self.token_amount:
-            return float(self.token_amount) * float(self.token.current_price)
+        token_obj = Token.query.get(self.token_id)
+        if token_obj and self.token_amount:
+            return float(self.token_amount) * float(token_obj.current_price)
         return 0
     
     @property
@@ -235,8 +236,8 @@ class Holding(db.Model):
         self.last_trade = datetime.now(timezone.utc)
     
     def __repr__(self):
-        token = Token.query.get(self.token_id)
-        return f'<Holding {self.user.display_name} holds {self.token_amount} {token.symbol if token else "Unknown"}>'
+        token_obj = Token.query.get(self.token_id)
+        return f'<Holding {self.user.display_name} holds {self.token_amount} {token_obj.symbol if token_obj else "Unknown"}>'
 
 class Achievement(db.Model):
     """Achievement system for gamification"""

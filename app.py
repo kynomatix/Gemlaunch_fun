@@ -180,7 +180,7 @@ def verify_signature():
     except Exception as e:
         # Clear any partial session data if session_key is defined
         try:
-            if 'session_key' in locals():
+            if 'session_key' in locals() and session_key:
                 session.pop(session_key, None)
         except:
             pass
@@ -366,7 +366,7 @@ def leaderboard():
                          top_users=top_users, 
                          user_rank=user_rank)
 
-@app.route('/app/profile')
+@app.route('/app/profile', methods=['GET', 'POST'])
 def profile():
     """User profile page with wallet connections and stats"""
     user = get_current_user()
@@ -399,6 +399,58 @@ def profile():
         referral.referral_link = f"https://gemlaunch.fun/?ref={referral_code}"
         db.session.add(referral)
         db.session.commit()
+    
+    if request.method == 'POST':
+        # Handle profile update
+        try:
+            # Update User model fields
+            if 'display_name' in request.form:
+                user.display_name = request.form['display_name'].strip()
+            
+            # Update UserProfile model fields
+            if 'bio' in request.form:
+                user_profile.bio = request.form['bio'].strip()
+            if 'username' in request.form:
+                username = request.form['username'].strip()
+                # Check if username is unique (excluding current user)
+                existing = UserProfile.query.filter(
+                    UserProfile.username == username,
+                    UserProfile.user_id != user.id
+                ).first()
+                if not existing and username:
+                    user_profile.username = username
+            if 'profile_picture_url' in request.form:
+                user_profile.profile_picture_url = request.form['profile_picture_url'].strip()
+            if 'twitter_handle' in request.form:
+                user_profile.twitter_handle = request.form['twitter_handle'].strip()
+            if 'telegram_handle' in request.form:
+                user_profile.telegram_handle = request.form['telegram_handle'].strip()
+            if 'discord_handle' in request.form:
+                user_profile.discord_handle = request.form['discord_handle'].strip()
+            
+            # Privacy settings
+            user_profile.is_profile_public = 'is_profile_public' in request.form
+            user_profile.show_wallet_address = 'show_wallet_address' in request.form
+            
+            # Save to database
+            db.session.commit()
+            
+            # Add activity log
+            activity = Activity()
+            activity.user_id = user.id
+            activity.activity_type = 'profile_updated'
+            activity.title = 'Profile Updated'
+            activity.description = 'Updated profile information'
+            activity.points_earned = 0
+            db.session.add(activity)
+            db.session.commit()
+            
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('profile'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash('Error updating profile. Please try again.', 'error')
     
     return render_template('app/profile.html', 
                          user=user, 
