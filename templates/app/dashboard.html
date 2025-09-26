@@ -586,8 +586,103 @@
                         </div>
                     </div>
 
-                    <!-- Recent Activities -->
-                    <div class="recent-activities-section">
+                    <!-- Sidebar with Points and Activities -->
+                    <div class="achievements-sidebar">
+                        <!-- Points Breakdown -->
+                        <div class="points-breakdown-section">
+                            <div class="section-header">
+                                <h3>
+                                    <i class="fas fa-coins"></i>
+                                    Points Breakdown
+                                </h3>
+                                <div class="total-points">
+                                    <span class="points-value">{{ "{:,}".format(user.gem_points or 0) }}</span>
+                                    <span class="points-label">Total Points</span>
+                                </div>
+                            </div>
+                            
+                            <div class="points-sources">
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-rocket"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Token Creation</span>
+                                        <span class="source-amount">{{ ((user.total_tokens_created or 0) * 100)|int }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ (((user.total_tokens_created or 0) * 100) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Trading Volume</span>
+                                        <span class="source-amount">{{ (((user.total_trading_volume or 0) / 100)|int) }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ ((((user.total_trading_volume or 0) / 100)) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Referrals</span>
+                                        <span class="source-amount">{{ ((referral.qualified_signups if referral else 0) * 50)|int }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ (((referral.qualified_signups if referral else 0) * 50) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Achievements</span>
+                                        <span class="source-amount">{{ achievement_points or 0 }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ ((achievement_points or 0) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="points-tips">
+                                <h4 onclick="toggleTips()">
+                                    Ways to Earn More Points
+                                    <i class="fas fa-chevron-down tips-toggle" id="tipsToggle"></i>
+                                </h4>
+                                <div class="tips-list" id="tipsList">
+                                    <div class="tip-item">
+                                        <i class="fas fa-rocket"></i>
+                                        <span>Create tokens (+100 pts each)</span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <span>Trade actively (+1 pt per $100 volume)</span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-users"></i>
+                                        <span>Refer friends (+50 pts each)</span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-star"></i>
+                                        <span>Complete achievements (up to +1000 pts)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activities -->
+                        <div class="recent-activities-section">
                         <div class="section-header">
                             <h3>
                                 <i class="fas fa-clock"></i>
@@ -657,95 +752,6 @@
                                 </div>
                             </div>
                         {% endif %}
-                    </div>
-
-                    <!-- Points Breakdown -->
-                    <div class="points-breakdown-section">
-                        <div class="section-header">
-                            <h3>
-                                <i class="fas fa-coins"></i>
-                                Points Breakdown
-                            </h3>
-                            <div class="total-points">
-                                <span class="points-value">{{ "{:,}".format(user.gem_points or 0) }}</span>
-                                <span class="points-label">Total Points</span>
-                            </div>
-                        </div>
-                        
-                        <div class="points-sources">
-                            <div class="points-source">
-                                <div class="source-icon">
-                                    <i class="fas fa-rocket"></i>
-                                </div>
-                                <div class="source-details">
-                                    <span class="source-name">Token Creation</span>
-                                    <span class="source-amount">{{ ((user.total_tokens_created or 0) * 100)|int }} pts</span>
-                                </div>
-                                <div class="source-bar">
-                                    <div class="bar-fill" style="width: {{ (((user.total_tokens_created or 0) * 100) / (user.gem_points or 1) * 100)|int }}%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="points-source">
-                                <div class="source-icon">
-                                    <i class="fas fa-chart-line"></i>
-                                </div>
-                                <div class="source-details">
-                                    <span class="source-name">Trading Volume</span>
-                                    <span class="source-amount">{{ (((user.total_trading_volume or 0) / 100)|int) }} pts</span>
-                                </div>
-                                <div class="source-bar">
-                                    <div class="bar-fill" style="width: {{ ((((user.total_trading_volume or 0) / 100)) / (user.gem_points or 1) * 100)|int }}%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="points-source">
-                                <div class="source-icon">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="source-details">
-                                    <span class="source-name">Referrals</span>
-                                    <span class="source-amount">{{ ((referral.qualified_signups if referral else 0) * 50)|int }} pts</span>
-                                </div>
-                                <div class="source-bar">
-                                    <div class="bar-fill" style="width: {{ (((referral.qualified_signups if referral else 0) * 50) / (user.gem_points or 1) * 100)|int }}%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="points-source">
-                                <div class="source-icon">
-                                    <i class="fas fa-star"></i>
-                                </div>
-                                <div class="source-details">
-                                    <span class="source-name">Achievements</span>
-                                    <span class="source-amount">{{ achievement_points or 0 }} pts</span>
-                                </div>
-                                <div class="source-bar">
-                                    <div class="bar-fill" style="width: {{ ((achievement_points or 0) / (user.gem_points or 1) * 100)|int }}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="points-tips">
-                            <h4>Ways to Earn More Points</h4>
-                            <div class="tips-list">
-                                <div class="tip-item">
-                                    <i class="fas fa-rocket"></i>
-                                    <span>Create tokens (+100 pts each)</span>
-                                </div>
-                                <div class="tip-item">
-                                    <i class="fas fa-exchange-alt"></i>
-                                    <span>Trade actively (+1 pt per $100 volume)</span>
-                                </div>
-                                <div class="tip-item">
-                                    <i class="fas fa-users"></i>
-                                    <span>Refer friends (+50 pts each)</span>
-                                </div>
-                                <div class="tip-item">
-                                    <i class="fas fa-star"></i>
-                                    <span>Complete achievements (up to +1000 pts)</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -810,6 +816,17 @@
                     item.style.display = 'none';
                 }
             });
+        }
+
+        // Toggle tips functionality
+        function toggleTips() {
+            const tipsList = document.getElementById('tipsList');
+            const tipsToggle = document.getElementById('tipsToggle');
+            
+            if (tipsList && tipsToggle) {
+                tipsList.classList.toggle('expanded');
+                tipsToggle.classList.toggle('expanded');
+            }
         }
 
         // Animation on load for activities
@@ -968,12 +985,30 @@
         /* Activities & Achievements Styles */
         .activities-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 2fr 1fr;
             gap: 2rem;
             margin-top: 2rem;
+            grid-template-areas: 
+                "achievements sidebar";
         }
 
-        .achievements-progress-section, .recent-activities-section, .points-breakdown-section {
+        .achievements-progress-section {
+            grid-area: achievements;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .achievements-sidebar {
+            grid-area: sidebar;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .recent-activities-section, .points-breakdown-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             padding: 2rem;
@@ -999,8 +1034,8 @@
         }
 
         .achievements-list {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 1rem;
         }
 
@@ -1339,30 +1374,56 @@
             transition: width 0.3s ease;
         }
 
+        .points-tips {
+            margin-top: 1rem;
+        }
+
         .points-tips h4 {
             color: #20B2AA;
-            margin-bottom: 1rem;
-            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .points-tips h4:hover {
+            color: #00CED1;
         }
 
         .tips-list {
-            display: flex;
+            display: none;
             flex-direction: column;
-            gap: 0.8rem;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+
+        .tips-list.expanded {
+            display: flex;
         }
 
         .tip-item {
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 0.6rem;
             color: #888888;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
 
         .tip-item i {
             color: #20B2AA;
-            width: 16px;
+            width: 14px;
             text-align: center;
+        }
+
+        .tips-toggle {
+            font-size: 0.8rem;
+            transition: transform 0.3s ease;
+        }
+
+        .tips-toggle.expanded {
+            transform: rotate(180deg);
         }
 
         /* Mobile responsiveness for activities */
