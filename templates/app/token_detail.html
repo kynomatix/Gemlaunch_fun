@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ token.name }} ({{ token.symbol }}) - Gemlaunch.fun</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .token-detail-main {
+            padding-top: 80px;
+            min-height: 100vh;
+            background: #0A0A0A;
+        }
+        
+        .token-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        /* Left Side - Chart & Info */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .token-header {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+        }
+        
+        .token-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .token-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .token-info h1 {
+            margin: 0;
+            color: #FFFFFF;
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+        
+        .token-info p {
+            margin: 0;
+            color: #CCCCCC;
+            font-size: 1rem;
+        }
+        
+        .token-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            color: #20B2AA;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .stat-label {
+            color: #CCCCCC;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .progress-section {
+            margin: 1rem 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #20B2AA, #00CED1);
+            transition: width 0.3s ease;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            height: 400px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .chart-header h3 {
+            color: #FFFFFF;
+            margin: 0;
+        }
+        
+        .chart-timeframes {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .timeframe-btn {
+            padding: 0.3rem 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 15px;
+            color: #CCCCCC;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .timeframe-btn.active {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            font-weight: 600;
+        }
+        
+        /* Right Side - Trading & Chat */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .trading-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+        }
+        
+        .trade-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .trade-tab {
+            flex: 1;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 10px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .trade-tab.buy.active {
+            background: linear-gradient(135deg, #00C851, #007E33);
+            color: #FFF;
+        }
+        
+        .trade-tab.sell.active {
+            background: linear-gradient(135deg, #FF3547, #CC1E2D);
+            color: #FFF;
+        }
+        
+        .trade-input-group {
+            margin-bottom: 1rem;
+        }
+        
+        .trade-input-group label {
+            color: #CCCCCC;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .trade-input {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #FFFFFF;
+            font-size: 1rem;
+        }
+        
+        .trade-input:focus {
+            outline: none;
+            border-color: #20B2AA;
+        }
+        
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .quick-amount {
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #CCCCCC;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-amount:hover {
+            border-color: #20B2AA;
+            color: #20B2AA;
+        }
+        
+        .trade-button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .trade-button.buy {
+            background: linear-gradient(135deg, #00C851, #007E33);
+            color: #FFF;
+        }
+        
+        .trade-button.sell {
+            background: linear-gradient(135deg, #FF3547, #CC1E2D);
+            color: #FFF;
+        }
+        
+        .trade-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+        }
+        
+        .chat-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            color: #FFFFFF;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            min-height: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding-right: 0.5rem;
+        }
+        
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        .message-author {
+            color: #20B2AA;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .message-content {
+            color: #CCCCCC;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .message-time {
+            color: #666;
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+        }
+        
+        .chat-input-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #FFFFFF;
+        }
+        
+        .chat-send {
+            padding: 0.8rem 1.2rem;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .owner-panel {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .owner-panel h3 {
+            color: #FFD700;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .owner-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .owner-btn {
+            padding: 0.8rem;
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            border-radius: 10px;
+            color: #FFD700;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .owner-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 1024px) {
+            .token-layout {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .right-panel {
+                order: -1;
+            }
+            
+            .token-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .token-layout {
+                padding: 0.5rem;
+            }
+            
+            .token-title {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .quick-amounts {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .owner-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background with particles -->
+    <div class="bg-animation" id="particles-js"></div>
+    <div class="floating-elements"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <nav>
+                <div>
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
+                </div>
+                <div>
+                    <a href="/app/tokens" class="nav-link">Home</a>
+                    <a href="/app/create" class="nav-link">Create Token</a>
+                    <a href="/docs" class="nav-link">Documentation</a>
+                    <a href="#" onclick="disconnectWallet()" class="nav-link">Logout</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Token Detail Main -->
+    <main class="token-detail-main">
+        <div class="token-layout">
+            <!-- Left Panel - Chart & Info -->
+            <div class="left-panel">
+                <!-- Token Header -->
+                <div class="token-header">
+                    <div class="token-title">
+                        <div class="token-avatar">
+                            {{ token.symbol[0] if token.symbol else '?' }}
+                        </div>
+                        <div class="token-info">
+                            <h1>{{ token.name }}</h1>
+                            <p>${{ token.symbol }} • Created by {{ token.creator.wallet_address[:8] }}...{{ token.creator.wallet_address[-4:] }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if token.description %}
+                        <p style="color: #CCCCCC; margin: 1rem 0;">{{ token.description }}</p>
+                    {% endif %}
+                    
+                    <div class="token-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ "%.6f"|format(token.current_price) }}</div>
+                            <div class="stat-label">Price (KAS)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap/1000) }}K</div>
+                            <div class="stat-label">Market Cap</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
+                            <div class="stat-label">Supply</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ token.holder_count or 0 }}</div>
+                            <div class="stat-label">Holders</div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-section">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: #CCCCCC; font-size: 0.9rem;">Bonding Curve Progress</span>
+                            <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">{{ "%.1f"|format(token.progress_to_graduation) }}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+                        </div>
+                        <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
+                            ${{ "%.0f"|format(70000 - token.current_market_cap) }} needed to graduate to Kaspa Finance DEX
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Price Chart</h3>
+                        <div class="chart-timeframes">
+                            <button class="timeframe-btn active">1H</button>
+                            <button class="timeframe-btn">6H</button>
+                            <button class="timeframe-btn">1D</button>
+                            <button class="timeframe-btn">7D</button>
+                        </div>
+                    </div>
+                    <canvas id="priceChart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Right Panel - Trading & Chat -->
+            <div class="right-panel">
+                <!-- Trading Panel -->
+                <div class="trading-panel">
+                    <div class="trade-tabs">
+                        <button class="trade-tab buy active" onclick="setTradeMode('buy')">Buy</button>
+                        <button class="trade-tab sell" onclick="setTradeMode('sell')">Sell</button>
+                    </div>
+                    
+                    <div class="trade-input-group">
+                        <label>Amount (KAS)</label>
+                        <input type="number" class="trade-input" id="kasAmount" placeholder="0.0" step="0.001">
+                    </div>
+                    
+                    <div class="quick-amounts">
+                        <div class="quick-amount" onclick="setQuickAmount(1)">1 KAS</div>
+                        <div class="quick-amount" onclick="setQuickAmount(5)">5 KAS</div>
+                        <div class="quick-amount" onclick="setQuickAmount(10)">10 KAS</div>
+                        <div class="quick-amount" onclick="setQuickAmount(25)">25 KAS</div>
+                    </div>
+                    
+                    <div class="trade-input-group">
+                        <label>You get (tokens)</label>
+                        <input type="number" class="trade-input" id="tokenAmount" placeholder="0" readonly>
+                    </div>
+                    
+                    {% if user_holding and user_holding.token_amount > 0 %}
+                        <div style="background: rgba(32, 178, 170, 0.1); padding: 0.8rem; border-radius: 8px; margin: 1rem 0;">
+                            <div style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">Your Holdings</div>
+                            <div style="color: #CCCCCC; font-size: 0.8rem;">{{ "%.0f"|format(user_holding.token_amount) }} tokens</div>
+                        </div>
+                    {% endif %}
+                    
+                    <button class="trade-button buy" id="tradeButton" onclick="executeTrade()">
+                        <i class="fas fa-rocket"></i> Buy ${{ token.symbol }}
+                    </button>
+                </div>
+
+                <!-- Owner Panel (only show if user is creator) -->
+                {% if user and token.creator_id == user.id %}
+                    <div class="owner-panel">
+                        <h3><i class="fas fa-crown"></i> Owner Controls</h3>
+                        <div class="owner-actions">
+                            <a href="#" class="owner-btn" onclick="editToken()">
+                                <i class="fas fa-edit"></i> Edit Token
+                            </a>
+                            <a href="#" class="owner-btn" onclick="viewAnalytics()">
+                                <i class="fas fa-chart-line"></i> Analytics
+                            </a>
+                            <a href="#" class="owner-btn" onclick="manageReserves()">
+                                <i class="fas fa-coins"></i> Reserves
+                            </a>
+                            <a href="#" class="owner-btn" onclick="tokenSettings()">
+                                <i class="fas fa-cog"></i> Settings
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Chat Panel -->
+                <div class="chat-panel">
+                    <div class="chat-header">
+                        <i class="fas fa-comments"></i>
+                        Live Chat
+                        <span style="margin-left: auto; color: #CCCCCC; font-size: 0.8rem;">{{ token.view_count or 0 }} watching</span>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- Sample messages for UI demo -->
+                        <div class="chat-message">
+                            <div class="message-author">{{ token.creator.wallet_address[:8] }}...{{ token.creator.wallet_address[-4:] }}</div>
+                            <div class="message-content">Welcome to ${{ token.symbol }}! 🚀</div>
+                            <div class="message-time">5 min ago</div>
+                        </div>
+                        <div class="chat-message">
+                            <div class="message-author">0xa51d...5ffa</div>
+                            <div class="message-content">This looks promising! Just bought some 💎</div>
+                            <div class="message-time">3 min ago</div>
+                        </div>
+                        <div class="chat-message">
+                            <div class="message-author">0x742d...891e</div>
+                            <div class="message-content">To the moon! 🌙</div>
+                            <div class="message-time">1 min ago</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="200">
+                        <button class="chat-send" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        let currentTradeMode = 'buy';
+        const tokenPrice = {{ token.current_price }};
+        
+        // Initialize price chart
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        const priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['1h ago', '50m', '40m', '30m', '20m', '10m', 'Now'],
+                datasets: [{
+                    label: 'Price (KAS)',
+                    data: [
+                        tokenPrice * 0.8,
+                        tokenPrice * 0.9,
+                        tokenPrice * 0.85,
+                        tokenPrice * 1.1,
+                        tokenPrice * 1.05,
+                        tokenPrice * 0.95,
+                        tokenPrice
+                    ],
+                    borderColor: '#20B2AA',
+                    backgroundColor: 'rgba(32, 178, 170, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: '#CCCCCC' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    y: { 
+                        ticks: { color: '#CCCCCC' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            }
+        });
+        
+        // Trading functions
+        function setTradeMode(mode) {
+            currentTradeMode = mode;
+            
+            // Update tab styling
+            document.querySelectorAll('.trade-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.trade-tab.${mode}`).classList.add('active');
+            
+            // Update button
+            const button = document.getElementById('tradeButton');
+            button.className = `trade-button ${mode}`;
+            button.innerHTML = mode === 'buy' 
+                ? '<i class="fas fa-rocket"></i> Buy ${{ token.symbol }}'
+                : '<i class="fas fa-money-bill"></i> Sell ${{ token.symbol }}';
+        }
+        
+        function setQuickAmount(amount) {
+            document.getElementById('kasAmount').value = amount;
+            updateTokenAmount();
+        }
+        
+        function updateTokenAmount() {
+            const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+            const tokenAmount = kasAmount / tokenPrice;
+            document.getElementById('tokenAmount').value = Math.floor(tokenAmount);
+        }
+        
+        function executeTrade() {
+            const kasAmount = parseFloat(document.getElementById('kasAmount').value);
+            if (!kasAmount || kasAmount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            // Simulate trade (UI demo only)
+            alert(`🎉 ${currentTradeMode.toUpperCase()} order simulated!\n\nThis is a UI demo - no actual trading occurs.\nAmount: ${kasAmount} KAS`);
+        }
+        
+        // Chat functions
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add message to chat (UI demo)
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            messageDiv.innerHTML = `
+                <div class="message-author">You</div>
+                <div class="message-content">${message}</div>
+                <div class="message-time">Now</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            input.value = '';
+        }
+        
+        // Owner functions
+        function editToken() {
+            alert('Edit token functionality - UI demo');
+        }
+        
+        function viewAnalytics() {
+            alert('Token analytics dashboard - UI demo');
+        }
+        
+        function manageReserves() {
+            alert('Reserved tokens management - UI demo');
+        }
+        
+        function tokenSettings() {
+            alert('Token settings panel - UI demo');
+        }
+        
+        // Disconnect wallet
+        async function disconnectWallet() {
+            try {
+                const response = await fetch('/api/disconnect-wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    window.location.href = '/app';
+                }
+            } catch (error) {
+                console.error('Error disconnecting wallet:', error);
+            }
+        }
+        
+        // Auto-update token amount on KAS input
+        document.getElementById('kasAmount').addEventListener('input', updateTokenAmount);
+        
+        // Chat enter key
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -218,20 +218,14 @@ def user_info():
 
 # App routes
 @app.route('/app')
-def app_dashboard():
-    """Main app dashboard"""
+def app_home():
+    """Main app - redirects to marketplace (pump.fun style)"""
     user = get_current_user()
     if not user:
         return render_template('app/connect_wallet.html')
     
-    # Get user's tokens and holdings
-    created_tokens = Token.query.filter_by(creator_id=user.id).order_by(Token.created_at.desc()).all()
-    holdings = Holding.query.filter_by(user_id=user.id).filter(Holding.token_amount > 0).all()
-    
-    return render_template('app/dashboard.html', 
-                         created_tokens=created_tokens, 
-                         holdings=holdings,
-                         user=user)
+    # Redirect to marketplace as main home page
+    return redirect(url_for('token_marketplace'))
 
 @app.route('/app/create', methods=['GET', 'POST'])
 def create_token():
@@ -267,7 +261,7 @@ def create_token():
             db.session.commit()
             
             flash(f'🚀 Token "{name}" ({symbol}) created successfully! This is a UI demo - no actual blockchain deployment.', 'success')
-            return redirect(url_for('app_dashboard'))
+            return redirect(url_for('token_marketplace'))
             
         except Exception as e:
             flash(f'Error creating token: {str(e)}', 'error')
@@ -277,9 +271,13 @@ def create_token():
 
 @app.route('/app/tokens')
 def token_marketplace():
-    """Token marketplace - public page"""
-    tokens = Token.query.filter_by(deployment_status='deployed').order_by(Token.created_at.desc()).all()
+    """Token marketplace - main home page (pump.fun style)"""
     user = get_current_user()
+    if not user:
+        return render_template('app/connect_wallet.html')
+    
+    # Show all tokens, including pending ones for UI demo
+    tokens = Token.query.order_by(Token.created_at.desc()).all()
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<int:token_id>')
