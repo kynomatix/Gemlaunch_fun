@@ -57,11 +57,6 @@ def pitch_deck():
     """Investor pitch deck for Gemlaunch.fun"""
     return render_template('pitch-deck.html')
 
-@app.route('/analytics')
-def analytics():
-    """Analytics page with bubbles chart"""
-    return render_template('analytics.html')
-
 @app.route('/health')
 def health():
     """Health check endpoint"""
