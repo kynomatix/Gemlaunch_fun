@@ -182,9 +182,11 @@
         <div class="container">
             <nav>
                 <div>
+                    <img src="{{ url_for('static', filename='images/gemmy.png') }}" alt="Gemmy" class="gemmy-nav" style="height: 35px; width: auto; margin-right: 10px;">
                     <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Gemlaunch.fun Logo" class="logo-image">
                 </div>
                 <div>
+                    <a href="/analytics" class="nav-link">Analytics</a>
                     <a href="/app/tokens" class="nav-link active">Home</a>
                     <a href="/app/create" class="nav-link">Create Token</a>
                     <a href="/docs" class="nav-link">Documentation</a>
