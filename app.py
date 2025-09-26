@@ -446,13 +446,14 @@ def init_database():
             db.create_all()
             print("✅ Database tables created")
             
-            # Create some sample achievements if they don't exist
+            # Create fair-launch specific achievements if they don't exist
             if not Achievement.query.first():
                 achievements = []
                 
+                # First Launch - Core creator achievement
                 achievement1 = Achievement()
                 achievement1.name = "First Launch"
-                achievement1.description = "Create your first memecoin"
+                achievement1.description = "Create your first memecoin on Kaspa"
                 achievement1.icon = "🚀"
                 achievement1.category = "creator"
                 achievement1.requirement_type = "tokens_created"
@@ -460,40 +461,131 @@ def init_database():
                 achievement1.gem_points_reward = 100
                 achievements.append(achievement1)
                 
+                # Active Trader - Start trading
                 achievement2 = Achievement()
-                achievement2.name = "Token Maestro"
-                achievement2.description = "Create 10 memecoins"
-                achievement2.icon = "🎭"
-                achievement2.category = "creator"
-                achievement2.requirement_type = "tokens_created"
-                achievement2.requirement_value = 10
-                achievement2.gem_points_reward = 1000
+                achievement2.name = "Active Trader"
+                achievement2.description = "Trade $1,000 worth of tokens"
+                achievement2.icon = "📈"
+                achievement2.category = "trader"
+                achievement2.requirement_type = "trading_volume"
+                achievement2.requirement_value = 1000
+                achievement2.gem_points_reward = 150
                 achievements.append(achievement2)
                 
+                # Volume Trader - Serious trading
                 achievement3 = Achievement()
-                achievement3.name = "First Trade"
-                achievement3.description = "Make your first trade"
-                achievement3.icon = "💎"
+                achievement3.name = "Volume Trader"
+                achievement3.description = "Trade $10,000 worth of tokens"
+                achievement3.icon = "🔥"
                 achievement3.category = "trader"
-                achievement3.requirement_type = "trades_made"
-                achievement3.requirement_value = 1
-                achievement3.gem_points_reward = 50
+                achievement3.requirement_type = "trading_volume"
+                achievement3.requirement_value = 10000
+                achievement3.gem_points_reward = 300
                 achievements.append(achievement3)
                 
+                # Token Creator - Multiple launches
                 achievement4 = Achievement()
-                achievement4.name = "High Roller"
-                achievement4.description = "Trade over 1000 KAS volume"
-                achievement4.icon = "🎰"
-                achievement4.category = "trader"
-                achievement4.requirement_type = "trading_volume"
-                achievement4.requirement_value = 1000
-                achievement4.gem_points_reward = 500
+                achievement4.name = "Token Creator"
+                achievement4.description = "Launch 5 different tokens"
+                achievement4.icon = "🪙"
+                achievement4.category = "creator"
+                achievement4.requirement_type = "tokens_created"
+                achievement4.requirement_value = 5
+                achievement4.gem_points_reward = 400
                 achievements.append(achievement4)
+                
+                # Community Builder - Referral master
+                achievement5 = Achievement()
+                achievement5.name = "Community Builder"
+                achievement5.description = "Refer 10 qualified users"
+                achievement5.icon = "👥"
+                achievement5.category = "social"
+                achievement5.requirement_type = "referrals_made"
+                achievement5.requirement_value = 10
+                achievement5.gem_points_reward = 500
+                achievements.append(achievement5)
+                
+                # Graduation Master - Ultimate achievement
+                achievement6 = Achievement()
+                achievement6.name = "Graduation Master"
+                achievement6.description = "Create a token that graduates to DEX"
+                achievement6.icon = "👑"
+                achievement6.category = "creator"
+                achievement6.requirement_type = "tokens_graduated"
+                achievement6.requirement_value = 1
+                achievement6.gem_points_reward = 1000
+                achievements.append(achievement6)
+                
+                # Diamond Hands - Long-term holder
+                achievement7 = Achievement()
+                achievement7.name = "Diamond Hands"
+                achievement7.description = "Hold tokens for 30+ days"
+                achievement7.icon = "💎"
+                achievement7.category = "holder"
+                achievement7.requirement_type = "holding_days"
+                achievement7.requirement_value = 30
+                achievement7.gem_points_reward = 250
+                achievements.append(achievement7)
+                
+                # Early Adopter - Platform loyalty
+                achievement8 = Achievement()
+                achievement8.name = "Early Adopter"
+                achievement8.description = "Join the first 1000 users on Gemlaunch"
+                achievement8.icon = "🌟"
+                achievement8.category = "special"
+                achievement8.requirement_type = "user_number"
+                achievement8.requirement_value = 1000
+                achievement8.gem_points_reward = 200
+                achievements.append(achievement8)
+                
+                # Market Maker - Liquidity provider
+                achievement9 = Achievement()
+                achievement9.name = "Market Maker"
+                achievement9.description = "Execute 50+ trades across multiple tokens"
+                achievement9.icon = "⚡"
+                achievement9.category = "trader"
+                achievement9.requirement_type = "total_trades"
+                achievement9.requirement_value = 50
+                achievement9.gem_points_reward = 300
+                achievements.append(achievement9)
+                
+                # Social Influencer - Share and promote
+                achievement10 = Achievement()
+                achievement10.name = "Social Influencer"
+                achievement10.description = "Share 5+ tokens on social media"
+                achievement10.icon = "📱"
+                achievement10.category = "social"
+                achievement10.requirement_type = "social_shares"
+                achievement10.requirement_value = 5
+                achievement10.gem_points_reward = 100
+                achievements.append(achievement10)
+                
+                # Memecoin Veteran - Experience badge
+                achievement11 = Achievement()
+                achievement11.name = "Memecoin Veteran"
+                achievement11.description = "Complete 100+ transactions on the platform"
+                achievement11.icon = "🎖️"
+                achievement11.category = "special"
+                achievement11.requirement_type = "total_transactions"
+                achievement11.requirement_value = 100
+                achievement11.gem_points_reward = 600
+                achievements.append(achievement11)
+                
+                # Trend Setter - Popular creator
+                achievement12 = Achievement()
+                achievement12.name = "Trend Setter"
+                achievement12.description = "Create a token with 1000+ holders"
+                achievement12.icon = "🎯"
+                achievement12.category = "creator"
+                achievement12.requirement_type = "token_holders"
+                achievement12.requirement_value = 1000
+                achievement12.gem_points_reward = 800
+                achievements.append(achievement12)
                 
                 for achievement in achievements:
                     db.session.add(achievement)
                 db.session.commit()
-                print("✅ Sample achievements created")
+                print("✅ Fair-launch achievements created")
             else:
                 print("✅ Sample achievements already exist")
                 
