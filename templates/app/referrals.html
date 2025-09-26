@@ -178,246 +178,119 @@
         <!-- Referrals Tab -->
         <div id="referrals-tab" class="tab-pane">
             <div class="referrals-grid referrals-content">
-
-        <!-- Referral Link Section -->
-        <div class="referral-link-section">
-            <div class="section-header">
-                <h3>
-                    <i class="fas fa-link"></i>
-                    Your Referral Link
-                </h3>
-                <div class="link-status">
-                    <i class="fas fa-check-circle"></i>
-                    Active
-                </div>
-            </div>
-            
-            <div class="link-container">
-                {% if referral and referral.referral_link %}
-                    <div class="link-display">
-                        <input type="text" value="{{ referral.referral_link }}" readonly id="referralLinkInput" class="link-input">
-                        <button class="btn-copy-link" onclick="copyReferralLink()">
-                            <i class="fas fa-copy"></i>
-                            Copy
-                        </button>
-                    </div>
-                    
-                    <div class="link-info">
-                        <p><strong>Referral Code:</strong> {{ referral.referral_code }}</p>
-                        <p><strong>Created:</strong> {{ referral.created_at.strftime('%B %d, %Y') if referral.created_at else 'Recently' }}</p>
-                    </div>
-                {% else %}
-                    <div class="link-generating">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Generating your referral link...</p>
-                        <button class="btn-refresh" onclick="window.location.reload()">
-                            <i class="fas fa-refresh"></i>
-                            Refresh
-                        </button>
-                    </div>
-                {% endif %}
-            </div>
-            
-            <div class="sharing-options">
-                <h4>Share via:</h4>
-                <div class="share-buttons">
-                    <button class="share-btn twitter" onclick="shareOnTwitter()">
-                        <i class="fab fa-twitter"></i>
-                        Twitter
-                    </button>
-                    <button class="share-btn telegram" onclick="shareOnTelegram()">
-                        <i class="fab fa-telegram"></i>
-                        Telegram
-                    </button>
-                    <button class="share-btn discord" onclick="shareOnDiscord()">
-                        <i class="fab fa-discord"></i>
-                        Discord
-                    </button>
-                    <button class="share-btn email" onclick="shareViaEmail()">
-                        <i class="fas fa-envelope"></i>
-                        Email
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Referral Stats -->
-        <div class="referral-stats-section">
-            <div class="section-header">
-                <h3>
-                    <i class="fas fa-chart-line"></i>
-                    Your Statistics
-                </h3>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-mouse-pointer"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">{{ referral.clicks if referral else 0 }}</span>
-                        <span class="stat-label">Total Clicks</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">{{ referral.qualified_signups if referral else 0 }}</span>
-                        <span class="stat-label">Qualified Signups</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">{{ referral.points_earned if referral else 0 }}</span>
-                        <span class="stat-label">Points Earned</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-percentage"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">
-                            {% if referral and referral.clicks > 0 %}
-                                {{ "%.1f"|format((referral.qualified_signups / referral.clicks) * 100) }}%
+                <!-- Left Column -->
+                <div class="referrals-left">
+                    <!-- Your Referral Link -->
+                    <div class="referral-link-section">
+                        <div class="section-header">
+                            <h3>
+                                <i class="fas fa-link"></i>
+                                Your Referral Link
+                            </h3>
+                        </div>
+                        
+                        <div class="link-container">
+                            {% if referral and referral.referral_link %}
+                                <div class="link-display">
+                                    <input type="text" value="{{ referral.referral_link }}" readonly id="referralLinkInput" class="link-input">
+                                    <button class="btn-copy-link" onclick="copyReferralLink()">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
                             {% else %}
-                                0.0%
-                            {% endif %}
-                        </span>
-                        <span class="stat-label">Conversion Rate</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Referred Users -->
-        <div class="referred-users-section">
-            <div class="section-header">
-                <h3>
-                    <i class="fas fa-users"></i>
-                    Referred Users ({{ referred_users|length if referred_users else 0 }})
-                </h3>
-            </div>
-            
-            {% if referred_users and referred_users|length > 0 %}
-                <div class="users-list">
-                    {% for referred_user in referred_users %}
-                    <div class="user-row">
-                        <div class="user-avatar">
-                            {% if referred_user.profile and referred_user.profile.profile_picture_url %}
-                                <img src="{{ referred_user.profile.profile_picture_url }}" alt="Avatar">
-                            {% else %}
-                                <div class="default-avatar">
-                                    <i class="fas fa-user"></i>
+                                <div class="link-generating">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Generating your referral link...</p>
                                 </div>
                             {% endif %}
                         </div>
-                        
-                        <div class="user-info">
-                            <span class="user-name">{{ referred_user.display_name or 'Anonymous User' }}</span>
-                            {% if referred_user.wallet_address and referred_user.wallet_address|length >= 10 %}
-                                <span class="user-wallet">{{ referred_user.wallet_address[:6] }}...{{ referred_user.wallet_address[-4:] }}</span>
-                            {% else %}
-                                <span class="user-wallet">No wallet</span>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="user-stats">
-                            <div class="user-stat">
-                                <span class="stat-value">{{ referred_user.gem_points or 0 }}</span>
-                                <span class="stat-label">Points</span>
-                            </div>
-                            <div class="user-stat">
-                                <span class="stat-value">{{ referred_user.total_tokens_created or 0 }}</span>
-                                <span class="stat-label">Tokens</span>
-                            </div>
-                        </div>
-                        
-                        <div class="join-date">
-                            <span class="date-label">Joined</span>
-                            <span class="date-value">{{ referred_user.created_at.strftime('%b %d') if referred_user.created_at else 'Recently' }}</span>
-                        </div>
                     </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h4>No referrals yet</h4>
-                    <p>Share your referral link to start earning points!</p>
-                    <p>You'll earn <strong>50 points</strong> for each qualified user who signs up.</p>
-                </div>
-            {% endif %}
-        </div>
 
-        <!-- Referral Program Info -->
-        <div class="program-info-section">
-            <div class="section-header">
-                <h3>
-                    <i class="fas fa-info-circle"></i>
-                    How It Works
-                </h3>
-            </div>
-            
-            <div class="program-steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h4>Share Your Link</h4>
-                        <p>Copy your unique referral link and share it with friends, on social media, or wherever you engage with crypto enthusiasts.</p>
+                    <!-- Referral Rewards -->
+                    <div class="referral-rewards-section">
+                        <div class="section-header">
+                            <h3>Referral Rewards</h3>
+                        </div>
+                        <ul class="rewards-list">
+                            <li>• 50 points per successful referral</li>
+                            <li>• 2% of referee's points permanently</li>
+                            <li>• Bonus multipliers for community leaders</li>
+                        </ul>
+                        
+                        <div class="qualification-requirements">
+                            <h4 onclick="toggleQualification()" class="qualification-toggle">
+                                Qualification Requirements
+                                <i class="fas fa-chevron-down" id="qualificationIcon"></i>
+                            </h4>
+                            <div class="qualification-content" id="qualificationContent" style="display: none;">
+                                <p>Referred user must actively participate:</p>
+                                <ul>
+                                    <li>• Min $20 contributed to projects, OR</li>
+                                    <li>• Create token/launch presale</li>
+                                </ul>
+                                <p class="qualification-note">Prevents sybil farming attacks</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h4>User Signs Up</h4>
-                        <p>When someone clicks your link and connects their wallet to Gemlaunch.fun, they become your referral.</p>
+
+                <!-- Right Column -->
+                <div class="referrals-right">
+                    <!-- Referral Performance -->
+                    <div class="referral-performance-section">
+                        <div class="section-header">
+                            <h3>
+                                <i class="fas fa-chart-line"></i>
+                                Referral Performance
+                            </h3>
+                        </div>
+                        
+                        <div class="performance-stats">
+                            <div class="performance-stat">
+                                <div class="stat-label">This Week</div>
+                                <div class="stat-value">+0 referrals</div>
+                            </div>
+                            <div class="performance-stat">
+                                <div class="stat-label">This Month</div>
+                                <div class="stat-value">+0 referrals</div>
+                            </div>
+                            <div class="performance-stat">
+                                <div class="stat-label">Total Earned</div>
+                                <div class="stat-value">{{ referral.points_earned if referral else 0 }} points</div>
+                            </div>
+                            <div class="performance-stat">
+                                <div class="stat-label">Total Referrals</div>
+                                <div class="stat-value">{{ referral.qualified_signups if referral else 0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Referrals -->
+                    <div class="recent-referrals-section">
+                        <div class="section-header">
+                            <h3>
+                                <i class="fas fa-users"></i>
+                                Recent Referrals
+                            </h3>
+                        </div>
+                        
+                        {% if referred_users and referred_users|length > 0 %}
+                            <div class="recent-referrals-list">
+                                {% for referred_user in referred_users[:5] %}
+                                <div class="referral-item">
+                                    <div class="referral-wallet">{{ referred_user.wallet_address[:6] if referred_user.wallet_address else '0x1234' }}...{{ referred_user.wallet_address[-4:] if referred_user.wallet_address else '7890' }}</div>
+                                    <div class="referral-date">{{ referred_user.created_at.strftime('%d/%m/%Y') if referred_user.created_at else '23/06/2025' }}</div>
+                                    <div class="referral-points">+{{ 50 if referred_user else 0 }} pts</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-referrals">
+                                <p>No referrals yet. Share your link to get started!</p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
-                
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h4>Earn Points</h4>
-                        <p>You earn 50 GEM points for each qualified referral. Points contribute to your leaderboard ranking and seasonal rewards.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="program-benefits">
-                <h4>Referral Benefits</h4>
-                <div class="benefits-grid">
-                    <div class="benefit-item">
-                        <i class="fas fa-coins"></i>
-                        <span>50 Points per referral</span>
-                    </div>
-                    <div class="benefit-item">
-                        <i class="fas fa-trophy"></i>
-                        <span>Leaderboard boost</span>
-                    </div>
-                    <div class="benefit-item">
-                        <i class="fas fa-gift"></i>
-                        <span>Seasonal airdrops</span>
-                    </div>
-                    <div class="benefit-item">
-                        <i class="fas fa-star"></i>
-                        <span>Exclusive achievements</span>
-                    </div>
-                </div>
-            </div>
-        </div>
             </div>
         </div>
     </div>
@@ -563,25 +436,166 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
-    grid-template-areas:
-        "referral-link referral-stats"
-        "referred-users program-info";
 }
 
-.referral-link-section {
-    grid-area: referral-link;
+.referrals-left,
+.referrals-right {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
-.referral-stats-section {
-    grid-area: referral-stats;
+/* Referral Rewards Styles */
+.referral-rewards-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    backdrop-filter: blur(10px);
 }
 
-.referred-users-section {
-    grid-area: referred-users;
+.rewards-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
 }
 
-.program-info-section {
-    grid-area: program-info;
+.rewards-list li {
+    color: #CCCCCC;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.qualification-requirements {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.qualification-toggle {
+    color: #20B2AA;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
+}
+
+.qualification-toggle:hover {
+    color: #00CED1;
+}
+
+.qualification-content {
+    color: #888888;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.qualification-content ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+
+.qualification-content li {
+    margin-bottom: 0.3rem;
+}
+
+.qualification-note {
+    color: #20B2AA;
+    font-style: italic;
+    margin-top: 0.5rem;
+}
+
+/* Performance Stats Styles */
+.referral-performance-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.performance-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.performance-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.performance-stat:last-child {
+    border-bottom: none;
+}
+
+.performance-stat .stat-label {
+    color: #CCCCCC;
+    font-size: 0.9rem;
+}
+
+.performance-stat .stat-value {
+    color: #20B2AA;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* Recent Referrals Styles */
+.recent-referrals-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.recent-referrals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.referral-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(32, 178, 170, 0.1);
+}
+
+.referral-wallet {
+    color: #CCCCCC;
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.referral-date {
+    color: #888888;
+    font-size: 0.8rem;
+}
+
+.referral-points {
+    color: #20B2AA;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.empty-referrals {
+    text-align: center;
+    color: #888888;
+    padding: 2rem;
+    font-style: italic;
 }
 
 @media (max-width: 1024px) {
@@ -1559,6 +1573,22 @@ function switchTab(tabName) {
     
     // Add active class to the clicked button
     document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
+}
+
+// Toggle qualification requirements
+function toggleQualification() {
+    const content = document.getElementById('qualificationContent');
+    const icon = document.getElementById('qualificationIcon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    } else {
+        content.style.display = 'none';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    }
 }
 </script>
 {% endblock %}
