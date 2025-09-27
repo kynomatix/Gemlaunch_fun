@@ -479,55 +479,23 @@ def profile():
             db.session.rollback()
             flash('Error updating profile. Please try again.', 'error')
     
+    # Get referred users for referrals tab
+    referred_users = User.query.join(Referral, Referral.referee_id == User.id).filter(
+        Referral.referrer_id == user.id
+    ).all()
+    
     return render_template('app/profile.html', 
                          user=user, 
                          user_profile=user_profile,
                          connected_wallets=connected_wallets,
                          user_achievements=user_achievements,
-                         referral=referral)
+                         referral=referral,
+                         referred_users=referred_users)
 
 @app.route('/app/referrals')
 def referrals():
-    """Referral management and tracking page - now includes profile management"""
-    user = get_current_user()
-    if not user:
-        return render_template('app/connect_wallet.html')
-    
-    # Get or create user profile
-    user_profile = UserProfile.query.filter_by(user_id=user.id).first()
-    if not user_profile:
-        user_profile = UserProfile()
-        user_profile.user_id = user.id
-        db.session.add(user_profile)
-        db.session.commit()
-    
-    # Get user's referral info
-    referral = Referral.query.filter_by(referrer_id=user.id).first()
-    if not referral:
-        # Generate referral code if doesn't exist
-        import secrets
-        referral_code = f"kryptoman{secrets.randbelow(10000):04d}"
-        referral = Referral()
-        referral.referrer_id = user.id
-        referral.referral_code = referral_code
-        referral.referral_link = f"https://gemlaunch.fun/?ref={referral_code}"
-        db.session.add(referral)
-        db.session.commit()
-    
-    # Get referred users
-    referred_users = User.query.join(Referral, Referral.referee_id == User.id).filter(
-        Referral.referrer_id == user.id
-    ).all()
-    
-    # Get connected wallets
-    connected_wallets = ConnectedWallet.query.filter_by(user_id=user.id).all()
-    
-    return render_template('app/referrals.html', 
-                         user=user, 
-                         user_profile=user_profile,
-                         referral=referral,
-                         referred_users=referred_users,
-                         connected_wallets=connected_wallets)
+    """Redirect to profile page - referrals are now part of profile"""
+    return redirect(url_for('profile'))
 
 @app.route('/app/activities')
 def activities():
