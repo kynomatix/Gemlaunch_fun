@@ -812,6 +812,95 @@ def remove_wallet(wallet_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to remove wallet. Please try again.'}), 500
 
+@app.route('/app/update-referral-code', methods=['POST'])
+def update_referral_code():
+    """Update custom referral code"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
+        new_code = data.get('referral_code', '').strip()
+        
+        if not new_code:
+            return jsonify({'error': 'Referral code is required'}), 400
+        
+        # Validate referral code format
+        if len(new_code) < 3 or len(new_code) > 20:
+            return jsonify({'error': 'Referral code must be 3-20 characters long'}), 400
+        
+        # Allow only alphanumeric characters and hyphens
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_]+$', new_code):
+            return jsonify({'error': 'Referral code can only contain letters, numbers, hyphens, and underscores'}), 400
+        
+        # Check if referral code already exists (case insensitive)
+        existing_referral = Referral.query.filter(
+            db.func.lower(Referral.referral_code) == new_code.lower(),
+            Referral.referrer_id != user.id
+        ).first()
+        
+        if existing_referral:
+            return jsonify({'error': 'This referral code is already taken. Please choose another one.'}), 400
+        
+        # Get or create user's referral record
+        referral = Referral.query.filter_by(referrer_id=user.id).first()
+        is_new_referral = False
+        if not referral:
+            referral = Referral()
+            referral.referrer_id = user.id
+            db.session.add(referral)
+            is_new_referral = True
+        
+        # Check if code is actually changing
+        old_code = referral.referral_code if referral.referral_code else None
+        new_code_lower = new_code.lower()
+        
+        if old_code == new_code_lower:
+            return jsonify({'error': 'This is already your current referral code'}), 400
+        
+        # Update referral code and link
+        referral.referral_code = new_code_lower
+        referral.referral_link = f"https://gemlaunch.fun/?ref={new_code_lower}"
+        
+        # Check if user has already been rewarded for customizing referral code
+        has_customized_before = Activity.query.filter_by(
+            user_id=user.id,
+            activity_type='referral_updated'
+        ).first() is not None
+        
+        # Award points only for first-time customization
+        points_earned = 0
+        if is_new_referral or not has_customized_before:
+            points_earned = 5
+            user.gem_points = (user.gem_points or 0) + points_earned
+        
+        # Add activity log
+        activity = Activity()
+        activity.user_id = user.id
+        activity.activity_type = 'referral_updated'
+        activity.title = 'Custom Referral Code Updated'
+        activity.description = f'Changed referral code to: {new_code_lower}'
+        activity.points_earned = points_earned
+        db.session.add(activity)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Referral code updated successfully!',
+            'new_link': referral.referral_link,
+            'points_earned': 5
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update referral code. Please try again.'}), 500
+
 # Initialize database when app starts
 init_database()
 
