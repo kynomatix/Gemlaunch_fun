@@ -122,24 +122,44 @@
         
         .token-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 1rem;
             margin: 1rem 0;
         }
         
-        .stat {
+        /* Override global .stat styles specifically for token cards */
+        .token-card .token-stat {
             text-align: center;
+            padding: 0.75rem 0.5rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(32, 178, 170, 0.15);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            min-width: 0; /* Override global min-width: 150px */
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
         
-        .stat-value {
+        .token-card .token-stat:hover {
+            background: rgba(32, 178, 170, 0.1);
+            border-color: rgba(32, 178, 170, 0.3);
+            transform: scale(1.02);
+        }
+        
+        .token-stat-value {
             color: #20B2AA;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 0.25rem;
+            word-break: break-all; /* Handle long numbers gracefully */
         }
         
-        .stat-label {
+        .token-stat-label {
             color: #CCCCCC;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .progress-bar {
@@ -226,13 +246,13 @@
                             </p>
                             
                             <div class="token-stats">
-                                <div class="stat">
-                                    <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
-                                    <div class="stat-label">Price</div>
+                                <div class="token-stat">
+                                    <div class="token-stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
+                                    <div class="token-stat-label">Price</div>
                                 </div>
-                                <div class="stat">
-                                    <div class="stat-value">${{ "%.1f"|format(token.current_market_cap/1000) }}K</div>
-                                    <div class="stat-label">Market Cap</div>
+                                <div class="token-stat">
+                                    <div class="token-stat-value">${{ "%.1f"|format(token.current_market_cap/1000) }}K</div>
+                                    <div class="token-stat-label">Market Cap</div>
                                 </div>
                             </div>
                             
