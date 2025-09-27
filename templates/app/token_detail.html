@@ -3,7 +3,6 @@
 {% block title %}{{ token.name }} ({{ token.symbol }}) - Gemlaunch.fun{% endblock %}
 
 {% block extra_head %}
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 <style>
         .token-detail-main {
             padding-top: 80px;
@@ -425,6 +424,47 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Live indicator pulse animation */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Enhanced chart container */
+        .chart-container {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(32, 178, 170, 0.02));
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            height: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Improved token stats */
+        .token-stats {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .stat-item {
+            position: relative;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            background: rgba(32, 178, 170, 0.05);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -509,16 +549,30 @@
 
                 <!-- Chart Container -->
                 <div class="chart-container">
-                    <div class="chart-header">
-                        <h3>Price Chart</h3>
-                        <div class="chart-timeframes">
-                            <button class="timeframe-btn active" data-timeframe="1H">1H</button>
-                            <button class="timeframe-btn" data-timeframe="6H">6H</button>
-                            <button class="timeframe-btn" data-timeframe="1D">1D</button>
-                            <button class="timeframe-btn" data-timeframe="7D">7D</button>
+                    <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <h3 style="margin: 0; color: #20B2AA;">Chart</h3>
+                            <div class="chart-type-toggle" style="display: flex; gap: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 0.25rem;">
+                                <button class="chart-type-btn active" data-type="marketcap" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #20B2AA, #00CED1); color: #000; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;">Market Cap</button>
+                                <button class="chart-type-btn" data-type="price" style="padding: 0.5rem 1rem; background: transparent; color: #CCCCCC; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;">Price</button>
+                            </div>
+                        </div>
+                        <div class="chart-info" style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="live-indicator" style="display: flex; align-items: center; gap: 0.5rem; color: #22c55e;">
+                                <span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                                Live
+                            </span>
                         </div>
                     </div>
-                    <div id="tradingview-chart" style="height: 300px; background: rgba(255, 255, 255, 0.02); border-radius: 10px;"></div>
+                    
+                    <!-- TradingView Widget -->
+                    <div class="tradingview-widget-container" style="height: 400px; background: #0a0a0a; border-radius: 10px; overflow: hidden;">
+                        <div id="tradingview_chart" style="height: 100%;"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                        <script type="text/javascript">
+                        // TradingView widget will be initialized after page load
+                        </script>
+                    </div>
                 </div>
             </div>
 
@@ -625,62 +679,96 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
+        // Auto-collapse sidebar on token detail pages
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            // Auto-collapse sidebar on token detail page
+            if (sidebar && !sidebar.classList.contains('collapsed')) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'true');
+            }
+        });
+
         let currentTradeMode = 'buy';
         const tokenPrice = {{ token.current_price }};
+        const marketCap = {{ token.current_market_cap }};
         const kasToUsd = 0.125; // Mock KAS to USD exchange rate
+        const tokenSymbol = '{{ token.symbol }}';
+        const tokenName = '{{ token.name }}';
         
-        // Initialize TradingView chart
-        const chart = LightweightCharts.createChart(document.getElementById('tradingview-chart'), {
-            width: document.getElementById('tradingview-chart').clientWidth,
-            height: 300,
-            layout: {
-                background: { color: 'transparent' },
-                textColor: '#CCCCCC',
-            },
-            grid: {
-                vertLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                horzLines: { color: 'rgba(255, 255, 255, 0.1)' },
-            },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            timeScale: {
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                timeVisible: true,
-                secondsVisible: false,
-            },
-            priceScale: {
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-            },
-        });
-
-        // Create line series for price
-        const lineSeries = chart.addLineSeries({
-            color: '#20B2AA',
-            lineWidth: 2,
-            priceFormat: {
-                type: 'price',
-                precision: 6,
-                minMove: 0.000001,
-            },
-        });
-
-        // Generate mock price data for the last hour
-        const now = Math.floor(Date.now() / 1000);
-        const priceData = [];
-        for (let i = 60; i >= 0; i--) {
-            const time = now - (i * 60); // Each point is 1 minute apart
-            const randomVariation = 0.8 + Math.random() * 0.4; // ±20% variation
-            const price = tokenPrice * randomVariation * (1 + Math.sin(i / 10) * 0.1); // Add some wave pattern
-            priceData.push({
-                time: time,
-                value: price
+        let currentChartType = 'marketcap';
+        let widget = null;
+        
+        // Initialize TradingView Widget
+        function initTradingViewChart() {
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": "KASPA:" + tokenSymbol,
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#0a0a0a",
+                "enable_publishing": false,
+                "hide_top_toolbar": false,
+                "hide_legend": true,
+                "save_image": false,
+                "container_id": "tradingview_chart",
+                "studies": currentChartType === 'marketcap' ? ["MarketCap@tv-basicstudies"] : [],
+                "show_popup_button": false,
+                "popup_width": "1000",
+                "popup_height": "650",
+                "backgroundColor": "#0a0a0a",
+                "gridColor": "rgba(255, 255, 255, 0.06)",
+                "allow_symbol_change": false,
+                "details": true,
+                "hotlist": false,
+                "calendar": false,
+                "studies_overrides": {
+                    "volume.volume.color.0": "#FF6B6B",
+                    "volume.volume.color.1": "#20B2AA"
+                },
+                "overrides": {
+                    "mainSeriesProperties.showCountdown": false,
+                    "paneProperties.background": "#0a0a0a",
+                    "paneProperties.backgroundGradientStartColor": "#0a0a0a",
+                    "paneProperties.backgroundGradientEndColor": "#1a1a1a",
+                    "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.06)",
+                    "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.06)",
+                    "scalesProperties.textColor": "#CCCCCC",
+                    "mainSeriesProperties.candleStyle.upColor": "#20B2AA",
+                    "mainSeriesProperties.candleStyle.downColor": "#FF6B6B",
+                    "mainSeriesProperties.candleStyle.borderUpColor": "#20B2AA",
+                    "mainSeriesProperties.candleStyle.borderDownColor": "#FF6B6B",
+                    "mainSeriesProperties.candleStyle.wickUpColor": "#20B2AA",
+                    "mainSeriesProperties.candleStyle.wickDownColor": "#FF6B6B"
+                }
             });
         }
-        
-        lineSeries.setData(priceData);
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            chart.applyOptions({ width: document.getElementById('tradingview-chart').clientWidth });
+
+        // Initialize chart on page load
+        window.addEventListener('load', function() {
+            initTradingViewChart();
+        });
+
+        // Handle chart type toggle
+        document.querySelectorAll('.chart-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Update active state
+                document.querySelectorAll('.chart-type-btn').forEach(b => {
+                    b.style.background = 'transparent';
+                    b.style.color = '#CCCCCC';
+                });
+                this.style.background = 'linear-gradient(135deg, #20B2AA, #00CED1)';
+                this.style.color = '#000';
+                
+                currentChartType = this.dataset.type;
+                initTradingViewChart();
+            });
         });
         
         // Trading functions
@@ -743,59 +831,6 @@
             input.value = '';
         }
         
-        // Timeframe switching
-        document.querySelectorAll('.timeframe-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Update active state
-                document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                
-                const timeframe = this.dataset.timeframe;
-                updateChartTimeframe(timeframe);
-            });
-        });
-        
-        function updateChartTimeframe(timeframe) {
-            // Generate new data based on timeframe
-            const now = Math.floor(Date.now() / 1000);
-            const priceData = [];
-            let intervals, intervalSeconds;
-            
-            switch(timeframe) {
-                case '1H':
-                    intervals = 60;
-                    intervalSeconds = 60;
-                    break;
-                case '6H':
-                    intervals = 72;
-                    intervalSeconds = 300; // 5 minutes
-                    break;
-                case '1D':
-                    intervals = 96;
-                    intervalSeconds = 900; // 15 minutes
-                    break;
-                case '7D':
-                    intervals = 168;
-                    intervalSeconds = 3600; // 1 hour
-                    break;
-                default:
-                    intervals = 60;
-                    intervalSeconds = 60;
-            }
-            
-            for (let i = intervals; i >= 0; i--) {
-                const time = now - (i * intervalSeconds);
-                const randomVariation = 0.8 + Math.random() * 0.4;
-                const trendFactor = timeframe === '7D' ? (1 + (intervals - i) / intervals * 0.5) : 1; // Upward trend for 7D
-                const price = tokenPrice * randomVariation * trendFactor * (1 + Math.sin(i / 10) * 0.1);
-                priceData.push({
-                    time: time,
-                    value: price
-                });
-            }
-            
-            lineSeries.setData(priceData);
-        }
 
         // Owner functions
         function editToken() {
