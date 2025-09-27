@@ -30,9 +30,12 @@
         <div id="profile-tab" class="tab-pane active">
             <div class="profile-grid">
         <!-- Profile Information -->
-        <div class="profile-section">
+        <div class="profile-section card">
             <div class="section-header">
-                <h2>Profile Information</h2>
+                <h2 class="section-title">
+                    <i class="fas fa-user"></i>
+                    Profile Information
+                </h2>
                 <button class="btn-edit" id="editProfileBtn" onclick="toggleEditMode()">
                     <i class="fas fa-edit"></i>
                     Edit
@@ -186,23 +189,21 @@
         </div>
 
         <!-- Connected Wallets -->
-        <div class="wallets-section">
-            <div class="section-header">
-                <h2>
-                    <i class="fas fa-wallet"></i>
-                    Connected Wallets
-                </h2>
-            </div>
+        <div class="wallets-section card">
+            <h2 class="section-title">
+                <i class="fas fa-wallet"></i>
+                Connected Wallets
+            </h2>
             
-            <div class="primary-wallet">
+            <div class="primary-wallet card">
                 <div class="wallet-info">
-                    <span class="wallet-label">Primary</span>
+                    <span class="wallet-label text-primary">Primary</span>
                     {% if user.wallet_address and user.wallet_address|length >= 10 %}
-                        <span class="wallet-address">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
-                        <span class="wallet-status connected">Currently connected</span>
+                        <span class="wallet-address text-secondary">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
+                        <span class="wallet-status text-muted">Currently connected</span>
                     {% else %}
-                        <span class="wallet-address">No wallet connected</span>
-                        <span class="wallet-status disconnected">Connect your wallet</span>
+                        <span class="wallet-address text-secondary">No wallet connected</span>
+                        <span class="wallet-status text-muted">Connect your wallet</span>
                     {% endif %}
                 </div>
                 <button class="btn-copy" onclick="copyWalletAddress('{{ user.wallet_address or '' }}')" {% if not user.wallet_address %}disabled{% endif %}>
@@ -213,13 +214,13 @@
             <!-- Additional Connected Wallets -->
             {% if connected_wallets %}
             <div class="additional-wallets">
-                <h4>Additional Wallets</h4>
+                <h4 class="section-subtitle">Additional Wallets</h4>
                 {% for wallet in connected_wallets %}
-                <div class="additional-wallet">
+                <div class="additional-wallet card">
                     <div class="wallet-info">
-                        <span class="wallet-label">{{ wallet.wallet_label or 'Unnamed' }}</span>
-                        <span class="wallet-address">{{ wallet.wallet_address[:6] }}...{{ wallet.wallet_address[-4:] }}</span>
-                        <span class="wallet-status connected">Connected {{ wallet.connected_at.strftime('%m/%d/%Y') if wallet.connected_at else '' }}</span>
+                        <span class="wallet-label text-primary">{{ wallet.wallet_label or 'Unnamed' }}</span>
+                        <span class="wallet-address text-secondary">{{ wallet.wallet_address[:6] }}...{{ wallet.wallet_address[-4:] }}</span>
+                        <span class="wallet-status text-muted">Connected {{ wallet.connected_at.strftime('%m/%d/%Y') if wallet.connected_at else '' }}</span>
                     </div>
                     <div class="wallet-actions">
                         <button class="btn-edit" onclick="editWallet('{{ wallet.id }}', '{{ wallet.wallet_label or 'Unnamed' }}')" title="Edit wallet label">
@@ -238,7 +239,7 @@
             {% endif %}
             
             <div class="add-wallet-section">
-                <h3>Add Additional Wallet</h3>
+                <h3 class="section-subtitle">Add Additional Wallet</h3>
                 <div class="wallet-form">
                     <input type="text" placeholder="Wallet label (e.g., Project Alpha)" class="wallet-label-input">
                     <input type="text" placeholder="0x..." class="wallet-address-input">
@@ -253,8 +254,11 @@
 
 
         <!-- Account Stats -->
-        <div class="stats-section">
-            <h2>Account Stats</h2>
+        <div class="stats-section card">
+            <h2 class="section-title">
+                <i class="fas fa-chart-bar"></i>
+                Account Stats
+            </h2>
             
             <div class="stats-grid">
                 <div class="stat-item">
@@ -690,58 +694,50 @@
 .profile-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: var(--space-xl);
 }
 
 .profile-header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: var(--space-2xl);
 }
 
 .profile-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-base);
 }
 
 .profile-subtitle {
-    color: #CCCCCC;
-    font-size: 1.1rem;
-    margin-bottom: 2rem;
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--space-xl);
 }
 
 .profile-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    gap: var(--space-xl);
 }
 
 .profile-section, .profile-picture-section, .wallets-section, .referral-section, .stats-section {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
-    padding: 2rem;
-    border: 1px solid rgba(32, 178, 170, 0.2);
-    backdrop-filter: blur(10px);
+    /* Use unified .card class from design system */
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-lg);
 }
 
 .section-header h2 {
-    color: #20B2AA;
-    font-size: 1.3rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    /* Styling handled by .section-title class */
+    margin: 0;
 }
 
 .btn-edit {
@@ -773,9 +769,10 @@
 }
 
 .field-group label {
-    color: #888888;
-    font-weight: 500;
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
     min-width: 120px;
+    font-size: var(--font-size-sm);
 }
 
 /* Profile Edit Form Styles */
