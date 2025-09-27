@@ -1,11 +1,87 @@
 import os
 import logging
+import secrets
+from datetime import datetime, timezone
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
+from PIL import Image, ImageOps
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Image processing utility functions
+def process_profile_image(image_file, user_id):
+    """Process and compress profile image using Pillow"""
+    try:
+        # Open and validate image
+        image = Image.open(image_file)
+        
+        # Convert to RGB if necessary (handles RGBA, P, etc.)
+        if image.mode != 'RGB':
+            if image.mode == 'RGBA':
+                # Create a white background for transparency
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                background.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
+                image = background
+            else:
+                image = image.convert('RGB')
+        
+        # Resize to 150x150 with center crop
+        image = ImageOps.fit(image, (150, 150), Image.Resampling.LANCZOS, 0, (0.5, 0.5))
+        
+        # Generate unique filename
+        filename = f"{user_id}_{secrets.token_hex(8)}.webp"
+        
+        # Ensure upload directory exists
+        upload_dir = os.path.join('static', 'uploads', 'profile')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save as WebP with good compression
+        file_path = os.path.join(upload_dir, filename)
+        image.save(file_path, 'WEBP', quality=80, optimize=True)
+        
+        # Return relative path for database storage
+        return f"uploads/profile/{filename}"
+        
+    except Exception as e:
+        logging.error(f"Error processing image: {str(e)}")
+        return None
+
+def cleanup_old_avatar(old_avatar_path):
+    """Remove old avatar file if it exists"""
+    if not old_avatar_path:
+        return
+        
+    try:
+        file_path = os.path.join('static', old_avatar_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logging.info(f"Cleaned up old avatar: {file_path}")
+    except Exception as e:
+        logging.error(f"Error cleaning up old avatar: {str(e)}")
+
+def validate_image_file(file):
+    """Validate uploaded image file"""
+    if not file or not file.filename:
+        return False, "No file selected"
+    
+    # Check file extension
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    filename = secure_filename(file.filename.lower())
+    if '.' not in filename or filename.rsplit('.', 1)[1] not in allowed_extensions:
+        return False, "Invalid file type. Please upload PNG, JPG, JPEG, GIF, or WebP files."
+    
+    # Check file size (5MB limit)
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset to beginning
+    
+    if file_size > 5 * 1024 * 1024:  # 5MB
+        return False, "File size must be less than 5MB"
+    
+    return True, "Valid file"
 
 # Create the app
 app = Flask(__name__)
@@ -423,26 +499,28 @@ def profile():
     if request.method == 'POST':
         # Handle profile update in a single transaction
         try:
-            # Handle profile picture upload
+            # Handle profile picture upload with compression
             if 'profile_picture' in request.files:
                 file = request.files['profile_picture']
-                if file and file.filename:
-                    # Validate file type
-                    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-                    filename = file.filename.lower()
-                    if '.' in filename and filename.rsplit('.', 1)[1] in allowed_extensions:
-                        # Convert file to base64 for storage
-                        import base64
-                        file_data = file.read()
-                        if len(file_data) <= 5 * 1024 * 1024:  # 5MB limit
-                            base64_data = base64.b64encode(file_data).decode('utf-8')
-                            file_type = filename.rsplit('.', 1)[1]
-                            data_url = f"data:image/{file_type};base64,{base64_data}"
-                            user_profile.profile_picture_url = data_url
-                        else:
-                            return jsonify({'error': 'File size must be less than 5MB'}), 400
-                    else:
-                        return jsonify({'error': 'Invalid file type'}), 400
+                
+                # Validate file
+                is_valid, message = validate_image_file(file)
+                if not is_valid:
+                    flash(message, 'error')
+                    return redirect(url_for('profile'))
+                
+                # Process and compress image
+                new_avatar_path = process_profile_image(file, user.id)
+                if new_avatar_path:
+                    # Cleanup old avatar if it exists
+                    cleanup_old_avatar(user_profile.avatar_path)
+                    
+                    # Update profile with new avatar
+                    user_profile.avatar_path = new_avatar_path
+                    user_profile.avatar_updated_at = datetime.now(timezone.utc)
+                else:
+                    flash('Error processing image. Please try again.', 'error')
+                    return redirect(url_for('profile'))
             
             # Update User model fields
             if 'display_name' in request.form:

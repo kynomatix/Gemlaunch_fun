@@ -73,7 +73,7 @@
             
             <!-- Edit Mode -->
             <div class="profile-edit-form" id="profileEdit" style="display: none;">
-                <form method="POST" action="{{ url_for('profile') }}">
+                <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="username">Username</label>
@@ -117,10 +117,13 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="profile_picture_url">Profile Picture URL</label>
-                            <input type="url" id="profile_picture_url" name="profile_picture_url" 
-                                   value="{{ user_profile.profile_picture_url if user_profile else '' }}" 
-                                   placeholder="https://...">
+                            <label for="profile_picture">Profile Picture</label>
+                            <input type="file" id="profile_picture" name="profile_picture" 
+                                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
+                                   class="file-input">
+                            <div class="file-input-help">
+                                <small>Upload PNG, JPG, GIF, or WebP. Max 5MB. Will be resized to 150x150.</small>
+                            </div>
                         </div>
                         
                         <div class="form-group full-width">
@@ -162,7 +165,9 @@
             
             <div class="profile-picture-container">
                 <div class="profile-picture">
-                    {% if user_profile and user_profile.profile_picture_url %}
+                    {% if user_profile and user_profile.avatar_path %}
+                        <img src="{{ url_for('static', filename=user_profile.avatar_path) }}{% if user_profile.avatar_updated_at %}?v={{ user_profile.avatar_updated_at.timestamp() }}{% endif %}" alt="Profile Picture">
+                    {% elif user_profile and user_profile.profile_picture_url %}
                         <img src="{{ user_profile.profile_picture_url }}" alt="Profile Picture">
                     {% else %}
                         <div class="default-avatar">
@@ -853,6 +858,38 @@
 .form-group input::placeholder,
 .form-group textarea::placeholder {
     color: #888888;
+}
+
+/* File input styling */
+.file-input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px dashed rgba(32, 178, 170, 0.3) !important;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #CCCCCC !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-input:hover {
+    border-color: rgba(32, 178, 170, 0.5) !important;
+    background: rgba(32, 178, 170, 0.05) !important;
+}
+
+.file-input:focus {
+    outline: none;
+    border-color: #20B2AA !important;
+    box-shadow: 0 0 10px rgba(32, 178, 170, 0.3) !important;
+}
+
+.file-input-help {
+    margin-top: 0.5rem;
+}
+
+.file-input-help small {
+    color: #888;
+    font-style: italic;
 }
 
 .privacy-settings {
