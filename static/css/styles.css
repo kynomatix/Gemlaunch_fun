@@ -510,7 +510,7 @@ header nav > div:last-child {
 .btn {
     padding: 15px 30px;
     border: none;
-    border-radius: 50px;
+    border-radius: 12px;
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
