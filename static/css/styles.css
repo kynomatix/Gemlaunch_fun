@@ -334,7 +334,7 @@ header nav > div:last-child {
     transition: all 0.3s ease;
     position: relative;
     padding: 8px 16px;
-    border-radius: 20px;
+    border-radius: 10px;
 }
 
 .nav-link::before {
@@ -345,7 +345,7 @@ header nav > div:last-child {
     right: 0;
     bottom: 0;
     background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.1));
-    border-radius: 20px;
+    border-radius: 10px;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
