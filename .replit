@@ -2,7 +2,7 @@ modules = ["python-3.11", "nodejs-20", "python3", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "libiconv", "openssl", "postgresql", "rustc"]
+packages = ["cargo", "freetype", "lcms2", "libiconv", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "postgresql", "rustc", "tcl", "tk", "zlib"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -36,10 +36,6 @@ externalPort = 80
 [[ports]]
 localPort = 35815
 externalPort = 3001
-
-[[ports]]
-localPort = 44645
-externalPort = 3003
 
 [[ports]]
 localPort = 44815
