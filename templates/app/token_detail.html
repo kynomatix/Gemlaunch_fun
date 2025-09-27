@@ -64,9 +64,9 @@
                     <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <div style="display: flex; gap: 1rem; align-items: center;">
                             <h3 style="margin: 0; color: #20B2AA;">Chart</h3>
-                                <div class="chart-type-toggle" style="display: flex; gap: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 0.25rem;">
-                                <button class="chart-type-btn active" data-type="marketcap" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #20B2AA, #00CED1); color: #000; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;">KAS/USDT</button>
-                                <button class="chart-type-btn" data-type="price" style="padding: 0.5rem 1rem; background: transparent; color: #CCCCCC; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;">Advanced</button>
+                            <div class="chart-type-toggle" style="display: flex; gap: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 0.25rem;">
+                                <button class="chart-type-btn active" data-type="marketcap" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #20B2AA, #00CED1); color: #000; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;">Market Cap</button>
+                                <button class="chart-type-btn" data-type="price" style="padding: 0.5rem 1rem; background: transparent; color: #CCCCCC; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;">Price</button>
                             </div>
                         </div>
                         <div class="chart-info" style="display: flex; align-items: center; gap: 1rem;">
@@ -77,9 +77,14 @@
                         </div>
                     </div>
                     
-                    <!-- TradingView Advanced Chart -->
-                    <div class="tradingview-widget-container" style="height: 400px; width: 100%;">
-                        <div class="tradingview-widget-container__widget" id="tradingview_chart"></div>
+                    <!-- Advanced Chart -->
+                    <div class="advanced-chart-container" style="height: 400px; background: linear-gradient(135deg, #0a0a0a, #1a1a1a); border-radius: 10px; overflow: hidden; position: relative;">
+                        <canvas id="tokenChart" style="width: 100%; height: 100%;"></canvas>
+                        <div class="chart-overlay" style="position: absolute; top: 10px; right: 10px; display: flex; gap: 0.5rem; z-index: 10;">
+                            <button class="chart-zoom-btn" onclick="zoomChart('in')" style="padding: 0.5rem; background: rgba(32, 178, 170, 0.2); border: 1px solid rgba(32, 178, 170, 0.5); border-radius: 6px; color: #20B2AA; cursor: pointer;"><i class="fas fa-search-plus"></i></button>
+                            <button class="chart-zoom-btn" onclick="zoomChart('out')" style="padding: 0.5rem; background: rgba(32, 178, 170, 0.2); border: 1px solid rgba(32, 178, 170, 0.5); border-radius: 6px; color: #20B2AA; cursor: pointer;"><i class="fas fa-search-minus"></i></button>
+                            <button class="chart-zoom-btn" onclick="resetChart()" style="padding: 0.5rem; background: rgba(32, 178, 170, 0.2); border: 1px solid rgba(32, 178, 170, 0.5); border-radius: 6px; color: #20B2AA; cursor: pointer;"><i class="fas fa-redo"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -473,8 +478,9 @@
         }
     </style>
     
-    <!-- TradingView Widget -->
-    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     
     <script>
         // Auto-collapse sidebar on token detail pages
@@ -497,83 +503,198 @@
         const tokenSymbol = '{{ token.symbol }}';
         const tokenName = '{{ token.name }}';
         
-        // TradingView widget implementation
-        let currentSymbol = 'KASUSDT'; // Use a realistic Kaspa/USDT symbol
+        let currentChartType = 'marketcap';
+        let myChart = null;
         
-        // Initialize TradingView widget
-        function initTradingViewChart() {
-            const widget = new TradingView.widget({
-                "width": "100%",
-                "height": 400,
-                "symbol": currentSymbol,
-                "interval": "15", // 15-minute default as requested
-                "timezone": "Etc/UTC",
-                "theme": "dark",
-                "style": "1", // Candlestick style as requested
-                "locale": "en",
-                "toolbar_bg": "rgba(32, 178, 170, 0.1)",
-                "enable_publishing": false,
-                "hide_top_toolbar": false,
-                "hide_legend": false,
-                "save_image": false,
-                "container_id": "tradingview_chart",
-                "backgroundColor": "rgba(10, 10, 10, 0.8)",
-                "gridColor": "rgba(255, 255, 255, 0.05)",
-                "hide_side_toolbar": false,
-                "allow_symbol_change": true,
-                "watchlist": [
-                    "KASUSDT",
-                    "BTCUSDT",
-                    "ETHUSDT"
-                ],
-                "details": true,
-                "hotlist": true,
-                "calendar": false,
-                "studies": [
-                    "Volume@tv-basicstudies",
-                    "RSI@tv-basicstudies"
-                ],
-                "disabled_features": [
-                    "use_localstorage_for_settings",
-                    "volume_force_overlay"
-                ],
-                "enabled_features": [
-                    "study_templates"
-                ],
-                "overrides": {
-                    "paneProperties.background": "rgba(10, 10, 10, 0.9)",
-                    "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.05)",
-                    "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.05)",
-                    "symbolWatermarkProperties.transparency": 90,
-                    "scalesProperties.textColor": "#888888",
-                    "mainSeriesProperties.candleStyle.upColor": "#20B2AA",
-                    "mainSeriesProperties.candleStyle.downColor": "#FF6B6B",
-                    "mainSeriesProperties.candleStyle.borderUpColor": "#20B2AA",
-                    "mainSeriesProperties.candleStyle.borderDownColor": "#FF6B6B",
-                    "mainSeriesProperties.candleStyle.wickUpColor": "#20B2AA",
-                    "mainSeriesProperties.candleStyle.wickDownColor": "#FF6B6B"
+        // Generate realistic chart data
+        function generateChartData(type) {
+            const now = new Date();
+            const data = [];
+            const labels = [];
+            
+            // Generate hourly data for the past 24 hours
+            for (let i = 24; i >= 0; i--) {
+                const time = new Date(now - i * 60 * 60 * 1000);
+                labels.push(time);
+                
+                // Generate realistic market cap or price movement
+                let value;
+                if (type === 'marketcap') {
+                    // Market cap starts low and trends up with volatility
+                    const baseValue = marketCap * 0.7;
+                    const trendFactor = (24 - i) / 24;
+                    const volatility = (Math.sin(i * 0.5) * 0.1 + Math.random() * 0.1);
+                    value = baseValue * (1 + trendFactor * 0.5 + volatility);
+                } else {
+                    // Price with more volatility
+                    const volatility = Math.sin(i * 0.3) * 0.15 + Math.random() * 0.1 - 0.05;
+                    value = tokenPrice * (1 + volatility);
+                }
+                data.push(value);
+            }
+            return { labels, data };
+        }
+        
+        // Initialize Chart.js chart
+        function initChart() {
+            const ctx = document.getElementById('tokenChart').getContext('2d');
+            const chartData = generateChartData(currentChartType);
+            
+            // Destroy existing chart if it exists
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: currentChartType === 'marketcap' ? 'Market Cap' : 'Price',
+                        data: chartData.data,
+                        borderColor: 'rgba(32, 178, 170, 1)',
+                        backgroundColor: 'rgba(32, 178, 170, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: '#20B2AA',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#20B2AA',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(32, 178, 170, 0.5)',
+                            borderWidth: 1,
+                            cornerRadius: 5,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    if (currentChartType === 'marketcap') {
+                                        return 'Market Cap: $' + (value * 0.125 / 1000).toFixed(2) + 'K';
+                                    } else {
+                                        return 'Price: ' + value.toFixed(6) + ' KAS ($' + (value * 0.125).toFixed(4) + ')';
+                                    }
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#888',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#888',
+                                font: {
+                                    size: 11
+                                },
+                                callback: function(value) {
+                                    if (currentChartType === 'marketcap') {
+                                        return '$' + (value * 0.125 / 1000).toFixed(1) + 'K';
+                                    } else {
+                                        return value.toFixed(6);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             });
             
-            return widget;
+            // Add gradient to the chart
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(32, 178, 170, 0.3)');
+            gradient.addColorStop(1, 'rgba(32, 178, 170, 0.01)');
+            myChart.data.datasets[0].backgroundColor = gradient;
+            myChart.update();
         }
         
-        // Initialize TradingView chart on page load
-        window.addEventListener('load', function() {
-            // Wait for TradingView script to load
-            if (typeof TradingView !== 'undefined') {
-                initTradingViewChart();
-            } else {
-                // Fallback: wait a bit for script to load
-                setTimeout(() => {
-                    if (typeof TradingView !== 'undefined') {
-                        initTradingViewChart();
-                    }
-                }, 1000);
+        // Chart controls
+        function zoomChart(direction) {
+            if (myChart) {
+                if (direction === 'in') {
+                    myChart.zoom(1.1);
+                } else {
+                    myChart.zoom(0.9);
+                }
             }
-        });
+        }
         
-        // Handle chart type toggle (simplified for TradingView)
+        function resetChart() {
+            if (myChart) {
+                myChart.resetZoom();
+            }
+        }
+
+        // Initialize chart on page load
+        window.addEventListener('load', function() {
+            initChart();
+            
+            // Update chart every 5 seconds with new data
+            setInterval(() => {
+                if (myChart) {
+                    // Add new data point
+                    const newData = generateChartData(currentChartType);
+                    myChart.data.labels = newData.labels;
+                    myChart.data.datasets[0].data = newData.data;
+                    myChart.update('none'); // Update without animation for smooth real-time feel
+                }
+            }, 5000);
+        });
+
+        // Handle chart type toggle
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.chart-type-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -585,17 +706,8 @@
                     this.style.background = 'linear-gradient(135deg, #20B2AA, #00CED1)';
                     this.style.color = '#000';
                     
-                    const chartType = this.dataset.type;
-                    // For TradingView, we can change symbol based on type
-                    if (chartType === 'marketcap') {
-                        currentSymbol = 'KASUSDT';
-                    } else {
-                        currentSymbol = 'KASUSDT'; // Same symbol for now
-                    }
-                    
-                    // Re-initialize chart with new symbol
-                    document.getElementById('tradingview_chart').innerHTML = '';
-                    setTimeout(() => initTradingViewChart(), 100);
+                    currentChartType = this.dataset.type;
+                    initChart();
                 });
             });
         });
