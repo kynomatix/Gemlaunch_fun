@@ -804,6 +804,54 @@ def remove_wallet(wallet_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to remove wallet. Please try again.'}), 500
 
+@app.route('/app/edit-wallet/<int:wallet_id>', methods=['POST'])
+def edit_wallet(wallet_id):
+    """Edit wallet label"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
+        new_label = data.get('label', '').strip()
+        
+        if not new_label:
+            return jsonify({'error': 'Wallet label is required'}), 400
+        
+        if len(new_label) > 50:
+            return jsonify({'error': 'Wallet label must be 50 characters or less'}), 400
+        
+        # Find the wallet and verify ownership
+        wallet = ConnectedWallet.query.filter_by(id=wallet_id, user_id=user.id).first()
+        if not wallet:
+            return jsonify({'error': 'Wallet not found or not owned by user'}), 404
+        
+        old_label = wallet.wallet_label
+        wallet.wallet_label = new_label
+        
+        # Add activity log
+        activity = Activity()
+        activity.user_id = user.id
+        activity.activity_type = 'wallet_updated'
+        activity.title = 'Wallet Label Updated'
+        activity.description = f'Updated wallet label from "{old_label}" to "{new_label}"'
+        activity.points_earned = 0
+        db.session.add(activity)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Wallet label updated successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update wallet label. Please try again.'}), 500
+
 @app.route('/app/update-referral-code', methods=['POST'])
 def update_referral_code():
     """Update custom referral code"""

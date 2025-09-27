@@ -222,6 +222,9 @@
                         <span class="wallet-status connected">Connected {{ wallet.connected_at.strftime('%m/%d/%Y') if wallet.connected_at else '' }}</span>
                     </div>
                     <div class="wallet-actions">
+                        <button class="btn-edit" onclick="editWallet('{{ wallet.id }}', '{{ wallet.wallet_label or 'Unnamed' }}')" title="Edit wallet label">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <button class="btn-copy" onclick="copyWalletAddress('{{ wallet.wallet_address }}')" title="Copy address">
                             <i class="fas fa-copy"></i>
                         </button>
@@ -949,7 +952,7 @@
 }
 
 .additional-wallet .wallet-status {
-    color: #888888;
+    color: #CCCCCC;
     font-size: 0.8rem;
 }
 
@@ -976,6 +979,27 @@
 .btn-remove:hover {
     background: rgba(255, 107, 107, 0.2);
     border-color: #FF6B6B;
+    transform: translateY(-2px);
+}
+
+.btn-edit {
+    background: rgba(255, 193, 7, 0.1);
+    color: #FFC107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.btn-edit:hover {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: #FFC107;
     transform: translateY(-2px);
 }
 
@@ -1841,6 +1865,42 @@ function copyReferralLink() {
     
     // Show success message
     showSuccessMessage('Referral link copied to clipboard!');
+}
+
+// Edit wallet function
+async function editWallet(walletId, currentLabel) {
+    const newLabel = prompt('Enter new wallet label:', currentLabel);
+    if (!newLabel || newLabel.trim() === '' || newLabel === currentLabel) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/app/edit-wallet/${walletId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                label: newLabel.trim()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showSuccessMessage('Wallet label updated successfully!');
+            
+            // Refresh page to update wallet list
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Failed to update wallet label');
+        }
+    } catch (error) {
+        console.error('Edit wallet error:', error);
+        alert(error.message || 'Failed to update wallet label. Please try again.');
+    }
 }
 </script>
 {% endblock %}
