@@ -391,9 +391,28 @@ def profile():
     # Get referral info
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     if not referral:
-        # Generate referral code
-        import secrets
-        referral_code = f"kryptoman{secrets.randbelow(10000):04d}"
+        # Generate referral code based on username/display_name
+        base_code = None
+        if user_profile and user_profile.username:
+            base_code = user_profile.username
+        elif user.display_name:
+            base_code = user.display_name
+        else:
+            base_code = user.wallet_address[:8] if user.wallet_address else f"user{user.id}"
+        
+        # Clean and validate the code
+        import re
+        base_code = re.sub(r'[^a-zA-Z0-9\-_]', '', base_code.lower())
+        if len(base_code) < 3:
+            base_code = f"user{user.id}"
+        
+        # Ensure uniqueness
+        referral_code = base_code
+        counter = 1
+        while Referral.query.filter_by(referral_code=referral_code).first():
+            referral_code = f"{base_code}{counter}"
+            counter += 1
+        
         referral = Referral()
         referral.referrer_id = user.id
         referral.referral_code = referral_code
@@ -697,10 +716,15 @@ def add_wallet():
         if len(address) < 10:
             return jsonify({'error': 'Invalid wallet address'}), 400
         
-        # Check if wallet address already exists
+        # Check if wallet address already exists (across ALL users)
         existing_wallet = ConnectedWallet.query.filter_by(wallet_address=address.lower()).first()
         if existing_wallet:
-            return jsonify({'error': 'This wallet address is already connected to an account'}), 400
+            return jsonify({'error': 'This wallet address is already connected to another account'}), 400
+        
+        # Also check if it's the primary wallet of any user
+        existing_user = User.query.filter_by(wallet_address=address.lower()).first()
+        if existing_user:
+            return jsonify({'error': 'This wallet address is already being used as a primary wallet'}), 400
         
         # Create new connected wallet
         new_wallet = ConnectedWallet()

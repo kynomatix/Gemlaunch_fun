@@ -248,49 +248,6 @@
             </div>
         </div>
 
-        <!-- Referral Link -->
-        <div class="referral-section">
-            <div class="section-header">
-                <h2>
-                    <i class="fas fa-link"></i>
-                    Referral Link
-                </h2>
-            </div>
-            
-            <div class="referral-link-container">
-                <label>Your referral link:</label>
-                <div class="link-display">
-                    <input type="text" value="{{ referral.referral_link if referral else 'Generating...' }}" readonly id="referralLink">
-                    <button class="btn-copy-link" onclick="copyReferralLink()">
-                        <i class="fas fa-copy"></i>
-                        Copy Link
-                    </button>
-                </div>
-                <p class="referral-info">Share this link to earn 50 points per qualified referral</p>
-                
-                <!-- Custom Referral Code Section -->
-                <div class="custom-referral-section">
-                    <h4>Customize Your Referral Code</h4>
-                    <div class="custom-code-form">
-                        <div class="code-preview">
-                            <span class="base-url">gemlaunch.fun/?ref=</span>
-                            <input type="text" 
-                                   id="customReferralCode" 
-                                   placeholder="{{ referral.referral_code if referral else 'your-code' }}"
-                                   value="{{ referral.referral_code if referral else '' }}"
-                                   maxlength="20"
-                                   pattern="[a-zA-Z0-9\-_]+"
-                                   class="code-input">
-                        </div>
-                        <button class="btn-update-code" onclick="updateReferralCode()">
-                            <i class="fas fa-save"></i>
-                            Update Code
-                        </button>
-                    </div>
-                    <p class="code-help">Use 3-20 characters: letters, numbers, hyphens, and underscores only</p>
-                </div>
-            </div>
-        </div>
 
         <!-- Account Stats -->
         <div class="stats-section">
@@ -345,6 +302,28 @@
                                     <p>Generating your referral link...</p>
                                 </div>
                             {% endif %}
+                        </div>
+                        
+                        <!-- Custom Referral Code Section -->
+                        <div class="custom-referral-section">
+                            <h4>Customize Your Referral Code</h4>
+                            <div class="custom-code-form">
+                                <div class="code-preview">
+                                    <span class="base-url">gemlaunch.fun/?ref=</span>
+                                    <input type="text" 
+                                           id="customReferralCode" 
+                                           placeholder="{{ referral.referral_code if referral else (user_profile.username if user_profile and user_profile.username else user.display_name or 'your-code') }}"
+                                           value="{{ referral.referral_code if referral else '' }}"
+                                           maxlength="20"
+                                           pattern="[a-zA-Z0-9\-_]+"
+                                           class="code-input">
+                                </div>
+                                <button class="btn-update-code" onclick="updateReferralCode()">
+                                    <i class="fas fa-save"></i>
+                                    Update Code
+                                </button>
+                            </div>
+                            <p class="code-help">Use 3-20 characters: letters, numbers, hyphens, and underscores only</p>
                         </div>
                     </div>
 
