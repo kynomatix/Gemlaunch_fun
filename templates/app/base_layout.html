@@ -399,6 +399,14 @@
                 document.getElementById('sidebar').classList.add('collapsed');
                 document.getElementById('mainContent').classList.add('sidebar-collapsed');
             }
+            
+            // Store user wallet address for ownership checks
+            {% if user %}
+            localStorage.setItem('connectedWallet', '{{ user.wallet_address }}');
+            console.log('User wallet stored:', '{{ user.wallet_address }}');
+            {% else %}
+            localStorage.removeItem('connectedWallet');
+            {% endif %}
         });
         
         // Disconnect wallet
