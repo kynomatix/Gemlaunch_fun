@@ -293,18 +293,26 @@
                         </div>
                     </div>
                     
-                    <div class="chat-input-container">
-                        <div class="input-actions">
+                    <!-- Chat Action Buttons - Above Input -->
+                    <div class="chat-actions-bar">
+                        <div class="action-buttons">
                             <button class="action-btn spotlight-btn" onclick="spotlightMessage()" title="Spotlight your message (costs tokens)">
                                 <i class="fas fa-star"></i>
+                                <span>Spotlight</span>
                             </button>
                             <button class="action-btn poll-btn" onclick="createPoll()" title="Create a poll">
                                 <i class="fas fa-poll"></i>
+                                <span>Poll</span>
                             </button>
                             <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
                                 <i class="fas fa-gift"></i>
+                                <span>Airdrop</span>
                             </button>
                         </div>
+                    </div>
+                    
+                    <!-- Chat Input Area -->
+                    <div class="chat-input-container">
                         <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="200">
                         <button class="chat-send" onclick="sendMessage()">
                             <i class="fas fa-paper-plane"></i>
@@ -1049,34 +1057,59 @@
             margin-left: auto;
         }
         
+        /* Chat actions bar above input */
+        .chat-actions-bar {
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
         .chat-input-container {
             display: flex;
             gap: 0.5rem;
-            align-items: flex-end;
-        }
-        
-        .input-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
+            align-items: center;
         }
         
         .action-btn {
-            padding: 0.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
+            padding: 0.6rem 1rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
             color: #CCCCCC;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 80px;
+            justify-content: center;
         }
         
         .action-btn:hover {
-            background: rgba(32, 178, 170, 0.1);
-            border-color: rgba(32, 178, 170, 0.3);
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
+            border-color: rgba(32, 178, 170, 0.4);
             color: #20B2AA;
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(32, 178, 170, 0.2);
+        }
+        
+        .action-btn i {
+            font-size: 1rem;
+        }
+        
+        .action-btn span {
+            font-size: 0.8rem;
         }
         
         .spotlight-btn:hover {
@@ -1448,6 +1481,25 @@
             
             .chat-input-container {
                 padding: 0.75rem;
+            }
+            
+            .chat-actions-bar {
+                margin-bottom: 0.5rem;
+                padding: 0.4rem;
+            }
+            
+            .action-buttons {
+                gap: 0.5rem;
+            }
+            
+            .action-btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+                min-width: 70px;
+            }
+            
+            .action-btn span {
+                font-size: 0.75rem;
             }
             
             .reply-indicator {
