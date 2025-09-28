@@ -71,53 +71,29 @@
             opacity: 0.8;
         }
         
-        /* Immutable Warning Banner */
-        .immutable-warning-banner {
-            margin: 2rem 0;
-            background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 140, 0, 0.15));
-            border: 2px solid rgba(255, 107, 107, 0.4);
-            border-radius: 15px;
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .warning-content {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-        
-        .warning-icon {
-            font-size: 1.5rem;
-            color: #FF6B6B;
-            margin-top: 0.2rem;
-            flex-shrink: 0;
-        }
-        
-        .warning-text h4 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.1rem;
-            color: #FF6B6B;
-            font-weight: 700;
-        }
-        
-        .warning-text p {
-            margin: 0;
-            font-size: 0.95rem;
-            color: #FFFFFF;
-            line-height: 1.5;
-        }
-        
-        .warning-text strong {
-            color: #FF8C00;
-        }
-        
         .create-form {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(32, 178, 170, 0.2);
             border-radius: 20px;
             padding: 2.5rem;
             backdrop-filter: blur(20px);
+        }
+        
+        /* Simple immutability note */
+        .immutable-note {
+            margin: 1.5rem 0 1rem 0;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #CCCCCC;
+            text-align: center;
+        }
+        
+        .immutable-note i {
+            color: #20B2AA;
+            margin-right: 0.5rem;
         }
         
         .form-row {
@@ -412,17 +388,6 @@
                     </button>
                 </div>
 
-                <!-- CRITICAL WARNING BANNER -->
-                <div class="immutable-warning-banner">
-                    <div class="warning-content">
-                        <i class="fas fa-exclamation-triangle warning-icon"></i>
-                        <div class="warning-text">
-                            <h4>⚠️ All token details become permanent once deployed</h4>
-                            <p>Name, symbol, description, image, and social links <strong>cannot be changed</strong> after blockchain deployment. Double-check everything before you launch!</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Create Form -->
                 <form method="POST" enctype="multipart/form-data" class="create-form">
                     <input type="hidden" name="mode" id="mode" value="simple">
@@ -524,6 +489,12 @@
                         </div>
                     </div>
 
+                    <!-- Simple immutability note -->
+                    <p class="immutable-note">
+                        <i class="fas fa-info-circle"></i>
+                        Note: All token details become permanent once deployed and cannot be changed.
+                    </p>
+                    
                     <button type="submit" class="create-btn">
                         <i class="fas fa-rocket"></i>
                         Launch Token ($0 - Fair Launch)
