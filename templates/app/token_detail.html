@@ -319,6 +319,68 @@
             </div>
         </div>
     </div>
+    
+    <!-- Poll Creation Modal -->
+    <div id="pollModal" class="modal" style="display: none;">
+        <div class="modal-content poll-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-poll"></i> Create Poll</h3>
+                <button class="modal-close" onclick="closePollModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="poll-gating-info">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Only holders with 10,000+ tokens can create polls</span>
+                </div>
+                
+                <form id="pollForm">
+                    <div class="form-group">
+                        <label for="pollQuestion">Poll Question</label>
+                        <input type="text" id="pollQuestion" placeholder="What should we decide?" maxlength="120" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Poll Options</label>
+                        <div class="poll-options-container">
+                            <input type="text" class="poll-option" placeholder="Option 1" maxlength="60" required>
+                            <input type="text" class="poll-option" placeholder="Option 2" maxlength="60" required>
+                            <button type="button" class="add-option-btn" onclick="addPollOption()">
+                                <i class="fas fa-plus"></i> Add Option
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pollDuration">Poll Duration</label>
+                        <select id="pollDuration">
+                            <option value="1">1 Hour</option>
+                            <option value="6">6 Hours</option>
+                            <option value="24" selected>24 Hours</option>
+                            <option value="72">3 Days</option>
+                            <option value="168">1 Week</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="voteCost">Vote Cost (tokens per vote)</label>
+                        <input type="number" id="voteCost" value="100" min="10" max="10000" step="10">
+                        <small>Voters spend tokens to participate - prevents spam</small>
+                    </div>
+                    
+                    <div class="poll-cost-info">
+                        <i class="fas fa-coins"></i>
+                        <span>Poll creation cost: <strong>1,000 {{ token.symbol }}</strong></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePollModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createPollSubmit()">
+                    <i class="fas fa-rocket"></i> Create Poll
+                </button>
+            </div>
+        </div>
+    </div>
 
     <style>
         .token-detail-main {
@@ -329,9 +391,9 @@
         
         .token-layout {
             display: grid;
-            grid-template-columns: 1fr 350px;
+            grid-template-columns: 1fr 420px;
             gap: 1.5rem;
-            max-width: 1400px;
+            max-width: 1500px;
             margin: 0 auto;
             padding: 1rem;
         }
@@ -1571,6 +1633,209 @@
                 max-width: 150px;
             }
         }
+        
+        /* Poll Modal Styling */
+        .poll-modal {
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .poll-gating-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            color: #20B2AA;
+            font-size: 0.85rem;
+        }
+        
+        .poll-gating-info i {
+            font-size: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #20B2AA;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #FFFFFF;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #20B2AA;
+            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+        }
+        
+        .poll-options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .poll-option {
+            position: relative;
+        }
+        
+        .add-option-btn {
+            align-self: flex-start;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.1));
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 6px;
+            color: #20B2AA;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        
+        .add-option-btn:hover {
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.25), rgba(0, 206, 209, 0.15));
+            border-color: rgba(32, 178, 170, 0.5);
+        }
+        
+        .poll-cost-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: #FFD700;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #CCCCCC;
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        
+        /* Poll Display in Chat */
+        .chat-poll {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(75, 0, 130, 0.05));
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 0.75rem 0;
+            position: relative;
+        }
+        
+        .poll-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: #8A2BE2;
+            font-weight: 600;
+        }
+        
+        .poll-question {
+            font-size: 1rem;
+            color: #FFFFFF;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+        
+        .poll-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .poll-option-vote {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .poll-option-vote:hover {
+            background: rgba(138, 43, 226, 0.1);
+            border-color: rgba(138, 43, 226, 0.3);
+        }
+        
+        .poll-option-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.1));
+            transition: width 0.3s ease;
+            z-index: 1;
+        }
+        
+        .poll-option-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            z-index: 2;
+            position: relative;
+        }
+        
+        .poll-option-text {
+            font-size: 0.9rem;
+            color: #FFFFFF;
+        }
+        
+        .poll-option-votes {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: #CCCCCC;
+        }
+        
+        .poll-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.75rem;
+            color: #CCCCCC;
+        }
+        
+        .poll-vote-cost {
+            color: #FFD700;
+            font-weight: 600;
+        }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2021,6 +2286,229 @@
             }
         `;
         document.head.appendChild(style);
+        
+        // Poll System Functions
+        function createPoll() {
+            // Check if user has enough tokens to create polls (DAO gating)
+            const minTokensRequired = 10000;
+            const userBalance = chatState.userTokenBalance || 0;
+            
+            if (userBalance < minTokensRequired) {
+                alert(`❌ Poll creation requires at least ${minTokensRequired.toLocaleString()} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nOnly larger holders can create polls (DAO governance).`);
+                return;
+            }
+            
+            console.log(`🗳️ Opening poll creation (user has ${userBalance.toLocaleString()} tokens)`);
+            document.getElementById('pollModal').style.display = 'flex';
+        }
+        
+        function closePollModal() {
+            document.getElementById('pollModal').style.display = 'none';
+            resetPollForm();
+        }
+        
+        function resetPollForm() {
+            document.getElementById('pollForm').reset();
+            // Reset to 2 options
+            const container = document.querySelector('.poll-options-container');
+            const options = container.querySelectorAll('.poll-option');
+            
+            // Remove extra options (keep only first 2)
+            for (let i = 2; i < options.length; i++) {
+                options[i].remove();
+            }
+        }
+        
+        function addPollOption() {
+            const container = document.querySelector('.poll-options-container');
+            const options = container.querySelectorAll('.poll-option');
+            
+            if (options.length >= 6) {
+                alert('Maximum 6 options allowed');
+                return;
+            }
+            
+            const newOption = document.createElement('input');
+            newOption.type = 'text';
+            newOption.className = 'poll-option';
+            newOption.placeholder = `Option ${options.length + 1}`;
+            newOption.maxLength = 60;
+            newOption.required = true;
+            
+            // Insert before the add button
+            const addBtn = container.querySelector('.add-option-btn');
+            container.insertBefore(newOption, addBtn);
+        }
+        
+        function createPollSubmit() {
+            const question = document.getElementById('pollQuestion').value.trim();
+            const duration = parseInt(document.getElementById('pollDuration').value);
+            const voteCost = parseInt(document.getElementById('voteCost').value);
+            
+            // Get poll options
+            const optionInputs = document.querySelectorAll('.poll-option');
+            const options = [];
+            
+            for (let input of optionInputs) {
+                const value = input.value.trim();
+                if (value) {
+                    options.push(value);
+                }
+            }
+            
+            // Validation
+            if (!question) {
+                alert('Please enter a poll question');
+                return;
+            }
+            
+            if (options.length < 2) {
+                alert('Please provide at least 2 options');
+                return;
+            }
+            
+            // Check poll creation cost
+            const pollCreationCost = 1000;
+            if (chatState.userTokenBalance < pollCreationCost) {
+                alert(`Insufficient tokens to create poll.\\nRequired: ${pollCreationCost} tokens\\nYour balance: ${chatState.userTokenBalance} tokens`);
+                return;
+            }
+            
+            // Deduct poll creation cost
+            chatState.userTokenBalance -= pollCreationCost;
+            updateTokenBalance();
+            
+            // Create poll object
+            const poll = {
+                id: Date.now(),
+                question: question,
+                options: options.map(opt => ({ text: opt, votes: 0, voters: [] })),
+                duration: duration,
+                voteCost: voteCost,
+                creator: 'You',
+                createdAt: new Date(),
+                expiresAt: new Date(Date.now() + duration * 60 * 60 * 1000),
+                totalVotes: 0
+            };
+            
+            // Store poll in chat state
+            if (!chatState.polls) chatState.polls = [];
+            chatState.polls.push(poll);
+            
+            // Add poll to chat
+            addPollToChat(poll);
+            
+            // Close modal
+            closePollModal();
+            
+            console.log(`🗳️ Poll created: "${question}" | Cost: ${pollCreationCost} tokens | Vote cost: ${voteCost} tokens`);
+        }
+        
+        function addPollToChat(poll) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const pollDiv = document.createElement('div');
+            pollDiv.className = 'chat-poll';
+            pollDiv.setAttribute('data-poll-id', poll.id);
+            
+            const hoursLeft = Math.max(0, Math.ceil((poll.expiresAt - new Date()) / (1000 * 60 * 60)));
+            
+            pollDiv.innerHTML = `
+                <div class="poll-header">
+                    <i class="fas fa-poll"></i>
+                    <span>Poll by ${poll.creator}</span>
+                    <span style="margin-left: auto; font-size: 0.8rem; opacity: 0.8;">${hoursLeft}h left</span>
+                </div>
+                <div class="poll-question">${poll.question}</div>
+                <div class="poll-options">
+                    ${poll.options.map((option, index) => `
+                        <div class="poll-option-vote" onclick="votePoll(${poll.id}, ${index})">
+                            <div class="poll-option-progress" style="width: 0%"></div>
+                            <div class="poll-option-content">
+                                <span class="poll-option-text">${option.text}</span>
+                                <span class="poll-option-votes">
+                                    <i class="fas fa-vote-yea"></i>
+                                    ${option.votes}
+                                </span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="poll-footer">
+                    <span>Total votes: ${poll.totalVotes}</span>
+                    <span class="poll-vote-cost">Cost: ${poll.voteCost} tokens per vote</span>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(pollDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function votePoll(pollId, optionIndex) {
+            const poll = chatState.polls?.find(p => p.id === pollId);
+            if (!poll) return;
+            
+            // Check if poll is expired
+            if (new Date() > poll.expiresAt) {
+                alert('This poll has expired');
+                return;
+            }
+            
+            // Check if user has enough tokens to vote
+            if (chatState.userTokenBalance < poll.voteCost) {
+                alert(`Insufficient tokens to vote.\\nRequired: ${poll.voteCost} tokens\\nYour balance: ${chatState.userTokenBalance} tokens`);
+                return;
+            }
+            
+            // Check if user already voted (prevent double voting)
+            const userWallet = localStorage.getItem('connectedWallet') || 'user';
+            const hasVoted = poll.options.some(option => option.voters.includes(userWallet));
+            
+            if (hasVoted) {
+                alert('You have already voted in this poll');
+                return;
+            }
+            
+            // Deduct vote cost
+            chatState.userTokenBalance -= poll.voteCost;
+            updateTokenBalance();
+            
+            // Add vote
+            poll.options[optionIndex].votes++;
+            poll.options[optionIndex].voters.push(userWallet);
+            poll.totalVotes++;
+            
+            // Update poll display
+            updatePollDisplay(poll);
+            
+            console.log(`🗳️ Voted on poll "${poll.question}" | Option: "${poll.options[optionIndex].text}" | Cost: ${poll.voteCost} tokens`);
+        }
+        
+        function updatePollDisplay(poll) {
+            const pollDiv = document.querySelector(`[data-poll-id="${poll.id}"]`);
+            if (!pollDiv) return;
+            
+            // Update vote counts and progress bars
+            const optionDivs = pollDiv.querySelectorAll('.poll-option-vote');
+            
+            poll.options.forEach((option, index) => {
+                const optionDiv = optionDivs[index];
+                const progressBar = optionDiv.querySelector('.poll-option-progress');
+                const voteCount = optionDiv.querySelector('.poll-option-votes');
+                
+                // Calculate percentage
+                const percentage = poll.totalVotes > 0 ? (option.votes / poll.totalVotes) * 100 : 0;
+                
+                // Update progress bar
+                progressBar.style.width = `${percentage}%`;
+                
+                // Update vote count
+                voteCount.innerHTML = `<i class="fas fa-vote-yea"></i> ${option.votes}`;
+            });
+            
+            // Update total votes
+            const footer = pollDiv.querySelector('.poll-footer');
+            footer.querySelector('span').textContent = `Total votes: ${poll.totalVotes}`;
+        }
         
         // Enhanced token-gated chat functionality
         function toggleTokenGate() {
