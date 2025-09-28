@@ -141,6 +141,17 @@
                         </div>
                     </div>
                     
+                    <!-- Username encouragement banner -->
+                    <div class="username-banner" id="usernameBanner">
+                        <div class="username-banner-content">
+                            <h4><i class="fas fa-user-plus"></i> Stand Out in Chat!</h4>
+                            <p>Set a unique username to build your reputation and earn more engagement</p>
+                        </div>
+                        <button class="set-username-btn" onclick="showUsernameModal()">
+                            Set Username
+                        </button>
+                    </div>
+                    
                     <!-- Token gate status -->
                     <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
                         <div class="gate-info">
@@ -155,10 +166,10 @@
                         <div class="leaderboard-header">
                             <h4><i class="fas fa-trophy"></i> Top Contributors</h4>
                             <button class="leaderboard-toggle" onclick="toggleLeaderboard()">
-                                <i class="fas fa-chevron-up"></i>
+                                <i class="fas fa-chevron-down"></i>
                             </button>
                         </div>
-                        <div class="leaderboard-content" id="leaderboardContent">
+                        <div class="leaderboard-content collapsed" id="leaderboardContent">
                             <div class="contributor-item rank-1">
                                 <div class="rank-badge gold">#1</div>
                                 <div class="contributor-info">
@@ -197,7 +208,7 @@
                     <div class="chat-messages" id="chatMessages">
                         <div class="chat-message" data-message-id="1">
                             <div class="message-content">
-                                <span class="chat-user">0xAB1...234:</span>
+                                <span class="chat-user verified-user">CryptoKing:</span>
                                 <span class="chat-text">LFG! 🚀</span>
                             </div>
                             <div class="message-actions">
@@ -212,7 +223,7 @@
                         </div>
                         <div class="chat-message" data-message-id="2">
                             <div class="message-content">
-                                <span class="chat-user">0xCD5...678:</span>
+                                <span class="chat-user wallet-user">...5E678A:</span>
                                 <span class="chat-text">Great project!</span>
                             </div>
                             <div class="message-actions">
@@ -227,7 +238,7 @@
                         </div>
                         <div class="chat-message" data-message-id="3">
                             <div class="message-content">
-                                <span class="chat-user">0x1A2...BC3:</span>
+                                <span class="chat-user verified-user">MoonHunter:</span>
                                 <span class="chat-text">When moon? 🌙</span>
                             </div>
                             <div class="message-actions">
@@ -782,17 +793,17 @@
         }
         
         .chat-messages {
-            height: 300px;
+            height: 380px;
             overflow-y: auto;
             margin-bottom: 1rem;
-            padding: 1rem;
+            padding: 1.2rem;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
         }
         
         .chat-message {
-            margin-bottom: 1rem;
-            padding: 0.8rem;
+            margin-bottom: 1.2rem;
+            padding: 1rem;
             background: rgba(255, 255, 255, 0.02);
             border-radius: 8px;
             transition: all 0.3s ease;
@@ -1073,6 +1084,275 @@
             color: #FFF;
         }
         
+        /* Settings Modal Styles */
+        .settings-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .settings-modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .settings-header h3 {
+            color: #20B2AA;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        
+        .close-settings {
+            background: none;
+            border: none;
+            color: #CCCCCC;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .close-settings:hover {
+            background: rgba(255, 107, 107, 0.1);
+            color: #FF6B6B;
+        }
+        
+        .settings-content {
+            padding: 1.5rem;
+        }
+        
+        .setting-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .setting-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #20B2AA;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .setting-group input,
+        .setting-group select {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #FFFFFF;
+            font-size: 0.9rem;
+        }
+        
+        .setting-group small {
+            display: block;
+            margin-top: 0.3rem;
+            color: #AAAAAA;
+            font-size: 0.8rem;
+        }
+        
+        .badge-settings {
+            margin-top: 0.5rem;
+        }
+        
+        .badge-setting {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .badge-setting span {
+            min-width: 140px;
+            font-size: 0.85rem;
+        }
+        
+        .badge-setting input {
+            width: 80px;
+            padding: 0.4rem;
+            margin: 0;
+        }
+        
+        .settings-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+        
+        .btn-secondary {
+            padding: 0.6rem 1.2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn-primary {
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(135deg, #20B2AA, #3A8B87);
+            border: none;
+            border-radius: 6px;
+            color: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
+        }
+        
+        /* Username System Styles */
+        .verified-user {
+            color: #20B2AA;
+            font-weight: 600;
+            position: relative;
+        }
+        
+        .verified-user::after {
+            content: '✓';
+            color: #32CD32;
+            font-size: 0.8rem;
+            margin-left: 0.2rem;
+        }
+        
+        .wallet-user {
+            color: #AAAAAA;
+            font-style: italic;
+            position: relative;
+        }
+        
+        .wallet-user::before {
+            content: '🔗';
+            margin-right: 0.2rem;
+            opacity: 0.6;
+        }
+        
+        /* Username encouragement banner */
+        .username-banner {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(50, 205, 50, 0.05));
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        
+        .username-banner-content {
+            flex: 1;
+        }
+        
+        .username-banner h4 {
+            margin: 0 0 0.3rem 0;
+            color: #20B2AA;
+            font-size: 0.9rem;
+        }
+        
+        .username-banner p {
+            margin: 0;
+            color: #CCCCCC;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        
+        .set-username-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #20B2AA, #32CD32);
+            border: none;
+            border-radius: 6px;
+            color: #FFFFFF;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .set-username-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(32, 178, 170, 0.4);
+        }
+        
+        .username-benefits {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(50, 205, 50, 0.05);
+            border: 1px solid rgba(50, 205, 50, 0.2);
+            border-radius: 6px;
+        }
+        
+        .username-benefits h4 {
+            margin: 0 0 0.8rem 0;
+            color: #32CD32;
+            font-size: 0.9rem;
+        }
+        
+        .username-benefits ul {
+            margin: 0;
+            padding-left: 1.2rem;
+            color: #CCCCCC;
+            font-size: 0.8rem;
+        }
+        
+        .username-benefits li {
+            margin-bottom: 0.4rem;
+        }
+        
+        .current-display {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+        }
+        
+        .current-display h4 {
+            margin: 0 0 0.8rem 0;
+            color: #20B2AA;
+            font-size: 0.9rem;
+        }
+        
+        .display-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .display-option span:last-child {
+            color: #AAAAAA;
+        }
+        
         .chat-send {
             padding: 0.8rem 1rem;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
@@ -1146,11 +1426,11 @@
         
         // Advanced chat state management
         let chatState = {
-            userTokenBalance: Math.floor(Math.random() * 50000) + 1000, // Simulated balance
+            userTokenBalance: parseInt(localStorage.getItem(`tokenBalance_${tokenSymbol}`)) || Math.floor(Math.random() * 50000) + 1000,
             messageLoves: JSON.parse(localStorage.getItem(`loves_${tokenSymbol}`) || '{}'),
             userLoves: JSON.parse(localStorage.getItem(`userLoves_${tokenSymbol}`) || '[]'),
             isTokenHolder: true,
-            userScore: 0,
+            userScore: parseInt(localStorage.getItem(`userScore_${tokenSymbol}`)) || 0,
             spotlightMessages: [],
             activePolls: [],
             airdropHistory: []
@@ -1161,6 +1441,8 @@
             localStorage.setItem(`loves_${tokenSymbol}`, JSON.stringify(chatState.messageLoves));
             localStorage.setItem(`userLoves_${tokenSymbol}`, JSON.stringify(chatState.userLoves));
             localStorage.setItem(`tokenBalance_${tokenSymbol}`, chatState.userTokenBalance);
+            localStorage.setItem(`userScore_${tokenSymbol}`, chatState.userScore);
+            console.log(`💾 Chat state saved for ${tokenSymbol}`);
         }
         
         // Initialize chat state on page load
@@ -1172,17 +1454,27 @@
                 const isLoved = chatState.userLoves.includes(messageId);
                 if (isLoved) {
                     const loveBtn = msg.querySelector('.love-btn');
-                    loveBtn.classList.add('loved');
+                    if (loveBtn) {
+                        loveBtn.classList.add('loved');
+                    }
                 }
                 
-                // Update love counts from stored state
-                if (chatState.messageLoves[messageId]) {
-                    const countSpan = msg.querySelector('.love-count');
-                    countSpan.textContent = chatState.messageLoves[messageId];
+                // Update love counts from stored state or initialize to 0
+                const countSpan = msg.querySelector('.love-count');
+                if (countSpan) {
+                    const savedCount = chatState.messageLoves[messageId];
+                    if (savedCount !== undefined) {
+                        countSpan.textContent = savedCount;
+                    } else {
+                        // Initialize with current count from HTML or 0
+                        const currentCount = parseInt(countSpan.textContent) || 0;
+                        chatState.messageLoves[messageId] = currentCount;
+                        countSpan.textContent = currentCount;
+                    }
                 }
             });
             
-            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol}`);
+            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol} | Loved messages: [${chatState.userLoves.join(', ')}]`);
         }
         
         // Generate realistic chart data
@@ -1393,26 +1685,38 @@
         
         // Enhanced chat functionality with state management
         function toggleLove(messageId) {
+            // Ensure messageId is a string for consistency
+            messageId = String(messageId);
+            
             const loveBtn = document.querySelector(`[data-message-id="${messageId}"] .love-btn`);
+            if (!loveBtn) {
+                console.error(`Love button not found for message ${messageId}`);
+                return;
+            }
+            
             const countSpan = loveBtn.querySelector('.love-count');
+            if (!countSpan) {
+                console.error(`Love count span not found for message ${messageId}`);
+                return;
+            }
             
             // Get current state
             const isLoved = chatState.userLoves.includes(messageId);
-            const currentCount = chatState.messageLoves[messageId] || parseInt(countSpan.textContent);
+            const currentCount = chatState.messageLoves[messageId] || parseInt(countSpan.textContent) || 0;
             
             if (isLoved) {
                 // Unlike the message
                 loveBtn.classList.remove('loved');
                 chatState.messageLoves[messageId] = Math.max(0, currentCount - 1);
                 chatState.userLoves = chatState.userLoves.filter(id => id !== messageId);
-                console.log(`Unliked message ${messageId}`);
+                console.log(`💔 Unliked message ${messageId} | Count: ${chatState.messageLoves[messageId]}`);
             } else {
                 // Love the message
                 loveBtn.classList.add('loved');
                 chatState.messageLoves[messageId] = currentCount + 1;
                 chatState.userLoves.push(messageId);
                 chatState.userScore += 1; // User gets points for engaging
-                console.log(`Loved message ${messageId}`);
+                console.log(`❤️ Loved message ${messageId} | Count: ${chatState.messageLoves[messageId]}`);
                 
                 // Add heart animation
                 const heart = loveBtn.querySelector('i');
@@ -1425,7 +1729,7 @@
                 updateUserScore();
             }
             
-            // Update display and save state
+            // Update display and save state immediately
             countSpan.textContent = chatState.messageLoves[messageId];
             saveChatState();
         }
@@ -1516,9 +1820,169 @@
         }
         
         function openChatSettings() {
-            // Modal for chat settings would open here
-            console.log('Opening chat settings...');
-            alert('Chat Settings:\n• Token gate threshold\n• Spotlight message costs\n• Badge requirements\n• Airdrop settings');
+            // Check if user is token owner (simulated check)
+            const isTokenOwner = Math.random() > 0.5; // In real app, check against token creator address
+            
+            if (!isTokenOwner) {
+                alert('⚠️ Only the token creator can access chat settings.');
+                return;
+            }
+            
+            // Create modal overlay
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'settings-modal-overlay';
+            modalOverlay.innerHTML = `
+                <div class="settings-modal">
+                    <div class="settings-header">
+                        <h3><i class="fas fa-cog"></i> Chat Settings</h3>
+                        <button class="close-settings" onclick="closeSettingsModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="settings-content">
+                        <div class="setting-group">
+                            <label>Token Gate Threshold</label>
+                            <input type="number" value="1000" placeholder="Minimum tokens required">
+                            <small>Minimum tokens required to chat when gating is enabled</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Spotlight Message Cost</label>
+                            <input type="number" value="500" placeholder="Cost in tokens">
+                            <small>Token cost for spotlighting messages</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Chat Mode</label>
+                            <select>
+                                <option value="open">Open Chat (Anyone can chat)</option>
+                                <option value="holders">Token Holders Only</option>
+                                <option value="usernames">Username Required</option>
+                            </select>
+                            <small>Control who can participate in chat</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Badge Requirements</label>
+                            <div class="badge-settings">
+                                <div class="badge-setting">
+                                    <span>🚀 Early Supporter:</span>
+                                    <input type="number" value="5" placeholder="Messages"> messages
+                                </div>
+                                <div class="badge-setting">
+                                    <span>💎 Diamond Hands:</span>
+                                    <input type="number" value="10000" placeholder="Tokens"> tokens held
+                                </div>
+                                <div class="badge-setting">
+                                    <span>👑 Chat Champion:</span>
+                                    <input type="number" value="100" placeholder="Score"> points
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-footer">
+                        <button class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+                        <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modalOverlay);
+            console.log('🔧 Chat settings modal opened');
+        }
+        
+        function closeSettingsModal() {
+            const modal = document.querySelector('.settings-modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function saveSettings() {
+            // In real app, save to backend
+            console.log('💾 Settings saved');
+            alert('Settings saved successfully!');
+            closeSettingsModal();
+        }
+        
+        function showUsernameModal() {
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'settings-modal-overlay';
+            modalOverlay.innerHTML = `
+                <div class="settings-modal">
+                    <div class="settings-header">
+                        <h3><i class="fas fa-user-edit"></i> Set Your Username</h3>
+                        <button class="close-settings" onclick="closeUsernameModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="settings-content">
+                        <div class="setting-group">
+                            <label>Choose Your Username</label>
+                            <input type="text" id="usernameInput" placeholder="Enter unique username (3-20 characters)" maxlength="20">
+                            <small>Your username will be displayed instead of your wallet address</small>
+                        </div>
+                        <div class="username-benefits">
+                            <h4>Benefits of Having a Username:</h4>
+                            <ul>
+                                <li>🎯 Higher engagement - users prefer chatting with named accounts</li>
+                                <li>📈 Build reputation across the platform</li>
+                                <li>🏆 Unlock special badges and achievements</li>
+                                <li>⭐ Get priority in airdrops and events</li>
+                            </ul>
+                        </div>
+                        <div class="current-display">
+                            <h4>Current Display Options:</h4>
+                            <div class="display-option">
+                                <span class="chat-user wallet-user">...${Math.random().toString(36).substr(-6).toUpperCase()}:</span>
+                                <span>← Current (wallet address)</span>
+                            </div>
+                            <div class="display-option">
+                                <span class="chat-user verified-user">YourUsername:</span>
+                                <span>← With username (recommended)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-footer">
+                        <button class="btn-secondary" onclick="closeUsernameModal()">Maybe Later</button>
+                        <button class="btn-primary" onclick="setUsername()">Set Username</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modalOverlay);
+            modalOverlay.id = 'usernameModal';
+            document.getElementById('usernameInput').focus();
+        }
+        
+        function closeUsernameModal() {
+            const modal = document.getElementById('usernameModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function setUsername() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            if (username.length < 3) {
+                alert('Username must be at least 3 characters');
+                return;
+            }
+            
+            // Save username (in real app, save to backend)
+            localStorage.setItem('username', username);
+            console.log(`👤 Username set: ${username}`);
+            
+            // Hide the banner
+            const banner = document.getElementById('usernameBanner');
+            if (banner) {
+                banner.style.display = 'none';
+            }
+            
+            alert(`✅ Username "${username}" set successfully!\n\nYou'll now appear as "${username}" in all chats.`);
+            closeUsernameModal();
         }
         
         function toggleLeaderboard() {
