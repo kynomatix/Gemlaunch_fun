@@ -180,10 +180,10 @@
                         </div>
                     </div>
                     
-                    <!-- Achievement Guide -->
+                    <!-- Accolades Guide -->
                     <div class="achievement-guide">
                         <div class="achievement-header">
-                            <h4><i class="fas fa-medal"></i> How to Earn Badges</h4>
+                            <h4><i class="fas fa-medal"></i> How to Earn Accolades</h4>
                             <button class="achievement-toggle" onclick="toggleAchievements()">
                                 <i class="fas fa-chevron-down"></i>
                             </button>
@@ -254,6 +254,9 @@
                                             <p>Provide valuable development insights (Pro tokens only)</p>
                                         </div>
                                     </div>
+                                    <div class="accolade-note">
+                                        <p><strong>Note:</strong> Pro token creators can select which accolades to award points for in settings. Points contribute to both token-specific and global leaderboards.</p>
+                                    </div>
                                 {% endif %}
                             </div>
                         </div>
@@ -275,9 +278,9 @@
                                     <div class="contributor-info">
                                         <span class="contributor-name">DogeWhisperer</span>
                                         <div class="contributor-badges">
-                                            <span class="badge diamond" title="Diamond Hands - Held 50,000+ tokens for 6+ months">💎</span>
-                                            <span class="badge early" title="Early Supporter - Top 100 initial buyers">🚀</span>
-                                            <span class="badge chat-king" title="Chat Champion - 500+ quality messages">👑</span>
+                                            <span class="badge diamond" title="Diamond Hands accolade - Held 50,000+ tokens for 6+ months">💎</span>
+                                            <span class="badge early" title="Early Supporter accolade - Top 100 initial buyers">🚀</span>
+                                            <span class="badge chat-king" title="Chat Champion accolade - 500+ quality messages">👑</span>
                                         </div>
                                     </div>
                                     <div class="contributor-score">3,840 pts</div>
@@ -287,8 +290,8 @@
                                     <div class="contributor-info">
                                         <span class="contributor-name">KaspaMaxi</span>
                                         <div class="contributor-badges">
-                                            <span class="badge hodler" title="True HODLer - Never sold below purchase price">🙌</span>
-                                            <span class="badge active" title="Active Trader - 100+ successful trades">⚡</span>
+                                            <span class="badge hodler" title="True HODLer accolade - Never sold below purchase price">🙌</span>
+                                            <span class="badge active" title="Active Trader accolade - 100+ successful trades">⚡</span>
                                         </div>
                                     </div>
                                     <div class="contributor-score">2,650 pts</div>
@@ -298,7 +301,7 @@
                                     <div class="contributor-info">
                                         <span class="contributor-name">CommunityBuilder</span>
                                         <div class="contributor-badges">
-                                            <span class="badge supporter" title="Community Supporter - Helped onboard 25+ new users">❤️</span>
+                                            <span class="badge supporter" title="Community Supporter accolade - Helped onboard 25+ new users">❤️</span>
                                         </div>
                                     </div>
                                     <div class="contributor-score">1,980 pts</div>
@@ -364,7 +367,7 @@
                                     <div class="contributor-info">
                                         <span class="contributor-name">ADE8F3</span>
                                         <div class="contributor-badges">
-                                            <span class="badge supporter" title="Community Supporter - Helped onboard 25+ new users">❤️</span>
+                                            <span class="badge supporter" title="Community Supporter accolade - Helped onboard 25+ new users">❤️</span>
                                         </div>
                                     </div>
                                     <div class="contributor-score">1,150 pts</div>
@@ -1143,6 +1146,79 @@
             font-size: 0.75rem;
             margin: 0;
             opacity: 0.9;
+        }
+        
+        .accolade-note {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            background: rgba(74, 144, 184, 0.1);
+            border-left: 3px solid #4A90B8;
+            border-radius: 8px;
+        }
+        
+        .accolade-note p {
+            color: #4A90B8;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        
+        /* Accolade Selection Styles */
+        .accolade-selection {
+            margin-top: 0.5rem;
+        }
+        
+        .accolade-selection p {
+            color: #CCCCCC;
+            font-size: 0.85rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .accolade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.8rem;
+        }
+        
+        .accolade-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .accolade-option:hover {
+            background: rgba(32, 178, 170, 0.05);
+        }
+        
+        .accolade-option.pro-exclusive {
+            border-left: 3px solid #4A90B8;
+            background: rgba(74, 144, 184, 0.05);
+        }
+        
+        .accolade-option.pro-exclusive:hover {
+            background: rgba(74, 144, 184, 0.08);
+        }
+        
+        .accolade-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #20B2AA;
+        }
+        
+        .accolade-option label {
+            flex: 1;
+            color: #FFFFFF;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        
+        .accolade-points {
+            font-size: 0.75rem;
+            color: #FFD700;
+            font-weight: 600;
         }
         
         .chat-messages {
@@ -3260,6 +3336,60 @@
                         <small>Percentage reserved for active community member airdrops</small>
                     </div>
                     <div class="setting-group">
+                        <label>Accolade Selection</label>
+                        <div class="accolade-selection">
+                            <p>Select which accolades award points in your token community:</p>
+                            <div class="accolade-grid">
+                                <div class="accolade-option">
+                                    <input type="checkbox" id="accolade_diamond" checked>
+                                    <label for="accolade_diamond">💎 Diamond Hands</label>
+                                    <span class="accolade-points">+100 pts</span>
+                                </div>
+                                <div class="accolade-option">
+                                    <input type="checkbox" id="accolade_early" checked>
+                                    <label for="accolade_early">🚀 Early Supporter</label>
+                                    <span class="accolade-points">+150 pts</span>
+                                </div>
+                                <div class="accolade-option">
+                                    <input type="checkbox" id="accolade_chat" checked>
+                                    <label for="accolade_chat">👑 Chat Champion</label>
+                                    <span class="accolade-points">+75 pts</span>
+                                </div>
+                                <div class="accolade-option">
+                                    <input type="checkbox" id="accolade_hodler" checked>
+                                    <label for="accolade_hodler">🙌 True HODLer</label>
+                                    <span class="accolade-points">+80 pts</span>
+                                </div>
+                                <div class="accolade-option">
+                                    <input type="checkbox" id="accolade_trader" checked>
+                                    <label for="accolade_trader">⚡ Active Trader</label>
+                                    <span class="accolade-points">+60 pts</span>
+                                </div>
+                                <div class="accolade-option">
+                                    <input type="checkbox" id="accolade_supporter" checked>
+                                    <label for="accolade_supporter">❤️ Community Supporter</label>
+                                    <span class="accolade-points">+90 pts</span>
+                                </div>
+                                <div class="accolade-option pro-exclusive">
+                                    <input type="checkbox" id="accolade_governance" checked>
+                                    <label for="accolade_governance">🏛️ DAO Governor</label>
+                                    <span class="accolade-points">+200 pts</span>
+                                </div>
+                                <div class="accolade-option pro-exclusive">
+                                    <input type="checkbox" id="accolade_liquidity" checked>
+                                    <label for="accolade_liquidity">💧 Liquidity Provider</label>
+                                    <span class="accolade-points">+120 pts</span>
+                                </div>
+                                <div class="accolade-option pro-exclusive">
+                                    <input type="checkbox" id="accolade_advisor" checked>
+                                    <label for="accolade_advisor">🧠 Technical Advisor</label>
+                                    <span class="accolade-points">+180 pts</span>
+                                </div>
+                            </div>
+                        </div>
+                        <small>Points awarded for each accolade contribute to both token leaderboard and global rankings</small>
+                    </div>
+                    <div class="setting-group">
                         <label>Activity Rewards</label>
                         <div class="toggle-group">
                             <input type="checkbox" id="chatRewards" checked>
@@ -3273,7 +3403,7 @@
             modalOverlay.innerHTML = `
                 <div class="settings-modal">
                     <div class="settings-header">
-                        <h3><i class="fas fa-cog"></i> ${tokenData.type === 'advanced' ? 'DAO Settings' : 'Chat Settings'}</h3>
+                        <h3><i class="fas fa-cog"></i> ${tokenData.type === 'advanced' ? 'Pro Token Settings' : 'Chat Settings'}</h3>
                         <button class="close-settings" onclick="closeSettingsModal()">
                             <i class="fas fa-times"></i>
                         </button>
