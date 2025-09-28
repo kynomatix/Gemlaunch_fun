@@ -125,7 +125,75 @@
                 
                 <!-- Chat Panel -->
                 <div class="chat-panel">
-                    <h3>Live Chat</h3>
+                    <div class="chat-header">
+                        <h3>Live Chat</h3>
+                        <div class="chat-controls">
+                            <div class="token-gate-toggle" title="Token holders only">
+                                <input type="checkbox" id="tokenGateToggle" class="toggle-switch" onchange="toggleTokenGate()">
+                                <label for="tokenGateToggle" class="toggle-label">
+                                    <i class="fas fa-lock"></i>
+                                    <span class="toggle-text">Holders Only</span>
+                                </label>
+                            </div>
+                            <button class="chat-settings-btn" onclick="openChatSettings()" title="Chat Settings">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Token gate status -->
+                    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
+                        <div class="gate-info">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Only ${{ token.symbol }} holders can chat</span>
+                            <span class="minimum-balance">Min: 1,000 tokens</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Gamified Leaderboard -->
+                    <div class="chat-leaderboard">
+                        <div class="leaderboard-header">
+                            <h4><i class="fas fa-trophy"></i> Top Contributors</h4>
+                            <button class="leaderboard-toggle" onclick="toggleLeaderboard()">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                        <div class="leaderboard-content" id="leaderboardContent">
+                            <div class="contributor-item rank-1">
+                                <div class="rank-badge gold">#1</div>
+                                <div class="contributor-info">
+                                    <span class="contributor-name">0xAB1...234</span>
+                                    <div class="contributor-badges">
+                                        <span class="badge diamond" title="Diamond Hands">💎</span>
+                                        <span class="badge early" title="Early Supporter">🚀</span>
+                                        <span class="badge chat-king" title="Chat Champion">👑</span>
+                                    </div>
+                                </div>
+                                <div class="contributor-score">2,450 pts</div>
+                            </div>
+                            <div class="contributor-item rank-2">
+                                <div class="rank-badge silver">#2</div>
+                                <div class="contributor-info">
+                                    <span class="contributor-name">0xCD5...678</span>
+                                    <div class="contributor-badges">
+                                        <span class="badge hodler" title="True HODLer">🙌</span>
+                                        <span class="badge active" title="Active Trader">⚡</span>
+                                    </div>
+                                </div>
+                                <div class="contributor-score">1,890 pts</div>
+                            </div>
+                            <div class="contributor-item rank-3">
+                                <div class="rank-badge bronze">#3</div>
+                                <div class="contributor-info">
+                                    <span class="contributor-name">0x1A2...BC3</span>
+                                    <div class="contributor-badges">
+                                        <span class="badge supporter" title="Community Supporter">❤️</span>
+                                    </div>
+                                </div>
+                                <div class="contributor-score">1,220 pts</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="chat-messages" id="chatMessages">
                         <div class="chat-message" data-message-id="1">
                             <div class="message-content">
@@ -172,8 +240,60 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- Example reply thread -->
+                        <div class="chat-message reply-message" data-message-id="4" data-reply-to="3">
+                            <div class="reply-indicator-line"></div>
+                            <div class="message-content">
+                                <div class="reply-context">
+                                    <i class="fas fa-reply"></i>
+                                    <span class="reply-to-user">Replying to 0x1A2...BC3</span>
+                                </div>
+                                <span class="chat-user">0xDEF...999:</span>
+                                <span class="chat-text">Soon™! 🚀 Just HODL!</span>
+                            </div>
+                            <div class="message-actions">
+                                <button class="message-action love-btn" onclick="toggleLove(4)" title="Love this message">
+                                    <i class="fas fa-heart"></i>
+                                    <span class="love-count">8</span>
+                                </button>
+                                <button class="message-action reply-btn" onclick="replyToMessage(4)" title="Reply to this message">
+                                    <i class="fas fa-reply"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
+                    <!-- Spotlight Messages (Pinned/Boosted) -->
+                    <div class="spotlight-messages" id="spotlightMessages" style="display: none;">
+                        <div class="spotlight-header">
+                            <i class="fas fa-star"></i>
+                            <span>Spotlight Messages</span>
+                        </div>
+                        <div class="spotlight-message">
+                            <div class="spotlight-glow"></div>
+                            <div class="message-content">
+                                <span class="chat-user spotlight-user">0xFFF...123:</span>
+                                <span class="chat-text">🎉 HUGE NEWS! Just partnered with major DEX! 🚀</span>
+                            </div>
+                            <div class="spotlight-cost">
+                                <i class="fas fa-coins"></i>
+                                <span>500 ${{ token.symbol }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="chat-input-container">
+                        <div class="input-actions">
+                            <button class="action-btn spotlight-btn" onclick="spotlightMessage()" title="Spotlight your message (costs tokens)">
+                                <i class="fas fa-star"></i>
+                            </button>
+                            <button class="action-btn poll-btn" onclick="createPoll()" title="Create a poll">
+                                <i class="fas fa-poll"></i>
+                            </button>
+                            <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
+                                <i class="fas fa-gift"></i>
+                            </button>
+                        </div>
                         <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="200">
                         <button class="chat-send" onclick="sendMessage()">
                             <i class="fas fa-paper-plane"></i>
@@ -437,6 +557,230 @@
             backdrop-filter: blur(20px);
         }
         
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .chat-header h3 {
+            margin: 0;
+            color: #20B2AA;
+        }
+        
+        .chat-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .token-gate-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .toggle-switch {
+            display: none;
+        }
+        
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        
+        .toggle-switch:checked + .toggle-label {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: rgba(255, 215, 0, 0.4);
+            color: #FFD700;
+        }
+        
+        .toggle-switch:checked + .toggle-label i {
+            color: #FFD700;
+        }
+        
+        .chat-settings-btn {
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .chat-settings-btn:hover {
+            background: rgba(32, 178, 170, 0.1);
+            border-color: rgba(32, 178, 170, 0.3);
+            color: #20B2AA;
+        }
+        
+        .token-gate-status {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+        }
+        
+        .gate-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #FFD700;
+            font-size: 0.9rem;
+        }
+        
+        .minimum-balance {
+            margin-left: auto;
+            opacity: 0.8;
+            font-size: 0.8rem;
+        }
+        
+        /* Gamified Leaderboard */
+        .chat-leaderboard {
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1rem;
+            background: rgba(32, 178, 170, 0.1);
+            border-bottom: 1px solid rgba(32, 178, 170, 0.2);
+        }
+        
+        .leaderboard-header h4 {
+            margin: 0;
+            color: #20B2AA;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .leaderboard-toggle {
+            background: none;
+            border: none;
+            color: #20B2AA;
+            cursor: pointer;
+            padding: 0.3rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .leaderboard-toggle:hover {
+            background: rgba(32, 178, 170, 0.2);
+        }
+        
+        .leaderboard-content {
+            padding: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .leaderboard-content.collapsed {
+            max-height: 0;
+            padding: 0;
+        }
+        
+        .contributor-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem;
+            margin-bottom: 0.3rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .contributor-item:hover {
+            background: rgba(32, 178, 170, 0.05);
+            transform: translateX(2px);
+        }
+        
+        .rank-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .rank-badge.gold {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+        }
+        
+        .rank-badge.silver {
+            background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
+            color: #000;
+        }
+        
+        .rank-badge.bronze {
+            background: linear-gradient(135deg, #CD7F32, #B87333);
+            color: #FFF;
+        }
+        
+        .contributor-info {
+            flex: 1;
+        }
+        
+        .contributor-name {
+            color: #20B2AA;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .contributor-badges {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.2rem;
+        }
+        
+        .badge {
+            font-size: 0.8rem;
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: help;
+        }
+        
+        .badge.diamond { background: rgba(185, 242, 255, 0.2); }
+        .badge.early { background: rgba(255, 165, 0, 0.2); }
+        .badge.chat-king { background: rgba(255, 215, 0, 0.2); }
+        .badge.hodler { background: rgba(50, 205, 50, 0.2); }
+        .badge.active { background: rgba(255, 69, 0, 0.2); }
+        .badge.supporter { background: rgba(255, 182, 193, 0.2); }
+        
+        .contributor-score {
+            color: #FFD700;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        
         .chat-messages {
             height: 300px;
             overflow-y: auto;
@@ -552,9 +896,150 @@
             100% { transform: scale(1); }
         }
         
+        /* Reply message styling */
+        .reply-message {
+            margin-left: 1.5rem;
+            border-left: 3px solid rgba(32, 178, 170, 0.4);
+            padding-left: 1rem;
+            position: relative;
+            background: rgba(32, 178, 170, 0.02);
+        }
+        
+        .reply-indicator-line {
+            position: absolute;
+            left: -1.5rem;
+            top: -0.5rem;
+            width: 1rem;
+            height: 1rem;
+            border-left: 2px solid rgba(32, 178, 170, 0.4);
+            border-bottom: 2px solid rgba(32, 178, 170, 0.4);
+            border-bottom-left-radius: 8px;
+        }
+        
+        .reply-context {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.3rem;
+            font-size: 0.75rem;
+            color: #20B2AA;
+            opacity: 0.8;
+        }
+        
+        .reply-to-user {
+            font-style: italic;
+        }
+        
+        /* Spotlight Messages (Pinned/Boosted) */
+        .spotlight-messages {
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 140, 0, 0.05));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .spotlight-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #FFD700;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .spotlight-message {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 8px;
+            padding: 0.8rem;
+            position: relative;
+        }
+        
+        .spotlight-glow {
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #FFD700, #FFA500, #FFD700);
+            border-radius: 10px;
+            z-index: -1;
+            animation: spotlightGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes spotlightGlow {
+            0% { opacity: 0.5; transform: scale(1); }
+            100% { opacity: 0.8; transform: scale(1.02); }
+        }
+        
+        .spotlight-user {
+            color: #FFD700 !important;
+            font-weight: 700;
+        }
+        
+        .spotlight-cost {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: #FFD700;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        
         .chat-input-container {
             display: flex;
             gap: 0.5rem;
+            align-items: flex-end;
+        }
+        
+        .input-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+        
+        .action-btn {
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .action-btn:hover {
+            background: rgba(32, 178, 170, 0.1);
+            border-color: rgba(32, 178, 170, 0.3);
+            color: #20B2AA;
+            transform: scale(1.05);
+        }
+        
+        .spotlight-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.3);
+            color: #FFD700;
+        }
+        
+        .poll-btn:hover {
+            background: rgba(138, 43, 226, 0.1);
+            border-color: rgba(138, 43, 226, 0.3);
+            color: #8A2BE2;
+        }
+        
+        .airdrop-btn:hover {
+            background: rgba(50, 205, 50, 0.1);
+            border-color: rgba(50, 205, 50, 0.3);
+            color: #32CD32;
         }
         
         .chat-input {
@@ -903,6 +1388,117 @@
             
             if (replyIndicator) {
                 replyIndicator.remove();
+            }
+        }
+        
+        // Token-gated chat functionality
+        function toggleTokenGate() {
+            const toggle = document.getElementById('tokenGateToggle');
+            const status = document.getElementById('tokenGateStatus');
+            const chatInput = document.getElementById('chatInput');
+            
+            if (toggle.checked) {
+                status.style.display = 'block';
+                chatInput.placeholder = 'Hold 1,000+ tokens to chat...';
+                chatInput.disabled = true; // In real app, check user's token balance
+                console.log('Token gate enabled - checking user balance...');
+            } else {
+                status.style.display = 'none';
+                chatInput.placeholder = 'Type a message...';
+                chatInput.disabled = false;
+                console.log('Token gate disabled - open chat');
+            }
+        }
+        
+        function openChatSettings() {
+            // Modal for chat settings would open here
+            console.log('Opening chat settings...');
+            alert('Chat Settings:\n• Token gate threshold\n• Spotlight message costs\n• Badge requirements\n• Airdrop settings');
+        }
+        
+        function toggleLeaderboard() {
+            const content = document.getElementById('leaderboardContent');
+            const toggle = document.querySelector('.leaderboard-toggle i');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                toggle.className = 'fas fa-chevron-up';
+            } else {
+                content.classList.add('collapsed');
+                toggle.className = 'fas fa-chevron-down';
+            }
+        }
+        
+        // Advanced chat features
+        function spotlightMessage() {
+            const message = document.getElementById('chatInput').value.trim();
+            if (!message) {
+                alert('Please type a message first!');
+                return;
+            }
+            
+            const cost = prompt(`Spotlight this message for 500 $${tokenSymbol}?\n\n"${message}"\n\nEnter 'yes' to confirm:`);
+            if (cost === 'yes') {
+                // Show spotlight message
+                const spotlightContainer = document.getElementById('spotlightMessages');
+                spotlightContainer.style.display = 'block';
+                
+                const spotlightMsg = spotlightContainer.querySelector('.spotlight-message');
+                spotlightMsg.querySelector('.chat-text').textContent = message;
+                
+                // Clear input and show in chat
+                document.getElementById('chatInput').value = '';
+                console.log(`Spotlighted message: "${message}" for 500 tokens`);
+                
+                // Auto-hide after 30 seconds in demo
+                setTimeout(() => {
+                    spotlightContainer.style.display = 'none';
+                }, 30000);
+            }
+        }
+        
+        function createPoll() {
+            const question = prompt('Enter your poll question:');
+            if (!question) return;
+            
+            const options = prompt('Enter options separated by commas (e.g., "Option A, Option B, Option C"):');
+            if (!options) return;
+            
+            const gateByTokens = confirm('Require token holders to vote? (Token-gated poll)');
+            
+            console.log(`Creating ${gateByTokens ? 'token-gated' : 'open'} poll: "${question}"`);
+            console.log(`Options: ${options}`);
+            
+            alert(`Poll created!\n\nQuestion: ${question}\nOptions: ${options}\nToken-gated: ${gateByTokens ? 'Yes' : 'No'}\n\n(In production, this would appear in the chat)`);
+        }
+        
+        function createAirdrop() {
+            const options = [
+                'Random Raffle (Random selection)',
+                'Top Contributors (Based on leaderboard)',
+                'Active Chatters (Last 24h activity)',
+                'Token Holders (Minimum balance)',
+                'Early Supporters (First 100 holders)'
+            ];
+            
+            let optionsText = 'Choose airdrop type:\n';
+            options.forEach((opt, i) => {
+                optionsText += `${i + 1}. ${opt}\n`;
+            });
+            
+            const choice = prompt(optionsText + '\nEnter number (1-5):');
+            const choiceNum = parseInt(choice);
+            
+            if (choiceNum >= 1 && choiceNum <= 5) {
+                const amount = prompt(`How many $${tokenSymbol} tokens to distribute?`);
+                const winners = prompt('How many winners?');
+                
+                if (amount && winners) {
+                    console.log(`Creating airdrop: ${options[choiceNum-1]}`);
+                    console.log(`Amount: ${amount} tokens, Winners: ${winners}`);
+                    
+                    alert(`Airdrop created!\n\nType: ${options[choiceNum-1]}\nTotal: ${amount} $${tokenSymbol}\nWinners: ${winners}\n\n(In production, this would start the airdrop process)`);
+                }
             }
         }
         
