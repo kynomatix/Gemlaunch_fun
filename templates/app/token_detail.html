@@ -190,72 +190,62 @@
                         </div>
                         <div class="achievement-content collapsed" id="achievementContent">
                             <div class="achievement-list">
-                                <div class="achievement-item">
-                                    <span class="badge diamond">💎</span>
-                                    <div class="achievement-info">
-                                        <strong>Diamond Hands</strong>
-                                        <p>Hold 50,000+ tokens for 6+ months without selling</p>
-                                    </div>
-                                </div>
-                                <div class="achievement-item">
-                                    <span class="badge early">🚀</span>
-                                    <div class="achievement-info">
-                                        <strong>Early Supporter</strong>
-                                        <p>Be among the first 100 token buyers</p>
-                                    </div>
-                                </div>
-                                <div class="achievement-item">
-                                    <span class="badge chat-king">👑</span>
-                                    <div class="achievement-info">
-                                        <strong>Chat Champion</strong>
-                                        <p>Send 500+ quality chat messages (no spam)</p>
-                                    </div>
-                                </div>
-                                <div class="achievement-item">
-                                    <span class="badge hodler">🙌</span>
-                                    <div class="achievement-info">
-                                        <strong>True HODLer</strong>
-                                        <p>Never sell below your average purchase price</p>
-                                    </div>
-                                </div>
-                                <div class="achievement-item">
-                                    <span class="badge active">⚡</span>
-                                    <div class="achievement-info">
-                                        <strong>Active Trader</strong>
-                                        <p>Complete 100+ successful trades</p>
-                                    </div>
-                                </div>
-                                <div class="achievement-item">
-                                    <span class="badge supporter">❤️</span>
-                                    <div class="achievement-info">
-                                        <strong>Community Supporter</strong>
-                                        <p>Help onboard 25+ new users to the platform</p>
-                                    </div>
-                                </div>
                                 {% if token.symbol in ['DOGKAS', 'LASER'] %}
                                     <div class="achievement-item pro-only">
                                         <span class="badge governance">🏛️</span>
                                         <div class="achievement-info">
-                                            <strong>DAO Governor</strong>
-                                            <p>Participate in 10+ governance votes (Pro tokens only)</p>
+                                            <strong>{{ token.symbol }} DAO Governor</strong>
+                                            <p>Participate in 10+ governance votes for this token</p>
                                         </div>
                                     </div>
                                     <div class="achievement-item pro-only">
                                         <span class="badge liquidity">💧</span>
                                         <div class="achievement-info">
-                                            <strong>Liquidity Provider</strong>
-                                            <p>Add 10,000+ tokens to liquidity pool (Pro tokens only)</p>
+                                            <strong>{{ token.symbol }} Liquidity Provider</strong>
+                                            <p>Add 10,000+ {{ token.symbol }} tokens to liquidity pool</p>
                                         </div>
                                     </div>
                                     <div class="achievement-item pro-only">
                                         <span class="badge advisor">🧠</span>
                                         <div class="achievement-info">
-                                            <strong>Technical Advisor</strong>
-                                            <p>Provide valuable development insights (Pro tokens only)</p>
+                                            <strong>{{ token.symbol }} Technical Advisor</strong>
+                                            <p>Provide valuable development insights for {{ token.name }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="achievement-item pro-only">
+                                        <span class="badge community-builder">🏗️</span>
+                                        <div class="achievement-info">
+                                            <strong>{{ token.symbol }} Community Builder</strong>
+                                            <p>Successfully onboard 50+ new users to {{ token.name }}</p>
                                         </div>
                                     </div>
                                     <div class="accolade-note">
-                                        <p><strong>Note:</strong> Pro token creators can select which accolades to award points for in settings. Points contribute to both token-specific and global leaderboards.</p>
+                                        <p><strong>Note:</strong> These are {{ token.name }}-specific accolades. Global platform accolades are tracked separately in the main leaderboard.</p>
+                                    </div>
+                                {% else %}
+                                    <div class="achievement-item">
+                                        <span class="badge token-champion">🏆</span>
+                                        <div class="achievement-info">
+                                            <strong>{{ token.symbol }} Champion</strong>
+                                            <p>Be the top holder of {{ token.symbol }} for 30+ days</p>
+                                        </div>
+                                    </div>
+                                    <div class="achievement-item">
+                                        <span class="badge community-builder">🏗️</span>
+                                        <div class="achievement-info">
+                                            <strong>{{ token.symbol }} Community Builder</strong>
+                                            <p>Bring 25+ new users to {{ token.name }} community</p>
+                                        </div>
+                                    </div>
+                                    <div class="achievement-item">
+                                        <span class="badge token-evangelist">📢</span>
+                                        <div class="achievement-info">
+                                            <strong>{{ token.symbol }} Evangelist</strong>
+                                            <p>Share {{ token.name }} content that gets 100+ engagements</p>
+                                        </div>
+                                    </div>
+                                    <div class="accolade-note">
+                                        <p><strong>Note:</strong> These are {{ token.name }}-specific accolades. Global platform accolades are tracked separately in the main leaderboard.</p>
                                     </div>
                                 {% endif %}
                             </div>
@@ -1041,6 +1031,9 @@
         .badge.governance { background: rgba(138, 43, 226, 0.2); }
         .badge.liquidity { background: rgba(0, 191, 255, 0.2); }
         .badge.advisor { background: rgba(128, 0, 128, 0.2); }
+        .badge.community-builder { background: rgba(255, 140, 0, 0.2); }
+        .badge.token-champion { background: rgba(255, 215, 0, 0.2); }
+        .badge.token-evangelist { background: rgba(30, 144, 255, 0.2); }
         
         .contributor-score {
             color: #FFD700;
@@ -3340,54 +3333,29 @@
                         <div class="accolade-selection">
                             <p>Select which accolades award points in your token community:</p>
                             <div class="accolade-grid">
-                                <div class="accolade-option">
-                                    <input type="checkbox" id="accolade_diamond" checked>
-                                    <label for="accolade_diamond">💎 Diamond Hands</label>
-                                    <span class="accolade-points">+100 pts</span>
-                                </div>
-                                <div class="accolade-option">
-                                    <input type="checkbox" id="accolade_early" checked>
-                                    <label for="accolade_early">🚀 Early Supporter</label>
-                                    <span class="accolade-points">+150 pts</span>
-                                </div>
-                                <div class="accolade-option">
-                                    <input type="checkbox" id="accolade_chat" checked>
-                                    <label for="accolade_chat">👑 Chat Champion</label>
-                                    <span class="accolade-points">+75 pts</span>
-                                </div>
-                                <div class="accolade-option">
-                                    <input type="checkbox" id="accolade_hodler" checked>
-                                    <label for="accolade_hodler">🙌 True HODLer</label>
-                                    <span class="accolade-points">+80 pts</span>
-                                </div>
-                                <div class="accolade-option">
-                                    <input type="checkbox" id="accolade_trader" checked>
-                                    <label for="accolade_trader">⚡ Active Trader</label>
-                                    <span class="accolade-points">+60 pts</span>
-                                </div>
-                                <div class="accolade-option">
-                                    <input type="checkbox" id="accolade_supporter" checked>
-                                    <label for="accolade_supporter">❤️ Community Supporter</label>
-                                    <span class="accolade-points">+90 pts</span>
-                                </div>
                                 <div class="accolade-option pro-exclusive">
                                     <input type="checkbox" id="accolade_governance" checked>
-                                    <label for="accolade_governance">🏛️ DAO Governor</label>
+                                    <label for="accolade_governance">🏛️ ${tokenData.symbol} DAO Governor</label>
                                     <span class="accolade-points">+200 pts</span>
                                 </div>
                                 <div class="accolade-option pro-exclusive">
                                     <input type="checkbox" id="accolade_liquidity" checked>
-                                    <label for="accolade_liquidity">💧 Liquidity Provider</label>
+                                    <label for="accolade_liquidity">💧 ${tokenData.symbol} Liquidity Provider</label>
                                     <span class="accolade-points">+120 pts</span>
                                 </div>
                                 <div class="accolade-option pro-exclusive">
                                     <input type="checkbox" id="accolade_advisor" checked>
-                                    <label for="accolade_advisor">🧠 Technical Advisor</label>
+                                    <label for="accolade_advisor">🧠 ${tokenData.symbol} Technical Advisor</label>
                                     <span class="accolade-points">+180 pts</span>
+                                </div>
+                                <div class="accolade-option pro-exclusive">
+                                    <input type="checkbox" id="accolade_community_builder" checked>
+                                    <label for="accolade_community_builder">🏗️ ${tokenData.symbol} Community Builder</label>
+                                    <span class="accolade-points">+150 pts</span>
                                 </div>
                             </div>
                         </div>
-                        <small>Points awarded for each accolade contribute to both token leaderboard and global rankings</small>
+                        <small>Points awarded for token-specific accolades contribute to both this token's leaderboard and global rankings</small>
                     </div>
                     <div class="setting-group">
                         <label>Activity Rewards</label>
