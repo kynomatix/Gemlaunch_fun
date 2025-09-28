@@ -1845,7 +1845,7 @@
             // Check if user is token owner (deterministic simulation)
             // In real app: check connected wallet address against token.creator_address
             const userWallet = localStorage.getItem('connectedWallet') || '0x1234567890abcdef1234567890abcdef12345678';
-            const tokenCreatorAddress = '{{ token.creator_address|default:"0x1234567890abcdef1234567890abcdef12345678" }}';
+            const tokenCreatorAddress = '{{ token.creator_address|default("0x1234567890abcdef1234567890abcdef12345678") }}';
             const isTokenOwner = userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
             
             console.log(`👤 User wallet: ${userWallet}`);
