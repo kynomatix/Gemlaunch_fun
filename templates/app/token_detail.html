@@ -254,13 +254,13 @@
                         
                         <!-- Example reply thread -->
                         <div class="chat-message reply-message" data-message-id="4" data-reply-to="3">
-                            <div class="reply-indicator-line"></div>
+                            <div class="reply-header">
+                                <i class="fas fa-reply reply-icon"></i>
+                                <span class="reply-reference">MoonHunter</span>
+                                <span class="reply-preview">When moon? 🌙</span>
+                            </div>
                             <div class="message-content">
-                                <div class="reply-context">
-                                    <i class="fas fa-reply"></i>
-                                    <span class="reply-to-user">Replying to 0x1A2...BC3</span>
-                                </div>
-                                <span class="chat-user">0xDEF...999:</span>
+                                <span class="chat-user verified-user">0xDEF...999:</span>
                                 <span class="chat-text">Soon™! 🚀 Just HODL!</span>
                             </div>
                             <div class="message-actions">
@@ -959,38 +959,61 @@
             100% { transform: scale(1); }
         }
         
-        /* Reply message styling */
+        /* Modern reply message styling */
         .reply-message {
-            margin-left: 1.5rem;
-            border-left: 3px solid rgba(32, 178, 170, 0.4);
-            padding-left: 1rem;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.06), rgba(0, 206, 209, 0.02));
+            border-radius: 8px;
+            border: 1px solid rgba(32, 178, 170, 0.15);
+            margin: 0.5rem 0;
+            padding: 0.75rem;
             position: relative;
-            background: rgba(32, 178, 170, 0.02);
         }
         
-        .reply-indicator-line {
-            position: absolute;
-            left: -1.5rem;
-            top: -0.5rem;
-            width: 1rem;
-            height: 1rem;
-            border-left: 2px solid rgba(32, 178, 170, 0.4);
-            border-bottom: 2px solid rgba(32, 178, 170, 0.4);
-            border-bottom-left-radius: 8px;
-        }
-        
-        .reply-context {
+        .reply-header {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            margin-bottom: 0.3rem;
-            font-size: 0.75rem;
-            color: #20B2AA;
-            opacity: 0.8;
+            margin-bottom: 0.5rem;
+            padding: 0.3rem 0.5rem;
+            background: rgba(32, 178, 170, 0.08);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            border-left: 3px solid #20B2AA;
         }
         
-        .reply-to-user {
-            font-style: italic;
+        .reply-icon {
+            color: #20B2AA;
+            font-size: 0.75rem;
+        }
+        
+        .reply-reference {
+            color: #20B2AA;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        
+        .reply-preview {
+            color: #CCCCCC;
+            font-size: 0.75rem;
+            opacity: 0.8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            max-width: 200px;
+        }
+        
+        /* Reply message content adjustments */
+        .reply-message .message-content {
+            margin-top: 0;
+        }
+        
+        .reply-message .chat-user {
+            font-size: 0.9rem;
+        }
+        
+        .reply-message .chat-text {
+            font-size: 0.9rem;
         }
         
         /* Spotlight Messages (Pinned/Boosted) */
@@ -1532,6 +1555,27 @@
             .reply-indicator {
                 padding: 0.25rem 0.5rem;
                 font-size: 0.7rem;
+            }
+            
+            /* Mobile reply styling */
+            .reply-message {
+                padding: 0.5rem;
+                margin: 0.3rem 0;
+            }
+            
+            .reply-header {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.75rem;
+                gap: 0.4rem;
+            }
+            
+            .reply-reference {
+                font-size: 0.75rem;
+            }
+            
+            .reply-preview {
+                font-size: 0.7rem;
+                max-width: 150px;
             }
         }
     </style>
@@ -2440,14 +2484,71 @@
             
             if (!message) return;
             
-            // Add message to chat
             const messagesDiv = document.getElementById('chatMessages');
             const newMessage = document.createElement('div');
-            newMessage.className = 'chat-message';
-            newMessage.innerHTML = `
-                <span class="chat-user">You:</span>
-                <span class="chat-text">${message}</span>
-            `;
+            const messageId = Date.now();
+            
+            // Check if this is a reply
+            const replyToId = input.dataset.replyTo;
+            
+            if (replyToId) {
+                // Find the original message being replied to
+                const originalMessage = document.querySelector(`[data-message-id="${replyToId}"]`);
+                const originalUser = originalMessage?.querySelector('.chat-user')?.textContent?.replace(':', '') || 'Unknown User';
+                const originalText = originalMessage?.querySelector('.chat-text')?.textContent || 'Message not found';
+                
+                // Create reply message with new modern structure
+                newMessage.className = 'chat-message reply-message';
+                newMessage.setAttribute('data-message-id', messageId);
+                newMessage.setAttribute('data-reply-to', replyToId);
+                newMessage.innerHTML = `
+                    <div class="reply-header">
+                        <i class="fas fa-reply reply-icon"></i>
+                        <span class="reply-reference">${originalUser}</span>
+                        <span class="reply-preview">${originalText.length > 30 ? originalText.substring(0, 30) + '...' : originalText}</span>
+                    </div>
+                    <div class="message-content">
+                        <span class="chat-user verified-user">You:</span>
+                        <span class="chat-text">${message}</span>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action love-btn" onclick="toggleLove(${messageId})" title="Love this message">
+                            <i class="fas fa-heart"></i>
+                            <span class="love-count">0</span>
+                        </button>
+                        <button class="message-action reply-btn" onclick="replyToMessage(${messageId})" title="Reply to this message">
+                            <i class="fas fa-reply"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Clear reply state
+                cancelReply();
+                
+                console.log(`✅ Reply sent to message ${replyToId}: "${message}"`);
+            } else {
+                // Regular message
+                newMessage.className = 'chat-message';
+                newMessage.setAttribute('data-message-id', messageId);
+                newMessage.innerHTML = `
+                    <div class="message-content">
+                        <span class="chat-user verified-user">You:</span>
+                        <span class="chat-text">${message}</span>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action love-btn" onclick="toggleLove(${messageId})" title="Love this message">
+                            <i class="fas fa-heart"></i>
+                            <span class="love-count">0</span>
+                        </button>
+                        <button class="message-action reply-btn" onclick="replyToMessage(${messageId})" title="Reply to this message">
+                            <i class="fas fa-reply"></i>
+                        </button>
+                    </div>
+                `;
+                
+                console.log(`💬 Regular message sent: "${message}"`);
+            }
+            
             messagesDiv.appendChild(newMessage);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             
