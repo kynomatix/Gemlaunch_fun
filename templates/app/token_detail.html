@@ -884,18 +884,62 @@
             font-weight: 600;
         }
         
-        /* Reply indicator styling */
+        /* Improved reply indicator styling - compact and sleek */
         .reply-indicator {
-            background: rgba(32, 178, 170, 0.1);
-            border: 1px solid rgba(32, 178, 170, 0.3);
-            border-radius: 8px;
-            padding: 0.5rem 0.8rem;
-            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.1));
+            border: 1px solid rgba(32, 178, 170, 0.4);
+            border-radius: 12px;
+            padding: 0.4rem 0.75rem;
+            margin-bottom: 0.3rem;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.5rem;
             color: #20B2AA;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            animation: slideInSmooth 0.25s ease-out;
+            backdrop-filter: blur(10px);
+            max-width: 100%;
+            overflow: hidden;
+        }
+        
+        .reply-indicator .reply-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .reply-indicator .cancel-btn {
+            background: none;
+            border: none;
+            color: #FF6B6B;
+            cursor: pointer;
+            padding: 0.2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            min-width: 20px;
+            height: 20px;
+        }
+        
+        .reply-indicator .cancel-btn:hover {
+            background: rgba(255, 107, 107, 0.2);
+            transform: scale(1.1);
+        }
+        
+        @keyframes slideInSmooth {
+            from {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
         
         /* Heart animation */
@@ -1390,6 +1434,53 @@
             .quick-amounts {
                 grid-template-columns: repeat(2, 1fr);
             }
+            
+            /* Enhanced mobile chat responsiveness */
+            .chat-section {
+                min-height: 300px;
+                max-height: 400px;
+            }
+            
+            .chat-messages {
+                max-height: 280px;
+                font-size: 0.85rem;
+            }
+            
+            .chat-input-container {
+                padding: 0.75rem;
+            }
+            
+            .reply-indicator {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.6rem;
+                margin-bottom: 0.25rem;
+            }
+            
+            .message-actions {
+                gap: 0.5rem;
+            }
+            
+            .message-action {
+                padding: 0.4rem;
+                font-size: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .chat-section {
+                min-height: 280px;
+                max-height: 350px;
+            }
+            
+            .chat-messages {
+                max-height: 240px;
+                padding: 0.75rem;
+            }
+            
+            .reply-indicator {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.7rem;
+            }
         }
     </style>
     
@@ -1776,19 +1867,33 @@
             chatInput.focus();
             chatInput.dataset.replyTo = messageId;
             
-            // Add visual indicator
+            // Add sleek inline reply indicator
             const inputContainer = document.querySelector('.chat-input-container');
             if (!inputContainer.querySelector('.reply-indicator')) {
                 const replyIndicator = document.createElement('div');
                 replyIndicator.className = 'reply-indicator';
                 replyIndicator.innerHTML = `
-                    <i class="fas fa-reply"></i>
-                    Replying to ${user}
-                    <button onclick="cancelReply()" style="background: none; border: none; color: #FF6B6B; margin-left: 0.5rem;">
+                    <div class="reply-text">
+                        <i class="fas fa-reply"></i>
+                        Replying to ${user.length > 20 ? user.substring(0, 20) + '...' : user}
+                    </div>
+                    <button class="cancel-btn" onclick="cancelReply()" title="Cancel reply">
                         <i class="fas fa-times"></i>
                     </button>
                 `;
-                inputContainer.insertBefore(replyIndicator, inputContainer.firstChild);
+                
+                // Insert right before the input, not at the top of container
+                const chatInput = document.getElementById('chatInput');
+                inputContainer.insertBefore(replyIndicator, chatInput);
+                
+                // Smooth scroll the reply indicator into view
+                setTimeout(() => {
+                    replyIndicator.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'nearest',
+                        inline: 'nearest'
+                    });
+                }, 100);
             }
             
             console.log(`Replying to message ${messageId} from ${user}`);
@@ -1802,9 +1907,31 @@
             delete chatInput.dataset.replyTo;
             
             if (replyIndicator) {
-                replyIndicator.remove();
+                // Smooth fade out animation
+                replyIndicator.style.animation = 'fadeOut 0.2s ease-out forwards';
+                setTimeout(() => {
+                    replyIndicator.remove();
+                }, 200);
             }
+            
+            console.log('🚫 Reply cancelled');
         }
+        
+        // Add fadeOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                to {
+                    opacity: 0;
+                    transform: scale(0.95);
+                }
+            }
+        `;
+        document.head.appendChild(style);
         
         // Enhanced token-gated chat functionality
         function toggleTokenGate() {
