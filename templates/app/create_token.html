@@ -71,6 +71,47 @@
             opacity: 0.8;
         }
         
+        /* Immutable Warning Banner */
+        .immutable-warning-banner {
+            margin: 2rem 0;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 140, 0, 0.15));
+            border: 2px solid rgba(255, 107, 107, 0.4);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .warning-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .warning-icon {
+            font-size: 1.5rem;
+            color: #FF6B6B;
+            margin-top: 0.2rem;
+            flex-shrink: 0;
+        }
+        
+        .warning-text h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            color: #FF6B6B;
+            font-weight: 700;
+        }
+        
+        .warning-text p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #FFFFFF;
+            line-height: 1.5;
+        }
+        
+        .warning-text strong {
+            color: #FF8C00;
+        }
+        
         .create-form {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(32, 178, 170, 0.2);
@@ -371,6 +412,17 @@
                     </button>
                 </div>
 
+                <!-- CRITICAL WARNING BANNER -->
+                <div class="immutable-warning-banner">
+                    <div class="warning-content">
+                        <i class="fas fa-exclamation-triangle warning-icon"></i>
+                        <div class="warning-text">
+                            <h4>⚠️ All token details become permanent once deployed</h4>
+                            <p>Name, symbol, description, image, and social links <strong>cannot be changed</strong> after blockchain deployment. Double-check everything before you launch!</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Create Form -->
                 <form method="POST" enctype="multipart/form-data" class="create-form">
                     <input type="hidden" name="mode" id="mode" value="simple">
@@ -439,12 +491,6 @@
                                 <div class="form-group">
                                     <!-- Empty column for layout balance -->
                                 </div>
-                            </div>
-                            <div class="social-info">
-                                <p style="margin: 0; font-size: 0.85rem; color: #CCCCCC;">
-                                    <i class="fas fa-info-circle" style="color: #20B2AA; margin-right: 0.5rem;"></i>
-                                    Social links can only be added now and can't be changed after token creation
-                                </p>
                             </div>
                         </div>
                     </div>
