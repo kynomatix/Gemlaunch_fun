@@ -298,15 +298,12 @@
                         <div class="action-buttons">
                             <button class="action-btn spotlight-btn" onclick="spotlightMessage()" title="Spotlight your message (costs tokens)">
                                 <i class="fas fa-star"></i>
-                                <span>Spotlight</span>
                             </button>
                             <button class="action-btn poll-btn" onclick="createPoll()" title="Create a poll">
                                 <i class="fas fa-poll"></i>
-                                <span>Poll</span>
                             </button>
                             <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
                                 <i class="fas fa-gift"></i>
-                                <span>Airdrop</span>
                             </button>
                         </div>
                     </div>
@@ -1103,7 +1100,7 @@
         }
         
         .action-btn {
-            padding: 0.6rem 1rem;
+            padding: 0.6rem;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 8px;
@@ -1114,9 +1111,9 @@
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            min-width: 80px;
             justify-content: center;
+            width: 40px;
+            height: 40px;
         }
         
         .action-btn:hover {
@@ -1128,11 +1125,7 @@
         }
         
         .action-btn i {
-            font-size: 1rem;
-        }
-        
-        .action-btn span {
-            font-size: 0.8rem;
+            font-size: 1.1rem;
         }
         
         .spotlight-btn:hover {
@@ -1516,13 +1509,13 @@
             }
             
             .action-btn {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.8rem;
-                min-width: 70px;
+                padding: 0.5rem;
+                width: 36px;
+                height: 36px;
             }
             
-            .action-btn span {
-                font-size: 0.75rem;
+            .action-btn i {
+                font-size: 1rem;
             }
             
             .reply-indicator {
