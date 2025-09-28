@@ -328,9 +328,9 @@
                 <button class="modal-close" onclick="closePollModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="poll-gating-info">
+                <div class="poll-gating-info" id="pollGatingInfo">
                     <i class="fas fa-shield-alt"></i>
-                    <span>Only holders with 10,000+ tokens can create polls</span>
+                    <span>Only holders with 10,000+ tokens can create polls (DAO governance)</span>
                 </div>
                 
                 <form id="pollForm">
@@ -378,6 +378,22 @@
                 <button type="button" class="btn btn-primary" onclick="createPollSubmit()">
                     <i class="fas fa-rocket"></i> Create Poll
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="modal" style="display: none;">
+        <div class="modal-content notification-modal">
+            <div class="modal-header">
+                <h3 id="notificationTitle">Notification</h3>
+                <button class="modal-close" onclick="closeNotificationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="notificationMessage">Message goes here</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeNotificationModal()">OK</button>
             </div>
         </div>
     </div>
@@ -1836,6 +1852,99 @@
             color: #FFD700;
             font-weight: 600;
         }
+        
+        /* Notification Modal Styling */
+        .notification-modal {
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .notification-modal .modal-body {
+            padding: 2rem;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        .notification-modal.error {
+            border-color: #FF4444;
+        }
+        
+        .notification-modal.error .modal-header {
+            border-bottom-color: rgba(255, 68, 68, 0.2);
+        }
+        
+        .notification-modal.error h3 {
+            color: #FF4444;
+        }
+        
+        .notification-modal.success {
+            border-color: #20B2AA;
+        }
+        
+        .notification-modal.success .modal-header {
+            border-bottom-color: rgba(32, 178, 170, 0.2);
+        }
+        
+        .notification-modal.success h3 {
+            color: #20B2AA;
+        }
+        
+        /* Token Type Styling */
+        .token-type-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .type-badge.basic {
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
+            border: 1px solid rgba(32, 178, 170, 0.4);
+            color: #20B2AA;
+        }
+        
+        .type-badge.advanced {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.1));
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            color: #8A2BE2;
+        }
+        
+        .token-type-info p {
+            color: #CCCCCC;
+            font-size: 0.85rem;
+            margin: 0;
+            opacity: 0.8;
+        }
+        
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .toggle-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        
+        .toggle-group label {
+            margin: 0;
+            color: #FFFFFF;
+            cursor: pointer;
+        }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2287,19 +2396,129 @@
         `;
         document.head.appendChild(style);
         
-        // Poll System Functions
-        function createPoll() {
-            // Check if user has enough tokens to create polls (DAO gating)
-            const minTokensRequired = 10000;
-            const userBalance = chatState.userTokenBalance || 0;
+        // Notification System
+        function showNotification(title, message, type = 'info') {
+            const modal = document.getElementById('notificationModal');
+            const modalContent = modal.querySelector('.modal-content');
+            const titleElement = document.getElementById('notificationTitle');
+            const messageElement = document.getElementById('notificationMessage');
             
-            if (userBalance < minTokensRequired) {
-                alert(`❌ Poll creation requires at least ${minTokensRequired.toLocaleString()} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nOnly larger holders can create polls (DAO governance).`);
-                return;
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Reset classes
+            modalContent.classList.remove('error', 'success');
+            
+            // Add appropriate class
+            if (type === 'error') {
+                modalContent.classList.add('error');
+            } else if (type === 'success') {
+                modalContent.classList.add('success');
             }
             
-            console.log(`🗳️ Opening poll creation (user has ${userBalance.toLocaleString()} tokens)`);
+            modal.style.display = 'flex';
+        }
+        
+        function closeNotificationModal() {
+            document.getElementById('notificationModal').style.display = 'none';
+        }
+        
+        // Poll System Functions
+        function createPoll() {
+            // Get current token type and apply different gating
+            const tokenData = getCurrentTokenData();
+            const userBalance = chatState.userTokenBalance || 0;
+            
+            if (tokenData.type === 'basic') {
+                // Basic token: Simple settings-based gating
+                const minTokensRequired = tokenData.poll_gate_tokens || 1000;
+                
+                if (userBalance < minTokensRequired) {
+                    showNotification(
+                        '❌ Insufficient Tokens', 
+                        `Poll creation requires at least ${minTokensRequired.toLocaleString()} ${tokenData.symbol} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nThis is set by the token creator in chat settings.`,
+                        'error'
+                    );
+                    return;
+                }
+            } else if (tokenData.type === 'advanced') {
+                // Advanced token: DAO-style governance with higher requirements
+                const minTokensRequired = 10000;
+                
+                if (userBalance < minTokensRequired) {
+                    showNotification(
+                        '🏛️ DAO Governance Required', 
+                        `Advanced token governance requires at least ${minTokensRequired.toLocaleString()} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nOnly larger holders can create polls in DAO governance mode.`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+            
+            console.log(`🗳️ Opening poll creation (${tokenData.type} token, user has ${userBalance.toLocaleString()} tokens)`);
+            
+            // Update gating info based on token type
+            updatePollGatingInfo(tokenData);
+            
             document.getElementById('pollModal').style.display = 'flex';
+        }
+        
+        function updatePollGatingInfo(tokenData) {
+            const gatingInfo = document.getElementById('pollGatingInfo');
+            const span = gatingInfo.querySelector('span');
+            
+            if (tokenData.type === 'basic') {
+                const minTokens = tokenData.poll_gate_tokens || 1000;
+                span.textContent = `Only holders with ${minTokens.toLocaleString()}+ tokens can create polls (set by creator)`;
+            } else if (tokenData.type === 'advanced') {
+                span.textContent = `Only holders with 10,000+ tokens can create polls (DAO governance)`;
+            }
+        }
+        
+        function getCurrentTokenData() {
+            // In a real app, this would come from the server
+            // For now, return sample data based on current token
+            const tokenSymbol = '{{ token.symbol }}';
+            
+            // Mock token data with different types
+            const tokenData = {
+                'PEPE': { 
+                    type: 'basic', 
+                    symbol: 'PEPE', 
+                    poll_gate_tokens: 1000,
+                    chat_gate_tokens: 100,
+                    superchat_gate_tokens: 500
+                },
+                'DOGE': { 
+                    type: 'advanced', 
+                    symbol: 'DOGE', 
+                    treasury_allocation: 15,
+                    lp_allocation: 10,
+                    airdrop_pool: 5
+                },
+                'SHIB': { 
+                    type: 'basic', 
+                    symbol: 'SHIB', 
+                    poll_gate_tokens: 2000,
+                    chat_gate_tokens: 200,
+                    superchat_gate_tokens: 1000
+                },
+                'FLOKI': { 
+                    type: 'advanced', 
+                    symbol: 'FLOKI', 
+                    treasury_allocation: 20,
+                    lp_allocation: 15,
+                    airdrop_pool: 10
+                }
+            };
+            
+            return tokenData[tokenSymbol] || { 
+                type: 'basic', 
+                symbol: tokenSymbol, 
+                poll_gate_tokens: 1000,
+                chat_gate_tokens: 100,
+                superchat_gate_tokens: 500
+            };
         }
         
         function closePollModal() {
@@ -2324,7 +2543,7 @@
             const options = container.querySelectorAll('.poll-option');
             
             if (options.length >= 6) {
-                alert('Maximum 6 options allowed');
+                showNotification('📊 Maximum Reached', 'Maximum 6 options allowed per poll.', 'error');
                 return;
             }
             
@@ -2358,19 +2577,23 @@
             
             // Validation
             if (!question) {
-                alert('Please enter a poll question');
+                showNotification('❓ Missing Question', 'Please enter a poll question before creating the poll.', 'error');
                 return;
             }
             
             if (options.length < 2) {
-                alert('Please provide at least 2 options');
+                showNotification('📊 Need More Options', 'Please provide at least 2 options for your poll.', 'error');
                 return;
             }
             
             // Check poll creation cost
             const pollCreationCost = 1000;
             if (chatState.userTokenBalance < pollCreationCost) {
-                alert(`Insufficient tokens to create poll.\\nRequired: ${pollCreationCost} tokens\\nYour balance: ${chatState.userTokenBalance} tokens`);
+                showNotification(
+                    '💰 Insufficient Balance',
+                    `Poll creation requires ${pollCreationCost} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} tokens\n\nNeed ${(pollCreationCost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
+                    'error'
+                );
                 return;
             }
             
@@ -2400,6 +2623,13 @@
             
             // Close modal
             closePollModal();
+            
+            // Show success notification
+            showNotification(
+                '🗳️ Poll Created!',
+                `Your poll "${question}" has been created successfully! Community members can now vote using ${voteCost} tokens per vote.`,
+                'success'
+            );
             
             console.log(`🗳️ Poll created: "${question}" | Cost: ${pollCreationCost} tokens | Vote cost: ${voteCost} tokens`);
         }
@@ -2449,13 +2679,17 @@
             
             // Check if poll is expired
             if (new Date() > poll.expiresAt) {
-                alert('This poll has expired');
+                showNotification('⏰ Poll Expired', 'This poll has expired and no longer accepts votes.', 'error');
                 return;
             }
             
             // Check if user has enough tokens to vote
             if (chatState.userTokenBalance < poll.voteCost) {
-                alert(`Insufficient tokens to vote.\\nRequired: ${poll.voteCost} tokens\\nYour balance: ${chatState.userTokenBalance} tokens`);
+                showNotification(
+                    '💰 Insufficient Tokens',
+                    `Voting requires ${poll.voteCost} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} tokens\n\nNeed ${(poll.voteCost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
+                    'error'
+                );
                 return;
             }
             
@@ -2464,7 +2698,7 @@
             const hasVoted = poll.options.some(option => option.voters.includes(userWallet));
             
             if (hasVoted) {
-                alert('You have already voted in this poll');
+                showNotification('🗳️ Already Voted', 'You have already voted in this poll. Each wallet can only vote once.', 'error');
                 return;
             }
             
@@ -2557,7 +2791,11 @@
             console.log(`🔐 Is owner: ${isTokenOwner}`);
             
             if (!isTokenOwner) {
-                alert('⚠️ Only the token creator can access chat settings.\n\nToken creator: ' + tokenCreatorAddress.slice(0, 10) + '...\nYour wallet: ' + userWallet.slice(0, 10) + '...');
+                showNotification(
+                    '🔒 Access Restricted', 
+                    `Only the token creator can access chat settings.\n\nToken creator: ${tokenCreatorAddress.slice(0, 10)}...\nYour wallet: ${userWallet.slice(0, 10)}...`,
+                    'error'
+                );
                 return;
             }
             
@@ -2566,55 +2804,84 @@
             // Create modal overlay
             const modalOverlay = document.createElement('div');
             modalOverlay.className = 'settings-modal-overlay';
+            // Create modal with dynamic content based on token type
+            const tokenData = getCurrentTokenData();
+            let settingsContent = '';
+            
+            if (tokenData.type === 'basic') {
+                settingsContent = `
+                    <div class="token-type-info">
+                        <div class="type-badge basic">
+                            <i class="fas fa-cog"></i>
+                            <span>Basic Token</span>
+                        </div>
+                        <p>Set simple token requirements for chat features</p>
+                    </div>
+                    <div class="setting-group">
+                        <label>Chat Access Requirement</label>
+                        <input type="number" id="chatGateTokens" value="${tokenData.chat_gate_tokens || 100}" placeholder="Min tokens to chat">
+                        <small>Minimum ${tokenData.symbol} tokens required to send messages</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>Poll Creation Requirement</label>
+                        <input type="number" id="pollGateTokens" value="${tokenData.poll_gate_tokens || 1000}" placeholder="Min tokens for polls">
+                        <small>Minimum ${tokenData.symbol} tokens required to create polls</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>Superchat Minimum</label>
+                        <input type="number" id="superchatGateTokens" value="${tokenData.superchat_gate_tokens || 500}" placeholder="Superchat minimum">
+                        <small>Minimum ${tokenData.symbol} tokens for superchat messages</small>
+                    </div>
+                `;
+            } else {
+                settingsContent = `
+                    <div class="token-type-info">
+                        <div class="type-badge advanced">
+                            <i class="fas fa-university"></i>
+                            <span>Advanced Token - DAO Governance</span>
+                        </div>
+                        <p>Advanced treasury mechanics with community rewards</p>
+                    </div>
+                    <div class="setting-group">
+                        <label>DAO Voting Power</label>
+                        <input type="number" value="10000" readonly>
+                        <small>Fixed at 10,000 ${tokenData.symbol} tokens for governance (cannot be changed)</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>Treasury Allocation (%)</label>
+                        <input type="number" value="${tokenData.treasury_allocation || 15}" placeholder="Treasury percentage">
+                        <small>Percentage of trading fees going to community treasury</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>Community Airdrop Pool (%)</label>
+                        <input type="number" value="${tokenData.airdrop_pool || 5}" placeholder="Airdrop percentage">
+                        <small>Percentage reserved for active community member airdrops</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>Activity Rewards</label>
+                        <div class="toggle-group">
+                            <input type="checkbox" id="chatRewards" checked>
+                            <label for="chatRewards">Reward active community members</label>
+                        </div>
+                        <small>Auto-distribute tokens to quality participants</small>
+                    </div>
+                `;
+            }
+            
             modalOverlay.innerHTML = `
                 <div class="settings-modal">
                     <div class="settings-header">
-                        <h3><i class="fas fa-cog"></i> Chat Settings</h3>
+                        <h3><i class="fas fa-cog"></i> ${tokenData.type === 'advanced' ? 'DAO Settings' : 'Chat Settings'}</h3>
                         <button class="close-settings" onclick="closeSettingsModal()">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                     <div class="settings-content">
-                        <div class="setting-group">
-                            <label>Token Gate Threshold</label>
-                            <input type="number" value="1000" placeholder="Minimum tokens required">
-                            <small>Minimum tokens required to chat when gating is enabled</small>
-                        </div>
-                        <div class="setting-group">
-                            <label>Spotlight Message Cost</label>
-                            <input type="number" value="500" placeholder="Cost in tokens">
-                            <small>Token cost for spotlighting messages</small>
-                        </div>
-                        <div class="setting-group">
-                            <label>Chat Mode</label>
-                            <select>
-                                <option value="open">Open Chat (Anyone can chat)</option>
-                                <option value="holders">Token Holders Only</option>
-                                <option value="usernames">Username Required</option>
-                            </select>
-                            <small>Control who can participate in chat</small>
-                        </div>
-                        <div class="setting-group">
-                            <label>Badge Requirements</label>
-                            <div class="badge-settings">
-                                <div class="badge-setting">
-                                    <span>🚀 Early Supporter:</span>
-                                    <input type="number" value="5" placeholder="Messages"> messages
-                                </div>
-                                <div class="badge-setting">
-                                    <span>💎 Diamond Hands:</span>
-                                    <input type="number" value="10000" placeholder="Tokens"> tokens held
-                                </div>
-                                <div class="badge-setting">
-                                    <span>👑 Chat Champion:</span>
-                                    <input type="number" value="100" placeholder="Score"> points
-                                </div>
-                            </div>
-                        </div>
+                        ${settingsContent}
                     </div>
                     <div class="settings-footer">
                         <button class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
-                        <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
+                        <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
                     </div>
                 </div>
             `;
@@ -2635,7 +2902,7 @@
         function saveSettings() {
             // In real app, save to backend
             console.log('💾 Settings saved');
-            alert('Settings saved successfully!');
+            showNotification('💾 Settings Saved', 'Your settings have been updated successfully!', 'success');
             closeSettingsModal();
         }
         
