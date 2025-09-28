@@ -2985,12 +2985,20 @@
                     description: 'Community-driven with simple features'
                 },
                 'FLOKI': { 
-                    type: 'advanced', 
+                    type: 'basic', 
                     symbol: 'FLOKI', 
-                    treasury_allocation: 20,
-                    lp_allocation: 15,
-                    airdrop_pool: 10,
-                    description: 'Advanced tokenomics with community rewards'
+                    poll_gate_tokens: 1500,
+                    chat_gate_tokens: 150,
+                    superchat_gate_tokens: 750,
+                    description: 'Viking meme token with basic features'
+                },
+                'MOON': { 
+                    type: 'basic', 
+                    symbol: 'MOON', 
+                    poll_gate_tokens: 1000,
+                    chat_gate_tokens: 100,
+                    superchat_gate_tokens: 500,
+                    description: 'Basic token with solid community features'
                 }
             };
             
@@ -3017,10 +3025,10 @@
                 badge.classList.add(tokenData.type);
                 
                 if (tokenData.type === 'advanced') {
-                    text.innerHTML = `<i class="fas fa-star"></i> Pro`;
+                    text.textContent = 'Pro';  // Just text, icon already in HTML
                     badge.title = 'Pro token with advanced governance, treasury management, and community rewards';
                 } else {
-                    text.innerHTML = `<i class="fas fa-cog"></i> Basic`;
+                    text.textContent = 'Basic';  // Just text, icon already in HTML
                     badge.title = 'Basic token with simple token gating for chat features';
                 }
             }
