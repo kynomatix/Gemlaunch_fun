@@ -1410,8 +1410,10 @@
                 localStorage.setItem('sidebarCollapsed', 'true');
             }
             
-            // Initialize chat state
-            initializeChatState();
+            // Initialize chat state with delay to ensure DOM is ready
+            setTimeout(() => {
+                initializeChatState();
+            }, 100);
         });
 
         let currentTradeMode = 'buy';
@@ -1447,34 +1449,52 @@
         
         // Initialize chat state on page load
         function initializeChatState() {
+            console.log('💎 Initializing chat state...');
+            
+            // Check if user has set a username
+            const savedUsername = localStorage.getItem('username');
+            if (savedUsername) {
+                const banner = document.getElementById('usernameBanner');
+                if (banner) {
+                    banner.style.display = 'none';
+                    console.log(`👤 Username found: ${savedUsername}, hiding banner`);
+                }
+            }
+            
             // Load existing loves state
             const existingMessages = document.querySelectorAll('.chat-message');
+            console.log(`Found ${existingMessages.length} existing messages`);
+            
             existingMessages.forEach(msg => {
                 const messageId = msg.getAttribute('data-message-id');
+                if (!messageId) return;
+                
+                // Check if user has loved this message
                 const isLoved = chatState.userLoves.includes(messageId);
-                if (isLoved) {
-                    const loveBtn = msg.querySelector('.love-btn');
-                    if (loveBtn) {
-                        loveBtn.classList.add('loved');
-                    }
+                const loveBtn = msg.querySelector('.love-btn');
+                
+                if (loveBtn && isLoved) {
+                    loveBtn.classList.add('loved');
+                    console.log(`❤️ Restored love state for message ${messageId}`);
                 }
                 
-                // Update love counts from stored state or initialize to 0
+                // Update love counts from stored state
                 const countSpan = msg.querySelector('.love-count');
                 if (countSpan) {
                     const savedCount = chatState.messageLoves[messageId];
                     if (savedCount !== undefined) {
                         countSpan.textContent = savedCount;
+                        console.log(`📊 Restored count ${savedCount} for message ${messageId}`);
                     } else {
-                        // Initialize with current count from HTML or 0
+                        // Initialize with current count from HTML
                         const currentCount = parseInt(countSpan.textContent) || 0;
                         chatState.messageLoves[messageId] = currentCount;
-                        countSpan.textContent = currentCount;
+                        console.log(`🆕 Initialized message ${messageId} with count ${currentCount}`);
                     }
                 }
             });
             
-            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol} | Loved messages: [${chatState.userLoves.join(', ')}]`);
+            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol} | Loved messages: [${chatState.userLoves.join(', ')}] | Username: ${savedUsername || 'Not set'}`);
         }
         
         // Generate realistic chart data
@@ -1820,13 +1840,24 @@
         }
         
         function openChatSettings() {
-            // Check if user is token owner (simulated check)
-            const isTokenOwner = Math.random() > 0.5; // In real app, check against token creator address
+            console.log('🔧 Opening chat settings...');
+            
+            // Check if user is token owner (deterministic simulation)
+            // In real app: check connected wallet address against token.creator_address
+            const userWallet = localStorage.getItem('connectedWallet') || '0x1234567890abcdef1234567890abcdef12345678';
+            const tokenCreatorAddress = '{{ token.creator_address|default:"0x1234567890abcdef1234567890abcdef12345678" }}';
+            const isTokenOwner = userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
+            
+            console.log(`👤 User wallet: ${userWallet}`);
+            console.log(`🏆 Token creator: ${tokenCreatorAddress}`);
+            console.log(`🔐 Is owner: ${isTokenOwner}`);
             
             if (!isTokenOwner) {
-                alert('⚠️ Only the token creator can access chat settings.');
+                alert('⚠️ Only the token creator can access chat settings.\n\nToken creator: ' + tokenCreatorAddress.slice(0, 10) + '...\nYour wallet: ' + userWallet.slice(0, 10) + '...');
                 return;
             }
+            
+            console.log('✅ Token owner verified, showing settings modal');
             
             // Create modal overlay
             const modalOverlay = document.createElement('div');
@@ -1885,13 +1916,15 @@
             `;
             
             document.body.appendChild(modalOverlay);
-            console.log('🔧 Chat settings modal opened');
+            modalOverlay.id = 'chatSettingsModal';
+            console.log('🔧 Chat settings modal opened successfully');
         }
         
         function closeSettingsModal() {
-            const modal = document.querySelector('.settings-modal-overlay');
+            const modal = document.getElementById('chatSettingsModal');
             if (modal) {
                 modal.remove();
+                console.log('🔧 Settings modal closed');
             }
         }
         
@@ -1971,17 +2004,30 @@
                 return;
             }
             
-            // Save username (in real app, save to backend)
-            localStorage.setItem('username', username);
-            console.log(`👤 Username set: ${username}`);
-            
-            // Hide the banner
-            const banner = document.getElementById('usernameBanner');
-            if (banner) {
-                banner.style.display = 'none';
+            // Validate username (basic check)
+            const validUsername = /^[a-zA-Z0-9_-]+$/.test(username);
+            if (!validUsername) {
+                alert('Username can only contain letters, numbers, hyphens, and underscores');
+                return;
             }
             
-            alert(`✅ Username "${username}" set successfully!\n\nYou'll now appear as "${username}" in all chats.`);
+            // Save username (in real app, save to backend)
+            localStorage.setItem('username', username);
+            localStorage.setItem('usernameSetAt', Date.now());
+            console.log(`👤 Username set: ${username}`);
+            
+            // Hide the banner with animation
+            const banner = document.getElementById('usernameBanner');
+            if (banner) {
+                banner.style.transition = 'opacity 0.5s ease, height 0.5s ease';
+                banner.style.opacity = '0';
+                banner.style.height = '0';
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 500);
+            }
+            
+            alert(`✅ Username "${username}" set successfully!\n\nYou'll now appear as "${username}" in all chats across the platform.`);
             closeUsernameModal();
         }
         
@@ -2064,13 +2110,17 @@
             const messagesContainer = document.getElementById('chatMessages');
             const messageId = Date.now();
             
+            // Get proper username display
+            const displayName = getUserDisplayName(user);
+            const userClass = getUsernameClass(user);
+            
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${isSpotlight ? 'spotlight-in-chat' : ''}`;
             messageDiv.setAttribute('data-message-id', messageId);
             
             messageDiv.innerHTML = `
                 <div class="message-content">
-                    <span class="chat-user ${isSpotlight ? 'spotlight-user' : ''}">${user}:</span>
+                    <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${displayName}:</span>
                     <span class="chat-text">${message} ${isSpotlight ? '✨' : ''}</span>
                 </div>
                 <div class="message-actions">
@@ -2090,6 +2140,29 @@
             
             // Initialize love count
             chatState.messageLoves[messageId] = 0;
+        }
+        
+        // Helper functions for username display
+        function getUserDisplayName(user) {
+            if (user === 'You') {
+                const savedUsername = localStorage.getItem('username');
+                if (savedUsername) {
+                    return savedUsername;
+                } else {
+                    // Generate last 6 chars simulation
+                    return '...' + Math.random().toString(36).substr(-6).toUpperCase();
+                }
+            }
+            return user;
+        }
+        
+        function getUsernameClass(user) {
+            if (user === 'You') {
+                const savedUsername = localStorage.getItem('username');
+                return savedUsername ? 'verified-user' : 'wallet-user';
+            }
+            // For demo, alternate between verified and wallet users
+            return Math.random() > 0.5 ? 'verified-user' : 'wallet-user';
         }
         
         function createPoll() {
