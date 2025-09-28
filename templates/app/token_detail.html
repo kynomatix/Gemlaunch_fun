@@ -27,7 +27,18 @@
                                     {% endif %}
                                 </span>
                             </div>
-                            <p>${{ token.symbol }} • Created by {{ token.creator.wallet_address[-6:] }}</p>
+                            <p>${{ token.symbol }} • Created by 
+                                {% if token.creator.display_name %}
+                                    <span class="creator-with-profile" title="{{ token.creator.wallet_address }}">
+                                        <i class="fas fa-user-check" style="color: #20B2AA; font-size: 0.9rem;"></i>
+                                        {{ token.creator.display_name }}
+                                    </span>
+                                {% else %}
+                                    <span class="creator-anonymous" title="Anonymous creator">
+                                        {{ token.creator.wallet_address[-6:] }}
+                                    </span>
+                                {% endif %}
+                            </p>
                             <div class="contract-address" title="{% if token.contract_address %}Contract Address - Click to copy{% else %}Not deployed yet{% endif %}">
                                 <i class="fas fa-file-contract"></i>
                                 {% if token.contract_address %}
@@ -2361,6 +2372,33 @@
         
         .token-gate-badge i {
             color: #FFA500;
+        }
+        
+        /* Creator Profile Styles */
+        .creator-with-profile {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #20B2AA;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0.2rem 0.6rem;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
+            border-radius: 12px;
+            border: 1px solid rgba(32, 178, 170, 0.2);
+        }
+        
+        .creator-with-profile:hover {
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
+            border-color: rgba(32, 178, 170, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        .creator-anonymous {
+            color: #999999;
+            font-family: monospace;
+            font-size: 0.95rem;
         }
     </style>
     
