@@ -377,7 +377,7 @@
                     <div class="chat-messages" id="chatMessages">
                         <div class="chat-message" data-message-id="1">
                             <div class="message-content">
-                                <span class="chat-user verified-user">CryptoKing:</span>
+                                <span class="chat-user verified-user">CryptoKing</span>
                                 <span class="chat-text">LFG! 🚀</span>
                             </div>
                             <div class="message-actions">
@@ -392,7 +392,7 @@
                         </div>
                         <div class="chat-message" data-message-id="2">
                             <div class="message-content">
-                                <span class="chat-user wallet-user">...5E678A:</span>
+                                <span class="chat-user wallet-user">0x5E6...78A</span>
                                 <span class="chat-text">Great project!</span>
                             </div>
                             <div class="message-actions">
@@ -407,7 +407,7 @@
                         </div>
                         <div class="chat-message" data-message-id="3">
                             <div class="message-content">
-                                <span class="chat-user verified-user">MoonHunter:</span>
+                                <span class="chat-user verified-user">MoonHunter</span>
                                 <span class="chat-text">When moon? 🌙</span>
                             </div>
                             <div class="message-actions">
@@ -429,7 +429,7 @@
                                 <span class="reply-preview">When moon? 🌙</span>
                             </div>
                             <div class="message-content">
-                                <span class="chat-user verified-user">0xDEF...999:</span>
+                                <span class="chat-user wallet-user">0xDEF...999</span>
                                 <span class="chat-text">Soon™! 🚀 Just HODL!</span>
                             </div>
                             <div class="message-actions">
@@ -1834,12 +1834,6 @@
             position: relative;
         }
         
-        .verified-user::after {
-            content: '✓';
-            color: #32CD32;
-            font-size: 0.8rem;
-            margin-left: 0.2rem;
-        }
         
         .wallet-user {
             color: #AAAAAA;
@@ -3658,7 +3652,7 @@
                                 <span>← Current (wallet address)</span>
                             </div>
                             <div class="display-option">
-                                <span class="chat-user verified-user">YourUsername:</span>
+                                <span class="chat-user verified-user">YourUsername</span>
                                 <span>← With username (recommended)</span>
                             </div>
                         </div>
@@ -3988,7 +3982,7 @@
                         <span class="reply-preview">${originalText.length > 30 ? originalText.substring(0, 30) + '...' : originalText}</span>
                     </div>
                     <div class="message-content">
-                        <span class="chat-user verified-user">You:</span>
+                        <span class="chat-user verified-user">You</span>
                         <span class="chat-text">${message}</span>
                     </div>
                     <div class="message-actions">
@@ -4012,7 +4006,7 @@
                 newMessage.setAttribute('data-message-id', messageId);
                 newMessage.innerHTML = `
                     <div class="message-content">
-                        <span class="chat-user verified-user">You:</span>
+                        <span class="chat-user verified-user">You</span>
                         <span class="chat-text">${message}</span>
                     </div>
                     <div class="message-actions">
