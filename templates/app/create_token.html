@@ -33,22 +33,42 @@
             margin-bottom: 1rem;
         }
         
-        .header-section {
-            margin-top: 2rem;
-            text-align: left;
+        .mode-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 0.5rem;
         }
         
-        .header-section h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #FFFFFF;
-            margin: 0 0 0.5rem 0;
-        }
-        
-        .header-section p {
+        .mode-option {
+            flex: 1;
+            padding: 1rem;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
             color: #CCCCCC;
-            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .mode-option.active {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            font-weight: 600;
+        }
+        
+        .mode-option h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .mode-option p {
             margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.8;
         }
         
         .create-form {
@@ -59,243 +79,48 @@
             backdrop-filter: blur(20px);
         }
         
-        .form-group {
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
             margin-bottom: 1.5rem;
         }
         
-        .form-group label {
-            display: block;
-            color: #FFFFFF;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
+        .form-group.full-width {
+            grid-column: 1 / -1;
         }
         
-        .form-group input[type="text"], 
-        .form-group input[type="url"] {
-            width: 100%;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: #FFFFFF;
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.3s ease;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #20B2AA;
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
-        }
-        
-        .form-group input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-        
-        /* Social Links Section */
-        .social-section {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.02);
-        }
-        
-        .social-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .social-header:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .social-header label {
-            margin: 0;
-            cursor: pointer;
-        }
-        
-        .social-chevron {
-            transition: transform 0.3s ease;
-            color: #CCCCCC;
-        }
-        
-        .social-chevron.expanded {
-            transform: rotate(180deg);
-        }
-        
-        .social-links {
-            padding: 0 1rem 1rem 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .social-input-group {
-            margin-bottom: 1rem;
-        }
-        
-        .social-input-group:last-child {
-            margin-bottom: 0;
-        }
-        
-        .social-input-group label {
-            font-size: 0.9rem;
-            color: #CCCCCC;
-            margin-bottom: 0.25rem;
-        }
-        
-        /* File Upload Section */
-        .file-upload-section {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .upload-container {
-            position: relative;
-        }
-        
-        .upload-area {
+        .image-upload {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 150px;
-            border: 2px dashed rgba(255, 255, 255, 0.2);
-            margin: 1rem;
-            border-radius: 8px;
+            min-height: 120px;
+            border: 2px dashed rgba(32, 178, 170, 0.3);
+            border-radius: 15px;
             background: rgba(255, 255, 255, 0.02);
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
         }
         
-        .upload-area:hover {
+        .image-upload:hover {
             border-color: #20B2AA;
             background: rgba(32, 178, 170, 0.05);
         }
         
-        .upload-area.dragover {
-            border-color: #20B2AA;
-            background: rgba(32, 178, 170, 0.1);
-        }
-        
-        .upload-content {
-            text-align: center;
-        }
-        
-        .upload-text p {
-            margin: 0.25rem 0;
-            color: #CCCCCC;
-        }
-        
-        .upload-text p:first-child {
-            color: #FFFFFF;
-            font-size: 1.1rem;
-        }
-        
-        .or-text {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 0.9rem;
+        .image-upload input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
         }
         
         .upload-icon {
-            font-size: 3rem;
-            color: #20B2AA;
-            margin-bottom: 1rem;
-        }
-        
-        /* File Info */
-        .file-info {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .file-info-section {
-            margin-bottom: 1rem;
-        }
-        
-        .file-info-section:last-child {
-            margin-bottom: 0;
-        }
-        
-        .file-info h4 {
-            color: #FFFFFF;
-            font-size: 0.9rem;
-            margin: 0 0 0.5rem 0;
-            font-weight: 600;
-        }
-        
-        .file-info p {
-            color: #CCCCCC;
-            font-size: 0.85rem;
-            margin: 0.25rem 0;
-        }
-        
-        /* Banner Upload */
-        .banner-upload {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            border: 2px dashed rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.02);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .banner-upload:hover {
-            border-color: #20B2AA;
-            background: rgba(32, 178, 170, 0.05);
-        }
-        
-        .banner-upload input {
-            display: none;
-        }
-        
-        .banner-upload .upload-icon {
             font-size: 2rem;
-            margin: 0;
-        }
-        
-        .banner-upload .upload-text p {
-            margin: 0.25rem 0;
-            color: #CCCCCC;
-        }
-        
-        .banner-upload .upload-text p:first-child {
-            color: #FFFFFF;
-            font-weight: 500;
-        }
-        
-        /* Warning Section */
-        .warning-section {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .warning-section i {
-            color: #FFC107;
-            font-size: 1.2rem;
-            margin-top: 0.2rem;
-        }
-        
-        .warning-section p {
-            color: #FFC107;
-            margin: 0;
-            font-size: 0.9rem;
-            line-height: 1.4;
+            color: #20B2AA;
+            margin-bottom: 0.5rem;
         }
         
         /* Rich Text Editor Styling */
@@ -497,11 +322,8 @@
 {% block content %}
             <div class="create-container">
                 <div class="create-header">
-                    <h1>Create new coin</h1>
-                    <div class="header-section">
-                        <h2>Coin details</h2>
-                        <p>Choose carefully, these can't be changed once the coin is created</p>
-                    </div>
+                    <h1>Create Your Memecoin</h1>
+                    <p>Launch a community-driven token on Kaspa with fair bonding curve mechanics</p>
                 </div>
 
                 <!-- Flash Messages -->
@@ -518,110 +340,81 @@
                     {% endif %}
                 {% endwith %}
 
+                <!-- Mode Selector -->
+                <div class="mode-selector">
+                    <button class="mode-option active" onclick="setMode('simple')">
+                        <h3>🚀 Simple Mode</h3>
+                        <p>Quick launch with 1B tokens</p>
+                    </button>
+                    <button class="mode-option" onclick="setMode('advanced')">
+                        <h3>⚙️ Advanced Mode</h3>
+                        <p>Custom supply & reserves</p>
+                    </button>
+                </div>
 
                 <!-- Create Form -->
                 <form method="POST" enctype="multipart/form-data" class="create-form">
-                    <!-- Coin Name -->
-                    <div class="form-group">
-                        <label for="name">Coin name</label>
-                        <input type="text" id="name" name="name" required placeholder="Name your coin" value="My Awesome Coin">
+                    <input type="hidden" name="mode" id="mode" value="simple">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name">Token Name *</label>
+                            <input type="text" id="name" name="name" required placeholder="e.g., My Awesome Coin">
+                        </div>
+                        <div class="form-group">
+                            <label for="symbol">Symbol *</label>
+                            <input type="text" id="symbol" name="symbol" required placeholder="e.g., MAC" maxlength="10" style="text-transform: uppercase;">
+                        </div>
                     </div>
 
-                    <!-- Ticker -->
-                    <div class="form-group">
-                        <label for="symbol">Ticker</label>
-                        <input type="text" id="symbol" name="symbol" required placeholder="Add a coin ticker (e.g. DOGE)" maxlength="10" style="text-transform: uppercase;">
-                    </div>
-
-                    <!-- Description -->
-                    <div class="form-group">
-                        <label for="description">Description (Optional)</label>
+                    <div class="form-group full-width">
+                        <label for="description">Description</label>
                         <div class="description-editor" id="description-editor"></div>
                         <input type="hidden" id="description" name="description">
                     </div>
 
-                    <!-- Social Links -->
-                    <div class="form-group">
-                        <div class="social-section">
-                            <div class="social-header" onclick="toggleSocialLinks()">
-                                <label>Add social links (Optional)</label>
-                                <i class="fas fa-chevron-down social-chevron" id="social-chevron"></i>
+                    <div class="form-group full-width">
+                        <label>Token Image</label>
+                        <div class="image-upload" onclick="document.getElementById('image').click()">
+                            <input type="file" id="image" name="image" accept="image/*">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <h4>Upload Token Image</h4>
+                            <p>PNG, JPG, GIF up to 500KB (optimized for blockchain)</p>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Options -->
+                    <div class="advanced-section" id="advanced-options">
+                        <h3 style="color: #20B2AA; margin-bottom: 1rem;">Advanced Configuration</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="total_supply">Total Supply</label>
+                                <input type="number" id="total_supply" name="total_supply" value="1000000000" min="1000000" max="100000000000" step="1000000">
+                                <div class="supply-info">
+                                    <h4>💡 Supply Guidelines</h4>
+                                    <p>Most successful memecoins use 1B tokens. Lower supply = higher individual token price, higher supply = lower price with more decimal places.</p>
+                                </div>
                             </div>
-                            <div class="social-links" id="social-links" style="display: none;">
-                                <div class="social-input-group">
-                                    <label for="website">Website</label>
-                                    <input type="url" id="website" name="website" placeholder="https://example.com">
+                            <div class="form-group">
+                                <label for="reserved_percentage">Reserved Tokens (%)</label>
+                                <div class="range-labels">
+                                    <span>0%</span>
+                                    <span id="reserve-display">0%</span>
+                                    <span>25%</span>
                                 </div>
-                                <div class="social-input-group">
-                                    <label for="twitter">X</label>
-                                    <input type="url" id="twitter" name="twitter" placeholder="https://x.com/username">
-                                </div>
-                                <div class="social-input-group">
-                                    <label for="telegram">Telegram</label>
-                                    <input type="url" id="telegram" name="telegram" placeholder="https://t.me/channel">
-                                </div>
-                                <div class="social-input-group">
-                                    <label for="discord">Discord</label>
-                                    <input type="url" id="discord" name="discord" placeholder="https://discord.gg/server">
+                                <input type="range" id="reserved_percentage" name="reserved_percentage" min="0" max="25" value="0" class="range-input" oninput="updateReserveDisplay(this.value)">
+                                <div class="supply-info">
+                                    <h4>🔒 Reserved Tokens</h4>
+                                    <p>Keep up to 25% of tokens for team, marketing, partnerships, or future development. Reserved tokens are locked until manually deployed.</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- File Upload -->
-                    <div class="form-group">
-                        <div class="file-upload-section">
-                            <div class="upload-container" id="upload-container">
-                                <div class="upload-area" id="upload-area">
-                                    <input type="file" id="image" name="image" accept="image/*,video/*" style="display: none;">
-                                    <div class="upload-content">
-                                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                                        <div class="upload-text">
-                                            <p><strong>No file chosen</strong></p>
-                                            <p>Select video or image to upload</p>
-                                            <p class="or-text">or drag and drop it here</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="file-info">
-                                <div class="file-info-section">
-                                    <h4>File size and type</h4>
-                                    <p><strong>Image</strong> - max 15mb. '.jpg', '.gif' or '.png' recommended</p>
-                                    <p><strong>Video</strong> - max 30mb. '.mp4' recommended</p>
-                                </div>
-                                <div class="file-info-section">
-                                    <h4>Resolution and aspect ratio</h4>
-                                    <p><strong>Image</strong> - min. 1000x1000px, 1:1 square recommended</p>
-                                    <p><strong>Video</strong> - 16:9 or 9:16, 1080p+ recommended</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Banner Upload -->
-                    <div class="form-group">
-                        <label for="banner">Add banner (Optional)</label>
-                        <div class="banner-upload" onclick="document.getElementById('banner').click()">
-                            <input type="file" id="banner" name="banner" accept="image/*">
-                            <i class="fas fa-image upload-icon"></i>
-                            <div class="upload-text">
-                                <p>Upload banner image</p>
-                                <p>Recommended: 1500x500px</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Warning -->
-                    <div class="warning-section">
-                        <i class="fas fa-info-circle"></i>
-                        <p>Coin data (social links, banner, etc) can only be added now, and can't be changed or edited after creation</p>
-                    </div>
-
 
                     <button type="submit" class="create-btn">
                         <i class="fas fa-rocket"></i>
-                        Create Coin
+                        Launch Token ($0 - Fair Launch)
                     </button>
                 </form>
             </div>
@@ -637,9 +430,10 @@
         // Initialize Rich Text Editor
         let quill = new Quill('#description-editor', {
             theme: 'snow',
-            placeholder: 'Write a short description',
+            placeholder: 'Tell the community about your token... 🚀💎🌟',
             modules: {
                 toolbar: [
+                    [{ 'header': [3, 4, false] }],
                     ['bold', 'italic', 'underline'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                     ['link'],
@@ -653,161 +447,124 @@
             document.getElementById('description').value = quill.root.innerHTML;
         });
         
-        // Social links toggle
-        function toggleSocialLinks() {
-            const socialLinks = document.getElementById('social-links');
-            const chevron = document.getElementById('social-chevron');
-            
-            if (socialLinks.style.display === 'none') {
-                socialLinks.style.display = 'block';
-                chevron.classList.add('expanded');
+        // Emoji insertion helper
+        function insertEmoji(emoji) {
+            const range = quill.getSelection();
+            if (range) {
+                quill.insertText(range.index, emoji);
             } else {
-                socialLinks.style.display = 'none';
-                chevron.classList.remove('expanded');
+                quill.insertText(quill.getLength() - 1, emoji);
             }
+        }
+        
+        function setMode(mode) {
+            // Update mode selector
+            document.querySelectorAll('.mode-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            event.target.closest('.mode-option').classList.add('active');
+            
+            // Update hidden input
+            document.getElementById('mode').value = mode;
+            
+            // Show/hide advanced options
+            const advancedSection = document.getElementById('advanced-options');
+            if (mode === 'advanced') {
+                advancedSection.classList.add('active');
+            } else {
+                advancedSection.classList.remove('active');
+            }
+        }
+        
+        function updateReserveDisplay(value) {
+            document.getElementById('reserve-display').textContent = value + '%';
         }
         
         // Global variable to track compressed file
         let currentCompressedFile = null;
         
-        // Initialize file upload handlers
-        function initFileUploadHandlers() {
+        // Initialize image upload handler
+        function initImageUploadHandler() {
             const imageInput = document.getElementById('image');
-            const uploadArea = document.getElementById('upload-area');
-            
             if (imageInput) {
-                imageInput.addEventListener('change', handleFileUpload);
-            }
-            
-            if (uploadArea) {
-                // Click to upload
-                uploadArea.addEventListener('click', function() {
-                    imageInput.click();
-                });
-                
-                // Drag and drop functionality
-                uploadArea.addEventListener('dragover', function(e) {
-                    e.preventDefault();
-                    uploadArea.classList.add('dragover');
-                });
-                
-                uploadArea.addEventListener('dragleave', function(e) {
-                    e.preventDefault();
-                    uploadArea.classList.remove('dragover');
-                });
-                
-                uploadArea.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    uploadArea.classList.remove('dragover');
-                    
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        processUploadedFile(files[0]);
-                    }
-                });
+                imageInput.addEventListener('change', handleImageUpload);
             }
         }
         
-        // Enhanced file upload handler with drag & drop and video support
-        function handleFileUpload(e) {
+        // Image upload handler with compression and validation
+        function handleImageUpload(e) {
             const file = e.target.files[0];
             if (file) {
-                processUploadedFile(file);
-            }
-        }
-        
-        function processUploadedFile(file) {
-            // Validate file type
-            const isImage = file.type.startsWith('image/');
-            const isVideo = file.type.startsWith('video/');
-            
-            if (!isImage && !isVideo) {
-                alert('⚠️ Please select a valid image (.jpg, .png, .gif) or video (.mp4) file');
-                return;
-            }
-            
-            // Validate file size based on type
-            const maxSize = isImage ? 15 * 1024 * 1024 : 30 * 1024 * 1024; // 15MB for images, 30MB for videos
-            const fileTypeText = isImage ? 'image' : 'video';
-            
-            if (file.size > maxSize) {
-                alert(`⚠️ ${fileTypeText.charAt(0).toUpperCase() + fileTypeText.slice(1)} too large! Please select a ${fileTypeText} under ${maxSize / (1024 * 1024)}MB.`);
-                return;
-            }
-            
-            // Show processing status
-            const uploadArea = document.getElementById('upload-area');
-            uploadArea.innerHTML = `
-                <input type="file" id="image" name="image" accept="image/*,video/*" style="display: none;">
-                <i class="fas fa-spinner fa-spin upload-icon"></i>
-                <div class="upload-text">
-                    <p><strong>Processing ${fileTypeText}...</strong></p>
-                    <p>Validating and optimizing for blockchain</p>
-                </div>
-            `;
-            
-            // Re-attach listeners
-            initFileUploadHandlers();
-            
-            if (isImage) {
-                // Validate image dimensions
-                const img = new Image();
-                img.onload = function() {
-                    if (img.width < 1000 || img.height < 1000) {
+                // Validate file size (initial check)
+                if (file.size > 10 * 1024 * 1024) { // 10MB initial limit
+                    alert('⚠️ Image too large! Please select an image under 10MB.');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('⚠️ Please select a valid image file (PNG, JPG, GIF, WebP)');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // Show compression progress
+                const uploadArea = document.querySelector('.image-upload');
+                uploadArea.innerHTML = `
+                    <input type="file" id="image" name="image" accept="image/*">
+                    <i class="fas fa-spinner fa-spin upload-icon"></i>
+                    <h4>Compressing for blockchain...</h4>
+                    <p>Optimizing image size</p>
+                `;
+                
+                // Re-attach event listener to new input
+                initImageUploadHandler();
+                
+                // Warn about format conversion if PNG
+                if (file.type === 'image/png') {
+                    console.log('ℹ️ PNG will be converted to JPEG for blockchain optimization. Transparency will be lost.');
+                }
+                
+                // Compress and resize image
+                compressImage(file, function(compressedFile, originalSize, compressedSize, success) {
+                    if (!success) {
+                        // Compression failed - file too large
+                        currentCompressedFile = null; // Clear stale reference
                         uploadArea.innerHTML = `
-                            <input type="file" id="image" name="image" accept="image/*,video/*" style="display: none;">
+                            <input type="file" id="image" name="image" accept="image/*">
                             <i class="fas fa-exclamation-triangle upload-icon" style="color: #FF6B6B;"></i>
-                            <div class="upload-text">
-                                <p><strong style="color: #FF6B6B;">Image too small</strong></p>
-                                <p>Minimum resolution: 1000x1000px</p>
-                                <p class="or-text">Current: ${img.width}x${img.height}px</p>
-                            </div>
+                            <h4 style="color: #FF6B6B;">Image Too Large</h4>
+                            <p>Unable to compress below 500KB limit for blockchain storage</p>
+                            <p style="font-size: 0.8rem; color: #CCCCCC;">Try a smaller or simpler image</p>
                         `;
-                        initFileUploadHandlers();
+                        initImageUploadHandler();
                         return;
                     }
                     
-                    // Compress image for blockchain
-                    compressImage(file, function(compressedFile, originalSize, compressedSize, success) {
-                        displayUploadSuccess(compressedFile || file, originalSize, compressedSize || file.size, isImage, success);
-                    });
-                };
-                img.src = URL.createObjectURL(file);
-            } else {
-                // For videos, show success without compression
-                displayUploadSuccess(file, file.size, file.size, false, true);
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        uploadArea.innerHTML = `
+                            <input type="file" id="image" name="image" accept="image/*">
+                            <img src="${e.target.result}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
+                                ✅ Optimized: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)}
+                            </p>
+                            <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change image</p>
+                        `;
+                        
+                        // Re-attach event listener and store compressed file
+                        initImageUploadHandler();
+                        currentCompressedFile = compressedFile;
+                        replaceFileInput(compressedFile);
+                    };
+                    reader.readAsDataURL(compressedFile);
+                });
             }
         }
         
-        function displayUploadSuccess(file, originalSize, finalSize, isImage, compressionSuccess) {
-            const uploadArea = document.getElementById('upload-area');
-            const isVideo = file.type.startsWith('video/');
-            const mediaElement = isVideo ? 
-                `<video src="${URL.createObjectURL(file)}" style="max-width: 120px; max-height: 80px; border-radius: 8px; object-fit: cover;" muted></video>` :
-                `<img src="${URL.createObjectURL(file)}" style="max-width: 120px; max-height: 80px; border-radius: 8px; object-fit: cover;">`;
-            
-            const compressionText = isImage && compressionSuccess ? 
-                `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
-                    ✅ Optimized: ${formatFileSize(originalSize)} → ${formatFileSize(finalSize)}
-                </p>` : 
-                `<p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
-                    ✅ ${isVideo ? 'Video' : 'Image'} ready: ${formatFileSize(finalSize)}
-                </p>`;
-            
-            uploadArea.innerHTML = `
-                <input type="file" id="image" name="image" accept="image/*,video/*" style="display: none;">
-                ${mediaElement}
-                ${compressionText}
-                <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change ${isVideo ? 'video' : 'image'}</p>
-            `;
-            
-            initFileUploadHandlers();
-            currentCompressedFile = file;
-            replaceFileInput(file);
-        }
-        
-        // Initialize handlers on page load
-        initFileUploadHandlers();
+        // Initialize handler on page load
+        initImageUploadHandler();
         
         // Image compression function for blockchain optimization
         function compressImage(file, callback) {
@@ -816,17 +573,16 @@
             const img = new Image();
             
             img.onload = function() {
-                // For blockchain storage, try to keep under 1MB but allow up to 2MB for high quality
-                const targetSizes = [1024, 512, 256]; // Max dimensions to try
-                const qualities = [0.9, 0.7, 0.5, 0.3]; // Quality levels to try
-                const maxFileSize = 2 * 1024 * 1024; // 2MB limit for final file
+                // Try progressively smaller sizes if needed
+                const maxSizes = [512, 256, 128]; // Max dimensions to try
+                const qualities = [0.8, 0.6, 0.4, 0.2]; // Quality levels to try
                 
                 let sizeIndex = 0;
                 let qualityIndex = 0;
                 
                 function tryCompress() {
                     // Calculate optimal dimensions
-                    let { width, height } = calculateOptimalSize(img.width, img.height, targetSizes[sizeIndex]);
+                    let { width, height } = calculateOptimalSize(img.width, img.height, maxSizes[sizeIndex]);
                     
                     canvas.width = width;
                     canvas.height = height;
@@ -837,8 +593,8 @@
                     
                     // Convert to blob
                     canvas.toBlob(function(blob) {
-                        if (blob.size <= maxFileSize) {
-                            // Success - under 2MB limit
+                        if (blob.size <= 500 * 1024) {
+                            // Success - under 500KB limit
                             callback(new File([blob], file.name, { type: 'image/jpeg' }), file.size, blob.size, true);
                         } else {
                             // Still too large, try next quality level
@@ -849,11 +605,11 @@
                                 // Try smaller dimensions
                                 qualityIndex = 0;
                                 sizeIndex++;
-                                if (sizeIndex < targetSizes.length) {
+                                if (sizeIndex < maxSizes.length) {
                                     tryCompress();
                                 } else {
-                                    // Use the last attempt even if over limit
-                                    callback(new File([blob], file.name, { type: 'image/jpeg' }), file.size, blob.size, true);
+                                    // Failed to compress below limit
+                                    callback(null, file.size, blob.size, false);
                                 }
                             }
                         }
@@ -902,13 +658,9 @@
         
         // Form submission validation
         document.querySelector('.create-form').addEventListener('submit', function(e) {
-            // Basic validation - files are already validated during upload
-            const name = document.getElementById('name').value.trim();
-            const symbol = document.getElementById('symbol').value.trim();
-            
-            if (!name || !symbol) {
+            if (currentCompressedFile && currentCompressedFile.size > 500 * 1024) {
                 e.preventDefault();
-                alert('⚠️ Please fill in the coin name and ticker.');
+                alert('⚠️ Image file is still too large for blockchain storage. Please select a smaller image.');
                 return false;
             }
         });
@@ -917,7 +669,5 @@
         document.getElementById('symbol').addEventListener('input', function(e) {
             e.target.value = e.target.value.toUpperCase();
         });
-        
-        console.log('🚀 Token creation page loaded successfully!');
 </script>
 {% endblock %}
