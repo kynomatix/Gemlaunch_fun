@@ -19,8 +19,8 @@
                                 <h1>{{ token.name }}</h1>
                                 <span class="token-type-badge {{ 'advanced' if token.symbol in ['DOGKAS', 'LASER'] else 'basic' }}" id="tokenTypeBadge">
                                     {% if token.symbol in ['DOGKAS', 'LASER'] %}
-                                        <i class="fas fa-university"></i>
-                                        <span id="tokenTypeText">DAO</span>
+                                        <i class="fas fa-star"></i>
+                                        <span id="tokenTypeText">Pro</span>
                                     {% else %}
                                         <i class="fas fa-cog"></i>
                                         <span id="tokenTypeText">Basic</span>
@@ -1993,18 +1993,18 @@
         }
         
         .token-type-badge.advanced {
-            background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.15));
-            border: 1px solid rgba(138, 43, 226, 0.5);
-            color: #8A2BE2;
+            background: linear-gradient(135deg, rgba(74, 144, 184, 0.3), rgba(46, 139, 155, 0.15));
+            border: 1px solid rgba(74, 144, 184, 0.5);
+            color: #4A90B8;
             animation: glow-pulse 2s ease-in-out infinite alternate;
         }
         
         @keyframes glow-pulse {
             from {
-                box-shadow: 0 0 5px rgba(138, 43, 226, 0.3);
+                box-shadow: 0 0 5px rgba(74, 144, 184, 0.3);
             }
             to {
-                box-shadow: 0 0 15px rgba(138, 43, 226, 0.6), 0 0 25px rgba(138, 43, 226, 0.3);
+                box-shadow: 0 0 15px rgba(74, 144, 184, 0.6), 0 0 25px rgba(74, 144, 184, 0.3);
             }
         }
         
@@ -2620,8 +2620,8 @@
                 badge.classList.add(tokenData.type);
                 
                 if (tokenData.type === 'advanced') {
-                    text.innerHTML = `<i class="fas fa-university"></i> Advanced DAO`;
-                    badge.title = 'Advanced token with DAO governance, treasury management, and community rewards';
+                    text.innerHTML = `<i class="fas fa-star"></i> Pro`;
+                    badge.title = 'Pro token with advanced governance, treasury management, and community rewards';
                 } else {
                     text.innerHTML = `<i class="fas fa-cog"></i> Basic`;
                     badge.title = 'Basic token with simple token gating for chat features';
@@ -2980,8 +2980,8 @@
                 settingsContent = `
                     <div class="token-type-info">
                         <div class="type-badge advanced">
-                            <i class="fas fa-university"></i>
-                            <span>Advanced Token - DAO Governance</span>
+                            <i class="fas fa-star"></i>
+                            <span>Pro Token - Advanced Features</span>
                         </div>
                         <p>Advanced treasury mechanics with community rewards</p>
                     </div>

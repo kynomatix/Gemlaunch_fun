@@ -101,15 +101,15 @@
         }
         
         .marketplace-token-badge.advanced {
-            background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.1));
-            border: 1px solid rgba(138, 43, 226, 0.4);
-            color: #8A2BE2;
+            background: linear-gradient(135deg, rgba(74, 144, 184, 0.2), rgba(46, 139, 155, 0.1));
+            border: 1px solid rgba(74, 144, 184, 0.4);
+            color: #4A90B8;
             animation: subtle-glow 3s ease-in-out infinite alternate;
         }
         
         @keyframes subtle-glow {
-            from { box-shadow: 0 0 3px rgba(138, 43, 226, 0.2); }
-            to { box-shadow: 0 0 8px rgba(138, 43, 226, 0.4); }
+            from { box-shadow: 0 0 3px rgba(74, 144, 184, 0.2); }
+            to { box-shadow: 0 0 8px rgba(74, 144, 184, 0.4); }
         }
         
         .contract-address-small {
@@ -294,7 +294,7 @@
                                         <h3>{{ token.name }}</h3>
                                         <span class="marketplace-token-badge {{ 'advanced' if token.symbol in ['DOGKAS', 'LASER'] else 'basic' }}">
                                             {% if token.symbol in ['DOGKAS', 'LASER'] %}
-                                                <i class="fas fa-university"></i> DAO
+                                                <i class="fas fa-star"></i> Pro
                                             {% else %}
                                                 <i class="fas fa-cog"></i> Basic
                                             {% endif %}
