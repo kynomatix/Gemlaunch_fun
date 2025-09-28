@@ -147,14 +147,12 @@
                     <div class="chat-header">
                         <h3>Live Chat</h3>
                         <div class="chat-controls">
-                            <div class="token-gate-toggle" title="Token holders only">
-                                <input type="checkbox" id="tokenGateToggle" class="toggle-switch" onchange="toggleTokenGate()">
-                                <label for="tokenGateToggle" class="toggle-label">
-                                    <i class="fas fa-lock"></i>
-                                    <span class="toggle-text">Holders Only</span>
-                                </label>
+                            <!-- Holders Only Toggle/Badge -->
+                            <div class="token-gate-container" id="tokenGateContainer">
+                                <!-- Will be populated by JavaScript based on ownership -->
                             </div>
-                            <button class="chat-settings-btn" onclick="openChatSettings()" title="Chat Settings">
+                            <!-- Settings Button - Only for creators -->
+                            <button class="chat-settings-btn" id="chatSettingsBtn" onclick="openChatSettings()" title="Chat Settings" style="display: none;">
                                 <i class="fas fa-cog"></i>
                             </button>
                         </div>
@@ -2346,6 +2344,24 @@
         .contract-address i {
             font-size: 0.9rem;
         }
+        
+        /* Token Gate Badge for non-creators */
+        .token-gate-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 20px;
+            color: #FFD700;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .token-gate-badge i {
+            color: #FFA500;
+        }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2406,6 +2422,9 @@
         function initializeChatState() {
             console.log('💎 Initializing chat state...');
             
+            // Check ownership and set up appropriate interface
+            checkTokenOwnership();
+            
             // Check if user has set a username
             const savedUsername = localStorage.getItem('username');
             if (savedUsername) {
@@ -2450,6 +2469,56 @@
             });
             
             console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol} | Loved messages: [${chatState.userLoves.join(', ')}] | Username: ${savedUsername || 'Not set'}`);
+        }
+        
+        // Check token ownership and set up appropriate interface
+        function checkTokenOwnership() {
+            const userWallet = localStorage.getItem('connectedWallet');
+            const tokenCreatorAddress = '{{ token.creator.wallet_address }}';
+            const isTokenOwner = userWallet && userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
+            
+            console.log(`🔐 Ownership check - User: ${userWallet}, Creator: ${tokenCreatorAddress}, Is Owner: ${isTokenOwner}`);
+            
+            // Show/hide settings button based on ownership
+            const settingsBtn = document.getElementById('chatSettingsBtn');
+            if (settingsBtn) {
+                settingsBtn.style.display = isTokenOwner ? 'block' : 'none';
+            }
+            
+            // Set up Holders Only toggle/badge based on ownership
+            const tokenGateContainer = document.getElementById('tokenGateContainer');
+            if (tokenGateContainer) {
+                if (isTokenOwner) {
+                    // Creator gets interactive toggle
+                    const isHoldersOnly = localStorage.getItem(`holdersOnly_${tokenSymbol}`) === 'true';
+                    tokenGateContainer.innerHTML = `
+                        <div class="token-gate-toggle" title="Toggle holders-only mode">
+                            <input type="checkbox" id="tokenGateToggle" class="toggle-switch" ${isHoldersOnly ? 'checked' : ''} onchange="toggleTokenGate()">
+                            <label for="tokenGateToggle" class="toggle-label">
+                                <i class="fas fa-lock"></i>
+                                <span class="toggle-text">Holders Only</span>
+                            </label>
+                        </div>
+                    `;
+                    // Apply the state if checked
+                    if (isHoldersOnly) {
+                        setTimeout(() => toggleTokenGate(), 100);
+                    }
+                } else {
+                    // Non-creators get visual badge if holders-only mode is active
+                    const isHoldersOnly = localStorage.getItem(`holdersOnly_${tokenSymbol}`) === 'true';
+                    if (isHoldersOnly) {
+                        tokenGateContainer.innerHTML = `
+                            <div class="token-gate-badge" title="Holders-only chat active">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Holders Only</span>
+                            </div>
+                        `;
+                    } else {
+                        tokenGateContainer.innerHTML = ''; // No badge if not active
+                    }
+                }
+            }
         }
         
         // Generate realistic chart data
@@ -3221,6 +3290,9 @@
             const status = document.getElementById('tokenGateStatus');
             const chatInput = document.getElementById('chatInput');
             
+            // Save the state for this specific token
+            localStorage.setItem(`holdersOnly_${tokenSymbol}`, toggle.checked);
+            
             if (toggle.checked) {
                 status.style.display = 'block';
                 
@@ -3251,11 +3323,10 @@
         function openChatSettings() {
             console.log('🔧 Opening chat settings...');
             
-            // Check if user is token owner (deterministic simulation)
-            // In real app: check connected wallet address against token.creator_address
-            const userWallet = localStorage.getItem('connectedWallet') || '0x1234567890abcdef1234567890abcdef12345678';
-            const tokenCreatorAddress = '{{ token.creator_address|default("0x1234567890abcdef1234567890abcdef12345678") }}';
-            const isTokenOwner = userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
+            // Check if user is token owner
+            const userWallet = localStorage.getItem('connectedWallet');
+            const tokenCreatorAddress = '{{ token.creator.wallet_address }}';
+            const isTokenOwner = userWallet && userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
             
             console.log(`👤 User wallet: ${userWallet}`);
             console.log(`🏆 Token creator: ${tokenCreatorAddress}`);
