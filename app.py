@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
+import models_extended
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
