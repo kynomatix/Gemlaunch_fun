@@ -27,7 +27,7 @@
                                     {% endif %}
                                 </span>
                             </div>
-                            <p>${{ token.symbol }} • Created by {{ token.creator.wallet_address[:8] }}...{{ token.creator.wallet_address[-4:] }}</p>
+                            <p>${{ token.symbol }} • Created by {{ token.creator.wallet_address[-6:] }}</p>
                             <div class="contract-address" title="{% if token.contract_address %}Contract Address - Click to copy{% else %}Not deployed yet{% endif %}">
                                 <i class="fas fa-file-contract"></i>
                                 {% if token.contract_address %}
@@ -180,6 +180,85 @@
                         </div>
                     </div>
                     
+                    <!-- Achievement Guide -->
+                    <div class="achievement-guide">
+                        <div class="achievement-header">
+                            <h4><i class="fas fa-medal"></i> How to Earn Badges</h4>
+                            <button class="achievement-toggle" onclick="toggleAchievements()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="achievement-content collapsed" id="achievementContent">
+                            <div class="achievement-list">
+                                <div class="achievement-item">
+                                    <span class="badge diamond">💎</span>
+                                    <div class="achievement-info">
+                                        <strong>Diamond Hands</strong>
+                                        <p>Hold 50,000+ tokens for 6+ months without selling</p>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <span class="badge early">🚀</span>
+                                    <div class="achievement-info">
+                                        <strong>Early Supporter</strong>
+                                        <p>Be among the first 100 token buyers</p>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <span class="badge chat-king">👑</span>
+                                    <div class="achievement-info">
+                                        <strong>Chat Champion</strong>
+                                        <p>Send 500+ quality chat messages (no spam)</p>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <span class="badge hodler">🙌</span>
+                                    <div class="achievement-info">
+                                        <strong>True HODLer</strong>
+                                        <p>Never sell below your average purchase price</p>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <span class="badge active">⚡</span>
+                                    <div class="achievement-info">
+                                        <strong>Active Trader</strong>
+                                        <p>Complete 100+ successful trades</p>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <span class="badge supporter">❤️</span>
+                                    <div class="achievement-info">
+                                        <strong>Community Supporter</strong>
+                                        <p>Help onboard 25+ new users to the platform</p>
+                                    </div>
+                                </div>
+                                {% if token.symbol in ['DOGKAS', 'LASER'] %}
+                                    <div class="achievement-item pro-only">
+                                        <span class="badge governance">🏛️</span>
+                                        <div class="achievement-info">
+                                            <strong>DAO Governor</strong>
+                                            <p>Participate in 10+ governance votes (Pro tokens only)</p>
+                                        </div>
+                                    </div>
+                                    <div class="achievement-item pro-only">
+                                        <span class="badge liquidity">💧</span>
+                                        <div class="achievement-info">
+                                            <strong>Liquidity Provider</strong>
+                                            <p>Add 10,000+ tokens to liquidity pool (Pro tokens only)</p>
+                                        </div>
+                                    </div>
+                                    <div class="achievement-item pro-only">
+                                        <span class="badge advisor">🧠</span>
+                                        <div class="achievement-info">
+                                            <strong>Technical Advisor</strong>
+                                            <p>Provide valuable development insights (Pro tokens only)</p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Gamified Leaderboard -->
                     <div class="chat-leaderboard">
                         <div class="leaderboard-header">
@@ -189,39 +268,108 @@
                             </button>
                         </div>
                         <div class="leaderboard-content collapsed" id="leaderboardContent">
-                            <div class="contributor-item rank-1">
-                                <div class="rank-badge gold">#1</div>
-                                <div class="contributor-info">
-                                    <span class="contributor-name">0xAB1...234</span>
-                                    <div class="contributor-badges">
-                                        <span class="badge diamond" title="Diamond Hands">💎</span>
-                                        <span class="badge early" title="Early Supporter">🚀</span>
-                                        <span class="badge chat-king" title="Chat Champion">👑</span>
+                            <!-- Dynamic contributors based on token -->
+                            {% if token.symbol == 'DOGKAS' %}
+                                <div class="contributor-item rank-1">
+                                    <div class="rank-badge gold">#1</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">DogeWhisperer</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge diamond" title="Diamond Hands - Held 50,000+ tokens for 6+ months">💎</span>
+                                            <span class="badge early" title="Early Supporter - Top 100 initial buyers">🚀</span>
+                                            <span class="badge chat-king" title="Chat Champion - 500+ quality messages">👑</span>
+                                        </div>
                                     </div>
+                                    <div class="contributor-score">3,840 pts</div>
                                 </div>
-                                <div class="contributor-score">2,450 pts</div>
-                            </div>
-                            <div class="contributor-item rank-2">
-                                <div class="rank-badge silver">#2</div>
-                                <div class="contributor-info">
-                                    <span class="contributor-name">0xCD5...678</span>
-                                    <div class="contributor-badges">
-                                        <span class="badge hodler" title="True HODLer">🙌</span>
-                                        <span class="badge active" title="Active Trader">⚡</span>
+                                <div class="contributor-item rank-2">
+                                    <div class="rank-badge silver">#2</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">KaspaMaxi</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge hodler" title="True HODLer - Never sold below purchase price">🙌</span>
+                                            <span class="badge active" title="Active Trader - 100+ successful trades">⚡</span>
+                                        </div>
                                     </div>
+                                    <div class="contributor-score">2,650 pts</div>
                                 </div>
-                                <div class="contributor-score">1,890 pts</div>
-                            </div>
-                            <div class="contributor-item rank-3">
-                                <div class="rank-badge bronze">#3</div>
-                                <div class="contributor-info">
-                                    <span class="contributor-name">0x1A2...BC3</span>
-                                    <div class="contributor-badges">
-                                        <span class="badge supporter" title="Community Supporter">❤️</span>
+                                <div class="contributor-item rank-3">
+                                    <div class="rank-badge bronze">#3</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">CommunityBuilder</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge supporter" title="Community Supporter - Helped onboard 25+ new users">❤️</span>
+                                        </div>
                                     </div>
+                                    <div class="contributor-score">1,980 pts</div>
                                 </div>
-                                <div class="contributor-score">1,220 pts</div>
-                            </div>
+                            {% elif token.symbol == 'LASER' %}
+                                <div class="contributor-item rank-1">
+                                    <div class="rank-badge gold">#1</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">LaserLord</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge diamond" title="Diamond Hands - Held 50,000+ tokens for 6+ months">💎</span>
+                                            <span class="badge governance" title="DAO Governor - Participated in 10+ governance votes">🏛️</span>
+                                            <span class="badge chat-king" title="Chat Champion - 500+ quality messages">👑</span>
+                                        </div>
+                                    </div>
+                                    <div class="contributor-score">4,120 pts</div>
+                                </div>
+                                <div class="contributor-item rank-2">
+                                    <div class="rank-badge silver">#2</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">ProTrader</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge active" title="Active Trader - 100+ successful trades">⚡</span>
+                                            <span class="badge liquidity" title="Liquidity Provider - Added 10,000+ tokens to LP">💧</span>
+                                        </div>
+                                    </div>
+                                    <div class="contributor-score">3,150 pts</div>
+                                </div>
+                                <div class="contributor-item rank-3">
+                                    <div class="rank-badge bronze">#3</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">TechAnalyst</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge advisor" title="Technical Advisor - Provided valuable development insights">🧠</span>
+                                        </div>
+                                    </div>
+                                    <div class="contributor-score">2,420 pts</div>
+                                </div>
+                            {% else %}
+                                <div class="contributor-item rank-1">
+                                    <div class="rank-badge gold">#1</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">{{ token.symbol }}Fan</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge early" title="Early Supporter - Top 100 initial buyers">🚀</span>
+                                            <span class="badge chat-king" title="Chat Champion - 500+ quality messages">👑</span>
+                                        </div>
+                                    </div>
+                                    <div class="contributor-score">2,240 pts</div>
+                                </div>
+                                <div class="contributor-item rank-2">
+                                    <div class="rank-badge silver">#2</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">CryptoEnthusiast</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge hodler" title="True HODLer - Never sold below purchase price">🙌</span>
+                                        </div>
+                                    </div>
+                                    <div class="contributor-score">1,680 pts</div>
+                                </div>
+                                <div class="contributor-item rank-3">
+                                    <div class="rank-badge bronze">#3</div>
+                                    <div class="contributor-info">
+                                        <span class="contributor-name">ADE8F3</span>
+                                        <div class="contributor-badges">
+                                            <span class="badge supporter" title="Community Supporter - Helped onboard 25+ new users">❤️</span>
+                                        </div>
+                                    </div>
+                                    <div class="contributor-score">1,150 pts</div>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="chat-messages" id="chatMessages">
@@ -887,11 +1035,114 @@
         .badge.hodler { background: rgba(50, 205, 50, 0.2); }
         .badge.active { background: rgba(255, 69, 0, 0.2); }
         .badge.supporter { background: rgba(255, 182, 193, 0.2); }
+        .badge.governance { background: rgba(138, 43, 226, 0.2); }
+        .badge.liquidity { background: rgba(0, 191, 255, 0.2); }
+        .badge.advisor { background: rgba(128, 0, 128, 0.2); }
         
         .contributor-score {
             color: #FFD700;
             font-weight: 600;
             font-size: 0.8rem;
+        }
+        
+        /* Achievement Guide Styles */
+        .achievement-guide {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .achievement-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8rem 1rem;
+            background: rgba(32, 178, 170, 0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .achievement-header:hover {
+            background: rgba(32, 178, 170, 0.08);
+        }
+        
+        .achievement-header h4 {
+            margin: 0;
+            color: #20B2AA;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .achievement-toggle {
+            background: none;
+            border: none;
+            color: #20B2AA;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .achievement-content {
+            max-height: 300px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            padding: 1rem;
+        }
+        
+        .achievement-content.collapsed {
+            max-height: 0;
+            padding: 0;
+        }
+        
+        .achievement-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+        
+        .achievement-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .achievement-item:hover {
+            background: rgba(32, 178, 170, 0.05);
+            transform: translateX(2px);
+        }
+        
+        .achievement-item.pro-only {
+            border-left: 3px solid #4A90B8;
+            background: rgba(74, 144, 184, 0.05);
+        }
+        
+        .achievement-item.pro-only:hover {
+            background: rgba(74, 144, 184, 0.08);
+        }
+        
+        .achievement-info {
+            flex: 1;
+        }
+        
+        .achievement-info strong {
+            color: #FFFFFF;
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+        
+        .achievement-info p {
+            color: #CCCCCC;
+            font-size: 0.75rem;
+            margin: 0;
+            opacity: 0.9;
         }
         
         .chat-messages {
@@ -3156,6 +3407,19 @@
         function toggleLeaderboard() {
             const content = document.getElementById('leaderboardContent');
             const toggle = document.querySelector('.leaderboard-toggle i');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                toggle.className = 'fas fa-chevron-up';
+            } else {
+                content.classList.add('collapsed');
+                toggle.className = 'fas fa-chevron-down';
+            }
+        }
+        
+        function toggleAchievements() {
+            const content = document.getElementById('achievementContent');
+            const toggle = document.querySelector('.achievement-toggle i');
             
             if (content.classList.contains('collapsed')) {
                 content.classList.remove('collapsed');
