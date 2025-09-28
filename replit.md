@@ -45,6 +45,15 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Updated roadmap strategy: Q1 2026 focuses on community-driven features instead of mobile app (working with Kastle wallet)
 - Q2 2026 Pro Analytics targets KRC20 bubble maps and market analytics rather than institutional features
 - Added wallet integrations to Q4 2025 launch milestone
+- Fixed token card layout issue on marketplace page where market cap boxes were extending outside card frames
+- Implemented comprehensive profile image upload system with Pillow compression (150x150 WebP at 80% quality)
+- Added proper file storage in static/uploads/profile/ directory instead of base64 database storage
+- Updated UserProfile model with avatar_path and avatar_updated_at fields for efficient image management
+- Replaced URL input with proper file upload form with drag-and-drop styling and validation
+- Added automatic cleanup of old avatar files when new ones are uploaded
+- Implemented cache busting with timestamp query parameters for image updates
+- Fixed Kasplex testnet network configuration: corrected Chain ID from 0x28CC4 (167108) to 0x28C64 (167012)
+- Updated network name from "Kasplex Network Testnet" to "Kasplex Testnet" to match official specifications
 
 # User Preferences
 
