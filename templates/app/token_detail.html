@@ -3150,19 +3150,30 @@
         }
         
         function copyContractAddress(address) {
+            const contractElement = event.target;
+            const originalText = contractElement.textContent;
+            
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(address).then(() => {
-                    showNotification('📋 Copied!', `Contract address copied to clipboard`, 'success');
+                    // Temporarily change text to show it was copied
+                    contractElement.textContent = '✓ Copied!';
+                    contractElement.style.color = '#20B2AA';
+                    
+                    // Restore original text after 2 seconds
+                    setTimeout(() => {
+                        contractElement.textContent = originalText;
+                        contractElement.style.color = '';
+                    }, 2000);
                 }).catch(err => {
                     console.error('Failed to copy:', err);
-                    fallbackCopyText(address);
+                    fallbackCopyText(address, contractElement, originalText);
                 });
             } else {
-                fallbackCopyText(address);
+                fallbackCopyText(address, contractElement, originalText);
             }
         }
         
-        function fallbackCopyText(text) {
+        function fallbackCopyText(text, element, originalText) {
             // Fallback for older browsers
             const textArea = document.createElement('textarea');
             textArea.value = text;
@@ -3172,9 +3183,23 @@
             textArea.select();
             try {
                 document.execCommand('copy');
-                showNotification('📋 Copied!', `Contract address copied to clipboard`, 'success');
+                // Show success inline
+                element.textContent = '✓ Copied!';
+                element.style.color = '#20B2AA';
+                
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.style.color = '';
+                }, 2000);
             } catch (err) {
-                showNotification('❌ Copy Failed', `Unable to copy address. Please copy manually: ${text}`, 'error');
+                // Show error inline
+                element.textContent = '✗ Copy failed';
+                element.style.color = '#ff6666';
+                
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.style.color = '';
+                }, 2000);
             }
             document.body.removeChild(textArea);
         }
