@@ -795,19 +795,60 @@ def init_database():
             # Create sample tokens with contract addresses if none exist
             if not Token.query.first():
                 print("Creating sample tokens...")
+                
+                # Create sample users for token creation
                 sample_user = User.query.first()
                 if not sample_user:
-                    # Create a sample user for token creation
-                    sample_user = User(
-                        wallet_address='0x1234567890abcdef1234567890abcdef12345678',
-                        display_name='Sample Creator',
-                        wallet_type='kastle'
-                    )
+                    # Create a default sample user for other tokens
+                    sample_user = User()
+                    sample_user.wallet_address = '0x1234567890abcdef1234567890abcdef12345678'
+                    sample_user.display_name = 'Sample Creator'
+                    sample_user.wallet_type = 'kastle'
                     db.session.add(sample_user)
-                    db.session.commit()
+                
+                # Create the specific user (you) as creator for DOGKAS and MOON
+                user_creator = User.query.filter_by(wallet_address='0xa51d8f597570353ae50a25df90ade162d2305ffa').first()
+                if not user_creator:
+                    user_creator = User()
+                    user_creator.wallet_address = '0xa51d8f597570353ae50a25df90ade162d2305ffa'
+                    user_creator.display_name = 'Token Creator'
+                    user_creator.wallet_type = 'kastle'
+                    db.session.add(user_creator)
+                
+                db.session.commit()
                 
                 # Sample token data with contract addresses and types
                 sample_tokens = [
+                    {
+                        'name': 'Doge Kaspa',
+                        'symbol': 'DOGKAS',
+                        'description': 'Much speed, very fast. The ultimate Pro memecoin on Kaspa blockchain with advanced DAO features.',
+                        'contract_address': '0x80707fad25e8727117d5ff2ad0960dae2b7aa463',
+                        'market_cap': 45000,
+                        'price': 0.000045,
+                        'image_url': 'https://upload.wikimedia.org/wikipedia/en/d/d0/Dogecoin_Logo.png',
+                        'creator': user_creator  # YOU own this token
+                    },
+                    {
+                        'name': 'Moon Rocket',
+                        'symbol': 'MOON',
+                        'description': 'To the moon and beyond! Basic token with solid community features.',
+                        'contract_address': '0x91818fbe36d8827228e6cc7c5af1cd52e4315g74',
+                        'market_cap': 28000,
+                        'price': 0.000028,
+                        'image_url': 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Rocket_icon.png',
+                        'creator': user_creator  # YOU own this token too
+                    },
+                    {
+                        'name': 'Laser Eyes',
+                        'symbol': 'LASER',
+                        'description': 'Laser focus on gains. Pro token with cutting-edge features.',
+                        'contract_address': '0xc3d4e5f6789012345678901234567890abcdef12',
+                        'market_cap': 67000,
+                        'price': 0.000067,
+                        'image_url': 'https://i.imgur.com/laser-eyes.png',
+                        'creator': sample_user  # Different creator
+                    },
                     {
                         'name': 'PepeCoin',
                         'symbol': 'PEPE',
@@ -815,52 +856,35 @@ def init_database():
                         'contract_address': '0xa1b2c3d4e5f6789012345678901234567890abcd',
                         'market_cap': 15000,
                         'price': 0.000015,
-                        'image_url': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/63/Feelsbadman.jpg/256px-Feelsbadman.jpg'
-                    },
-                    {
-                        'name': 'Doge Kaspa',
-                        'symbol': 'DOGE',
-                        'description': 'Much speed, very fast. The good boy of Kaspa blockchain.',
-                        'contract_address': '0xb2c3d4e5f6789012345678901234567890abcdef',
-                        'market_cap': 45000,
-                        'price': 0.000045,
-                        'image_url': 'https://upload.wikimedia.org/wikipedia/en/d/d0/Dogecoin_Logo.png'
-                    },
-                    {
-                        'name': 'Kaspa Shiba',
-                        'symbol': 'KSHIB',
-                        'description': 'The Shiba Inu that chose the fastest blockchain.',
-                        'contract_address': '0xc3d4e5f6789012345678901234567890abcdef12',
-                        'market_cap': 28000,
-                        'price': 0.000028,
-                        'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/5994.png'
+                        'image_url': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/63/Feelsbadman.jpg/256px-Feelsbadman.jpg',
+                        'creator': sample_user  # Different creator
                     },
                     {
                         'name': 'FlokiKas',
                         'symbol': 'FLOKI',
                         'description': 'Viking dog conquering the Kaspa ecosystem with lightning speed.',
                         'contract_address': '0xd4e5f6789012345678901234567890abcdef1234',
-                        'market_cap': 67000,
-                        'price': 0.000067,
-                        'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/10804.png'
+                        'market_cap': 32000,
+                        'price': 0.000032,
+                        'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/10804.png',
+                        'creator': sample_user  # Different creator
                     }
                 ]
                 
                 for token_data in sample_tokens:
-                    token = Token(
-                        name=token_data['name'],
-                        symbol=token_data['symbol'],
-                        description=token_data['description'],
-                        contract_address=token_data['contract_address'],
-                        image_url=token_data['image_url'],
-                        creator_id=sample_user.id,
-                        current_market_cap=token_data['market_cap'],
-                        current_price=token_data['price'],
-                        circulating_supply=1000000000,  # 1B tokens
-                        deployment_status='deployed',
-                        trade_count=42,  # Mock trades
-                        holder_count=156  # Mock holders
-                    )
+                    token = Token()
+                    token.name = token_data['name']
+                    token.symbol = token_data['symbol']
+                    token.description = token_data['description']
+                    token.contract_address = token_data['contract_address']
+                    token.image_url = token_data['image_url']
+                    token.creator_id = token_data['creator'].id
+                    token.current_market_cap = token_data['market_cap']
+                    token.current_price = token_data['price']
+                    token.circulating_supply = 1000000000  # 1B tokens
+                    token.deployment_status = 'deployed'
+                    token.trade_count = 42  # Mock trades
+                    token.holder_count = 156  # Mock holders
                     db.session.add(token)
                 
                 db.session.commit()
