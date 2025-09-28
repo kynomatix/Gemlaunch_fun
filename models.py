@@ -73,6 +73,11 @@ class Token(db.Model):
     description = db.Column(db.Text)
     image_url = db.Column(db.String(512))
     
+    # Social links (based on Pump.sol contract)
+    website = db.Column(db.String(512))
+    twitter = db.Column(db.String(512))
+    telegram = db.Column(db.String(512))
+    
     # Token configuration
     total_supply = db.Column(db.Numeric(precision=30, scale=0), default=1000000000)  # 1B default
     reserved_tokens = db.Column(db.Numeric(precision=30, scale=0), default=0)

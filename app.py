@@ -354,6 +354,9 @@ def create_token():
         name = request.form.get('name')
         symbol = request.form.get('symbol')
         description = request.form.get('description', '')
+        website = request.form.get('website', '')
+        twitter = request.form.get('twitter', '')
+        telegram = request.form.get('telegram', '')
         mode = request.form.get('mode', 'simple')
         total_supply = request.form.get('total_supply', '1000000000')
         reserved_percentage = request.form.get('reserved_percentage', '0')
@@ -365,6 +368,9 @@ def create_token():
             new_token.name = name
             new_token.symbol = symbol.upper() if symbol else 'TOKEN'
             new_token.description = description
+            new_token.website = website
+            new_token.twitter = twitter
+            new_token.telegram = telegram
             new_token.creator_id = user.id
             new_token.total_supply = int(total_supply)
             new_token.circulating_supply = 0
