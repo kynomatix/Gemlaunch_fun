@@ -3,6 +3,10 @@
 {% block title %}Create Token - Gemlaunch.fun{% endblock %}
 
 {% block extra_head %}
+<!-- Quill.js Rich Text Editor -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
 <style>
         .create-main {
             padding-top: 100px;
@@ -91,7 +95,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 200px;
+            min-height: 120px;
             border: 2px dashed rgba(32, 178, 170, 0.3);
             border-radius: 15px;
             background: rgba(255, 255, 255, 0.02);
@@ -114,9 +118,72 @@
         }
         
         .upload-icon {
-            font-size: 3rem;
+            font-size: 2rem;
             color: #20B2AA;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Rich Text Editor Styling */
+        .description-editor {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            min-height: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .description-editor:focus-within {
+            border-color: #20B2AA;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+        }
+        
+        .ql-toolbar {
+            border: none !important;
+            border-bottom: 1px solid rgba(32, 178, 170, 0.2) !important;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .ql-container {
+            border: none !important;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 1rem;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .ql-editor {
+            min-height: 80px;
+            padding: 1rem;
+            color: #FFFFFF !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .ql-editor.ql-blank::before {
+            color: rgba(255, 255, 255, 0.5) !important;
+            font-style: normal;
+        }
+        
+        .ql-snow .ql-stroke {
+            stroke: #CCCCCC;
+        }
+        
+        .ql-snow .ql-fill {
+            fill: #CCCCCC;
+        }
+        
+        .ql-snow .ql-picker {
+            color: #CCCCCC;
+        }
+        
+        .ql-snow .ql-picker-options {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+        }
+        
+        .ql-snow .ql-picker-item:hover {
+            background: rgba(32, 178, 170, 0.2);
         }
         
         .supply-info {
@@ -190,6 +257,45 @@
             box-shadow: none;
         }
         
+        /* File size info styling */
+        .file-size-info {
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #20B2AA;
+        }
+        
+        /* Add textarea styling to match other inputs */
+        .form-group textarea {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            color: #FFFFFF;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #20B2AA;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+        }
+        
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+            font-family: 'Inter', sans-serif;
+        }
+        
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -201,6 +307,14 @@
             
             .create-header h1 {
                 font-size: 2rem;
+            }
+            
+            .image-upload {
+                min-height: 100px;
+            }
+            
+            .ql-editor {
+                min-height: 60px;
             }
         }
 {% endblock %}
@@ -255,7 +369,8 @@
 
                     <div class="form-group full-width">
                         <label for="description">Description</label>
-                        <textarea id="description" name="description" rows="4" placeholder="Tell the community about your token..."></textarea>
+                        <div class="description-editor" id="description-editor"></div>
+                        <input type="hidden" id="description" name="description">
                     </div>
 
                     <div class="form-group full-width">
@@ -264,7 +379,7 @@
                             <input type="file" id="image" name="image" accept="image/*">
                             <i class="fas fa-cloud-upload-alt upload-icon"></i>
                             <h4>Upload Token Image</h4>
-                            <p>PNG, JPG, GIF up to 10MB</p>
+                            <p>PNG, JPG, GIF up to 500KB (optimized for blockchain)</p>
                         </div>
                     </div>
 
@@ -312,6 +427,36 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
+        // Initialize Rich Text Editor
+        let quill = new Quill('#description-editor', {
+            theme: 'snow',
+            placeholder: 'Tell the community about your token... 🚀💎🌟',
+            modules: {
+                toolbar: [
+                    [{ 'header': [3, 4, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link'],
+                    ['clean']
+                ]
+            }
+        });
+        
+        // Update hidden input when content changes
+        quill.on('text-change', function() {
+            document.getElementById('description').value = quill.root.innerHTML;
+        });
+        
+        // Emoji insertion helper
+        function insertEmoji(emoji) {
+            const range = quill.getSelection();
+            if (range) {
+                quill.insertText(range.index, emoji);
+            } else {
+                quill.insertText(quill.getLength() - 1, emoji);
+            }
+        }
+        
         function setMode(mode) {
             // Update mode selector
             document.querySelectorAll('.mode-option').forEach(option => {
@@ -335,33 +480,190 @@
             document.getElementById('reserve-display').textContent = value + '%';
         }
         
-        // Image upload preview
-        document.getElementById('image').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const uploadArea = document.querySelector('.image-upload');
-                    uploadArea.innerHTML = `
-                        <input type="file" id="image" name="image" accept="image/*" onchange="updateImagePreview(this)">
-                        <img src="${e.target.result}" style="max-width: 100px; max-height: 100px; border-radius: 10px; object-fit: cover;">
-                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Click to change image</p>
-                    `;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        // Global variable to track compressed file
+        let currentCompressedFile = null;
         
-        function updateImagePreview(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = input.parentElement.querySelector('img');
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(input.files[0]);
+        // Initialize image upload handler
+        function initImageUploadHandler() {
+            const imageInput = document.getElementById('image');
+            if (imageInput) {
+                imageInput.addEventListener('change', handleImageUpload);
             }
         }
+        
+        // Image upload handler with compression and validation
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file size (initial check)
+                if (file.size > 10 * 1024 * 1024) { // 10MB initial limit
+                    alert('⚠️ Image too large! Please select an image under 10MB.');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('⚠️ Please select a valid image file (PNG, JPG, GIF, WebP)');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // Show compression progress
+                const uploadArea = document.querySelector('.image-upload');
+                uploadArea.innerHTML = `
+                    <input type="file" id="image" name="image" accept="image/*">
+                    <i class="fas fa-spinner fa-spin upload-icon"></i>
+                    <h4>Compressing for blockchain...</h4>
+                    <p>Optimizing image size</p>
+                `;
+                
+                // Re-attach event listener to new input
+                initImageUploadHandler();
+                
+                // Warn about format conversion if PNG
+                if (file.type === 'image/png') {
+                    console.log('ℹ️ PNG will be converted to JPEG for blockchain optimization. Transparency will be lost.');
+                }
+                
+                // Compress and resize image
+                compressImage(file, function(compressedFile, originalSize, compressedSize, success) {
+                    if (!success) {
+                        // Compression failed - file too large
+                        currentCompressedFile = null; // Clear stale reference
+                        uploadArea.innerHTML = `
+                            <input type="file" id="image" name="image" accept="image/*">
+                            <i class="fas fa-exclamation-triangle upload-icon" style="color: #FF6B6B;"></i>
+                            <h4 style="color: #FF6B6B;">Image Too Large</h4>
+                            <p>Unable to compress below 500KB limit for blockchain storage</p>
+                            <p style="font-size: 0.8rem; color: #CCCCCC;">Try a smaller or simpler image</p>
+                        `;
+                        initImageUploadHandler();
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        uploadArea.innerHTML = `
+                            <input type="file" id="image" name="image" accept="image/*">
+                            <img src="${e.target.result}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
+                                ✅ Optimized: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)}
+                            </p>
+                            <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change image</p>
+                        `;
+                        
+                        // Re-attach event listener and store compressed file
+                        initImageUploadHandler();
+                        currentCompressedFile = compressedFile;
+                        replaceFileInput(compressedFile);
+                    };
+                    reader.readAsDataURL(compressedFile);
+                });
+            }
+        }
+        
+        // Initialize handler on page load
+        initImageUploadHandler();
+        
+        // Image compression function for blockchain optimization
+        function compressImage(file, callback) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                // Try progressively smaller sizes if needed
+                const maxSizes = [512, 256, 128]; // Max dimensions to try
+                const qualities = [0.8, 0.6, 0.4, 0.2]; // Quality levels to try
+                
+                let sizeIndex = 0;
+                let qualityIndex = 0;
+                
+                function tryCompress() {
+                    // Calculate optimal dimensions
+                    let { width, height } = calculateOptimalSize(img.width, img.height, maxSizes[sizeIndex]);
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // Clear and draw
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to blob
+                    canvas.toBlob(function(blob) {
+                        if (blob.size <= 500 * 1024) {
+                            // Success - under 500KB limit
+                            callback(new File([blob], file.name, { type: 'image/jpeg' }), file.size, blob.size, true);
+                        } else {
+                            // Still too large, try next quality level
+                            qualityIndex++;
+                            if (qualityIndex < qualities.length) {
+                                tryCompress();
+                            } else {
+                                // Try smaller dimensions
+                                qualityIndex = 0;
+                                sizeIndex++;
+                                if (sizeIndex < maxSizes.length) {
+                                    tryCompress();
+                                } else {
+                                    // Failed to compress below limit
+                                    callback(null, file.size, blob.size, false);
+                                }
+                            }
+                        }
+                    }, 'image/jpeg', qualities[qualityIndex]);
+                }
+                
+                tryCompress();
+            };
+            
+            img.onerror = function() {
+                callback(null, file.size, 0, false);
+            };
+            
+            img.src = URL.createObjectURL(file);
+        }
+        
+        // Calculate optimal image size for blockchain storage
+        function calculateOptimalSize(width, height, maxSize) {
+            if (width <= maxSize && height <= maxSize) {
+                return { width, height };
+            }
+            
+            const ratio = Math.min(maxSize / width, maxSize / height);
+            return {
+                width: Math.floor(width * ratio),
+                height: Math.floor(height * ratio)
+            };
+        }
+        
+        // Format file size for display
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        // Replace file input with compressed file
+        function replaceFileInput(compressedFile) {
+            const input = document.getElementById('image');
+            const dt = new DataTransfer();
+            dt.items.add(compressedFile);
+            input.files = dt.files;
+        }
+        
+        // Form submission validation
+        document.querySelector('.create-form').addEventListener('submit', function(e) {
+            if (currentCompressedFile && currentCompressedFile.size > 500 * 1024) {
+                e.preventDefault();
+                alert('⚠️ Image file is still too large for blockchain storage. Please select a smaller image.');
+                return false;
+            }
+        });
         
         // Auto-uppercase symbol input
         document.getElementById('symbol').addEventListener('input', function(e) {
