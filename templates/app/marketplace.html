@@ -72,6 +72,60 @@
             margin-bottom: 3rem;
         }
         
+        /* Marketplace Token Type Badges */
+        .token-info-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .marketplace-token-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+        
+        .marketplace-token-badge.basic {
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.08));
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            color: #20B2AA;
+        }
+        
+        .marketplace-token-badge.advanced {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.1));
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            color: #8A2BE2;
+            animation: subtle-glow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes subtle-glow {
+            from { box-shadow: 0 0 3px rgba(138, 43, 226, 0.2); }
+            to { box-shadow: 0 0 8px rgba(138, 43, 226, 0.4); }
+        }
+        
+        .contract-address-small {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.7rem;
+            color: #999999;
+            margin-top: 0.25rem;
+            opacity: 0.8;
+        }
+        
+        .contract-address-small i {
+            font-size: 0.65rem;
+        }
+        
         .token-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(32, 178, 170, 0.2);
@@ -230,14 +284,34 @@
             {% if tokens %}
                 <div class="tokens-grid">
                     {% for token in tokens %}
-                        <div class="token-card" onclick="window.location.href='/app/token/{{ token.id }}'">
+                        <div class="token-card" onclick="window.location.href='{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}'">
                             <div class="token-header">
                                 <div class="token-avatar">
                                     {{ token.symbol[0] if token.symbol else '?' }}
                                 </div>
                                 <div class="token-info">
-                                    <h3>{{ token.name }}</h3>
+                                    <div class="token-info-header">
+                                        <h3>{{ token.name }}</h3>
+                                        <span class="marketplace-token-badge {{ 'advanced' if token.symbol in ['DOGE', 'FLOKI'] else 'basic' }}">
+                                            {% if token.symbol in ['DOGE', 'FLOKI'] %}
+                                                <i class="fas fa-university"></i> DAO
+                                            {% else %}
+                                                <i class="fas fa-cog"></i> Basic
+                                            {% endif %}
+                                        </span>
+                                    </div>
                                     <p>${{ token.symbol }}</p>
+                                    {% if token.contract_address %}
+                                        <div class="contract-address-small" title="Contract: {{ token.contract_address }}">
+                                            <i class="fas fa-file-contract"></i>
+                                            <span>{{ token.contract_address[:6] }}...{{ token.contract_address[-4:] }}</span>
+                                        </div>
+                                    {% else %}
+                                        <div class="contract-address-small" style="color: #ff9999;" title="Not deployed yet">
+                                            <i class="fas fa-clock"></i>
+                                            <span>Deploying...</span>
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             

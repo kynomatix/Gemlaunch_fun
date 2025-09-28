@@ -15,8 +15,22 @@
                             {{ token.symbol[0] if token.symbol else '?' }}
                         </div>
                         <div class="token-info">
-                            <h1>{{ token.name }}</h1>
+                            <div class="token-info-header">
+                                <h1>{{ token.name }}</h1>
+                                <span class="token-type-badge" id="tokenTypeBadge">
+                                    <i class="fas fa-cog"></i>
+                                    <span id="tokenTypeText">Basic</span>
+                                </span>
+                            </div>
                             <p>${{ token.symbol }} • Created by {{ token.creator.wallet_address[:8] }}...{{ token.creator.wallet_address[-4:] }}</p>
+                            <div class="contract-address" title="{% if token.contract_address %}Contract Address - Click to copy{% else %}Not deployed yet{% endif %}">
+                                <i class="fas fa-file-contract"></i>
+                                {% if token.contract_address %}
+                                    <span onclick="copyContractAddress('{{ token.contract_address }}')">{{ token.contract_address[:10] }}...{{ token.contract_address[-8:] }}</span>
+                                {% else %}
+                                    <span style="color: #ff9999;">Not deployed yet</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     
@@ -1945,6 +1959,68 @@
             color: #FFFFFF;
             cursor: pointer;
         }
+        
+        /* Token Type Badge Styling */
+        .token-info-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .token-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        
+        .token-type-badge.basic {
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
+            border: 1px solid rgba(32, 178, 170, 0.4);
+            color: #20B2AA;
+        }
+        
+        .token-type-badge.advanced {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.15));
+            border: 1px solid rgba(138, 43, 226, 0.5);
+            color: #8A2BE2;
+            animation: glow-pulse 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow-pulse {
+            from {
+                box-shadow: 0 0 5px rgba(138, 43, 226, 0.3);
+            }
+            to {
+                box-shadow: 0 0 15px rgba(138, 43, 226, 0.6), 0 0 25px rgba(138, 43, 226, 0.3);
+            }
+        }
+        
+        .contract-address {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #AAAAAA;
+            margin-top: 0.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .contract-address:hover {
+            color: #20B2AA;
+        }
+        
+        .contract-address i {
+            font-size: 0.9rem;
+        }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2487,28 +2563,32 @@
                     symbol: 'PEPE', 
                     poll_gate_tokens: 1000,
                     chat_gate_tokens: 100,
-                    superchat_gate_tokens: 500
+                    superchat_gate_tokens: 500,
+                    description: 'Simple memecoin with basic token gating'
                 },
                 'DOGE': { 
                     type: 'advanced', 
                     symbol: 'DOGE', 
                     treasury_allocation: 15,
                     lp_allocation: 10,
-                    airdrop_pool: 5
+                    airdrop_pool: 5,
+                    description: 'DAO governance with treasury mechanics'
                 },
-                'SHIB': { 
+                'KSHIB': { 
                     type: 'basic', 
-                    symbol: 'SHIB', 
+                    symbol: 'KSHIB', 
                     poll_gate_tokens: 2000,
                     chat_gate_tokens: 200,
-                    superchat_gate_tokens: 1000
+                    superchat_gate_tokens: 1000,
+                    description: 'Community-driven with simple features'
                 },
                 'FLOKI': { 
                     type: 'advanced', 
                     symbol: 'FLOKI', 
                     treasury_allocation: 20,
                     lp_allocation: 15,
-                    airdrop_pool: 10
+                    airdrop_pool: 10,
+                    description: 'Advanced tokenomics with community rewards'
                 }
             };
             
@@ -2517,9 +2597,67 @@
                 symbol: tokenSymbol, 
                 poll_gate_tokens: 1000,
                 chat_gate_tokens: 100,
-                superchat_gate_tokens: 500
+                superchat_gate_tokens: 500,
+                description: 'Basic token with simple features'
             };
         }
+        
+        function updateTokenTypeBadge() {
+            const tokenData = getCurrentTokenData();
+            const badge = document.getElementById('tokenTypeBadge');
+            const text = document.getElementById('tokenTypeText');
+            
+            if (badge && text) {
+                // Remove existing classes
+                badge.classList.remove('basic', 'advanced');
+                
+                // Add appropriate class and content
+                badge.classList.add(tokenData.type);
+                
+                if (tokenData.type === 'advanced') {
+                    text.innerHTML = `<i class="fas fa-university"></i> Advanced DAO`;
+                    badge.title = 'Advanced token with DAO governance, treasury management, and community rewards';
+                } else {
+                    text.innerHTML = `<i class="fas fa-cog"></i> Basic`;
+                    badge.title = 'Basic token with simple token gating for chat features';
+                }
+            }
+        }
+        
+        function copyContractAddress(address) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(address).then(() => {
+                    showNotification('📋 Copied!', `Contract address copied to clipboard`, 'success');
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    fallbackCopyText(address);
+                });
+            } else {
+                fallbackCopyText(address);
+            }
+        }
+        
+        function fallbackCopyText(text) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showNotification('📋 Copied!', `Contract address copied to clipboard`, 'success');
+            } catch (err) {
+                showNotification('❌ Copy Failed', `Unable to copy address. Please copy manually: ${text}`, 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        // Initialize token type badge on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTokenTypeBadge();
+        });
         
         function closePollModal() {
             document.getElementById('pollModal').style.display = 'none';

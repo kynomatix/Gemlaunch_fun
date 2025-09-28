@@ -378,6 +378,10 @@ def create_token():
             new_token.current_price = 0.001  # Mock starting price
             new_token.current_market_cap = 1000  # Start at $1K market cap
             
+            # Generate mock contract address
+            import secrets
+            new_token.contract_address = f'0x{secrets.token_hex(20).lower()}'
+            
             db.session.add(new_token)
             db.session.commit()
             
@@ -401,25 +405,40 @@ def token_marketplace():
     tokens = Token.query.order_by(Token.created_at.desc()).all()
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
-@app.route('/app/token/<int:token_id>')
-def token_detail(token_id):
+@app.route('/app/token/<contract_address>')
+def token_detail(contract_address):
     """Individual token detail page"""
-    token = Token.query.get_or_404(token_id)
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
     
     # Get recent trades
-    recent_trades = Trade.query.filter_by(token_id=token_id, tx_status='confirmed').order_by(Trade.confirmed_at.desc()).limit(10).all()
+    recent_trades = Trade.query.filter_by(token_id=token.id, tx_status='confirmed').order_by(Trade.confirmed_at.desc()).limit(10).all()
     
     # Get user's holding if connected
     user_holding = None
     user = get_current_user()
     if user:
-        user_holding = Holding.query.filter_by(user_id=user.id, token_id=token_id).first()
+        user_holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
     
     return render_template('app/token_detail.html', 
                          token=token, 
                          recent_trades=recent_trades,
                          user_holding=user_holding,
                          user=user)
+
+# Fallback route for legacy numeric IDs (backwards compatibility)
+@app.route('/app/token/<int:token_id>')
+def token_detail_legacy(token_id):
+    """Legacy route for backward compatibility - redirects to contract address"""
+    token = Token.query.get_or_404(token_id)
+    if token.contract_address:
+        return redirect(url_for('token_detail', contract_address=token.contract_address))
+    else:
+        # Fallback for tokens without contract addresses
+        return render_template('app/token_detail.html', 
+                             token=token, 
+                             recent_trades=[],
+                             user_holding=None,
+                             user=get_current_user())
 
 # Leaderboard routes
 @app.route('/app/leaderboard')
@@ -772,6 +791,89 @@ def init_database():
                 print("✅ Fair-launch achievements created")
             else:
                 print("✅ Sample achievements already exist")
+            
+            # Create sample tokens with contract addresses if none exist
+            if not Token.query.first():
+                print("Creating sample tokens...")
+                sample_user = User.query.first()
+                if not sample_user:
+                    # Create a sample user for token creation
+                    sample_user = User(
+                        wallet_address='0x1234567890abcdef1234567890abcdef12345678',
+                        display_name='Sample Creator',
+                        wallet_type='kastle'
+                    )
+                    db.session.add(sample_user)
+                    db.session.commit()
+                
+                # Sample token data with contract addresses and types
+                sample_tokens = [
+                    {
+                        'name': 'PepeCoin',
+                        'symbol': 'PEPE',
+                        'description': 'The most memeable memecoin on Kaspa. For the culture!',
+                        'contract_address': '0xa1b2c3d4e5f6789012345678901234567890abcd',
+                        'market_cap': 15000,
+                        'price': 0.000015,
+                        'image_url': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/63/Feelsbadman.jpg/256px-Feelsbadman.jpg'
+                    },
+                    {
+                        'name': 'Doge Kaspa',
+                        'symbol': 'DOGE',
+                        'description': 'Much speed, very fast. The good boy of Kaspa blockchain.',
+                        'contract_address': '0xb2c3d4e5f6789012345678901234567890abcdef',
+                        'market_cap': 45000,
+                        'price': 0.000045,
+                        'image_url': 'https://upload.wikimedia.org/wikipedia/en/d/d0/Dogecoin_Logo.png'
+                    },
+                    {
+                        'name': 'Kaspa Shiba',
+                        'symbol': 'KSHIB',
+                        'description': 'The Shiba Inu that chose the fastest blockchain.',
+                        'contract_address': '0xc3d4e5f6789012345678901234567890abcdef12',
+                        'market_cap': 28000,
+                        'price': 0.000028,
+                        'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/5994.png'
+                    },
+                    {
+                        'name': 'FlokiKas',
+                        'symbol': 'FLOKI',
+                        'description': 'Viking dog conquering the Kaspa ecosystem with lightning speed.',
+                        'contract_address': '0xd4e5f6789012345678901234567890abcdef1234',
+                        'market_cap': 67000,
+                        'price': 0.000067,
+                        'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/10804.png'
+                    }
+                ]
+                
+                for token_data in sample_tokens:
+                    token = Token(
+                        name=token_data['name'],
+                        symbol=token_data['symbol'],
+                        description=token_data['description'],
+                        contract_address=token_data['contract_address'],
+                        image_url=token_data['image_url'],
+                        creator_id=sample_user.id,
+                        current_market_cap=token_data['market_cap'],
+                        current_price=token_data['price'],
+                        circulating_supply=1000000000,  # 1B tokens
+                        deployment_status='deployed',
+                        trade_count=42,  # Mock trades
+                        holder_count=156  # Mock holders
+                    )
+                    db.session.add(token)
+                
+                db.session.commit()
+                print("✅ Sample tokens created with contract addresses")
+            else:
+                # Update existing tokens without contract addresses
+                tokens_without_ca = Token.query.filter_by(contract_address=None).all()
+                if tokens_without_ca:
+                    import secrets
+                    for token in tokens_without_ca:
+                        token.contract_address = f'0x{secrets.token_hex(20).lower()}'
+                    db.session.commit()
+                    print(f"✅ Updated {len(tokens_without_ca)} tokens with contract addresses")
                 
         except Exception as e:
             print(f"❌ Database initialization error: {e}")
