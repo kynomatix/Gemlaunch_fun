@@ -1042,6 +1042,28 @@
             color: #32CD32;
         }
         
+        /* Spotlight message in chat styling */
+        .spotlight-in-chat {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 140, 0, 0.05));
+            border-left: 3px solid #FFD700;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .spotlight-in-chat::before {
+            content: '✨';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 1.2rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
         .chat-input {
             flex: 1;
             padding: 0.8rem;
@@ -1096,7 +1118,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     
     <script>
-        // Auto-collapse sidebar on token detail pages
+        // Auto-collapse sidebar on token detail pages and initialize chat
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
@@ -1107,6 +1129,9 @@
                 mainContent.classList.add('sidebar-collapsed');
                 localStorage.setItem('sidebarCollapsed', 'true');
             }
+            
+            // Initialize chat state
+            initializeChatState();
         });
 
         let currentTradeMode = 'buy';
@@ -1118,6 +1143,47 @@
         
         let currentChartType = 'marketcap';
         let myChart = null;
+        
+        // Advanced chat state management
+        let chatState = {
+            userTokenBalance: Math.floor(Math.random() * 50000) + 1000, // Simulated balance
+            messageLoves: JSON.parse(localStorage.getItem(`loves_${tokenSymbol}`) || '{}'),
+            userLoves: JSON.parse(localStorage.getItem(`userLoves_${tokenSymbol}`) || '[]'),
+            isTokenHolder: true,
+            userScore: 0,
+            spotlightMessages: [],
+            activePolls: [],
+            airdropHistory: []
+        };
+        
+        // Save state periodically
+        function saveChatState() {
+            localStorage.setItem(`loves_${tokenSymbol}`, JSON.stringify(chatState.messageLoves));
+            localStorage.setItem(`userLoves_${tokenSymbol}`, JSON.stringify(chatState.userLoves));
+            localStorage.setItem(`tokenBalance_${tokenSymbol}`, chatState.userTokenBalance);
+        }
+        
+        // Initialize chat state on page load
+        function initializeChatState() {
+            // Load existing loves state
+            const existingMessages = document.querySelectorAll('.chat-message');
+            existingMessages.forEach(msg => {
+                const messageId = msg.getAttribute('data-message-id');
+                const isLoved = chatState.userLoves.includes(messageId);
+                if (isLoved) {
+                    const loveBtn = msg.querySelector('.love-btn');
+                    loveBtn.classList.add('loved');
+                }
+                
+                // Update love counts from stored state
+                if (chatState.messageLoves[messageId]) {
+                    const countSpan = msg.querySelector('.love-count');
+                    countSpan.textContent = chatState.messageLoves[messageId];
+                }
+            });
+            
+            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol}`);
+        }
         
         // Generate realistic chart data
         function generateChartData(type) {
@@ -1325,21 +1391,27 @@
             });
         });
         
-        // Chat functionality
+        // Enhanced chat functionality with state management
         function toggleLove(messageId) {
             const loveBtn = document.querySelector(`[data-message-id="${messageId}"] .love-btn`);
             const countSpan = loveBtn.querySelector('.love-count');
-            let currentCount = parseInt(countSpan.textContent);
             
-            if (loveBtn.classList.contains('loved')) {
+            // Get current state
+            const isLoved = chatState.userLoves.includes(messageId);
+            const currentCount = chatState.messageLoves[messageId] || parseInt(countSpan.textContent);
+            
+            if (isLoved) {
                 // Unlike the message
                 loveBtn.classList.remove('loved');
-                countSpan.textContent = Math.max(0, currentCount - 1);
+                chatState.messageLoves[messageId] = Math.max(0, currentCount - 1);
+                chatState.userLoves = chatState.userLoves.filter(id => id !== messageId);
                 console.log(`Unliked message ${messageId}`);
             } else {
                 // Love the message
                 loveBtn.classList.add('loved');
-                countSpan.textContent = currentCount + 1;
+                chatState.messageLoves[messageId] = currentCount + 1;
+                chatState.userLoves.push(messageId);
+                chatState.userScore += 1; // User gets points for engaging
                 console.log(`Loved message ${messageId}`);
                 
                 // Add heart animation
@@ -1348,7 +1420,26 @@
                 setTimeout(() => {
                     heart.style.animation = '';
                 }, 600);
+                
+                // Update user's position in leaderboard
+                updateUserScore();
             }
+            
+            // Update display and save state
+            countSpan.textContent = chatState.messageLoves[messageId];
+            saveChatState();
+        }
+        
+        function updateUserScore() {
+            // Find user in leaderboard and update their score
+            const contributors = document.querySelectorAll('.contributor-item');
+            contributors.forEach(item => {
+                const name = item.querySelector('.contributor-name').textContent;
+                if (name === 'You' || name.includes('...')) { // Current user simulation
+                    const scoreElement = item.querySelector('.contributor-score');
+                    scoreElement.textContent = `${chatState.userScore} pts`;
+                }
+            });
         }
         
         function replyToMessage(messageId) {
@@ -1391,7 +1482,7 @@
             }
         }
         
-        // Token-gated chat functionality
+        // Enhanced token-gated chat functionality
         function toggleTokenGate() {
             const toggle = document.getElementById('tokenGateToggle');
             const status = document.getElementById('tokenGateStatus');
@@ -1399,9 +1490,23 @@
             
             if (toggle.checked) {
                 status.style.display = 'block';
-                chatInput.placeholder = 'Hold 1,000+ tokens to chat...';
-                chatInput.disabled = true; // In real app, check user's token balance
-                console.log('Token gate enabled - checking user balance...');
+                
+                // Realistic token balance check
+                if (chatState.userTokenBalance >= 1000) {
+                    chatInput.placeholder = `✅ Verified holder (${chatState.userTokenBalance.toLocaleString()} tokens)`;
+                    chatInput.disabled = false;
+                    status.querySelector('.gate-info span').textContent = `Only $${tokenSymbol} holders can chat`;
+                    status.style.borderColor = 'rgba(50, 205, 50, 0.4)';
+                    status.style.background = 'rgba(50, 205, 50, 0.1)';
+                    console.log(`Token gate enabled - user verified with ${chatState.userTokenBalance} tokens`);
+                } else {
+                    chatInput.placeholder = `❌ Need ${1000 - chatState.userTokenBalance} more tokens to chat`;
+                    chatInput.disabled = true;
+                    status.querySelector('.gate-info span').textContent = `Insufficient balance: ${chatState.userTokenBalance} tokens`;
+                    status.style.borderColor = 'rgba(255, 107, 107, 0.4)';
+                    status.style.background = 'rgba(255, 107, 107, 0.1)';
+                    console.log(`Token gate enabled - user rejected: ${chatState.userTokenBalance} < 1000`);
+                }
             } else {
                 status.style.display = 'none';
                 chatInput.placeholder = 'Type a message...';
@@ -1429,7 +1534,7 @@
             }
         }
         
-        // Advanced chat features
+        // Enhanced spotlight messages with realistic token deduction
         function spotlightMessage() {
             const message = document.getElementById('chatInput').value.trim();
             if (!message) {
@@ -1437,24 +1542,90 @@
                 return;
             }
             
-            const cost = prompt(`Spotlight this message for 500 $${tokenSymbol}?\n\n"${message}"\n\nEnter 'yes' to confirm:`);
-            if (cost === 'yes') {
-                // Show spotlight message
+            const cost = 500;
+            if (chatState.userTokenBalance < cost) {
+                alert(`Insufficient balance! You need ${cost} $${tokenSymbol} tokens.\nCurrent balance: ${chatState.userTokenBalance}`);
+                return;
+            }
+            
+            const confirm = window.confirm(`Spotlight this message for ${cost} $${tokenSymbol}?\n\n"${message}"\n\nThis will deduct tokens from your balance.`);
+            if (confirm) {
+                // Deduct tokens
+                chatState.userTokenBalance -= cost;
+                
+                // Create spotlight message entry
+                const spotlightEntry = {
+                    id: Date.now(),
+                    message: message,
+                    cost: cost,
+                    timestamp: new Date(),
+                    user: 'You'
+                };
+                chatState.spotlightMessages.push(spotlightEntry);
+                
+                // Show in UI
                 const spotlightContainer = document.getElementById('spotlightMessages');
                 spotlightContainer.style.display = 'block';
                 
                 const spotlightMsg = spotlightContainer.querySelector('.spotlight-message');
                 spotlightMsg.querySelector('.chat-text').textContent = message;
+                spotlightMsg.querySelector('.spotlight-cost span').textContent = `${cost} $${tokenSymbol}`;
                 
-                // Clear input and show in chat
+                // Add to chat messages as regular message too
+                addMessageToChat('You', message, true);
+                
+                // Clear input
                 document.getElementById('chatInput').value = '';
-                console.log(`Spotlighted message: "${message}" for 500 tokens`);
+                console.log(`Spotlighted: "${message}" | Balance: ${chatState.userTokenBalance}`);
                 
-                // Auto-hide after 30 seconds in demo
+                // Update UI with new balance
+                updateTokenBalance();
+                
+                // Auto-hide spotlight after 45 seconds
                 setTimeout(() => {
                     spotlightContainer.style.display = 'none';
-                }, 30000);
+                }, 45000);
             }
+        }
+        
+        function updateTokenBalance() {
+            // Update balance display if it exists
+            const balanceElements = document.querySelectorAll('.token-balance');
+            balanceElements.forEach(el => {
+                el.textContent = chatState.userTokenBalance.toLocaleString();
+            });
+        }
+        
+        function addMessageToChat(user, message, isSpotlight = false) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageId = Date.now();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isSpotlight ? 'spotlight-in-chat' : ''}`;
+            messageDiv.setAttribute('data-message-id', messageId);
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="chat-user ${isSpotlight ? 'spotlight-user' : ''}">${user}:</span>
+                    <span class="chat-text">${message} ${isSpotlight ? '✨' : ''}</span>
+                </div>
+                <div class="message-actions">
+                    <button class="message-action love-btn" onclick="toggleLove(${messageId})" title="Love this message">
+                        <i class="fas fa-heart"></i>
+                        <span class="love-count">0</span>
+                    </button>
+                    <button class="message-action reply-btn" onclick="replyToMessage(${messageId})" title="Reply to this message">
+                        <i class="fas fa-reply"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Add to chat and scroll to bottom
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Initialize love count
+            chatState.messageLoves[messageId] = 0;
         }
         
         function createPoll() {
