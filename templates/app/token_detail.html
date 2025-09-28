@@ -17,9 +17,14 @@
                         <div class="token-info">
                             <div class="token-info-header">
                                 <h1>{{ token.name }}</h1>
-                                <span class="token-type-badge" id="tokenTypeBadge">
-                                    <i class="fas fa-cog"></i>
-                                    <span id="tokenTypeText">Basic</span>
+                                <span class="token-type-badge {{ 'advanced' if token.symbol in ['DOGKAS', 'LASER'] else 'basic' }}" id="tokenTypeBadge">
+                                    {% if token.symbol in ['DOGKAS', 'LASER'] %}
+                                        <i class="fas fa-university"></i>
+                                        <span id="tokenTypeText">DAO</span>
+                                    {% else %}
+                                        <i class="fas fa-cog"></i>
+                                        <span id="tokenTypeText">Basic</span>
+                                    {% endif %}
                                 </span>
                             </div>
                             <p>${{ token.symbol }} • Created by {{ token.creator.wallet_address[:8] }}...{{ token.creator.wallet_address[-4:] }}</p>
