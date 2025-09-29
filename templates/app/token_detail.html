@@ -2804,12 +2804,26 @@
             }
         }
 
-        // Initialize chart on page load
-        window.addEventListener('load', function() {
+        // Store interval reference globally to clear it on navigation
+        let updateChartInterval = null;
+        
+        // Initialize chart with Turbo support
+        function initializeTokenChart() {
+            // Clean up any existing chart and interval
+            if (myChart) {
+                myChart.destroy();
+                myChart = null;
+            }
+            if (updateChartInterval) {
+                clearInterval(updateChartInterval);
+                updateChartInterval = null;
+            }
+            
+            // Initialize new chart
             initChart();
             
             // Update chart every 5 seconds with new data
-            setInterval(() => {
+            updateChartInterval = setInterval(() => {
                 if (myChart) {
                     // Add new data point
                     const newData = generateChartData(currentChartType);
@@ -2818,10 +2832,30 @@
                     myChart.update('none'); // Update without animation for smooth real-time feel
                 }
             }, 5000);
+        }
+        
+        // Initialize on Turbo load (handles both initial page load and navigation)
+        document.addEventListener('turbo:load', function() {
+            // Only initialize if we're on the token detail page
+            if (document.getElementById('tokenChart')) {
+                initializeTokenChart();
+            }
+        });
+        
+        // Clean up before Turbo navigation
+        document.addEventListener('turbo:before-cache', function() {
+            if (myChart) {
+                myChart.destroy();
+                myChart = null;
+            }
+            if (updateChartInterval) {
+                clearInterval(updateChartInterval);
+                updateChartInterval = null;
+            }
         });
 
-        // Handle chart type toggle
-        document.addEventListener('DOMContentLoaded', function() {
+        // Handle chart type toggle - moved to turbo:load
+        document.addEventListener('turbo:load', function() {
             document.querySelectorAll('.chart-type-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     // Update active state
