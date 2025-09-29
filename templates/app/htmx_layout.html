@@ -10,27 +10,10 @@
 function reinitializePageScripts() {
     // Dashboard-specific initializations
     if (document.querySelector('.dashboard-header')) {
-        // Tab switching for dashboard
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                if (typeof switchTab === 'function') {
-                    switchTab(this.dataset.tab);
-                }
-            });
-        });
-        
-        // Initialize dashboard animations
-        const achievementItems = document.querySelectorAll('.accolade-item');
-        achievementItems.forEach((item, index) => {
-            item.style.opacity = '0';
-            item.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                item.style.transition = 'all 0.5s ease';
-                item.style.opacity = '1';
-                item.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
+        // Dashboard.js handles its own initialization
+        if (typeof window.initializeDashboard === 'function') {
+            window.initializeDashboard();
+        }
     }
     
     // Marketplace-specific initializations
@@ -68,7 +51,8 @@ reinitializePageScripts();
 // Also run initialization after HTMX swaps
 if (typeof htmx !== 'undefined') {
     document.body.addEventListener('htmx:afterSwap', function(event) {
-        reinitializePageScripts();
+        // Small delay to ensure DOM is ready
+        setTimeout(reinitializePageScripts, 50);
     });
     
     document.body.addEventListener('htmx:afterSettle', function(event) {
