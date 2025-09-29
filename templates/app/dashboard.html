@@ -429,7 +429,247 @@
 {% endblock %}
 
 {% block content %}
-    {% include 'app/partials/dashboard_content.html' %}
+<div class="dashboard-main">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <h1 style="color: #FFFFFF; margin-bottom: 1rem;">Welcome back, {{ user.display_name or user.wallet_address[:8] }}!</h1>
+        <div class="user-stats">
+            <div class="stat-card">
+                <span class="stat-number">{{ user.gem_points }}</span>
+                <span class="stat-label">💎 GEM Points</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">{{ created_tokens|length }}</span>
+                <span class="stat-label">🚀 Tokens Created</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">{{ user_holdings|length }}</span>
+                <span class="stat-label">💼 Holdings</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">${{ "{:,.2f}".format(user.total_trading_volume or 0) }}</span>
+                <span class="stat-label">📈 Trading Volume</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+        <button class="tab-btn active" onclick="switchTab('created-tokens')">
+            <i class="fas fa-coins"></i>
+            <span>Created Tokens</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('portfolio')">
+            <i class="fas fa-wallet"></i>
+            <span>Portfolio</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('activities')">
+            <i class="fas fa-history"></i>
+            <span>Activities</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('achievements')">
+            <i class="fas fa-trophy"></i>
+            <span>Achievements</span>
+        </button>
+    </div>
+
+    <!-- Created Tokens Tab -->
+    <div id="created-tokens-tab" class="tab-pane active">
+        <div class="section-header">
+            <h2 class="section-title">Your Created Tokens</h2>
+        </div>
+        {% if created_tokens %}
+        <div class="token-grid">
+            {% for token in created_tokens %}
+            <div class="token-card">
+                <div class="token-header">
+                    <div class="token-image">{{ token.symbol[:2] }}</div>
+                    <div class="token-info">
+                        <h3>{{ token.name }}</h3>
+                        <div class="token-symbol">{{ token.symbol }}</div>
+                    </div>
+                </div>
+                <div class="token-stats">
+                    <div class="token-stat">
+                        <div class="token-stat-value">${{ "{:,.2f}".format(token.current_market_cap or 0) }}</div>
+                        <div class="token-stat-label">Market Cap</div>
+                    </div>
+                    <div class="token-stat">
+                        <div class="token-stat-value">${{ "{:,.4f}".format(token.current_price or 0) }}</div>
+                        <div class="token-stat-label">Price</div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ [(token.current_market_cap / 69000 * 100), 100]|min }}%"></div>
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem; color: #CCCCCC; font-size: 0.85rem;">
+                    {{ "{:,.0f}".format([(token.current_market_cap / 69000 * 100), 100]|min) }}% to Raydium
+                </div>
+                <a href="/app/token/{{ token.contract_address }}" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">View Details</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-rocket"></i>
+            <p>You haven't created any tokens yet</p>
+            <a href="/app/create" class="btn btn-primary">Create Your First Token</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Portfolio Tab -->
+    <div id="portfolio-tab" class="tab-pane">
+        <div class="section-header">
+            <h2 class="section-title">Your Portfolio</h2>
+        </div>
+        {% if user_holdings %}
+        <div class="token-grid">
+            {% for holding in user_holdings %}
+            <div class="token-card">
+                <div class="token-header">
+                    <div class="token-image">{{ holding.token.symbol[:2] }}</div>
+                    <div class="token-info">
+                        <h3>{{ holding.token.name }}</h3>
+                        <div class="token-symbol">{{ holding.token.symbol }}</div>
+                    </div>
+                </div>
+                <div class="holding-info">
+                    <div class="holding-stat">
+                        <span class="holding-value">{{ "{:,.0f}".format(holding.amount) }}</span>
+                        <span class="holding-label">Tokens Held</span>
+                    </div>
+                    <div class="holding-stat">
+                        <span class="holding-value">${{ "{:,.2f}".format((holding.amount * holding.token.current_price) if holding.token.current_price else 0) }}</span>
+                        <span class="holding-label">Value (USD)</span>
+                    </div>
+                </div>
+                <a href="/app/token/{{ holding.token.contract_address }}" class="btn btn-secondary" style="width: 100%;">Trade</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-wallet"></i>
+            <p>Your portfolio is empty</p>
+            <a href="/app/tokens" class="btn btn-primary">Browse Tokens</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Activities Tab -->
+    <div id="activities-tab" class="tab-pane">
+        <div class="section-header">
+            <h2 class="section-title">Recent Activities</h2>
+        </div>
+        {% if activities %}
+        <div class="activities-list">
+            {% for activity in activities %}
+            <div class="activity-item">
+                <div class="activity-icon">
+                    {% if activity.activity_type == 'token_created' %}
+                        <i class="fas fa-rocket" style="color: #20B2AA;"></i>
+                    {% elif activity.activity_type == 'token_traded' %}
+                        <i class="fas fa-exchange-alt" style="color: #00CED1;"></i>
+                    {% elif activity.activity_type == 'achievement_unlocked' %}
+                        <i class="fas fa-trophy" style="color: #FFD700;"></i>
+                    {% else %}
+                        <i class="fas fa-circle" style="color: #20B2AA;"></i>
+                    {% endif %}
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">{{ activity.title }}</div>
+                    <div class="activity-time">{{ activity.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                </div>
+                {% if activity.points_earned > 0 %}
+                <div class="activity-points">+{{ activity.points_earned }} 💎</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <p>No recent activities</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Achievements Tab -->
+    <div id="achievements-tab" class="tab-pane">
+        <div class="section-header">
+            <h2 class="section-title">Achievements</h2>
+            <div class="achievement-count">{{ user_achievements|length }} / {{ total_achievements }} Unlocked</div>
+        </div>
+        <div class="achievements-grid">
+            {% for achievement in all_achievements %}
+            <div class="achievement-card {% if achievement.id in user_achievement_ids %}unlocked{% else %}locked{% endif %}">
+                {% if achievement.id in user_achievement_ids %}
+                <div class="achievement-badge">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                {% endif %}
+                <div class="achievement-icon">
+                    <i class="{{ achievement.icon or 'fas fa-star' }}"></i>
+                </div>
+                <div class="achievement-info">
+                    <h4>{{ achievement.name }}</h4>
+                    <p>{{ achievement.description }}</p>
+                    <div class="achievement-points">{{ achievement.gem_points_reward }} 💎</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Tab switching functionality
+    function switchTab(tabName) {
+        console.log('[Dashboard] Switching to tab:', tabName);
+        
+        // Hide all tabs
+        document.querySelectorAll('.tab-pane').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Remove active from all buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabName + '-tab');
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+            console.log('[Dashboard] Tab activated:', tabName + '-tab');
+        }
+        
+        // Make corresponding button active
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.textContent.toLowerCase().includes(tabName.replace('-', ' '))) {
+                btn.classList.add('active');
+            }
+        });
+    }
+    
+    // Initialize dashboard
+    function initializeDashboard() {
+        console.log('[Dashboard] Initializing...');
+        
+        // Set initial tab
+        switchTab('created-tokens');
+        
+        console.log('[Dashboard] Initialization complete');
+    }
+    
+    // Initialize on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    } else {
+        initializeDashboard();
+    }
+</script>
 {% endblock %}
 
 {% block extra_scripts %}

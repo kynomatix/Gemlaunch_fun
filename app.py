@@ -340,25 +340,17 @@ def app_dashboard():
     # Get referral info for achievements
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
-    # Create context data
-    context = {
-        'user': user,
-        'created_tokens': created_tokens,
-        'user_holdings': user_holdings,
-        'activities': activities,
-        'user_achievements': user_achievements,
-        'user_achievement_ids': user_achievement_ids,
-        'all_achievements': all_achievements,
-        'total_achievements': total_achievements,
-        'achievement_points': achievement_points,
-        'referral': referral
-    }
-    
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/partials/dashboard_content.html', **context)
-    
-    return render_template('app/dashboard.html', **context)
+    return render_template('app/dashboard.html', 
+                         user=user,
+                         created_tokens=created_tokens,
+                         user_holdings=user_holdings,
+                         activities=activities,
+                         user_achievements=user_achievements,
+                         user_achievement_ids=user_achievement_ids,
+                         all_achievements=all_achievements,
+                         total_achievements=total_achievements,
+                         achievement_points=achievement_points,
+                         referral=referral)
 
 @app.route('/app/create', methods=['GET', 'POST'])
 def create_token():
@@ -410,14 +402,7 @@ def create_token():
             flash(f'Error creating token: {str(e)}', 'error')
             return redirect(url_for('create_token'))
     
-    # Create context data
-    context = {'user': user}
-    
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/partials/create_token_content.html', **context)
-    
-    return render_template('app/create_token.html', **context)
+    return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
 def token_marketplace():
@@ -429,17 +414,7 @@ def token_marketplace():
     # Show all tokens, including pending ones for UI demo
     tokens = Token.query.order_by(Token.created_at.desc()).all()
     
-    # Create context data
-    context = {
-        'tokens': tokens,
-        'user': user
-    }
-    
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/partials/marketplace_content.html', **context)
-    
-    return render_template('app/marketplace.html', **context)
+    return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
 def token_detail(contract_address):
@@ -499,18 +474,10 @@ def leaderboard():
         users_above = User.query.filter(User.gem_points > user.gem_points).count()
         user_rank = users_above + 1
     
-    # Create context data
-    context = {
-        'user': user,
-        'top_users': top_users,
-        'user_rank': user_rank
-    }
-    
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/partials/leaderboard_content.html', **context)
-    
-    return render_template('app/leaderboard.html', **context)
+    return render_template('app/leaderboard.html', 
+                         user=user,
+                         top_users=top_users,
+                         user_rank=user_rank)
 
 @app.route('/app/profile', methods=['GET', 'POST'])
 def profile():
@@ -650,25 +617,17 @@ def profile():
         Referral.referrer_id == user.id
     ).all()
     
-    # Create context data
-    context = {
-        'user': user,
-        'user_profile': user_profile,
-        'connected_wallets': connected_wallets,
-        'user_achievements': user_achievements,
-        'referral': referral,
-        'referral_link': referral.referral_link if referral else '',
-        'referral_count': len(referred_users),
-        'active_referrals': len([u for u in referred_users if u.total_trading_volume and u.total_trading_volume > 0]),
-        'referral_earnings': sum([u.gem_points * 0.05 for u in referred_users]) if referred_users else 0,
-        'recent_referrals': referred_users[:10]  # Show last 10 referrals
-    }
-    
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/partials/profile_content.html', **context)
-    
-    return render_template('app/profile.html', **context)
+    return render_template('app/profile.html',
+                         user=user,
+                         user_profile=user_profile,
+                         connected_wallets=connected_wallets,
+                         user_achievements=user_achievements,
+                         referral=referral,
+                         referral_link=referral.referral_link if referral else '',
+                         referral_count=len(referred_users),
+                         active_referrals=len([u for u in referred_users if u.total_trading_volume and u.total_trading_volume > 0]),
+                         referral_earnings=sum([u.gem_points * 0.05 for u in referred_users]) if referred_users else 0,
+                         recent_referrals=referred_users[:10])  # Show last 10 referrals)
 
 @app.route('/app/referrals')
 def referrals():
