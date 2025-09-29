@@ -570,10 +570,12 @@
             transform: scale(1);
         }
         
-        /* Hide non-active slides after initialization */
+        /* All slides should remain visible for sliding carousel */
+        /* Removed opacity: 0 to fix visibility issue on non-active slides */
         .carousel-slide:not(.active) {
-            opacity: 0;
-            transform: scale(0.9);
+            /* Keep slides visible for translateX sliding */
+            opacity: 1;
+            transform: scale(1);
         }
 
         .category-accolades-grid {
@@ -1428,7 +1430,7 @@
                                             {% set sorted_achievements = category_achievements|sort(attribute='sort_key') %}
                                             
                                             {% if sorted_achievements %}
-                                            <div class="carousel-slide" 
+                                            <div class="carousel-slide{{ ' active' if loop.index0 == 0 else '' }}" 
                                                  data-category="{{ category_id }}" 
                                                  data-category-name="{{ category_name }}"
                                                  data-category-icon="{{ category_icon }}"
