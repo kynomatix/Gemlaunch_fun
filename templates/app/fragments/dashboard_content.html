@@ -1,0 +1,1365 @@
+            <!-- Welcome Header -->
+            <div class="dashboard-header">
+                <h1>Your Dashboard</h1>
+                <p>Track your tokens, portfolio, and trading activity</p>
+                
+                <div class="user-stats">
+                    <div class="stat-card">
+                        <span class="stat-number">{{ user.gem_points or 0 }}</span>
+                        <div class="stat-label">GEM Points</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{{ created_tokens|length }}</span>
+                        <div class="stat-label">Tokens Created</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{{ holdings|length }}</span>
+                        <div class="stat-label">Holdings</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">${{ "%.2f"|format(user.total_trading_volume or 0) }}</span>
+                        <div class="stat-label">Trading Volume</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tabs -->
+            <div class="dashboard-tabs">
+                <div class="tab-navigation">
+                    <button class="tab-btn active" data-tab="tokens">
+                        <i class="fas fa-coins"></i>
+                        Tokens
+                    </button>
+                    <button class="tab-btn" data-tab="achievements">
+                        <i class="fas fa-star"></i>
+                        Accolades & Progress
+                    </button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Tokens Tab -->
+                    <div id="tokens-tab" class="tab-pane active">
+
+            <!-- Portfolio Holdings Section -->
+            {% if holdings %}
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Your Portfolio</h2>
+                </div>
+                
+                <div class="token-grid">
+                    {% for holding in holdings %}
+                        <div class="token-card">
+                            <div class="token-header">
+                                <div class="token-image">💎</div>
+                                <div class="token-info">
+                                    <h3>{{ holding.token.name }}</h3>
+                                    <div class="token-symbol">${{ holding.token.symbol }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="token-stats">
+                                <div class="token-stat">
+                                    <div class="token-stat-value">{{ "%.0f"|format(holding.amount) }}</div>
+                                    <div class="token-stat-label">Tokens Held</div>
+                                </div>
+                                <div class="token-stat">
+                                    <div class="token-stat-value">${{ "%.2f"|format(holding.current_value or 0) }}</div>
+                                    <div class="token-stat-label">Current Value</div>
+                                </div>
+                            </div>
+                            
+                            <a href="/app/token/{{ holding.token.id }}" class="token-view-btn">View Token</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Created Tokens Section -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Your Created Tokens</h2>
+                </div>
+
+                {% if created_tokens %}
+                    <div class="token-grid">
+                        {% for token in created_tokens %}
+                            <div class="token-card">
+                                <div class="token-header">
+                                    <div class="token-image">
+                                        {% if token.image_url %}
+                                            <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                        {% else %}
+                                            💎
+                                        {% endif %}
+                                    </div>
+                                    <div class="token-info">
+                                        <h3>{{ token.name }}</h3>
+                                        <div class="token-symbol">${{ token.symbol }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+                                </div>
+                                <div style="text-align: center; font-size: 0.8rem; color: #CCCCCC; margin-bottom: 1rem;">
+                                    {{ "%.1f"|format(token.progress_to_graduation) }}% to graduation
+                                </div>
+
+                                <div class="token-stats">
+                                    <div class="token-stat">
+                                        <div class="token-stat-value">${{ "%.2f"|format(token.current_market_cap or 0) }}</div>
+                                        <div class="token-stat-label">Market Cap</div>
+                                    </div>
+                                    <div class="token-stat">
+                                        <div class="token-stat-value">{{ token.trade_count or 0 }}</div>
+                                        <div class="token-stat-label">Trades</div>
+                                    </div>
+                                </div>
+
+                                <a href="/app/token/{{ token.id }}" class="btn btn-secondary" style="margin-top: 1rem; text-align: center;">
+                                    View Details
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-rocket"></i>
+                        <h3>No tokens created yet</h3>
+                        <p>Ready to launch your first memecoin?</p>
+                        <a href="/app/create" class="btn btn-primary">Create Your First Token</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Holdings Section -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">Your Holdings</h2>
+                </div>
+
+                {% if holdings %}
+                    <div class="token-grid">
+                        {% for holding in holdings %}
+                            <div class="token-card">
+                                <div class="token-header">
+                                    <div class="token-image">
+                                        {% if holding.token.image_url %}
+                                            <img src="{{ holding.token.image_url }}" alt="{{ holding.token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                        {% else %}
+                                            💎
+                                        {% endif %}
+                                    </div>
+                                    <div class="token-info">
+                                        <h3>{{ holding.token.name }}</h3>
+                                        <div class="token-symbol">${{ holding.token.symbol }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="token-stats">
+                                    <div class="token-stat">
+                                        <div class="token-stat-value">{{ "%.0f"|format(holding.token_amount or 0) }}</div>
+                                        <div class="token-stat-label">Tokens</div>
+                                    </div>
+                                    <div class="token-stat">
+                                        <div class="token-stat-value">${{ "%.2f"|format(holding.current_value) }}</div>
+                                        <div class="token-stat-label">Value</div>
+                                    </div>
+                                    <div class="token-stat">
+                                        <div class="token-stat-value" style="color: {{ '#00FF64' if holding.profit_loss >= 0 else '#FF3232' }}">
+                                            {{ "+" if holding.profit_loss >= 0 else "" }}{{ "%.1f"|format(holding.profit_loss_percentage) }}%
+                                        </div>
+                                        <div class="token-stat-label">P&L</div>
+                                    </div>
+                                    <div class="token-stat">
+                                        <div class="token-stat-value">${{ "%.4f"|format(holding.token.current_price or 0) }}</div>
+                                        <div class="token-stat-label">Price</div>
+                                    </div>
+                                </div>
+
+                                <a href="/app/token/{{ holding.token.id }}" class="btn btn-secondary" style="margin-top: 1rem; text-align: center;">
+                                    Trade
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-wallet"></i>
+                        <h3>No token holdings</h3>
+                        <p>Start trading to build your portfolio!</p>
+                        <a href="/app/tokens" class="btn btn-primary">Explore Tokens</a>
+                    </div>
+                {% endif %}
+            </div>
+                    </div>
+
+                    <!-- Accolades & Progress Tab -->
+                    <div id="achievements-tab" class="tab-pane">
+
+            <!-- Activities & Achievements Section -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-star"></i>
+                        Accolades & Progress
+                    </h2>
+                </div>
+                
+                <div class="activities-grid">
+                    <!-- Accolades Progress -->
+                    <div class="accolades-progress-section">
+                        <div class="section-header">
+                            <h3>
+                                <i class="fas fa-star"></i>
+                                Accolades Progress
+                            </h3>
+                            <div class="progress-summary">
+                                <span class="completed">{{ user_achievements|length if user_achievements else 0 }}</span>
+                                <span class="separator">/</span>
+                                <span class="total">{{ total_achievements or 12 }}</span>
+                                <span class="label">Completed</span>
+                            </div>
+                        </div>
+                        
+                        <div class="accolades-list">
+                            {% for achievement in all_achievements %}
+                            {% set is_completed = achievement.id in user_achievement_ids %}
+                            {% set progress_pct = 0 %}
+                            {% set current_val = 0 %}
+                            {% set target_val = achievement.requirement_value|int %}
+                            {% set progress_text = "" %}
+                            
+                            {% if achievement.requirement_type == 'tokens_created' %}
+                                {% set current_val = user.total_tokens_created or 0 %}
+                                {% set progress_text = current_val ~ "/" ~ target_val ~ " tokens" %}
+                            {% elif achievement.requirement_type == 'trading_volume' %}
+                                {% set current_val = user.total_trading_volume or 0 %}
+                                {% set progress_text = "$" ~ "{:,.0f}".format(current_val) ~ "/$" ~ "{:,.0f}".format(target_val) %}
+                            {% elif achievement.requirement_type == 'referrals' %}
+                                {% set current_val = referral.qualified_signups if referral else 0 %}
+                                {% set progress_text = current_val ~ "/" ~ target_val ~ " referrals" %}
+                            {% elif achievement.requirement_type == 'graduated_tokens' %}
+                                {% set progress_text = "0/" ~ target_val ~ " graduations" %}
+                            {% elif achievement.requirement_type == 'holding_days' %}
+                                {% set progress_text = "Hold for " ~ target_val ~ "+ days" %}
+                            {% elif achievement.requirement_type == 'trades_count' %}
+                                {% set progress_text = "Make your first trade" %}
+                            {% endif %}
+                            
+                            {% if target_val > 0 and achievement.requirement_type in ['tokens_created', 'trading_volume', 'referrals'] %}
+                                {% set progress_pct = (100 if current_val >= target_val else ((current_val / target_val) * 100))|int %}
+                            {% endif %}
+                            
+                            <div class="accolade-item {{ 'completed' if is_completed else 'locked' }}">
+                                <div class="accolade-icon">
+                                    {% if achievement.category == 'trader' %}
+                                        <i class="fas fa-chart-line"></i>
+                                    {% elif achievement.category == 'creator' %}
+                                        <i class="fas fa-rocket"></i>
+                                    {% elif achievement.category == 'social' %}
+                                        <i class="fas fa-users"></i>
+                                    {% elif achievement.category == 'seasonal' %}
+                                        <i class="fas fa-trophy"></i>
+                                    {% else %}
+                                        <i class="fas fa-star"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="accolade-details">
+                                    <h4>{{ achievement.name }}</h4>
+                                    <p>{{ achievement.description }}</p>
+                                    {% if progress_text %}
+                                    <div class="accolade-progress">
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" style="width: {{ progress_pct }}%"></div>
+                                        </div>
+                                        <span class="progress-text">{{ progress_text }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="accolade-reward">
+                                    <span class="points">+{{ achievement.gem_points_reward }}</span>
+                                    <span class="label">Points</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Sidebar with Points and Activities -->
+                    <div class="accolades-sidebar">
+                        <!-- Points Breakdown -->
+                        <div class="points-breakdown-section">
+                            <div class="section-header">
+                                <h3>
+                                    <i class="fas fa-coins"></i>
+                                    Points Breakdown
+                                </h3>
+                                <div class="total-points">
+                                    <span class="points-value">{{ "{:,}".format(user.gem_points or 0) }}</span>
+                                    <span class="points-label">Total Points</span>
+                                </div>
+                            </div>
+                            
+                            <div class="points-sources">
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-rocket"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Token Creation</span>
+                                        <span class="source-amount">{{ ((user.total_tokens_created or 0) * 100)|int }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ (((user.total_tokens_created or 0) * 100) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Trading Volume</span>
+                                        <span class="source-amount">{{ (((user.total_trading_volume or 0) / 100)|int) }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ ((((user.total_trading_volume or 0) / 100)) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Referrals</span>
+                                        <span class="source-amount">{{ ((referral.qualified_signups if referral else 0) * 50)|int }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ (((referral.qualified_signups if referral else 0) * 50) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="points-source">
+                                    <div class="source-icon">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <div class="source-details">
+                                        <span class="source-name">Achievements</span>
+                                        <span class="source-amount">{{ achievement_points or 0 }} pts</span>
+                                    </div>
+                                    <div class="source-bar">
+                                        <div class="bar-fill" style="width: {{ ((achievement_points or 0) / (user.gem_points or 1) * 100)|int }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="points-tips">
+                                <h4 id="tipsHeader" style="cursor: pointer;">
+                                    Ways to Earn More Points
+                                    <i class="fas fa-chevron-down tips-toggle" id="tipsToggle"></i>
+                                </h4>
+                                <div class="tips-list" id="tipsList">
+                                    <div class="tip-item">
+                                        <i class="fas fa-rocket"></i>
+                                        <span>Create tokens (+100 pts each)</span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <span>Trade actively (+1 pt per $100 volume)</span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-users"></i>
+                                        <span>Refer friends (+50 pts each)</span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-star"></i>
+                                        <span>Complete achievements (up to +1000 pts)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activities -->
+                        <div class="recent-activities-section">
+                        <div class="section-header">
+                            <h3>
+                                <i class="fas fa-clock"></i>
+                                Recent Activities
+                            </h3>
+                            <div class="filter-options">
+                                <select class="activity-filter" onchange="filterActivities(this.value)">
+                                    <option value="all">All Activities</option>
+                                    <option value="achievements">Achievements</option>
+                                    <option value="trades">Trading</option>
+                                    <option value="referrals">Referrals</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        {% if activities and activities|length > 0 %}
+                            <div class="activities-timeline">
+                                {% for activity in activities %}
+                                <div class="activity-item" data-type="{{ activity.action_type or 'general' }}">
+                                    <div class="activity-time">
+                                        <span class="time-value">{{ activity.created_at.strftime('%H:%M') if activity.created_at else '' }}</span>
+                                        <span class="date-value">{{ activity.created_at.strftime('%b %d') if activity.created_at else 'Recently' }}</span>
+                                    </div>
+                                    
+                                    <div class="activity-icon">
+                                        {% if activity.action_type == 'token_created' %}
+                                            <i class="fas fa-rocket"></i>
+                                        {% elif activity.action_type == 'trade_executed' %}
+                                            <i class="fas fa-exchange-alt"></i>
+                                        {% elif activity.action_type == 'achievement_unlocked' %}
+                                            <i class="fas fa-star"></i>
+                                        {% elif activity.action_type == 'referral_earned' %}
+                                            <i class="fas fa-users"></i>
+                                        {% else %}
+                                            <i class="fas fa-dot-circle"></i>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="activity-content">
+                                        <h4>{{ activity.description or 'Activity recorded' }}</h4>
+                                        {% if activity.details %}
+                                            <p>{{ activity.details }}</p>
+                                        {% endif %}
+                                        {% if activity.points_earned and activity.points_earned > 0 %}
+                                            <span class="points-earned">+{{ activity.points_earned }} Points</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-activities">
+                                <div class="empty-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <h4>No activities yet</h4>
+                                <p>Start trading, creating tokens, or referring friends to see your activity timeline!</p>
+                                <div class="action-buttons">
+                                    <a href="/app/create" class="btn-action primary">
+                                        <i class="fas fa-rocket"></i>
+                                        Create Token
+                                    </a>
+                                    <a href="/app/profile" class="btn-action secondary">
+                                        <i class="fas fa-users"></i>
+                                        Share Referral
+                                    </a>
+                                </div>
+                            </div>
+                        {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <style>
+        .wallet-info-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .wallet-address {
+            color: #20B2AA;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+        }
+        
+        .wallet-disconnect {
+            background: rgba(255, 50, 50, 0.1) !important;
+            color: #FF5252 !important;
+            border: 1px solid rgba(255, 50, 50, 0.3) !important;
+            padding: 0.5rem 1rem !important;
+            border-radius: 8px !important;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none !important;
+        }
+        
+        .wallet-disconnect:hover {
+            background: rgba(255, 50, 50, 0.2) !important;
+            border-color: rgba(255, 50, 50, 0.5) !important;
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 768px) {
+            .wallet-info-nav {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+            }
+        }
+
+        /* Dashboard Tab Styles */
+        .dashboard-tabs {
+            margin-top: 2rem;
+        }
+
+        .tab-navigation {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 0.5rem;
+            border: 1px solid rgba(32, 178, 170, 0.2);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #888888;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .tab-btn:hover {
+            background: rgba(32, 178, 170, 0.1);
+            color: #20B2AA;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+        }
+
+        .tab-btn i {
+            font-size: 1.1rem;
+        }
+
+        .tab-content {
+            position: relative;
+        }
+
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Activities & Achievements Styles */
+        .activities-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            grid-template-areas: 
+                "achievements sidebar";
+        }
+
+        @media (max-width: 1200px) {
+            .activities-grid {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "achievements"
+                    "sidebar";
+            }
+        }
+
+        .accolades-progress-section {
+            grid-area: achievements;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 700px;
+        }
+
+        .accolades-sidebar {
+            grid-area: sidebar;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .recent-activities-section, .points-breakdown-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .progress-summary {
+            display: flex;
+            align-items: baseline;
+            gap: 0.3rem;
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+
+        .completed {
+            color: #20B2AA;
+            font-size: 1.2rem;
+        }
+
+        .separator, .total {
+            color: #888888;
+        }
+
+        .accolades-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            flex: 1;
+            align-content: start;
+            margin-top: 1rem;
+        }
+        
+        .accolades-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .accolades-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .accolades-list::-webkit-scrollbar-thumb {
+            background: rgba(32, 178, 170, 0.5);
+            border-radius: 3px;
+        }
+        
+        .accolades-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(32, 178, 170, 0.7);
+        }
+
+        .accolade-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: 120px;
+        }
+
+        .accolade-item.completed {
+            background: rgba(32, 178, 170, 0.1);
+            border-color: #20B2AA;
+        }
+
+        .accolade-item.completed::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+        }
+
+        .accolade-item.locked {
+            opacity: 0.6;
+        }
+
+        .accolade-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .accolade-icon {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: rgba(32, 178, 170, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #20B2AA;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .accolade-item.completed .accolade-icon {
+            background: rgba(32, 178, 170, 0.2);
+            color: #20B2AA;
+        }
+
+        .accolade-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .accolade-details h4 {
+            color: #FFFFFF;
+            margin-bottom: 0.5rem;
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        .accolade-details p {
+            color: #888888;
+            font-size: 0.95rem;
+            margin-bottom: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .accolade-progress {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .accolade-progress .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .accolade-progress .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            color: #888888;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .accolade-reward {
+            text-align: center;
+            flex-shrink: 0;
+            padding: 0.6rem 1rem;
+            background: rgba(32, 178, 170, 0.08);
+            border-radius: 10px;
+            min-width: 90px;
+        }
+
+        .accolade-reward .points {
+            color: #20B2AA;
+            font-weight: 700;
+            font-size: 1.25rem;
+            display: block;
+        }
+        
+        .accolade-reward .label {
+            color: #888888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 0.2rem;
+            display: block;
+        }
+
+        .filter-options {
+            position: relative;
+        }
+
+        .activity-filter {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .activity-filter:focus {
+            outline: none;
+            border-color: #20B2AA;
+        }
+
+        .activities-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: grid;
+            grid-template-columns: auto auto 1fr;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(32, 178, 170, 0.3);
+        }
+
+        .activity-time {
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .time-value {
+            color: #FFFFFF;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: block;
+        }
+
+        .date-value {
+            color: #888888;
+            font-size: 0.75rem;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(32, 178, 170, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #20B2AA;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .activity-content h4 {
+            color: #FFFFFF;
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        .activity-content p {
+            color: #888888;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .points-earned {
+            background: rgba(32, 178, 170, 0.1);
+            color: #20B2AA;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .empty-activities {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #888888;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            color: #20B2AA;
+            margin-bottom: 1rem;
+        }
+
+        .empty-activities h4 {
+            color: #FFFFFF;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .empty-activities p {
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn-action {
+            background: rgba(32, 178, 170, 0.1);
+            color: #20B2AA;
+            border: 1px solid #20B2AA;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-action.primary {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            border-color: transparent;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+        }
+
+        .total-points {
+            text-align: right;
+        }
+
+        .points-value {
+            color: #20B2AA;
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .points-label {
+            color: #888888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .points-sources {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .points-source {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .source-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: rgba(32, 178, 170, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #20B2AA;
+            font-size: 1rem;
+        }
+
+        .source-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .source-name {
+            color: #FFFFFF;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .source-amount {
+            color: #20B2AA;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .source-bar {
+            width: 60px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .points-tips {
+            margin-top: 1rem;
+        }
+
+        .points-tips h4 {
+            color: #20B2AA;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .points-tips h4:hover {
+            color: #00CED1;
+        }
+
+        .tips-list {
+            display: none;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+
+        .tips-list.expanded {
+            display: flex;
+        }
+
+        .tip-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: #888888;
+            font-size: 0.8rem;
+        }
+
+        .tip-item i {
+            color: #20B2AA;
+            width: 14px;
+            text-align: center;
+        }
+
+        .tips-toggle {
+            font-size: 0.8rem;
+            transition: transform 0.3s ease;
+        }
+
+        .tips-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        /* Points Sources Styling */
+        .points-sources {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .points-source {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(32, 178, 170, 0.1);
+        }
+
+        .source-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .source-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .source-name {
+            color: #CCCCCC;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .source-amount {
+            color: #20B2AA;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .source-bar {
+            width: 60px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #20B2AA, #00CED1);
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .total-points {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .points-value {
+            color: #20B2AA;
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .points-label {
+            color: #888888;
+            font-size: 0.8rem;
+            margin-top: 0.2rem;
+        }
+
+        /* Mobile responsiveness for activities */
+        @media (max-width: 1200px) {
+            .activities-grid {
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas: 
+                    "achievements activities"
+                    "points points";
+            }
+            
+            .accolades-progress-section {
+                grid-area: achievements;
+            }
+            
+            .recent-activities-section {
+                grid-area: activities;
+            }
+            
+            .points-breakdown-section {
+                grid-area: points;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .activities-grid {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "achievements"
+                    "activities"
+                    "points";
+            }
+            
+            .accolade-item {
+                grid-template-columns: auto 1fr;
+                grid-template-areas: 
+                    "icon details"
+                    "reward reward";
+                gap: 0.8rem;
+            }
+            
+            .accolade-icon {
+                grid-area: icon;
+            }
+            
+            .accolade-details {
+                grid-area: details;
+            }
+            
+            .accolade-reward {
+                grid-area: reward;
+                text-align: left;
+                padding-top: 0.5rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .activity-item {
+                grid-template-columns: auto 1fr;
+                grid-template-areas: 
+                    "time icon"
+                    "content content";
+            }
+            
+            .activity-time {
+                grid-area: time;
+            }
+            
+            .activity-icon {
+                grid-area: icon;
+            }
+            
+            .activity-content {
+                grid-area: content;
+                padding-top: 0.5rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn-action {
+                width: 200px;
+                justify-content: center;
+            }
+        }
+
+<script>
+function initializePageScripts() {
+    // Wallet disconnect functionality
+    window.disconnectWallet = async function() {
+        try {
+            const response = await fetch('/api/disconnect-wallet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Redirect to connect wallet page
+                window.location.href = '/app';
+            } else {
+                console.error('Failed to disconnect wallet');
+            }
+            
+        } catch (error) {
+            console.error('Disconnect error:', error);
+        }
+    };
+
+    // Tab switching functionality
+    window.switchTab = function(tabName) {
+        // Remove active class from all tabs and buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        
+        // Add active class to selected tab and button
+        const targetBtn = document.querySelector(`button[data-tab="${tabName}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+        const targetTab = document.getElementById(`${tabName}-tab`);
+        if (targetTab) targetTab.classList.add('active');
+    };
+
+    // Activities filtering functionality
+    window.filterActivities = function(type) {
+        const activityItems = document.querySelectorAll('.activity-item');
+        
+        activityItems.forEach(item => {
+            const itemType = item.getAttribute('data-type');
+            
+            if (type === 'all' || itemType === type) {
+                item.style.display = 'grid';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    };
+
+    // Toggle tips functionality
+    window.toggleTips = function() {
+        const tipsList = document.getElementById('tipsList');
+        const tipsToggle = document.getElementById('tipsToggle');
+        
+        if (tipsList && tipsToggle) {
+            tipsList.classList.toggle('expanded');
+            tipsToggle.classList.toggle('expanded');
+        }
+    };
+    
+    // Attach tab switching events
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            switchTab(this.dataset.tab);
+        });
+    });
+    
+    // Attach tips toggle event
+    const tipsHeader = document.getElementById('tipsHeader');
+    if (tipsHeader) {
+        tipsHeader.addEventListener('click', toggleTips);
+    }
+    
+    const achievementItems = document.querySelectorAll('.accolade-item');
+    achievementItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            item.style.transition = 'all 0.5s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    const activityItems = document.querySelectorAll('.activity-item');
+    activityItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            item.style.transition = 'all 0.5s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+        }, 300 + (index * 80));
+    });
+    
+    const pointsSources = document.querySelectorAll('.points-source');
+    pointsSources.forEach((source, index) => {
+        source.style.opacity = '0';
+        source.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            source.style.transition = 'all 0.5s ease';
+            source.style.opacity = '1';
+            source.style.transform = 'translateY(0)';
+        }, 600 + (index * 100));
+    });
+}
+
+// Initialize immediately
+initializePageScripts();
+</script>
