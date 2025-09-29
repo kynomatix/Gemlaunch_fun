@@ -1631,7 +1631,7 @@
         .spotlight-content {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
         }
         
         .spotlight-user {
@@ -1649,7 +1649,7 @@
             color: #FFF;
             font-size: 1.05rem;
             font-weight: 400;
-            padding: 0 1rem;
+            padding: 0 0.5rem;
         }
         
         .spotlight-timer {
@@ -1657,7 +1657,7 @@
             align-items: center;
             gap: 0.25rem;
             color: #FFD700;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             white-space: nowrap;
             margin-left: auto;
         }
@@ -2730,7 +2730,7 @@
                         data.spotlights.forEach(spotlight => {
                             const spotlightEntry = {
                                 id: spotlight.id,
-                                user: spotlight.user,
+                                user: spotlight.user, // This should be the display name from database
                                 message: spotlight.message,
                                 expiresAt: new Date(spotlight.created_at).getTime() + (60 * 60 * 1000) // 1 hour from creation
                             };
@@ -4141,8 +4141,8 @@
             // Show container
             container.style.display = 'block';
             
-            // Get proper username display (inherit from user if valid)
-            const displayUser = getUserDisplayName(spotlightEntry.user);
+            // Get proper username display - ensure we get the actual username
+            const displayUser = spotlightEntry.user || 'Anonymous';
             
             // Create spotlight message element with sleek horizontal layout
             const spotlightElement = document.createElement('div');
@@ -4151,10 +4151,9 @@
             spotlightElement.innerHTML = `
                 <div class="spotlight-content">
                     <div class="spotlight-user">${displayUser}</div>
-                    <div style="color: #666; font-size: 0.85rem; margin-left: -0.5rem;">Pinned just now</div>
                     <div class="spotlight-text">${spotlightEntry.message}</div>
                     <div class="spotlight-timer">
-                        🕐 <span class="time-remaining">59m</span> <span style="font-size: 0.85rem;">remaining</span>
+                        🕐 <span class="time-remaining">59m</span>
                     </div>
                 </div>
             `;
