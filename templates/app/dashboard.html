@@ -9,6 +9,69 @@
             box-sizing: border-box;
         }
         
+        /* CRITICAL FIX: Ensure all dashboard content stays below sidebar and topbar */
+        /* Sidebar has z-index: 999, Topbar has z-index: 1000 */
+        
+        /* Global fix for all dashboard content */
+        .main-content > * {
+            position: relative;
+            z-index: 1 !important;  /* Force all dashboard content below sidebar */
+        }
+        
+        /* Ensure all carousel and accolades elements don't block sidebar */
+        .dashboard-tabs,
+        .tab-content,
+        .tab-pane,
+        .dashboard-section,
+        .activities-grid,
+        .accolades-container,
+        .accolades-carousel,
+        .carousel-wrapper {
+            position: relative;
+            z-index: 1 !important;  /* Stay below sidebar */
+        }
+        
+        /* Fix ALL pseudo-elements that might block clicks */
+        .carousel-header::after,
+        .accolades-carousel::before,
+        .accolades-carousel::after,
+        .carousel-viewport::before,
+        .carousel-viewport::after,
+        [class*="carousel"]::before,
+        [class*="carousel"]::after,
+        [class*="accolades"]::before,
+        [class*="accolades"]::after {
+            pointer-events: none !important;
+            z-index: 1 !important;
+        }
+        
+        /* Ensure interactive elements remain clickable but below sidebar */
+        .carousel-nav,
+        .carousel-dot,
+        button,
+        a,
+        input,
+        select,
+        textarea {
+            pointer-events: auto;
+            position: relative;
+            z-index: auto;  /* Use natural stacking but below sidebar */
+        }
+        
+        /* Override any high z-index values in dashboard */
+        .dashboard-main * {
+            max-width: 100vw;  /* Prevent overflow */
+        }
+        
+        /* Special rule to ensure sidebar toggle area is never blocked */
+        @media (max-width: 99999px) {  /* Always apply */
+            .app-sidebar,
+            .app-topbar,
+            .sidebar-toggle {
+                z-index: 999 !important;  /* Ensure these stay on top */
+            }
+        }
+        
         .dashboard-main {
             padding-top: 100px;
             min-height: 100vh;
@@ -257,6 +320,7 @@
             flex-direction: column;
             gap: 1.5rem;
             overflow: hidden;
+            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
         /* Category Header */
@@ -268,6 +332,7 @@
             margin-bottom: 1rem;
             position: relative;
             overflow: hidden;
+            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
         .carousel-header::before {
@@ -279,6 +344,8 @@
             height: 100%;
             background: linear-gradient(90deg, transparent, rgba(32, 178, 170, 0.3), transparent);
             animation: headerShimmer 8s infinite ease-in-out;
+            pointer-events: none;  /* Fix: Don't block clicks */
+            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
         @keyframes headerShimmer {
@@ -365,6 +432,7 @@
             display: flex;
             align-items: center;
             overflow: hidden;
+            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
         /* Navigation Arrows */
@@ -384,9 +452,10 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            z-index: 10;
+            z-index: 10;  /* Keep low but still clickable (below sidebar 999) */
             box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
             flex-shrink: 0;
+            pointer-events: auto;  /* Fix: Ensure arrows remain clickable */
         }
 
         .carousel-nav-left {
@@ -414,6 +483,8 @@
             border-radius: 50%;
             border: 2px solid #20B2AA;
             animation: navPulse 3s ease-out infinite;
+            pointer-events: none;  /* Fix: Don't block clicks */
+            z-index: 1;  /* Fix: Stay below parent element */
         }
 
         @keyframes navPulse {
@@ -1286,6 +1357,57 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
+        // CRITICAL FIX: Re-define the sidebar toggle function for the dashboard page
+        // This ensures it's available even if base_layout script doesn't execute properly
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (sidebar && mainContent) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('sidebar-collapsed');
+                
+                // Save state
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            }
+        }
+        
+        // Ensure the function is available immediately when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Re-attach to window to ensure it's available
+            if (typeof window.toggleSidebar !== 'function') {
+                window.toggleSidebar = function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const mainContent = document.getElementById('mainContent');
+                    
+                    if (sidebar && mainContent) {
+                        sidebar.classList.toggle('collapsed');
+                        mainContent.classList.toggle('sidebar-collapsed');
+                        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                    }
+                }
+            }
+            
+            // Debug: Log that function is available
+            console.log('toggleSidebar function initialized:', typeof window.toggleSidebar);
+        });
+        
+        // Also attach for Turbo navigation
+        document.addEventListener('turbo:load', function() {
+            if (typeof window.toggleSidebar !== 'function') {
+                window.toggleSidebar = function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const mainContent = document.getElementById('mainContent');
+                    
+                    if (sidebar && mainContent) {
+                        sidebar.classList.toggle('collapsed');
+                        mainContent.classList.toggle('sidebar-collapsed');
+                        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                    }
+                }
+            }
+        });
+        
         // Wallet disconnect functionality
         async function disconnectWallet() {
             try {
@@ -1742,6 +1864,8 @@
             border-radius: 20px;
             padding: 2rem;
             border: 1px solid rgba(32, 178, 170, 0.2);
+            position: relative;  /* Fix: Ensure proper positioning */
+            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
