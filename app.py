@@ -531,9 +531,16 @@ def token_messages(contract_address):
 def token_polls(contract_address):
     """Get or create polls for a token"""
     from datetime import datetime, timedelta, timezone
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    
+    logging.debug(f"Poll endpoint called - Method: {request.method}, Contract: {contract_address}")
+    logging.debug(f"Headers: {dict(request.headers)}")
     
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
     user = get_current_user()
+    
+    logging.debug(f"Token found: {token.symbol}, User: {user.wallet_address if user else 'None'}")
     
     if request.method == 'GET':
         # Get active polls
@@ -564,16 +571,23 @@ def token_polls(contract_address):
         return jsonify({'polls': poll_list})
     
     elif request.method == 'POST':
+        logging.debug("POST request received for poll creation")
         data = request.get_json()
+        logging.debug(f"Request data: {data}")
+        
         question = data.get('question', '').strip()
         options_text = data.get('options', [])
         vote_cost = data.get('vote_cost', 100)
         duration_hours = data.get('duration_hours', 24)
         
+        logging.debug(f"Question: {question}, Options: {options_text}, Vote cost: {vote_cost}, Duration: {duration_hours}")
+        
         if not question:
+            logging.error("No question provided")
             return jsonify({'error': 'Question is required'}), 400
         
         if len(options_text) < 2:
+            logging.error(f"Not enough options: {len(options_text)}")
             return jsonify({'error': 'At least 2 options required'}), 400
         
         # Create poll
