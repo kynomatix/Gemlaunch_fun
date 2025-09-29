@@ -702,125 +702,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Scripts are loaded from base_layout.html -->
-    
-    <script>
-        // Wallet disconnect functionality
-        async function disconnectWallet() {
-            try {
-                const response = await fetch('/api/disconnect-wallet', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Redirect to connect wallet page
-                    window.location.href = '/app';
-                } else {
-                    console.error('Failed to disconnect wallet');
-                }
-                
-            } catch (error) {
-                console.error('Disconnect error:', error);
-            }
-        }
-
-        // Tab switching functionality
-        function switchTab(tabName) {
-            // Remove active class from all tabs and buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-            
-            // Add active class to selected tab and button
-            const targetBtn = document.querySelector(`button[data-tab="${tabName}"]`);
-            if (targetBtn) targetBtn.classList.add('active');
-            const targetTab = document.getElementById(`${tabName}-tab`);
-            if (targetTab) targetTab.classList.add('active');
-        }
-
-        // Activities filtering functionality
-        function filterActivities(type) {
-            const activityItems = document.querySelectorAll('.activity-item');
-            
-            activityItems.forEach(item => {
-                const itemType = item.getAttribute('data-type');
-                
-                if (type === 'all' || itemType === type) {
-                    item.style.display = 'grid';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        }
-
-        // Toggle tips functionality
-        function toggleTips() {
-            const tipsList = document.getElementById('tipsList');
-            const tipsToggle = document.getElementById('tipsToggle');
-            
-            if (tipsList && tipsToggle) {
-                tipsList.classList.toggle('expanded');
-                tipsToggle.classList.toggle('expanded');
-            }
-        }
-
-        // Animation on load for activities
-        document.addEventListener('DOMContentLoaded', function() {
-            // Attach tab switching events
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    switchTab(this.dataset.tab);
-                });
-            });
-            
-            // Attach tips toggle event
-            const tipsHeader = document.getElementById('tipsHeader');
-            if (tipsHeader) {
-                tipsHeader.addEventListener('click', toggleTips);
-            }
-            
-            const achievementItems = document.querySelectorAll('.accolade-item');
-            achievementItems.forEach((item, index) => {
-                item.style.opacity = '0';
-                item.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    item.style.transition = 'all 0.5s ease';
-                    item.style.opacity = '1';
-                    item.style.transform = 'translateY(0)';
-                }, index * 100);
-            });
-            
-            const activityItems = document.querySelectorAll('.activity-item');
-            activityItems.forEach((item, index) => {
-                item.style.opacity = '0';
-                item.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    item.style.transition = 'all 0.5s ease';
-                    item.style.opacity = '1';
-                    item.style.transform = 'translateY(0)';
-                }, 300 + (index * 80));
-            });
-            
-            const pointsSources = document.querySelectorAll('.points-source');
-            pointsSources.forEach((source, index) => {
-                source.style.opacity = '0';
-                source.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    source.style.transition = 'all 0.5s ease';
-                    source.style.opacity = '1';
-                    source.style.transform = 'translateY(0)';
-                }, 600 + (index * 100));
-            });
-        });
-    </script>
     
     <style>
         .wallet-info-nav {
@@ -1606,5 +1487,120 @@
 
 {% block extra_scripts %}
 {{ super() }}
-<!-- Additional dashboard-specific scripts can go here if needed -->
+<script>
+    // Wallet disconnect functionality
+    async function disconnectWallet() {
+        try {
+            const response = await fetch('/api/disconnect-wallet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Redirect to connect wallet page
+                window.location.href = '/app';
+            } else {
+                console.error('Failed to disconnect wallet');
+            }
+            
+        } catch (error) {
+            console.error('Disconnect error:', error);
+        }
+    }
+
+    // Tab switching functionality
+    function switchTab(tabName) {
+        // Remove active class from all tabs and buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        
+        // Add active class to selected tab and button
+        const targetBtn = document.querySelector(`button[data-tab="${tabName}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+        const targetTab = document.getElementById(`${tabName}-tab`);
+        if (targetTab) targetTab.classList.add('active');
+    }
+
+    // Activities filtering functionality
+    function filterActivities(type) {
+        const activityItems = document.querySelectorAll('.activity-item');
+        
+        activityItems.forEach(item => {
+            const itemType = item.getAttribute('data-type');
+            
+            if (type === 'all' || itemType === type) {
+                item.style.display = 'grid';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Toggle tips functionality
+    function toggleTips() {
+        const tipsList = document.getElementById('tipsList');
+        const tipsToggle = document.getElementById('tipsToggle');
+        
+        if (tipsList && tipsToggle) {
+            tipsList.classList.toggle('expanded');
+            tipsToggle.classList.toggle('expanded');
+        }
+    }
+
+    // Animation on load for activities
+    document.addEventListener('DOMContentLoaded', function() {
+        // Attach tab switching events
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                switchTab(this.dataset.tab);
+            });
+        });
+        
+        // Attach tips toggle event
+        const tipsHeader = document.getElementById('tipsHeader');
+        if (tipsHeader) {
+            tipsHeader.addEventListener('click', toggleTips);
+        }
+        
+        const achievementItems = document.querySelectorAll('.accolade-item');
+        achievementItems.forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                item.style.transition = 'all 0.5s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+        
+        const activityItems = document.querySelectorAll('.activity-item');
+        activityItems.forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                item.style.transition = 'all 0.5s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            }, 300 + (index * 80));
+        });
+        
+        const pointsSources = document.querySelectorAll('.points-source');
+        pointsSources.forEach((source, index) => {
+            source.style.opacity = '0';
+            source.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                source.style.transition = 'all 0.5s ease';
+                source.style.opacity = '1';
+                source.style.transform = 'translateY(0)';
+            }, 600 + (index * 100));
+        });
+    });
+</script>
 {% endblock %}
