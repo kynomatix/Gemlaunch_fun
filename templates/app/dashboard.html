@@ -77,6 +77,8 @@
             min-height: 100vh;
             max-width: 100vw;
             overflow-x: hidden;
+            width: 100%;  /* Fix: Ensure full width */
+            position: relative;  /* Fix: Establish positioning context */
         }
         
         .dashboard-header {
@@ -308,6 +310,30 @@
             .token-grid {
                 grid-template-columns: 1fr;
             }
+            
+            /* Fix dashboard positioning on mobile */
+            .dashboard-main {
+                width: 100%;
+                max-width: 100%;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            
+            /* Ensure tabs are full width */
+            .dashboard-tabs {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .tab-content {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .tab-pane {
+                width: 100%;
+                max-width: 100%;
+            }
         }
 
         /* Video Game-Style Carousel Styles */
@@ -318,9 +344,12 @@
             height: 100%;
             display: flex;
             flex-direction: column;
-            gap: clamp(0.8rem, 2vw, 1.5rem);  /* Fix: Responsive gap */
-            overflow: visible;  /* Fix: Changed from hidden to visible for scrolling */
-            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
+            gap: clamp(0.8rem, 2vw, 1.5rem);
+            overflow: visible;
+            z-index: 1;
+            left: 0;  /* Fix: Ensure starts at left edge */
+            right: 0;  /* Fix: Ensure extends to right edge */
+            transform: none;  /* Fix: Remove any transforms */
         }
 
         /* Category Header */
@@ -431,15 +460,17 @@
             position: relative;
             width: 100%;
             max-width: 100%;
-            height: auto;  /* Fix: Flexible height */
-            flex: 1;  /* Fix: Take available space */
-            min-height: clamp(28rem, 60vh, 40rem);  /* Fix: Responsive min height */
-            max-height: 90vh;  /* Fix: Increased from 85vh to 90vh as requested */
+            height: auto;
+            flex: 1;
+            min-height: clamp(28rem, 60vh, 40rem);
+            max-height: 90vh;
             display: flex;
-            align-items: flex-start;  /* Fix: Changed from center to flex-start */
-            overflow-y: auto;  /* Fix: Changed from hidden to auto for vertical scrolling */
-            overflow-x: hidden;  /* Fix: Hide horizontal overflow */
-            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
+            align-items: flex-start;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1;
+            left: 0;  /* Fix: Ensure starts at left edge */
+            transform: none;  /* Fix: Remove any transforms */
         }
 
         /* Navigation Arrows */
@@ -526,10 +557,12 @@
             width: 100%;
             max-width: 100%;
             flex-shrink: 0;
-            opacity: 1;  /* Fix: Changed from 0 to 1 for initial visibility */
-            transform: scale(1);  /* Fix: Changed from 0.9 to 1 for initial visibility */
+            opacity: 1;
+            transform: scale(1);
             transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            overflow: visible;  /* Fix: Changed from hidden to visible to allow scrolling */
+            overflow: visible;
+            position: relative;  /* Fix: Establish positioning context */
+            left: 0;  /* Fix: Ensure starts at left edge */
         }
 
         .carousel-slide.active {
@@ -663,8 +696,230 @@
                 padding: 1rem clamp(1rem, 3vw, 3rem);
             }
         }
+        
+        /* Critical Mobile Fixes for iPhone 16 Pro Max and other devices */
+        @media (max-width: 430px) {
+            /* Fix accolades section to be full width */
+            .accolades-progress-section {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0.5rem !important;
+                position: relative !important;
+                left: 0 !important;
+                right: 0 !important;
+                transform: none !important;
+                min-height: 400px !important;
+                max-height: calc(100vh - 120px) !important;
+            }
+            
+            .accolades-carousel {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .carousel-viewport {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                min-height: 300px !important;
+                max-height: calc(100vh - 200px) !important;
+            }
+            
+            .carousel-slide {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0.5rem !important;
+                margin: 0 !important;
+            }
+            
+            .category-accolades-grid {
+                grid-template-columns: 1fr !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0.5rem !important;
+                margin: 0 !important;
+                gap: 0.8rem !important;
+            }
+            
+            .carousel-header {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0.6rem !important;
+                margin: 0 0 0.5rem 0 !important;
+            }
+            
+            .carousel-categories-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            .carousel-categories-track {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Fix navigation arrows positioning */
+            .carousel-nav {
+                width: 35px !important;
+                height: 35px !important;
+                font-size: 0.9rem !important;
+            }
+            
+            .carousel-nav-left {
+                left: 2px !important;
+            }
+            
+            .carousel-nav-right {
+                right: 2px !important;
+            }
+            
+            /* Ensure proper text sizing */
+            .current-category-name {
+                font-size: 1rem !important;
+            }
+            
+            .category-main-icon {
+                font-size: 1.2rem !important;
+            }
+            
+            /* Fix accolade items */
+            .accolade-item {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex-direction: column !important;
+                padding: 0.8rem !important;
+                min-height: auto !important;
+            }
+            
+            .accolade-icon {
+                width: 35px !important;
+                height: 35px !important;
+                font-size: 0.9rem !important;
+            }
+            
+            .accolade-details {
+                width: 100% !important;
+                text-align: center !important;
+            }
+            
+            .accolade-details h4 {
+                font-size: 0.95rem !important;
+            }
+            
+            .accolade-details p {
+                font-size: 0.85rem !important;
+            }
+            
+            .accolade-reward {
+                width: 100% !important;
+                margin-top: 0.5rem !important;
+            }
+            
+            /* Fix activities grid for mobile */
+            .activities-grid {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* Ensure dashboard section is full width */
+            .dashboard-section {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 0 2rem 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* Fix main content area */
+            .main-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 0.5rem !important;
+            }
+            
+            .dashboard-main {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 80px 0.5rem 1rem 0.5rem !important;
+            }
+        }
+        
+        /* Additional fixes for standard mobile (375px) */
+        @media (max-width: 375px) {
+            .accolades-progress-section {
+                padding: 0.3rem !important;
+            }
+            
+            .carousel-viewport {
+                min-height: 250px !important;
+            }
+            
+            .category-accolades-grid {
+                padding: 0.3rem !important;
+                gap: 0.6rem !important;
+            }
+            
+            .accolade-item {
+                padding: 0.6rem !important;
+            }
+        }
+        
+        /* Small mobile devices (320px) */
+        @media (max-width: 320px) {
+            .carousel-nav {
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 0.8rem !important;
+            }
+            
+            .accolade-icon {
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 0.8rem !important;
+            }
+            
+            .current-category-name {
+                font-size: 0.9rem !important;
+            }
+            
+            .accolade-details h4 {
+                font-size: 0.9rem !important;
+            }
+            
+            .accolade-details p {
+                font-size: 0.8rem !important;
+            }
+        }
 
         @media (max-width: 768px) {
+            /* Ensure full width on tablets and mobile */
+            .accolades-progress-section {
+                width: 100%;
+                max-width: 100%;
+                padding: 0.8rem;
+                min-height: clamp(20rem, 50vh, 30rem);
+                max-height: 90vh;
+            }
+            
+            .accolades-carousel {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .carousel-viewport {
+                width: 100%;
+                max-width: 100%;
+                min-height: clamp(15rem, 45vh, 25rem);
+                max-height: 80vh;
+            }
+            
             .carousel-nav {
                 width: 40px;
                 height: 40px;
@@ -682,34 +937,26 @@
             .category-accolades-grid {
                 padding: 1rem;
                 grid-template-columns: 1fr;
+                width: 100%;
+                max-width: 100%;
             }
             
             .current-category-name {
-                font-size: clamp(1rem, 1.8vw, 1.3rem);  /* Fix: Responsive font size for mobile */
+                font-size: clamp(1rem, 1.8vw, 1.3rem);
             }
             
             .category-main-icon {
-                font-size: clamp(1.2rem, 2vw, 1.6rem);  /* Fix: Responsive icon size for mobile */
-            }
-            
-            /* Additional mobile fixes for accolades section */
-            .accolades-progress-section {
-                padding: 0.8rem;  /* Fix: Reduced padding */
-                min-height: clamp(20rem, 50vh, 30rem);  /* Fix: Responsive min height for mobile */
-                max-height: 90vh;  /* Fix: Increased to 90vh as requested */
-            }
-            
-            .carousel-viewport {
-                min-height: clamp(15rem, 45vh, 25rem);  /* Fix: Responsive min height for mobile */
-                max-height: 80vh;  /* Fix: Increased for more vertical space on mobile */
+                font-size: clamp(1.2rem, 2vw, 1.6rem);
             }
             
             .carousel-header {
-                padding: clamp(0.6rem, 1.2vw, 1rem);  /* Fix: Responsive padding for mobile */
+                padding: clamp(0.6rem, 1.2vw, 1rem);
+                width: 100%;
+                max-width: 100%;
             }
             
             .current-category-info {
-                gap: clamp(0.6rem, 1.5vw, 1rem);  /* Fix: Responsive gap for mobile */
+                gap: clamp(0.6rem, 1.5vw, 1rem);
             }
             
             .accolade-item {
@@ -717,12 +964,14 @@
                 text-align: center;
                 padding: 1rem;
                 gap: 0.8rem;
+                width: 100%;
+                max-width: 100%;
             }
             
             .accolade-icon {
-                width: 40px;  /* Fix: Reduced from 50px to match desktop reduction */
-                height: 40px;  /* Fix: Reduced from 50px */
-                font-size: 1rem;  /* Fix: Reduced from 1.4rem */
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
             }
             
             .accolade-details {
@@ -741,6 +990,29 @@
             
             .carousel-slide {
                 padding: 0 0.5rem;
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .carousel-categories-container {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .carousel-categories-track {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            /* Ensure main containers are full width */
+            .dashboard-section {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .activities-grid {
+                width: 100%;
+                max-width: 100%;
             }
         }
         
@@ -768,31 +1040,62 @@
         /* Mobile viewport fixes */
         @media (max-width: 480px) {
             .accolades-progress-section {
+                width: 100% !important;
+                max-width: 100% !important;
                 border-radius: 10px;
-                min-height: clamp(18rem, 45vh, 25rem);  /* Fix: Responsive min height for small mobile */
-                max-height: 85vh;  /* Fix: Slightly less for smaller screens */
+                min-height: clamp(18rem, 45vh, 25rem);
+                max-height: 85vh;
+                margin: 0;
+                position: relative;
+                left: 0;
+                transform: none;
             }
             
             .carousel-header {
                 border-radius: 10px;
+                width: 100%;
+                max-width: 100%;
             }
             
             .accolade-item {
                 border-radius: 10px;
+                width: 100%;
+                max-width: 100%;
             }
             
             .current-category-name {
-                font-size: clamp(0.9rem, 1.6vw, 1.1rem);  /* Fix: Responsive for small mobile */
+                font-size: clamp(0.9rem, 1.6vw, 1.1rem);
             }
             
             .category-main-icon {
-                font-size: clamp(1rem, 1.8vw, 1.3rem);  /* Fix: Responsive for small mobile */
+                font-size: clamp(1rem, 1.8vw, 1.3rem);
+            }
+            
+            .carousel-viewport {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .carousel-slide {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .category-accolades-grid {
+                width: 100%;
+                max-width: 100%;
             }
         }
         
         /* Fix for sidebar overflow on tablets */
         @media (max-width: 992px) {
             .accolades-sidebar {
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .accolades-progress-section {
+                width: 100%;
                 max-width: 100%;
             }
         }
@@ -804,6 +1107,17 @@
         
         .activities-timeline {
             -webkit-overflow-scrolling: touch;
+        }
+        
+        /* iOS Safari specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            .accolades-progress-section {
+                -webkit-transform: translateZ(0);
+            }
+            
+            .carousel-viewport {
+                -webkit-transform: translateZ(0);
+            }
         }
     </style>
 {% endblock %}
@@ -1874,7 +2188,9 @@
             grid-template-areas: 
                 "achievements sidebar";
             max-width: 100%;
+            width: 100%;  /* Fix: Ensure full width */
             overflow-x: hidden;
+            position: relative;  /* Fix: Establish positioning context */
         }
 
         @media (max-width: 1200px) {
@@ -1883,11 +2199,15 @@
                 grid-template-areas: 
                     "achievements"
                     "sidebar";
+                width: 100%;
+                max-width: 100%;
             }
             
             .accolades-progress-section {
-                max-height: 90vh;  /* Fix: Maintain max-height even on larger screens */
+                max-height: 90vh;
                 min-height: auto;
+                width: 100%;
+                max-width: 100%;
             }
         }
 
@@ -1895,23 +2215,19 @@
             grid-area: achievements;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
-            padding: 1.5rem;  /* Fix: Reduced from 2rem */
+            padding: 1.5rem;
             border: 1px solid rgba(32, 178, 170, 0.2);
-            position: relative;  /* Fix: Ensure proper positioning */
-            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
+            position: relative;
+            z-index: 1;
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
-            height: auto;  /* Fix: Flexible height */
-            min-height: clamp(32rem, 65vh, 45rem);  /* Fix: Responsive min height */
-            max-height: 90vh;  /* Fix: Increased from 85vh to 90vh as requested */
-            overflow: visible;  /* Fix: Changed from hidden to visible */
-            height: 100%;
-            min-height: 500px;  /* Fix: Reduced from 700px */
+            min-height: 500px;
+            max-height: 90vh;
+            width: 100%;
             max-width: 100%;
             overflow-x: hidden;
-            overflow-y: auto;  /* Fix: Keep vertical scrolling enabled */
-            max-height: 85vh;  /* Fix: Increased from 70vh to 85vh for extended height */
+            overflow-y: auto;
         }
 
         .accolades-sidebar {
