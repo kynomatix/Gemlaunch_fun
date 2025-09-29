@@ -68,12 +68,12 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">MARKET CAP</div>
-                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap|float * 0.125 / 1000) }}K</div>
-                            <div class="stat-sub">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
+                            <div class="stat-value" id="marketCapDisplay" data-raw="{{ token.current_market_cap or 0 }}">${{ "%.1f"|format(token.current_market_cap|float * 0.125 / 1000) }}K</div>
+                            <div class="stat-sub" id="marketCapKAS">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">SUPPLY</div>
-                            <div class="stat-value">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
+                            <div class="stat-value" id="supplyDisplay" data-raw="{{ token.circulating_supply or 0 }}">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">HOLDERS</div>
@@ -2623,6 +2623,25 @@
     </style>
     
     <script>
+        // Number formatting function for human-readable numbers
+        function formatNumber(num, includeDecimals = false) {
+            if (num === null || num === undefined) return '0';
+            
+            const absNum = Math.abs(parseFloat(num));
+            
+            if (absNum >= 1e12) {
+                return (num / 1e12).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'T';
+            } else if (absNum >= 1e9) {
+                return (num / 1e9).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'B';
+            } else if (absNum >= 1e6) {
+                return (num / 1e6).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'M';
+            } else if (absNum >= 1e3) {
+                return (num / 1e3).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'K';
+            }
+            
+            return parseFloat(num).toLocaleString();
+        }
+        
         // Auto-collapse sidebar on token detail pages and initialize chat
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');
@@ -3462,6 +3481,25 @@
         // Initialize token type badge on page load
         document.addEventListener('DOMContentLoaded', function() {
             updateTokenTypeBadge();
+            
+            // Format large numbers on page load
+            const supplyDisplay = document.getElementById('supplyDisplay');
+            if (supplyDisplay) {
+                const rawSupply = parseFloat(supplyDisplay.getAttribute('data-raw'));
+                supplyDisplay.textContent = formatNumber(rawSupply);
+            }
+            
+            const marketCapDisplay = document.getElementById('marketCapDisplay');
+            if (marketCapDisplay) {
+                const rawMarketCap = parseFloat(marketCapDisplay.getAttribute('data-raw'));
+                const usdValue = rawMarketCap * 0.125;
+                marketCapDisplay.textContent = '$' + formatNumber(usdValue, true);
+                
+                const kasDisplay = document.getElementById('marketCapKAS');
+                if (kasDisplay) {
+                    kasDisplay.textContent = formatNumber(rawMarketCap) + ' KAS';
+                }
+            }
         });
         
         function closePollModal() {
