@@ -473,8 +473,10 @@ def token_messages(contract_address):
     user = get_current_user()
     
     if request.method == 'GET':
-        # Get messages with user info
-        messages = ChatMessage.query.filter_by(
+        # Get messages with user info and profile
+        messages = ChatMessage.query.options(
+            joinedload(ChatMessage.user).joinedload(User.profile)
+        ).filter_by(
             token_id=token.id, 
             is_deleted=False
         ).order_by(ChatMessage.created_at.desc()).limit(50).all()
@@ -484,7 +486,7 @@ def token_messages(contract_address):
         for msg in reversed(messages):
             message_list.append({
                 'id': msg.id,
-                'user': msg.user.display_name or msg.user.wallet_address[-6:],
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'wallet': msg.user.wallet_address,
                 'message': msg.content,
                 'message_type': msg.message_type,
@@ -519,7 +521,7 @@ def token_messages(contract_address):
             'success': True,
             'message': {
                 'id': message.id,
-                'user': user.display_name or user.wallet_address[-6:],
+                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
                 'wallet': user.wallet_address,
                 'message': message.content,
                 'created_at': message.created_at.isoformat()
@@ -543,8 +545,10 @@ def token_polls(contract_address):
     logging.debug(f"Token found: {token.symbol}, User: {user.wallet_address if user else 'None'}")
     
     if request.method == 'GET':
-        # Get active polls
-        polls = Poll.query.filter_by(token_id=token.id, is_active=True).all()
+        # Get active polls with creator profile
+        polls = Poll.query.options(
+            joinedload(Poll.creator).joinedload(User.profile)
+        ).filter_by(token_id=token.id, is_active=True).all()
         
         poll_list = []
         for poll in polls:
@@ -621,7 +625,7 @@ def token_polls(contract_address):
             db.session.commit()
             
             # Get creator display name safely
-            creator_name = user.display_name or user.wallet_address[-6:]
+            creator_name = (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:]
             try:
                 if hasattr(user, 'profile') and user.profile and user.profile.username:
                     creator_name = user.profile.username
@@ -690,8 +694,10 @@ def token_spotlight(contract_address):
     user = get_current_user()
     
     if request.method == 'GET':
-        # Get active spotlight messages
-        spotlights = ChatMessage.query.filter_by(
+        # Get active spotlight messages with user profile
+        spotlights = ChatMessage.query.options(
+            joinedload(ChatMessage.user).joinedload(User.profile)
+        ).filter_by(
             token_id=token.id,
             is_pinned=True,
             is_deleted=False
@@ -701,7 +707,7 @@ def token_spotlight(contract_address):
         for msg in spotlights:
             spotlight_list.append({
                 'id': msg.id,
-                'user': msg.user.display_name or msg.user.wallet_address[-6:],
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'message': msg.content,
                 'created_at': msg.created_at.isoformat()
             })
@@ -732,7 +738,7 @@ def token_spotlight(contract_address):
             'success': True,
             'spotlight': {
                 'id': message.id,
-                'user': user.display_name or user.wallet_address[-6:],
+                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
                 'message': message.content,
                 'created_at': message.created_at.isoformat()
             }
