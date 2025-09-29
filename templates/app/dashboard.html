@@ -943,6 +943,10 @@
             padding: 2rem;
             border: 1px solid rgba(32, 178, 170, 0.2);
             backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 300px);
+            min-height: 600px;
         }
 
         .achievements-sidebar {
@@ -979,11 +983,13 @@
 
         .achievements-list {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
-            max-height: 600px;
             overflow-y: auto;
             padding-right: 0.5rem;
+            flex: 1;
+            align-content: start;
+            margin-top: 1rem;
         }
         
         .achievements-list::-webkit-scrollbar {
