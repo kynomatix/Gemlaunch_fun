@@ -699,8 +699,10 @@
         
         /* Critical Mobile Fixes for iPhone 16 Pro Max and other devices */
         @media (max-width: 430px) {
-            /* Fix accolades section to be full width */
+            /* Fix accolades section to be full width with single column */
             .accolades-progress-section {
+                display: flex !important;
+                flex-direction: column !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
@@ -901,6 +903,8 @@
         @media (max-width: 768px) {
             /* Ensure full width on tablets and mobile */
             .accolades-progress-section {
+                display: flex !important;
+                flex-direction: column !important;
                 width: 100%;
                 max-width: 100%;
                 padding: 0.8rem;
@@ -1040,6 +1044,8 @@
         /* Mobile viewport fixes */
         @media (max-width: 480px) {
             .accolades-progress-section {
+                display: flex !important;
+                flex-direction: column !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 border-radius: 10px;
@@ -2182,23 +2188,28 @@
         /* Activities & Achievements Styles */
         .activities-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr;
             gap: 2rem;
             margin-top: 2rem;
-            grid-template-areas: 
-                "achievements sidebar";
             max-width: 100%;
             width: 100%;  /* Fix: Ensure full width */
             overflow-x: hidden;
             position: relative;  /* Fix: Establish positioning context */
         }
+        
+        @media (min-width: 1201px) {
+            .activities-grid {
+                grid-template-columns: 2fr 1fr;
+                grid-template-areas: 
+                    "achievements sidebar";
+            }
+        }
 
         @media (max-width: 1200px) {
             .activities-grid {
-                grid-template-columns: 1fr;
-                grid-template-areas: 
-                    "achievements"
-                    "sidebar";
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
                 width: 100%;
                 max-width: 100%;
             }
@@ -2971,11 +2982,11 @@
 
         @media (max-width: 768px) {
             .activities-grid {
-                grid-template-columns: 1fr;
-                grid-template-areas: 
-                    "achievements"
-                    "activities"
-                    "points";
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 2rem;
+                width: 100%;
+                max-width: 100%;
             }
             
             .accolade-item {
