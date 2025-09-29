@@ -423,10 +423,7 @@ def token_marketplace():
     # Show all tokens, including pending ones for UI demo
     tokens = Token.query.order_by(Token.created_at.desc()).all()
     
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/marketplace_htmx.html', tokens=tokens, user=user)
-    
+    # Always use the direct version for marketplace (user preference)
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
@@ -489,13 +486,7 @@ def leaderboard():
         users_above = User.query.filter(User.gem_points > user.gem_points).count()
         user_rank = users_above + 1
     
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/leaderboard_htmx.html', 
-                             user=user, 
-                             top_users=top_users, 
-                             user_rank=user_rank)
-    
+    # Always use the direct version for leaderboard (user preference)
     return render_template('app/leaderboard.html', 
                          user=user, 
                          top_users=top_users, 
@@ -641,16 +632,7 @@ def profile():
         Referral.referrer_id == user.id
     ).all()
     
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/profile_htmx.html', 
-                             user=user, 
-                             user_profile=user_profile,
-                             connected_wallets=connected_wallets,
-                             user_achievements=user_achievements,
-                             referral=referral,
-                             referred_users=referred_users)
-    
+    # Always use the direct version for profile (user preference)
     return render_template('app/profile.html', 
                          user=user, 
                          user_profile=user_profile,
