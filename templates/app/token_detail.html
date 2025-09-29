@@ -10,13 +10,14 @@
             <div class="left-panel">
                 <!-- Token Header -->
                 <div class="token-header">
-                    <div class="token-title">
+                    <!-- Top Section with Avatar and Title -->
+                    <div class="token-header-top">
                         <div class="token-avatar">
                             {{ token.symbol[0] if token.symbol else '?' }}
                         </div>
-                        <div class="token-info">
-                            <div class="token-info-header">
-                                <h1 style="font-size: clamp(1.8rem, 4vw, 2.2rem); font-weight: 700;">{{ token.name }}</h1>
+                        <div class="token-main-info">
+                            <div class="token-name-row">
+                                <h1 class="token-name">{{ token.name }}</h1>
                                 <span class="token-type-badge {{ 'advanced' if token.symbol in ['DOGKAS', 'LASER'] else 'basic' }}" id="tokenTypeBadge">
                                     {% if token.symbol in ['DOGKAS', 'LASER'] %}
                                         <i class="fas fa-star"></i>
@@ -27,53 +28,59 @@
                                     {% endif %}
                                 </span>
                             </div>
-                            <p>${{ token.symbol }} • Created by 
-                                {% if token.creator.display_name %}
-                                    <span class="creator-with-profile" title="{{ token.creator.wallet_address }}">
-                                        <i class="fas fa-user-check" style="color: #20B2AA; font-size: 0.9rem;"></i>
-                                        {{ token.creator.display_name }}
-                                    </span>
-                                {% else %}
-                                    <span class="creator-anonymous" title="Anonymous creator">
-                                        {{ token.creator.wallet_address[-6:] }}
-                                    </span>
-                                {% endif %}
-                            </p>
+                            <div class="token-meta">
+                                <span class="token-symbol">${{ token.symbol }}</span>
+                                <span class="separator">•</span>
+                                <span class="token-creator">Created by 
+                                    {% if token.creator.display_name %}
+                                        <span class="creator-with-profile" title="{{ token.creator.wallet_address }}">
+                                            <i class="fas fa-user-check"></i>
+                                            {{ token.creator.display_name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="creator-anonymous" title="Anonymous creator">
+                                            {{ token.creator.wallet_address[-6:] }}
+                                        </span>
+                                    {% endif %}
+                                </span>
+                            </div>
                             <div class="contract-address" title="{% if token.contract_address %}Contract Address - Click to copy{% else %}Not deployed yet{% endif %}">
                                 <i class="fas fa-file-contract"></i>
                                 {% if token.contract_address %}
                                     <span onclick="copyContractAddress('{{ token.contract_address }}')">{{ token.contract_address[:10] }}...{{ token.contract_address[-8:] }}</span>
                                 {% else %}
-                                    <span style="color: #ff9999;">Not deployed yet</span>
+                                    <span style="color: #999;">Not deployed yet</span>
                                 {% endif %}
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Description Section -->
                     {% if token.description %}
-                        <div style="background: rgba(0, 0, 0, 0.2); border-radius: 10px; padding: 1rem; margin: 1.5rem 0; border: 1px solid rgba(32, 178, 170, 0.1);">
-                            <p style="color: #CCCCCC; margin: 0; line-height: 1.5;">{{ token.description }}</p>
-                        </div>
+                    <div class="token-description-section">
+                        <p class="token-description">{{ token.description }}</p>
+                    </div>
                     {% endif %}
                     
-                    <div class="token-stats">
-                        <div class="stat-item">
+                    <!-- Stats Grid -->
+                    <div class="token-stats-grid">
+                        <div class="stat-card">
                             <div class="stat-label">Price</div>
-                            <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
-                            <div class="stat-value" style="font-size: 1rem; opacity: 0.8;">${{ "%.4f"|format(token.current_price|float * 0.125) }}</div>
+                            <div class="stat-primary">{{ "%.6f"|format(token.current_price) }} KAS</div>
+                            <div class="stat-secondary">${{ "%.4f"|format(token.current_price|float * 0.125) }}</div>
                         </div>
-                        <div class="stat-item">
+                        <div class="stat-card">
                             <div class="stat-label">Market Cap</div>
-                            <div class="stat-value">${{ "%.1f"|format(token.current_market_cap|float * 0.125 / 1000) }}K</div>
-                            <div class="stat-value" style="font-size: 1rem; opacity: 0.8;">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
+                            <div class="stat-primary">${{ "%.1f"|format(token.current_market_cap|float * 0.125 / 1000) }}K</div>
+                            <div class="stat-secondary">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
                         </div>
-                        <div class="stat-item">
+                        <div class="stat-card">
                             <div class="stat-label">Supply</div>
-                            <div class="stat-value">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
+                            <div class="stat-primary">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
                         </div>
-                        <div class="stat-item">
+                        <div class="stat-card">
                             <div class="stat-label">Holders</div>
-                            <div class="stat-value">{{ token.holder_count or 0 }}</div>
+                            <div class="stat-primary">{{ token.holder_count or 0 }}</div>
                         </div>
                     </div>
                 </div>
@@ -676,30 +683,135 @@
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(32, 178, 170, 0.02));
             border: 1px solid rgba(32, 178, 170, 0.3);
             border-radius: 15px;
-            padding: clamp(1.5rem, 3vw, 2rem);
+            padding: 2rem;
             backdrop-filter: blur(20px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             min-width: 0;
-            margin: 0; /* Ensure no margin interferes with flex gap */
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
         
-        .token-title {
+        .token-header-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+        
+        .token-main-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .token-name-row {
             display: flex;
             align-items: center;
-            gap: clamp(0.75rem, 2vw, 1.25rem);
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
         }
         
+        .token-name {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #20B2AA;
+            line-height: 1;
+        }
+        
+        .token-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            color: #999;
+            margin-bottom: 0.75rem;
+        }
+        
+        .token-symbol {
+            color: #CCC;
+            font-weight: 600;
+        }
+        
+        .separator {
+            opacity: 0.5;
+        }
+        
+        .token-creator .creator-with-profile {
+            color: #20B2AA;
+        }
+        
+        .token-creator .creator-with-profile i {
+            font-size: 0.85rem;
+            margin-right: 0.25rem;
+        }
+        
+        .token-description-section {
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid rgba(32, 178, 170, 0.15);
+        }
+        
+        .token-description {
+            margin: 0;
+            color: #DDD;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            letter-spacing: 0.2px;
+        }
+        
+        .token-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(32, 178, 170, 0.25);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            background: rgba(32, 178, 170, 0.08);
+            border-color: rgba(32, 178, 170, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(32, 178, 170, 0.25);
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-primary {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #20B2AA;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-secondary {
+            font-size: 0.95rem;
+            color: #999;
+        }
+        
+        
         .token-avatar {
-            width: clamp(60px, 8vw, 80px);
-            height: clamp(60px, 8vw, 80px);
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: clamp(1.8rem, 3vw, 2.2rem);
+            font-size: 2.2rem;
             font-weight: bold;
             color: #000;
             box-shadow: 0 8px 25px rgba(32, 178, 170, 0.5);
@@ -717,48 +829,6 @@
             50% { opacity: 0.5; }
         }
         
-        .token-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid rgba(32, 178, 170, 0.1);
-        }
-        
-        .stat-item {
-            text-align: center;
-            padding: 1rem;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(32, 178, 170, 0.2);
-        }
-        
-        .stat-item:hover {
-            background: rgba(32, 178, 170, 0.1);
-            border-color: rgba(32, 178, 170, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.2);
-        }
-        
-        .stat-value {
-            color: #20B2AA;
-            font-weight: bold;
-            font-size: clamp(1.1rem, 2.5vw, 1.4rem);
-            margin-bottom: 0.25rem;
-        }
-        
-        .stat-label {
-            color: #999;
-            font-size: clamp(0.75rem, 1.5vw, 0.85rem);
-            margin-top: 0.5rem;
-            word-break: break-word;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
         
         .progress-bar {
             width: 100%;
@@ -1993,9 +2063,26 @@
                 order: -1;
             }
             
-            .token-stats {
+            .token-stats-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
+                gap: 0.75rem;
+            }
+            
+            .token-header {
+                padding: 1.5rem;
+                gap: 1.5rem;
+            }
+            
+            .token-name {
+                font-size: 1.75rem;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+            
+            .stat-primary {
+                font-size: 1.2rem;
             }
         }
         
@@ -2398,24 +2485,6 @@
         }
         
         /* Token Type Badge Styling */
-        .token-info {
-            flex: 1;
-            min-width: 0;
-            margin-left: 0.5rem;
-        }
-        
-        .token-info-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 0.75rem;
-        }
-        
-        .token-info-header h1 {
-            margin: 0;
-            color: #20B2AA;
-            line-height: 1.2;
-        }
         
         .token-type-badge {
             display: inline-flex;
