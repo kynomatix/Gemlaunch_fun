@@ -225,7 +225,7 @@
                             <div class="token-gate-container" id="tokenGateContainer">
                                 <!-- Will be populated by JavaScript based on ownership -->
                             </div>
-                            <!-- Settings Button - Only for creators -->
+                            <!-- Settings Button - For token gating features -->
                             <button class="chat-settings-btn" id="chatSettingsBtn" onclick="openChatSettings()" title="Chat Settings" style="display: none;">
                                 <i class="fas fa-cog"></i>
                             </button>
@@ -456,7 +456,7 @@
                             <button class="action-btn poll-btn" onclick="createPoll()" title="Create a poll">
                                 <i class="fas fa-poll"></i>
                             </button>
-                            {% if user and token.creator and user.id == token.creator.id %}
+                            {% if user and token.creator and user.id == token.creator.id and token.symbol in ['DOGKAS', 'LASER'] %}
                             <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
                                 <i class="fas fa-gift"></i>
                             </button>
@@ -2775,10 +2775,10 @@
             
             console.log(`🔐 Ownership check - User: ${userWallet}, Creator: ${tokenCreatorAddress}, Is Owner: ${isTokenOwner}`);
             
-            // Show/hide settings button based on ownership
+            // Show settings button for all tokens (both owner and users can access for token gating)
             const settingsBtn = document.getElementById('chatSettingsBtn');
             if (settingsBtn) {
-                settingsBtn.style.display = isTokenOwner ? 'block' : 'none';
+                settingsBtn.style.display = 'block';  // Always show for token gating features
             }
             
             // Set up Holders Only toggle/badge based on ownership
