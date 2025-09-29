@@ -625,7 +625,7 @@ def token_polls(contract_address):
             db.session.commit()
             
             # Get creator display name safely
-            creator_name = (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:]
+            creator_name = user.display_name or user.wallet_address[-6:]
             try:
                 if hasattr(user, 'profile') and user.profile and user.profile.username:
                     creator_name = user.profile.username
@@ -642,9 +642,11 @@ def token_polls(contract_address):
                 }
             })
         except Exception as e:
-            logging.error(f"Failed to create poll: {e}")
+            logging.error(f"Failed to create poll: {str(e)}")
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
             db.session.rollback()
-            return jsonify({'error': 'Failed to create poll'}), 500
+            return jsonify({'error': f'Failed to create poll: {str(e)}'}), 500
 
 @app.route('/api/token/<contract_address>/polls/<int:poll_id>/vote', methods=['POST'])
 @require_wallet_connection
