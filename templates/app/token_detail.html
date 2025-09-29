@@ -3605,7 +3605,9 @@
             pollDiv.className = 'chat-poll';
             pollDiv.setAttribute('data-poll-id', poll.id);
             
-            const hoursLeft = Math.max(0, Math.ceil((poll.expiresAt - new Date()) / (1000 * 60 * 60)));
+            // Handle both formats: ends_at or expiresAt
+            const endsAt = poll.ends_at ? new Date(poll.ends_at) : (poll.expiresAt || new Date());
+            const hoursLeft = Math.max(0, Math.ceil((endsAt - new Date()) / (1000 * 60 * 60)));
             
             pollDiv.innerHTML = `
                 <div class="poll-header">
@@ -3619,18 +3621,18 @@
                         <div class="poll-option-vote" onclick="votePoll(${poll.id}, ${index})">
                             <div class="poll-option-progress" style="width: 0%"></div>
                             <div class="poll-option-content">
-                                <span class="poll-option-text">${option.text}</span>
+                                <span class="poll-option-text">${option.text || option.option_text}</span>
                                 <span class="poll-option-votes">
                                     <i class="fas fa-vote-yea"></i>
-                                    ${option.votes}
+                                    ${option.vote_count !== undefined ? option.vote_count : (option.votes || 0)}
                                 </span>
                             </div>
                         </div>
                     `).join('')}
                 </div>
                 <div class="poll-footer">
-                    <span>Total votes: ${poll.totalVotes}</span>
-                    <span class="poll-vote-cost">Cost: ${poll.voteCost} tokens per vote</span>
+                    <span>Total votes: ${poll.total_votes !== undefined ? poll.total_votes : (poll.totalVotes || 0)}</span>
+                    <span class="poll-vote-cost">Cost: ${poll.vote_cost !== undefined ? poll.vote_cost : (poll.voteCost || 100)} tokens per vote</span>
                 </div>
             `;
             
@@ -3639,47 +3641,63 @@
         }
         
         function votePoll(pollId, optionIndex) {
-            const poll = chatState.polls?.find(p => p.id === pollId);
+            const poll = chatState.activePolls?.find(p => p.id === pollId);
             if (!poll) return;
             
             // Check if poll is expired
-            if (new Date() > poll.expiresAt) {
+            const endsAt = poll.ends_at ? new Date(poll.ends_at) : new Date();
+            if (new Date() > endsAt) {
                 showNotification('⏰ Poll Expired', 'This poll has expired and no longer accepts votes.', 'error');
                 return;
             }
             
+            const voteCost = poll.vote_cost !== undefined ? poll.vote_cost : 100;
+            
             // Check if user has enough tokens to vote
-            if (chatState.userTokenBalance < poll.voteCost) {
+            if (chatState.userTokenBalance < voteCost) {
                 showNotification(
                     '💰 Insufficient Tokens',
-                    `Voting requires ${poll.voteCost} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} tokens\n\nNeed ${(poll.voteCost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
+                    `Voting requires ${voteCost} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} tokens\n\nNeed ${(voteCost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
                     'error'
                 );
                 return;
             }
             
-            // Check if user already voted (prevent double voting)
-            const userWallet = localStorage.getItem('connectedWallet') || 'user';
-            const hasVoted = poll.options.some(option => option.voters.includes(userWallet));
+            // For now, skip the duplicate vote check since we don't have voters array
+            // TODO: Add backend support for tracking who voted
             
-            if (hasVoted) {
-                showNotification('🗳️ Already Voted', 'You have already voted in this poll. Each wallet can only vote once.', 'error');
-                return;
-            }
-            
-            // Deduct vote cost
-            chatState.userTokenBalance -= poll.voteCost;
-            updateTokenBalance();
-            
-            // Add vote
-            poll.options[optionIndex].votes++;
-            poll.options[optionIndex].voters.push(userWallet);
-            poll.totalVotes++;
-            
-            // Update poll display
-            updatePollDisplay(poll);
-            
-            console.log(`🗳️ Voted on poll "${poll.question}" | Option: "${poll.options[optionIndex].text}" | Cost: ${poll.voteCost} tokens`);
+            // Make API call to vote
+            const userWallet = localStorage.getItem('connectedWallet');
+            fetch(`/api/token/{{ token.contract_address }}/polls/${pollId}/vote`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wallet-Address': userWallet
+                },
+                body: JSON.stringify({
+                    option_id: poll.options[optionIndex].id
+                })
+            }).then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Vote failed');
+                }
+            }).then(data => {
+                // Update local state
+                chatState.userTokenBalance -= voteCost;
+                updateTokenBalance();
+                
+                // Update the poll display
+                poll.options[optionIndex].vote_count = (poll.options[optionIndex].vote_count || 0) + 1;
+                poll.total_votes = (poll.total_votes || 0) + 1;
+                updatePollDisplay(poll);
+                
+                showNotification('✅ Vote Cast!', `Successfully voted for "${poll.options[optionIndex].text || poll.options[optionIndex].option_text}"! ${voteCost} tokens have been burned.`, 'success');
+                console.log(`🗳️ Voted on poll "${poll.question}" | Option: "${poll.options[optionIndex].text || poll.options[optionIndex].option_text}" | Cost: ${voteCost} tokens`);
+            }).catch(error => {
+                showNotification('❌ Vote Failed', 'Failed to cast vote. You may have already voted on this poll.', 'error');
+            });
         }
         
         function updatePollDisplay(poll) {
@@ -3689,24 +3707,28 @@
             // Update vote counts and progress bars
             const optionDivs = pollDiv.querySelectorAll('.poll-option-vote');
             
+            const totalVotes = poll.total_votes || 0;
+            
             poll.options.forEach((option, index) => {
                 const optionDiv = optionDivs[index];
                 const progressBar = optionDiv.querySelector('.poll-option-progress');
                 const voteCount = optionDiv.querySelector('.poll-option-votes');
                 
+                const votes = option.vote_count !== undefined ? option.vote_count : 0;
+                
                 // Calculate percentage
-                const percentage = poll.totalVotes > 0 ? (option.votes / poll.totalVotes) * 100 : 0;
+                const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
                 
                 // Update progress bar
                 progressBar.style.width = `${percentage}%`;
                 
                 // Update vote count
-                voteCount.innerHTML = `<i class="fas fa-vote-yea"></i> ${option.votes}`;
+                voteCount.innerHTML = `<i class="fas fa-vote-yea"></i> ${votes}`;
             });
             
             // Update total votes
             const footer = pollDiv.querySelector('.poll-footer');
-            footer.querySelector('span').textContent = `Total votes: ${poll.totalVotes}`;
+            footer.querySelector('span').textContent = `Total votes: ${totalVotes}`;
         }
         
         // Enhanced token-gated chat functionality
