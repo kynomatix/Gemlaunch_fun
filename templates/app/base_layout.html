@@ -314,7 +314,7 @@
         <!-- Top Bar -->
         <div class="app-topbar">
             <div class="topbar-left">
-                <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <button class="sidebar-toggle" id="sidebarToggle">
                     <i class="fas fa-bars"></i>
                 </button>
                 <div class="app-logo">
@@ -376,9 +376,12 @@
     </div>
     
     <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    
     <script>
-        // Define toggleSidebar globally before any other scripts
-        window.toggleSidebar = function() {
+        // Sidebar Toggle function
+        function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
             
@@ -390,19 +393,22 @@
                 localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
             }
         }
-    </script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
-    
-    <script>
         
-        // Restore sidebar state
+        // Restore sidebar state and attach event listeners
         document.addEventListener('DOMContentLoaded', function() {
+            // Attach click event to sidebar toggle button
+            const toggleButton = document.getElementById('sidebarToggle');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleSidebar);
+            }
+            
+            // Restore sidebar state
             const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
             if (isCollapsed) {
-                document.getElementById('sidebar').classList.add('collapsed');
-                document.getElementById('mainContent').classList.add('sidebar-collapsed');
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('mainContent');
+                if (sidebar) sidebar.classList.add('collapsed');
+                if (mainContent) mainContent.classList.add('sidebar-collapsed');
             }
             
             // Store user wallet address for ownership checks
