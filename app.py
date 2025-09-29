@@ -484,7 +484,7 @@ def token_messages(contract_address):
         for msg in reversed(messages):
             message_list.append({
                 'id': msg.id,
-                'user': msg.user.display_name or f"User-{msg.user.wallet_address[:8]}",
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'wallet': msg.user.wallet_address,
                 'message': msg.content,
                 'message_type': msg.message_type,
@@ -519,7 +519,7 @@ def token_messages(contract_address):
             'success': True,
             'message': {
                 'id': message.id,
-                'user': user.display_name or f"User-{user.wallet_address[:8]}",
+                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
                 'wallet': user.wallet_address,
                 'message': message.content,
                 'created_at': message.created_at.isoformat()
@@ -559,7 +559,7 @@ def token_polls(contract_address):
             
             poll_list.append({
                 'id': poll.id,
-                'creator': poll.creator.display_name or f"User-{poll.creator.wallet_address[:8]}",
+                'creator': (poll.creator.profile.username if poll.creator.profile and poll.creator.profile.username else poll.creator.display_name) or poll.creator.wallet_address[-6:],
                 'question': poll.question,
                 'options': options_data,
                 'total_votes': poll.total_votes,
@@ -615,7 +615,7 @@ def token_polls(contract_address):
             'success': True,
             'poll': {
                 'id': poll.id,
-                'creator': user.display_name or f"User-{user.wallet_address[:8]}",
+                'creator': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
                 'question': poll.question,
                 'created_at': poll.created_at.isoformat()
             }
@@ -680,7 +680,7 @@ def token_spotlight(contract_address):
         for msg in spotlights:
             spotlight_list.append({
                 'id': msg.id,
-                'user': msg.user.display_name or f"User-{msg.user.wallet_address[:8]}",
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'message': msg.content,
                 'created_at': msg.created_at.isoformat()
             })
@@ -711,7 +711,7 @@ def token_spotlight(contract_address):
             'success': True,
             'spotlight': {
                 'id': message.id,
-                'user': user.display_name or f"User-{user.wallet_address[:8]}",
+                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
                 'message': message.content,
                 'created_at': message.created_at.isoformat()
             }
