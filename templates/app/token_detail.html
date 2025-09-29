@@ -50,6 +50,19 @@
                         </div>
                     </div>
                     
+                    <div class="progress-section">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: #CCCCCC; font-size: 0.9rem;">Bonding Curve Progress</span>
+                            <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">{{ "%.1f"|format(token.progress_to_graduation) }}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+                        </div>
+                        <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
+                            ${{ "%.0f"|format((70000 - token.current_market_cap|float) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap|float) }} KAS) needed to graduate to Kaspa Finance DEX
+                        </p>
+                    </div>
+                    
                     {% if token.description %}
                         <p style="color: #CCCCCC; margin: 1rem 0;">{{ token.description }}</p>
                     {% endif %}
@@ -73,19 +86,6 @@
                             <div class="stat-value">{{ token.holder_count or 0 }}</div>
                             <div class="stat-label">Holders</div>
                         </div>
-                    </div>
-                    
-                    <div class="progress-section">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <span style="color: #CCCCCC; font-size: 0.9rem;">Bonding Curve Progress</span>
-                            <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">{{ "%.1f"|format(token.progress_to_graduation) }}%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
-                        </div>
-                        <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
-                            ${{ "%.0f"|format((70000 - token.current_market_cap|float) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap|float) }} KAS) needed to graduate to Kaspa Finance DEX
-                        </p>
                     </div>
                 </div>
 
