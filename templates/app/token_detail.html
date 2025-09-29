@@ -50,20 +50,6 @@
                         </div>
                     </div>
                     
-                    <!-- Bonding Curve Progress Bar - properly positioned below info text -->
-                    <div class="progress-section" style="margin-top: 1rem;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <span style="color: #CCCCCC; font-size: 0.9rem;">Bonding Curve Progress</span>
-                            <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">{{ "%.1f"|format(token.progress_to_graduation) }}%</span>
-                        </div>
-                        <div class="progress-bar" style="width: 100%;">
-                            <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
-                        </div>
-                        <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
-                            ${{ "%.0f"|format((70000 - token.current_market_cap|float) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap|float) }} KAS) needed to graduate to Kaspa Finance DEX
-                        </p>
-                    </div>
-                    
                     {% if token.description %}
                         <p style="color: #CCCCCC; margin: 1rem 0;">{{ token.description }}</p>
                     {% endif %}
@@ -87,6 +73,20 @@
                             <div class="stat-value">{{ token.holder_count or 0 }}</div>
                             <div class="stat-label">Holders</div>
                         </div>
+                    </div>
+                    
+                    <!-- Bonding Curve Progress Bar - at bottom of frame, expanding across -->
+                    <div class="progress-section" style="margin: 1.5rem calc(-1 * clamp(1rem, 2vw, 1.5rem)) 0; padding: 1rem 1.5rem; background: rgba(0, 0, 0, 0.2); border-top: 1px solid rgba(32, 178, 170, 0.2); border-radius: 0 0 15px 15px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: #CCCCCC; font-size: 0.9rem;">Bonding Curve Progress</span>
+                            <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">{{ "%.1f"|format(token.progress_to_graduation) }}%</span>
+                        </div>
+                        <div class="progress-bar" style="width: 100%;">
+                            <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+                        </div>
+                        <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
+                            ${{ "%.0f"|format((70000 - token.current_market_cap|float) * 0.125) }} ({{ "%.0f"|format(70000 - token.current_market_cap|float) }} KAS) needed to graduate to Kaspa Finance DEX
+                        </p>
                     </div>
                 </div>
 
@@ -675,9 +675,11 @@
             border: 1px solid rgba(32, 178, 170, 0.3);
             border-radius: 15px;
             padding: clamp(1rem, 2vw, 1.5rem);
+            padding-bottom: 0; /* Remove bottom padding so bonding curve sits at bottom */
             backdrop-filter: blur(20px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             min-width: 0;
+            overflow: hidden; /* Ensure bonding curve stays within rounded corners */
         }
         
         .token-title {
