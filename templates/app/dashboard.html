@@ -365,6 +365,9 @@
             color: #20B2AA;
             text-shadow: 0 0 20px rgba(32, 178, 170, 0.5);
             animation: iconPulse 4s ease-in-out infinite;
+            display: flex;  /* Fix: Added flex display for better alignment */
+            align-items: center;  /* Fix: Center icon vertically */
+            justify-content: center;  /* Fix: Center icon horizontally */
         }
 
         @keyframes iconPulse {
@@ -429,7 +432,7 @@
             width: 100%;
             max-width: 100%;
             min-height: 400px;  /* Fix: Reduced from 500px */
-            max-height: 60vh;  /* Fix: Added max-height for vertical scrolling */
+            max-height: 75vh;  /* Fix: Increased from 60vh to 75vh for more vertical space */
             display: flex;
             align-items: flex-start;  /* Fix: Changed from center to flex-start */
             overflow-y: auto;  /* Fix: Changed from hidden to auto for vertical scrolling */
@@ -691,12 +694,12 @@
             .accolades-progress-section {
                 padding: 0.8rem;  /* Fix: Reduced padding */
                 min-height: 300px;  /* Fix: Reduced from 400px */
-                max-height: 60vh;  /* Fix: More reasonable mobile height */
+                max-height: 75vh;  /* Fix: Increased from 60vh to match desktop */
             }
             
             .carousel-viewport {
                 min-height: 250px;  /* Fix: Reduced from 300px */
-                max-height: 50vh;  /* Fix: Added mobile max-height */
+                max-height: 65vh;  /* Fix: Increased from 50vh for more vertical space on mobile */
             }
             
             .carousel-header {
