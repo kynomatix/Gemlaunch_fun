@@ -57,6 +57,27 @@
                         {% if token.description %}
                         <p class="token-description">{{ token.description }}</p>
                         {% endif %}
+                        
+                        <!-- Social Links -->
+                        {% if token.website or token.twitter or token.telegram %}
+                        <div class="token-social-links">
+                            {% if token.website %}
+                            <a href="{{ token.website }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Website">
+                                <i class="fas fa-globe"></i>
+                            </a>
+                            {% endif %}
+                            {% if token.twitter %}
+                            <a href="{{ token.twitter }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="X (Twitter)">
+                                <i class="fab fa-x-twitter"></i>
+                            </a>
+                            {% endif %}
+                            {% if token.telegram %}
+                            <a href="{{ token.telegram }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Telegram">
+                                <i class="fab fa-telegram"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                     
                     <!-- Right Side - Stats -->
@@ -739,6 +760,40 @@
             color: #CCC;
             font-size: 0.95rem;
             line-height: 1.5;
+        }
+        
+        /* Social Links Styling */
+        .token-social-links {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        
+        .social-icon-btn {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 6px;
+            color: #20B2AA;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .social-icon-btn:hover {
+            background: rgba(32, 178, 170, 0.2);
+            border-color: #20B2AA;
+            color: #FFF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(32, 178, 170, 0.3);
+        }
+        
+        .social-icon-btn:active {
+            transform: translateY(0);
         }
         
         .token-stats-section {

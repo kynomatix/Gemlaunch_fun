@@ -1190,7 +1190,10 @@ def init_database():
                         'market_cap': 45000,
                         'price': 0.000045,
                         'image_url': 'https://upload.wikimedia.org/wikipedia/en/d/d0/Dogecoin_Logo.png',
-                        'creator': doge_creator  # Different creator
+                        'creator': doge_creator,  # Different creator
+                        'website': 'https://dogekaspa.io',
+                        'twitter': 'https://x.com/dogekaspa',
+                        'telegram': 'https://t.me/dogekaspa'
                     },
                     {
                         'name': 'Moon Rocket',
@@ -1200,7 +1203,10 @@ def init_database():
                         'market_cap': 28000,
                         'price': 0.000028,
                         'image_url': 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Rocket_icon.png',
-                        'creator': user_creator  # YOU own this token
+                        'creator': user_creator,  # YOU own this token
+                        'website': 'https://moonrocket.kas',
+                        'twitter': 'https://x.com/moonrocketkaspa',
+                        'telegram': 'https://t.me/moonrocketkaspa'
                     },
                     {
                         'name': 'Laser Eyes',
@@ -1210,7 +1216,9 @@ def init_database():
                         'market_cap': 67000,
                         'price': 0.000067,
                         'image_url': 'https://i.imgur.com/laser-eyes.png',
-                        'creator': user_creator  # YOU own this token
+                        'creator': user_creator,  # YOU own this token
+                        'website': 'https://lasereyes.pro',
+                        'twitter': 'https://x.com/lasereyeskaspa'
                     },
                     {
                         'name': 'PepeCoin',
@@ -1220,7 +1228,9 @@ def init_database():
                         'market_cap': 15000,
                         'price': 0.000015,
                         'image_url': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/63/Feelsbadman.jpg/256px-Feelsbadman.jpg',
-                        'creator': pepe_creator  # Different creator
+                        'creator': pepe_creator,  # Different creator
+                        'twitter': 'https://x.com/pepekaspa',
+                        'telegram': 'https://t.me/pepekaspa_official'
                     },
                     {
                         'name': 'FlokiKas',
@@ -1230,7 +1240,9 @@ def init_database():
                         'market_cap': 32000,
                         'price': 0.000032,
                         'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/10804.png',
-                        'creator': floki_creator  # Different creator
+                        'creator': floki_creator,  # Different creator
+                        'website': 'https://flokikas.org',
+                        'telegram': 'https://t.me/flokikaspa'
                     }
                 ]
                 
@@ -1248,6 +1260,10 @@ def init_database():
                     token.deployment_status = 'deployed'
                     token.trade_count = 42  # Mock trades
                     token.holder_count = 156  # Mock holders
+                    # Add social links
+                    token.website = token_data.get('website')
+                    token.twitter = token_data.get('twitter')
+                    token.telegram = token_data.get('telegram')
                     db.session.add(token)
                 
                 db.session.commit()
