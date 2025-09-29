@@ -1965,17 +1965,16 @@
             // Initialize carousel
             const carouselSlides = document.querySelectorAll('.carousel-slide');
             if (carouselSlides.length > 0) {
-                // Fix: Ensure first slide is truly visible on load
+                // Fix: Ensure all slides remain visible for horizontal sliding
                 carouselSlides.forEach((slide, index) => {
                     if (index === 0) {
                         slide.classList.add('active');
-                        slide.style.opacity = '1';
-                        slide.style.transform = 'scale(1)';
                     } else {
                         slide.classList.remove('active');
-                        slide.style.opacity = '0';
-                        slide.style.transform = 'scale(0.9)';
                     }
+                    // Keep all slides visible for horizontal sliding
+                    slide.style.opacity = '1';
+                    slide.style.transform = 'scale(1)';
                 });
                 
                 // Initialize carousel position and header
