@@ -962,7 +962,7 @@
                             <!-- Carousel Viewport -->
                             <div class="carousel-viewport">
                                 <!-- Left Navigation Arrow -->
-                                <button class="carousel-nav carousel-nav-left" onclick="navigateCarousel(-1)" aria-label="Previous category">
+                                <button class="carousel-nav carousel-nav-left" onclick="window.navigateCarousel(-1)" aria-label="Previous category">
                                     <i class="fas fa-chevron-left"></i>
                                     <span class="nav-pulse"></span>
                                 </button>
@@ -1080,7 +1080,7 @@
                                 </div>
 
                                 <!-- Right Navigation Arrow -->
-                                <button class="carousel-nav carousel-nav-right" onclick="navigateCarousel(1)" aria-label="Next category">
+                                <button class="carousel-nav carousel-nav-right" onclick="window.navigateCarousel(1)" aria-label="Next category">
                                     <i class="fas fa-chevron-right"></i>
                                     <span class="nav-pulse"></span>
                                 </button>
@@ -1090,7 +1090,7 @@
                             <div class="carousel-indicators">
                                 {% for i in range(4) %}
                                 <button class="carousel-dot {{ 'active' if i == 0 else '' }}" 
-                                        onclick="goToCategory({{ i }})" 
+                                        onclick="window.goToCategory({{ i }})" 
                                         aria-label="Go to category {{ i + 1 }}">
                                     <span class="dot-inner"></span>
                                 </button>
@@ -1347,36 +1347,42 @@
             }
         }
 
-        // Carousel state variables
-        var currentCategoryIndex = 0;
-        var totalCategories = 4;
-        var isTransitioning = false;
+        // Carousel state variables - use window to avoid redeclaration errors with Turbo
+        if (typeof window.currentCategoryIndex === 'undefined') {
+            window.currentCategoryIndex = 0;
+        }
+        if (typeof window.totalCategories === 'undefined') {
+            window.totalCategories = 4;
+        }
+        if (typeof window.isTransitioning === 'undefined') {
+            window.isTransitioning = false;
+        }
         
-        // Carousel navigation functions
-        function navigateCarousel(direction) {
-            if (isTransitioning) return;
+        // Carousel navigation functions - also attach to window for global access
+        window.navigateCarousel = function(direction) {
+            if (window.isTransitioning) return;
             
             const slides = document.querySelectorAll('.carousel-slide');
             if (!slides.length) return;
             
-            isTransitioning = true;
+            window.isTransitioning = true;
             
             // Calculate new index
-            currentCategoryIndex = (currentCategoryIndex + direction + totalCategories) % totalCategories;
+            window.currentCategoryIndex = (window.currentCategoryIndex + direction + window.totalCategories) % window.totalCategories;
             
             // Update carousel position
             updateCarouselPosition();
             
             // Update active states
             slides.forEach((slide, index) => {
-                slide.classList.toggle('active', index === currentCategoryIndex);
+                slide.classList.toggle('active', index === window.currentCategoryIndex);
             });
             
             // Update dots
-            updateDots();
+            window.updateDots();
             
             // Update category header
-            updateCategoryHeader(currentCategoryIndex);
+            window.updateCategoryHeader(window.currentCategoryIndex);
             
             // Add visual feedback
             const navButton = direction > 0 ? 
@@ -1392,48 +1398,48 @@
             
             // Reset transition flag
             setTimeout(() => {
-                isTransitioning = false;
+                window.isTransitioning = false;
             }, 800);
         }
         
-        function goToCategory(index) {
-            if (isTransitioning || index === currentCategoryIndex) return;
+        window.goToCategory = function(index) {
+            if (window.isTransitioning || index === window.currentCategoryIndex) return;
             
-            currentCategoryIndex = index;
+            window.currentCategoryIndex = index;
             
-            isTransitioning = true;
+            window.isTransitioning = true;
             updateCarouselPosition();
             
             // Update active states
             const slides = document.querySelectorAll('.carousel-slide');
             slides.forEach((slide, i) => {
-                slide.classList.toggle('active', i === currentCategoryIndex);
+                slide.classList.toggle('active', i === window.currentCategoryIndex);
             });
             
-            updateDots();
-            updateCategoryHeader(currentCategoryIndex);
+            window.updateDots();
+            window.updateCategoryHeader(window.currentCategoryIndex);
             
             setTimeout(() => {
-                isTransitioning = false;
+                window.isTransitioning = false;
             }, 800);
         }
         
-        function updateCarouselPosition() {
+        window.updateCarouselPosition = function() {
             const track = document.querySelector('.carousel-categories-track');
             if (!track) return;
             
             const slideWidth = 100; // Each slide is 100% width
-            const translateX = -currentCategoryIndex * slideWidth;
+            const translateX = -window.currentCategoryIndex * slideWidth;
             track.style.transform = `translateX(${translateX}%)`;
         }
         
-        function updateDots() {
+        window.updateDots = function() {
             const dots = document.querySelectorAll('.carousel-dot');
             dots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentCategoryIndex);
+                dot.classList.toggle('active', index === window.currentCategoryIndex);
                 
                 // Reset and restart animation for active dot
-                if (index === currentCategoryIndex) {
+                if (index === window.currentCategoryIndex) {
                     const dotInner = dot.querySelector('.dot-inner');
                     if (dotInner) {
                         dotInner.style.animation = 'none';
@@ -1445,7 +1451,7 @@
             });
         }
         
-        function updateCategoryHeader(index) {
+        window.updateCategoryHeader = function(index) {
             const slides = document.querySelectorAll('.carousel-slide');
             if (!slides[index]) return;
             
@@ -1509,16 +1515,16 @@
                     // Arrow keys
                     if (e.key === 'ArrowLeft') {
                         e.preventDefault();
-                        navigateCarousel(-1);
+                        window.navigateCarousel(-1);
                     } else if (e.key === 'ArrowRight') {
                         e.preventDefault();
-                        navigateCarousel(1);
+                        window.navigateCarousel(1);
                     }
                     // Number keys 1-4
                     else if (e.key >= '1' && e.key <= '4') {
                         e.preventDefault();
                         const index = parseInt(e.key) - 1;
-                        goToCategory(index);
+                        window.goToCategory(index);
                     }
                 });
                 
@@ -1539,10 +1545,10 @@
                     
                     function handleSwipe() {
                         if (touchEndX < touchStartX - 50) {
-                            navigateCarousel(1); // Swipe left, go to next
+                            window.navigateCarousel(1); // Swipe left, go to next
                         }
                         if (touchEndX > touchStartX + 50) {
-                            navigateCarousel(-1); // Swipe right, go to previous
+                            window.navigateCarousel(-1); // Swipe right, go to previous
                         }
                     }
                 }
