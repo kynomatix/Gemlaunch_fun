@@ -314,7 +314,7 @@
         <!-- Top Bar -->
         <div class="app-topbar">
             <div class="topbar-left">
-                <button class="sidebar-toggle" id="sidebarToggle">
+                <button class="sidebar-toggle" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
                 <div class="app-logo">
@@ -342,49 +342,24 @@
         <!-- Sidebar -->
         <nav class="app-sidebar" id="sidebar">
             <div class="sidebar-nav">
-                <a href="/app/tokens" 
-                   class="nav-item {% if request.endpoint == 'token_marketplace' %}active{% endif %}"
-                   hx-get="/app/tokens/fragment"
-                   hx-target="#page-content"
-                   hx-push-url="/app/tokens"
-                   hx-swap="innerHTML">
+                <a href="/app/tokens" class="nav-item {% if request.endpoint == 'token_marketplace' %}active{% endif %}">
                     <i class="fas fa-store"></i>
                     <span>Marketplace</span>
                 </a>
-                <a href="/app/create" 
-                   class="nav-item {% if request.endpoint == 'create_token' %}active{% endif %}"
-                   hx-get="/app/create/fragment"
-                   hx-target="#page-content"
-                   hx-push-url="/app/create"
-                   hx-swap="innerHTML">
+                <a href="/app/create" class="nav-item {% if request.endpoint == 'create_token' %}active{% endif %}">
                     <i class="fas fa-rocket"></i>
                     <span>Create Token</span>
                 </a>
                 {% if user %}
-                <a href="/app/dashboard" 
-                   class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}"
-                   hx-get="/app/dashboard/fragment"
-                   hx-target="#page-content"
-                   hx-push-url="/app/dashboard"
-                   hx-swap="innerHTML">
+                <a href="/app/dashboard" class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/app/leaderboard" 
-                   class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}"
-                   hx-get="/app/leaderboard/fragment"
-                   hx-target="#page-content"
-                   hx-push-url="/app/leaderboard"
-                   hx-swap="innerHTML">
+                <a href="/app/leaderboard" class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}">
                     <i class="fas fa-trophy"></i>
                     <span>Leaderboard</span>
                 </a>
-                <a href="/app/profile" 
-                   class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}"
-                   hx-get="/app/profile/fragment"
-                   hx-target="#page-content"
-                   hx-push-url="/app/profile"
-                   hx-swap="innerHTML">
+                <a href="/app/profile" class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
                     <i class="fas fa-user-circle"></i>
                     <span>Profile</span>
                 </a>
@@ -394,73 +369,35 @@
         
         <!-- Main Content -->
         <main class="app-main" id="mainContent">
-            <div class="main-content" id="page-content">
+            <div class="main-content">
                 {% block content %}{% endblock %}
             </div>
         </main>
     </div>
     
     <!-- Scripts -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <!-- Quill.js Rich Text Editor (loaded globally for create token page) -->
-    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
-    <!-- Dashboard functionality -->
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     
     <script>
-        // Sidebar Toggle function
+        // Sidebar Toggle
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
             
-            if (sidebar && mainContent) {
-                sidebar.classList.toggle('collapsed');
-                mainContent.classList.toggle('sidebar-collapsed');
-                
-                // Save state
-                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-            }
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('sidebar-collapsed');
+            
+            // Save state
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
         }
         
-        // Handle HTMX navigation
-        document.body.addEventListener('htmx:beforeRequest', function(evt) {
-            // Add loading state if needed
-        });
-        
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            // Update active nav state
-            const path = window.location.pathname;
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.getAttribute('href') === path) {
-                    item.classList.add('active');
-                }
-            });
-            
-            // Re-initialize any page-specific scripts
-            if (typeof window.initPageScripts === 'function') {
-                window.initPageScripts();
-            }
-        });
-        
-        // Restore sidebar state and attach event listeners
+        // Restore sidebar state
         document.addEventListener('DOMContentLoaded', function() {
-            // Attach click event to sidebar toggle button
-            const toggleButton = document.getElementById('sidebarToggle');
-            if (toggleButton) {
-                toggleButton.addEventListener('click', toggleSidebar);
-            }
-            
-            // Restore sidebar state
             const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
             if (isCollapsed) {
-                const sidebar = document.getElementById('sidebar');
-                const mainContent = document.getElementById('mainContent');
-                if (sidebar) sidebar.classList.add('collapsed');
-                if (mainContent) mainContent.classList.add('sidebar-collapsed');
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('mainContent').classList.add('sidebar-collapsed');
             }
             
             // Store user wallet address for ownership checks

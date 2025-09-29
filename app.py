@@ -310,14 +310,10 @@ def app_home():
     return redirect(url_for('token_marketplace'))
 
 @app.route('/app/dashboard')
-@app.route('/app/dashboard/fragment')
 def app_dashboard():
     """User dashboard with stats and portfolio - now includes activities and achievements"""
     user = get_current_user()
     if not user:
-        # For HTMX requests, return minimal content
-        if request.headers.get('HX-Request'):
-            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Get user's created tokens and holdings
@@ -344,22 +340,6 @@ def app_dashboard():
     # Get referral info for achievements
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
-    # Check if this is a fragment request
-    if request.path.endswith('/fragment'):
-        # Return only the content without the layout for HTMX
-        return render_template('app/dashboard_content_inc.html', 
-                             user=user, 
-                             created_tokens=created_tokens, 
-                             holdings=holdings,
-                             activities=activities,
-                             user_achievements=user_achievements,
-                             user_achievement_ids=user_achievement_ids,
-                             all_achievements=all_achievements,
-                             total_achievements=total_achievements,
-                             achievement_points=achievement_points,
-                             referral=referral)
-    
-    # Return full page for direct access
     return render_template('app/dashboard.html', 
                          user=user, 
                          created_tokens=created_tokens, 
@@ -373,13 +353,10 @@ def app_dashboard():
                          referral=referral)
 
 @app.route('/app/create', methods=['GET', 'POST'])
-@app.route('/app/create/fragment', methods=['GET', 'POST'])
 def create_token():
     """Token creation page and form handler"""
     user = get_current_user()
     if not user:
-        if request.headers.get('HX-Request'):
-            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     if request.method == 'POST':
@@ -425,33 +402,17 @@ def create_token():
             flash(f'Error creating token: {str(e)}', 'error')
             return redirect(url_for('create_token'))
     
-    # Check if this is a fragment request
-    if request.path.endswith('/fragment'):
-        # Return only the content without the layout for HTMX
-        return render_template('app/create_token_content_inc.html', user=user)
-    
-    # Return full page for direct access
     return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
-@app.route('/app/tokens/fragment')
 def token_marketplace():
     """Token marketplace - main home page (pump.fun style)"""
     user = get_current_user()
     if not user:
-        if request.headers.get('HX-Request'):
-            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Show all tokens, including pending ones for UI demo
     tokens = Token.query.order_by(Token.created_at.desc()).all()
-    
-    # Check if this is a fragment request
-    if request.path.endswith('/fragment'):
-        # Return only the content without the layout for HTMX
-        return render_template('app/marketplace_content_inc.html', tokens=tokens, user=user)
-    
-    # Return full page for direct access
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
@@ -491,13 +452,10 @@ def token_detail_legacy(token_id):
 
 # Leaderboard routes
 @app.route('/app/leaderboard')
-@app.route('/app/leaderboard/fragment')
 def leaderboard():
     """Main leaderboard page with rankings and points"""
     user = get_current_user()
     if not user:
-        if request.headers.get('HX-Request'):
-            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Get top users by GEM points
@@ -515,28 +473,16 @@ def leaderboard():
         users_above = User.query.filter(User.gem_points > user.gem_points).count()
         user_rank = users_above + 1
     
-    # Check if this is a fragment request
-    if request.path.endswith('/fragment'):
-        # Return only the content without the layout for HTMX
-        return render_template('app/leaderboard_content_inc.html', 
-                             user=user, 
-                             top_users=top_users, 
-                             user_rank=user_rank)
-    
-    # Return full page for direct access
     return render_template('app/leaderboard.html', 
                          user=user, 
                          top_users=top_users, 
                          user_rank=user_rank)
 
 @app.route('/app/profile', methods=['GET', 'POST'])
-@app.route('/app/profile/fragment', methods=['GET', 'POST'])
 def profile():
     """User profile page with wallet connections and stats"""
     user = get_current_user()
     if not user:
-        if request.headers.get('HX-Request'):
-            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Get or create user profile
@@ -670,18 +616,6 @@ def profile():
         Referral.referrer_id == user.id
     ).all()
     
-    # Check if this is a fragment request
-    if request.path.endswith('/fragment'):
-        # Return only the content without the layout for HTMX
-        return render_template('app/profile_content_inc.html', 
-                             user=user, 
-                             user_profile=user_profile,
-                             connected_wallets=connected_wallets,
-                             user_achievements=user_achievements,
-                             referral=referral,
-                             referred_users=referred_users)
-    
-    # Return full page for direct access
     return render_template('app/profile.html', 
                          user=user, 
                          user_profile=user_profile,
