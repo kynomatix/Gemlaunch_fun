@@ -344,18 +344,18 @@
             <div class="sidebar-nav">
                 <a href="/app/tokens" 
                    class="nav-item {% if request.endpoint == 'token_marketplace' %}active{% endif %}"
-                   hx-get="/app/tokens"
+                   hx-get="/app/tokens/fragment"
                    hx-target="#page-content"
-                   hx-push-url="true"
+                   hx-push-url="/app/tokens"
                    hx-swap="innerHTML">
                     <i class="fas fa-store"></i>
                     <span>Marketplace</span>
                 </a>
                 <a href="/app/create" 
                    class="nav-item {% if request.endpoint == 'create_token' %}active{% endif %}"
-                   hx-get="/app/create"
+                   hx-get="/app/create/fragment"
                    hx-target="#page-content"
-                   hx-push-url="true"
+                   hx-push-url="/app/create"
                    hx-swap="innerHTML">
                     <i class="fas fa-rocket"></i>
                     <span>Create Token</span>
@@ -363,27 +363,27 @@
                 {% if user %}
                 <a href="/app/dashboard" 
                    class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}"
-                   hx-get="/app/dashboard"
+                   hx-get="/app/dashboard/fragment"
                    hx-target="#page-content"
-                   hx-push-url="true"
+                   hx-push-url="/app/dashboard"
                    hx-swap="innerHTML">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
                 </a>
                 <a href="/app/leaderboard" 
                    class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}"
-                   hx-get="/app/leaderboard"
+                   hx-get="/app/leaderboard/fragment"
                    hx-target="#page-content"
-                   hx-push-url="true"
+                   hx-push-url="/app/leaderboard"
                    hx-swap="innerHTML">
                     <i class="fas fa-trophy"></i>
                     <span>Leaderboard</span>
                 </a>
                 <a href="/app/profile" 
                    class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}"
-                   hx-get="/app/profile"
+                   hx-get="/app/profile/fragment"
                    hx-target="#page-content"
-                   hx-push-url="true"
+                   hx-push-url="/app/profile"
                    hx-swap="innerHTML">
                     <i class="fas fa-user-circle"></i>
                     <span>Profile</span>
