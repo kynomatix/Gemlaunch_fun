@@ -382,73 +382,7 @@
                         </div>
                     </div>
                     <div class="chat-messages" id="chatMessages">
-                        <div class="chat-message" data-message-id="1">
-                            <div class="message-content">
-                                <span class="chat-user verified-user">CryptoKing</span>
-                                <span class="chat-text">LFG! 🚀</span>
-                            </div>
-                            <div class="message-actions">
-                                <button class="message-action love-btn" onclick="toggleLove(1)" title="Love this message">
-                                    <i class="fas fa-heart"></i>
-                                    <span class="love-count">3</span>
-                                </button>
-                                <button class="message-action reply-btn" onclick="replyToMessage(1)" title="Reply to this message">
-                                    <i class="fas fa-reply"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chat-message" data-message-id="2">
-                            <div class="message-content">
-                                <span class="chat-user wallet-user">0x5E6...78A</span>
-                                <span class="chat-text">Great project!</span>
-                            </div>
-                            <div class="message-actions">
-                                <button class="message-action love-btn" onclick="toggleLove(2)" title="Love this message">
-                                    <i class="fas fa-heart"></i>
-                                    <span class="love-count">7</span>
-                                </button>
-                                <button class="message-action reply-btn" onclick="replyToMessage(2)" title="Reply to this message">
-                                    <i class="fas fa-reply"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chat-message" data-message-id="3">
-                            <div class="message-content">
-                                <span class="chat-user verified-user">MoonHunter</span>
-                                <span class="chat-text">When moon? 🌙</span>
-                            </div>
-                            <div class="message-actions">
-                                <button class="message-action love-btn" onclick="toggleLove(3)" title="Love this message">
-                                    <i class="fas fa-heart"></i>
-                                    <span class="love-count">12</span>
-                                </button>
-                                <button class="message-action reply-btn" onclick="replyToMessage(3)" title="Reply to this message">
-                                    <i class="fas fa-reply"></i>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Example reply thread -->
-                        <div class="chat-message reply-message" data-message-id="4" data-reply-to="3">
-                            <div class="reply-header">
-                                <i class="fas fa-reply reply-icon"></i>
-                                <span class="reply-reference">MoonHunter</span>
-                                <span class="reply-preview">When moon? 🌙</span>
-                            </div>
-                            <div class="message-content">
-                                <span class="chat-user wallet-user">0xDEF...999</span>
-                                <span class="chat-text">Soon™! 🚀 Just HODL!</span>
-                            </div>
-                            <div class="message-actions">
-                                <button class="message-action love-btn" onclick="toggleLove(4)" title="Love this message">
-                                    <i class="fas fa-heart"></i>
-                                    <span class="love-count">8</span>
-                                </button>
-                                <button class="message-action reply-btn" onclick="replyToMessage(4)" title="Reply to this message">
-                                    <i class="fas fa-reply"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <!-- Messages will be loaded from database -->
                     </div>
                     <!-- Spotlight Messages (Pinned for 1 hour) -->
                     <div class="spotlight-messages" id="spotlightMessages" style="display: none;">
