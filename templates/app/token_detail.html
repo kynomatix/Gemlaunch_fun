@@ -655,7 +655,7 @@
         
         .token-layout {
             display: grid;
-            grid-template-columns: 1fr 420px;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
             gap: 1.5rem;
             max-width: 1500px;
             margin: 0 auto;
@@ -666,37 +666,41 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+            min-width: 0;
         }
         
         .token-header {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(32, 178, 170, 0.02));
             border: 1px solid rgba(32, 178, 170, 0.3);
             border-radius: 15px;
-            padding: 1.5rem;
+            padding: clamp(1rem, 2vw, 1.5rem);
             backdrop-filter: blur(20px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            min-width: 0;
         }
         
         .token-title {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: clamp(0.5rem, 2vw, 1rem);
             margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
         
         .token-avatar {
-            width: 70px;
-            height: 70px;
+            width: clamp(50px, 8vw, 70px);
+            height: clamp(50px, 8vw, 70px);
             border-radius: 50%;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: clamp(1.5rem, 3vw, 2rem);
             font-weight: bold;
             color: #000;
             box-shadow: 0 5px 20px rgba(32, 178, 170, 0.4);
             animation: float 3s ease-in-out infinite;
+            flex-shrink: 0;
         }
         
         @keyframes float {
@@ -711,7 +715,7 @@
         
         .token-stats {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 1rem;
             margin-top: 1rem;
             background: rgba(255, 255, 255, 0.02);
@@ -734,13 +738,14 @@
         .stat-value {
             color: #20B2AA;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
         }
         
         .stat-label {
             color: #CCCCCC;
-            font-size: 0.8rem;
+            font-size: clamp(0.7rem, 1.5vw, 0.8rem);
             margin-top: 0.25rem;
+            word-break: break-word;
         }
         
         .progress-bar {
@@ -762,28 +767,32 @@
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(32, 178, 170, 0.02));
             border: 1px solid rgba(32, 178, 170, 0.2);
             border-radius: 15px;
-            padding: 1.5rem;
+            padding: clamp(1rem, 2vw, 1.5rem);
             backdrop-filter: blur(20px);
             height: auto;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            min-width: 0;
+            overflow-x: auto;
         }
         
         .right-panel {
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+            min-width: 0;
         }
         
         .trade-panel {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(32, 178, 170, 0.03));
             border: 1px solid rgba(32, 178, 170, 0.3);
             border-radius: 15px;
-            padding: 1.5rem;
+            padding: clamp(1rem, 2vw, 1.5rem);
             backdrop-filter: blur(20px);
             position: sticky;
             top: 20px;
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
+            min-width: 0;
         }
         
         .trade-panel:hover {
@@ -1954,6 +1963,13 @@
             cursor: pointer;
         }
         
+        @media (max-width: 1200px) {
+            .token-layout {
+                grid-template-columns: 1fr minmax(280px, 380px);
+                gap: 1rem;
+            }
+        }
+        
         @media (max-width: 1024px) {
             .token-layout {
                 grid-template-columns: 1fr;
@@ -1965,7 +1981,7 @@
             }
             
             .token-stats {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             }
         }
         
