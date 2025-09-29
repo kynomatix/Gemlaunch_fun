@@ -319,7 +319,7 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
-            overflow: hidden;
+            overflow: visible;  /* Fix: Changed from hidden to visible for scrolling */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
@@ -327,9 +327,9 @@
         .carousel-header {
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
             border: 2px solid rgba(32, 178, 170, 0.3);
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+            border-radius: 15px;  /* Fix: Slightly smaller radius */
+            padding: 1rem;  /* Fix: Reduced from 1.5rem */
+            margin-bottom: 0.8rem;  /* Fix: Reduced margin */
             position: relative;
             overflow: hidden;
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
@@ -361,7 +361,7 @@
         }
 
         .category-main-icon {
-            font-size: 3rem;
+            font-size: 1.8rem;  /* Fix: Reduced from 3rem */
             color: #20B2AA;
             text-shadow: 0 0 20px rgba(32, 178, 170, 0.5);
             animation: iconPulse 4s ease-in-out infinite;
@@ -377,15 +377,15 @@
         }
 
         .current-category-name {
-            font-size: 2rem;
+            font-size: 1.4rem;  /* Fix: Reduced from 2rem */
             color: #FFFFFF;
-            margin: 0 0 0.5rem 0;
+            margin: 0 0 0.3rem 0;  /* Fix: Reduced margin */
             text-shadow: 0 2px 10px rgba(32, 178, 170, 0.3);
         }
 
         .category-overall-progress {
             color: #20B2AA;
-            font-size: 1.2rem;
+            font-size: 0.95rem;  /* Fix: Reduced from 1.2rem */
             font-weight: 600;
         }
 
@@ -428,10 +428,12 @@
             position: relative;
             width: 100%;
             max-width: 100%;
-            min-height: 500px;
+            min-height: 400px;  /* Fix: Reduced from 500px */
+            max-height: 60vh;  /* Fix: Added max-height for vertical scrolling */
             display: flex;
-            align-items: center;
-            overflow: hidden;
+            align-items: flex-start;  /* Fix: Changed from center to flex-start */
+            overflow-y: auto;  /* Fix: Changed from hidden to auto for vertical scrolling */
+            overflow-x: hidden;  /* Fix: Hide horizontal overflow */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
@@ -501,9 +503,11 @@
         /* Categories Container */
         .carousel-categories-container {
             flex: 1;
-            overflow: hidden;
+            overflow-y: auto;  /* Fix: Enable vertical scrolling */
+            overflow-x: hidden;  /* Fix: Prevent horizontal scrolling */
             position: relative;
             max-width: 100%;
+            max-height: 100%;  /* Fix: Ensure container respects parent height */
         }
 
         .carousel-categories-track {
@@ -517,24 +521,32 @@
             width: 100%;
             max-width: 100%;
             flex-shrink: 0;
-            opacity: 0;
-            transform: scale(0.9);
+            opacity: 1;  /* Fix: Changed from 0 to 1 for initial visibility */
+            transform: scale(1);  /* Fix: Changed from 0.9 to 1 for initial visibility */
             transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            overflow: hidden;
+            overflow: visible;  /* Fix: Changed from hidden to visible to allow scrolling */
         }
 
         .carousel-slide.active {
             opacity: 1;
             transform: scale(1);
         }
+        
+        /* Hide non-active slides after initialization */
+        .carousel-slide:not(.active) {
+            opacity: 0;
+            transform: scale(0.9);
+        }
 
         .category-accolades-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
-            gap: 1.5rem;
-            padding: 2rem clamp(1rem, 4vw, 4rem);
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));  /* Fix: Reduced min width */
+            gap: 1rem;  /* Fix: Reduced from 1.5rem */
+            padding: 1rem clamp(0.5rem, 2vw, 2rem);  /* Fix: Reduced padding */
             max-width: 100%;
             overflow-x: hidden;
+            overflow-y: auto;  /* Fix: Enable vertical scrolling */
+            max-height: 100%;  /* Fix: Ensure grid respects parent height */
         }
 
         /* Carousel Indicators */
@@ -668,22 +680,23 @@
             }
             
             .current-category-name {
-                font-size: 1.5rem;
+                font-size: 1.2rem;  /* Fix: Reduced from 1.5rem to match desktop reduction */
             }
             
             .category-main-icon {
-                font-size: 2rem;
+                font-size: 1.4rem;  /* Fix: Reduced from 2rem to match desktop reduction */
             }
             
             /* Additional mobile fixes for accolades section */
             .accolades-progress-section {
-                padding: 1rem;
-                min-height: 400px;
-                max-height: calc(100vh - 100px);
+                padding: 0.8rem;  /* Fix: Reduced padding */
+                min-height: 300px;  /* Fix: Reduced from 400px */
+                max-height: 60vh;  /* Fix: More reasonable mobile height */
             }
             
             .carousel-viewport {
-                min-height: 300px;
+                min-height: 250px;  /* Fix: Reduced from 300px */
+                max-height: 50vh;  /* Fix: Added mobile max-height */
             }
             
             .carousel-header {
@@ -702,9 +715,9 @@
             }
             
             .accolade-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.4rem;
+                width: 40px;  /* Fix: Reduced from 50px to match desktop reduction */
+                height: 40px;  /* Fix: Reduced from 50px */
+                font-size: 1rem;  /* Fix: Reduced from 1.4rem */
             }
             
             .accolade-details {
@@ -762,11 +775,11 @@
             }
             
             .current-category-name {
-                font-size: 1.2rem;
+                font-size: 1rem;  /* Fix: Further reduced for small mobile */
             }
             
             .category-main-icon {
-                font-size: 1.5rem;
+                font-size: 1.2rem;  /* Fix: Further reduced for small mobile */
             }
         }
         
@@ -1623,8 +1636,21 @@
             // Initialize carousel
             const carouselSlides = document.querySelectorAll('.carousel-slide');
             if (carouselSlides.length > 0) {
-                // Set the first slide as active
-                carouselSlides[0].classList.add('active');
+                // Fix: Ensure first slide is truly visible on load
+                carouselSlides.forEach((slide, index) => {
+                    if (index === 0) {
+                        slide.classList.add('active');
+                        slide.style.opacity = '1';
+                        slide.style.transform = 'scale(1)';
+                    } else {
+                        slide.classList.remove('active');
+                        slide.style.opacity = '0';
+                        slide.style.transform = 'scale(0.9)';
+                    }
+                });
+                
+                // Initialize carousel position and header
+                window.currentCategoryIndex = 0;
                 updateCategoryHeader(0);
                 updateCarouselPosition();
                 
@@ -1862,7 +1888,7 @@
             grid-area: achievements;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
-            padding: 2rem;
+            padding: 1.5rem;  /* Fix: Reduced from 2rem */
             border: 1px solid rgba(32, 178, 170, 0.2);
             position: relative;  /* Fix: Ensure proper positioning */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
@@ -1870,11 +1896,11 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            min-height: 700px;
+            min-height: 500px;  /* Fix: Reduced from 700px */
             max-width: 100%;
             overflow-x: hidden;
-            overflow-y: auto;
-            max-height: calc(100vh - 150px);
+            overflow-y: auto;  /* Fix: Keep vertical scrolling enabled */
+            max-height: 70vh;  /* Fix: More reasonable height limit */
         }
 
         .accolades-sidebar {
@@ -1983,16 +2009,16 @@
 
         .accolade-item {
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 15px;
-            padding: 1.5rem;
+            border-radius: 12px;  /* Fix: Slightly smaller radius */
+            padding: 1rem;  /* Fix: Reduced from 1.5rem */
             border: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
-            gap: 1.2rem;
+            gap: 1rem;  /* Fix: Reduced from 1.2rem */
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
-            min-height: 140px;
+            min-height: 100px;  /* Fix: Reduced from 140px */
             min-width: 0;
             width: 100%;
         }
@@ -2053,15 +2079,15 @@
         }
 
         .accolade-icon {
-            width: 65px;
-            height: 65px;
+            width: 45px;  /* Fix: Reduced from 65px */
+            height: 45px;  /* Fix: Reduced from 65px */
             border-radius: 50%;
             background: rgba(32, 178, 170, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             color: rgba(32, 178, 170, 0.6);
-            font-size: 1.8rem;
+            font-size: 1.2rem;  /* Fix: Reduced from 1.8rem */
             flex-shrink: 0;
             transition: all 0.3s ease;
         }
@@ -2099,16 +2125,16 @@
         
         .accolade-details h4 {
             color: #FFFFFF;
-            margin-bottom: 0.5rem;
-            font-size: 1.15rem;
+            margin-bottom: 0.3rem;  /* Fix: Reduced margin */
+            font-size: 0.95rem;  /* Fix: Reduced from 1.15rem */
             font-weight: 600;
         }
 
         .accolade-details p {
             color: #888888;
-            font-size: 0.95rem;
-            margin-bottom: 0.8rem;
-            line-height: 1.4;
+            font-size: 0.85rem;  /* Fix: Reduced from 0.95rem */
+            margin-bottom: 0.5rem;  /* Fix: Reduced margin */
+            line-height: 1.3;  /* Fix: Tighter line height */
         }
 
         .accolade-progress {
@@ -2180,9 +2206,9 @@
         .accolade-reward {
             text-align: center;
             flex-shrink: 0;
-            padding: 0.8rem 1.2rem;
+            padding: 0.5rem 0.8rem;  /* Fix: Reduced padding */
             background: rgba(32, 178, 170, 0.08);
-            border-radius: 12px;
+            border-radius: 10px;  /* Fix: Slightly smaller radius */
             min-width: 0;
             width: min-content;
             border: 1px solid rgba(32, 178, 170, 0.2);
@@ -2207,7 +2233,7 @@
         .accolade-reward .points {
             color: #20B2AA;
             font-weight: 700;
-            font-size: 1.3rem;
+            font-size: 1rem;  /* Fix: Reduced from 1.3rem */
             display: block;
         }
         
@@ -2626,6 +2652,8 @@
             }
             
             .accolade-item {
+                padding: 0.8rem;  /* Fix: Reduced padding for mobile */
+                min-height: auto;  /* Fix: Remove min-height on mobile */
                 grid-template-columns: auto 1fr;
                 grid-template-areas: 
                     "icon details"
@@ -2635,6 +2663,9 @@
             
             .accolade-icon {
                 grid-area: icon;
+                width: 35px;  /* Fix: Further reduced for mobile */
+                height: 35px;  /* Fix: Further reduced for mobile */
+                font-size: 0.9rem;  /* Fix: Further reduced for mobile */
             }
             
             .accolade-details {
