@@ -342,24 +342,49 @@
         <!-- Sidebar -->
         <nav class="app-sidebar" id="sidebar">
             <div class="sidebar-nav">
-                <a href="/app/tokens" class="nav-item {% if request.endpoint == 'token_marketplace' %}active{% endif %}">
+                <a href="/app/tokens" 
+                   class="nav-item {% if request.endpoint == 'token_marketplace' %}active{% endif %}"
+                   hx-get="/app/tokens"
+                   hx-target="#page-content"
+                   hx-push-url="true"
+                   hx-swap="innerHTML">
                     <i class="fas fa-store"></i>
                     <span>Marketplace</span>
                 </a>
-                <a href="/app/create" class="nav-item {% if request.endpoint == 'create_token' %}active{% endif %}">
+                <a href="/app/create" 
+                   class="nav-item {% if request.endpoint == 'create_token' %}active{% endif %}"
+                   hx-get="/app/create"
+                   hx-target="#page-content"
+                   hx-push-url="true"
+                   hx-swap="innerHTML">
                     <i class="fas fa-rocket"></i>
                     <span>Create Token</span>
                 </a>
                 {% if user %}
-                <a href="/app/dashboard" class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}">
+                <a href="/app/dashboard" 
+                   class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}"
+                   hx-get="/app/dashboard"
+                   hx-target="#page-content"
+                   hx-push-url="true"
+                   hx-swap="innerHTML">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/app/leaderboard" class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}">
+                <a href="/app/leaderboard" 
+                   class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}"
+                   hx-get="/app/leaderboard"
+                   hx-target="#page-content"
+                   hx-push-url="true"
+                   hx-swap="innerHTML">
                     <i class="fas fa-trophy"></i>
                     <span>Leaderboard</span>
                 </a>
-                <a href="/app/profile" class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
+                <a href="/app/profile" 
+                   class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}"
+                   hx-get="/app/profile"
+                   hx-target="#page-content"
+                   hx-push-url="true"
+                   hx-swap="innerHTML">
                     <i class="fas fa-user-circle"></i>
                     <span>Profile</span>
                 </a>
@@ -369,13 +394,14 @@
         
         <!-- Main Content -->
         <main class="app-main" id="mainContent">
-            <div class="main-content">
+            <div class="main-content" id="page-content">
                 {% block content %}{% endblock %}
             </div>
         </main>
     </div>
     
     <!-- Scripts -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     
@@ -393,6 +419,27 @@
                 localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
             }
         }
+        
+        // Handle HTMX navigation
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            // Add loading state if needed
+        });
+        
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            // Update active nav state
+            const path = window.location.pathname;
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('href') === path) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // Re-initialize any page-specific scripts
+            if (typeof window.initPageScripts === 'function') {
+                window.initPageScripts();
+            }
+        });
         
         // Restore sidebar state and attach event listeners
         document.addEventListener('DOMContentLoaded', function() {

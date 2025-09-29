@@ -314,6 +314,9 @@ def app_dashboard():
     """User dashboard with stats and portfolio - now includes activities and achievements"""
     user = get_current_user()
     if not user:
+        # For HTMX requests, return minimal content
+        if request.headers.get('HX-Request'):
+            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Get user's created tokens and holdings
@@ -340,6 +343,21 @@ def app_dashboard():
     # Get referral info for achievements
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        # Return HTMX-optimized template
+        return render_template('app/dashboard_htmx.html',
+                             user=user, 
+                             created_tokens=created_tokens, 
+                             holdings=holdings,
+                             activities=activities,
+                             user_achievements=user_achievements,
+                             user_achievement_ids=user_achievement_ids,
+                             all_achievements=all_achievements,
+                             total_achievements=total_achievements,
+                             achievement_points=achievement_points,
+                             referral=referral)
+    
     return render_template('app/dashboard.html', 
                          user=user, 
                          created_tokens=created_tokens, 
@@ -357,6 +375,8 @@ def create_token():
     """Token creation page and form handler"""
     user = get_current_user()
     if not user:
+        if request.headers.get('HX-Request'):
+            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     if request.method == 'POST':
@@ -409,6 +429,8 @@ def token_marketplace():
     """Token marketplace - main home page (pump.fun style)"""
     user = get_current_user()
     if not user:
+        if request.headers.get('HX-Request'):
+            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Show all tokens, including pending ones for UI demo
@@ -456,6 +478,8 @@ def leaderboard():
     """Main leaderboard page with rankings and points"""
     user = get_current_user()
     if not user:
+        if request.headers.get('HX-Request'):
+            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Get top users by GEM points
@@ -483,6 +507,8 @@ def profile():
     """User profile page with wallet connections and stats"""
     user = get_current_user()
     if not user:
+        if request.headers.get('HX-Request'):
+            return '<div class="connect-wallet-container"><h2>Please connect your wallet</h2><a href="/app" class="btn btn-primary">Connect Wallet</a></div>'
         return render_template('app/connect_wallet.html')
     
     # Get or create user profile
