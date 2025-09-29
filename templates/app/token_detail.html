@@ -891,9 +891,15 @@
             transition: all 0.3s ease;
         }
         
-        .trade-tab.active {
+        .trade-tab.buy.active {
             background: linear-gradient(135deg, #20B2AA, #00CED1);
             color: #000;
+            border-color: transparent;
+        }
+        
+        .trade-tab.sell.active {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            color: #FFF;
             border-color: transparent;
         }
         
@@ -963,10 +969,10 @@
         }
         
         .trade-button.sell {
-            background: linear-gradient(135deg, #FF6B6B, #FF8C94);
+            background: linear-gradient(135deg, #ff4444, #cc0000);
             color: #FFF;
             border: none;
-            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+            box-shadow: 0 5px 20px rgba(255, 68, 68, 0.4);
         }
         
         .trade-button:hover {
