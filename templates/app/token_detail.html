@@ -472,7 +472,7 @@
                             <button class="action-btn poll-btn" onclick="createPoll()" title="Create a poll">
                                 <i class="fas fa-poll"></i>
                             </button>
-                            {% if token.symbol in ['DOGKAS', 'LASER'] %}
+                            {% if user and token.creator and user.id == token.creator.id %}
                             <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
                                 <i class="fas fa-gift"></i>
                             </button>
