@@ -318,7 +318,7 @@
             height: 100%;
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: clamp(0.8rem, 2vw, 1.5rem);  /* Fix: Responsive gap */
             overflow: visible;  /* Fix: Changed from hidden to visible for scrolling */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
@@ -328,24 +328,24 @@
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
             border: 2px solid rgba(32, 178, 170, 0.3);
             border-radius: 15px;  /* Fix: Slightly smaller radius */
-            padding: 1rem;  /* Fix: Reduced from 1.5rem */
+            padding: clamp(0.75rem, 1.5vw, 1.2rem);  /* Fix: Responsive padding with clamp */
             margin-bottom: 0.8rem;  /* Fix: Reduced margin */
             position: relative;
-            overflow: hidden;
+            overflow: visible;  /* Fix: Changed to visible to prevent clipping */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
         .carousel-header::before {
             content: '';
             position: absolute;
-            top: 0;
+            inset: 0;  /* Fix: Use inset for proper positioning */
             left: -100%;
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, transparent, rgba(32, 178, 170, 0.3), transparent);
             animation: headerShimmer 8s infinite ease-in-out;
             pointer-events: none;  /* Fix: Don't block clicks */
-            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
+            z-index: -1;  /* Fix: Place behind content */
         }
 
         @keyframes headerShimmer {
@@ -356,12 +356,12 @@
         .current-category-info {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
-            margin-bottom: 1rem;
+            gap: clamp(0.8rem, 2vw, 1.5rem);  /* Fix: Responsive gap */
+            margin-bottom: clamp(0.6rem, 1.5vw, 1rem);  /* Fix: Responsive margin */
         }
 
         .category-main-icon {
-            font-size: 1.8rem;  /* Fix: Reduced from 3rem */
+            font-size: clamp(1.4rem, 2.5vw, 2rem);  /* Fix: Responsive icon size with clamp */
             color: #20B2AA;
             text-shadow: 0 0 20px rgba(32, 178, 170, 0.5);
             animation: iconPulse 4s ease-in-out infinite;
@@ -380,7 +380,7 @@
         }
 
         .current-category-name {
-            font-size: 1.4rem;  /* Fix: Reduced from 2rem */
+            font-size: clamp(1.1rem, 2vw, 1.6rem);  /* Fix: Responsive font size with clamp */
             color: #FFFFFF;
             margin: 0 0 0.3rem 0;  /* Fix: Reduced margin */
             text-shadow: 0 2px 10px rgba(32, 178, 170, 0.3);
@@ -388,12 +388,12 @@
 
         .category-overall-progress {
             color: #20B2AA;
-            font-size: 0.95rem;  /* Fix: Reduced from 1.2rem */
+            font-size: clamp(0.85rem, 1.5vw, 1.1rem);  /* Fix: Responsive font size with clamp */
             font-weight: 600;
         }
 
         .category-progress-bar {
-            height: 12px;
+            height: clamp(10px, 1.5vw, 14px);  /* Fix: Responsive height */
             background: rgba(0, 0, 0, 0.3);
             border-radius: 20px;
             overflow: hidden;
@@ -421,7 +421,7 @@
 
         .category-progress-text {
             color: #FFFFFF;
-            font-size: 0.7rem;
+            font-size: clamp(0.6rem, 1vw, 0.8rem);  /* Fix: Responsive font size */
             font-weight: 700;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
@@ -431,8 +431,10 @@
             position: relative;
             width: 100%;
             max-width: 100%;
-            min-height: 400px;  /* Fix: Reduced from 500px */
-            max-height: 85vh;  /* Fix: Increased from 75vh to 85vh for more vertical space */
+            height: auto;  /* Fix: Flexible height */
+            flex: 1;  /* Fix: Take available space */
+            min-height: clamp(28rem, 60vh, 40rem);  /* Fix: Responsive min height */
+            max-height: 90vh;  /* Fix: Increased from 85vh to 90vh as requested */
             display: flex;
             align-items: flex-start;  /* Fix: Changed from center to flex-start */
             overflow-y: auto;  /* Fix: Changed from hidden to auto for vertical scrolling */
@@ -510,7 +512,7 @@
             overflow-x: hidden;  /* Fix: Prevent horizontal scrolling */
             position: relative;
             max-width: 100%;
-            max-height: 100%;  /* Fix: Ensure container respects parent height */
+            max-height: calc(100% - 2rem);  /* Fix: Account for margins/padding */
         }
 
         .carousel-categories-track {
@@ -543,9 +545,9 @@
 
         .category-accolades-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));  /* Fix: Reduced min width */
-            gap: 1rem;  /* Fix: Reduced from 1.5rem */
-            padding: 1rem clamp(0.5rem, 2vw, 2rem);  /* Fix: Reduced padding */
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));  /* Fix: Further reduced min width */
+            gap: clamp(0.8rem, 1.5vw, 1.2rem);  /* Fix: Responsive gap */
+            padding: clamp(0.8rem, 1.5vw, 1.5rem);  /* Fix: Responsive padding */
             max-width: 100%;
             overflow-x: hidden;
             overflow-y: auto;  /* Fix: Enable vertical scrolling */
@@ -683,31 +685,31 @@
             }
             
             .current-category-name {
-                font-size: 1.2rem;  /* Fix: Reduced from 1.5rem to match desktop reduction */
+                font-size: clamp(1rem, 1.8vw, 1.3rem);  /* Fix: Responsive font size for mobile */
             }
             
             .category-main-icon {
-                font-size: 1.4rem;  /* Fix: Reduced from 2rem to match desktop reduction */
+                font-size: clamp(1.2rem, 2vw, 1.6rem);  /* Fix: Responsive icon size for mobile */
             }
             
             /* Additional mobile fixes for accolades section */
             .accolades-progress-section {
                 padding: 0.8rem;  /* Fix: Reduced padding */
-                min-height: 300px;  /* Fix: Reduced from 400px */
-                max-height: 85vh;  /* Fix: Increased from 75vh to 85vh to match desktop */
+                min-height: clamp(20rem, 50vh, 30rem);  /* Fix: Responsive min height for mobile */
+                max-height: 90vh;  /* Fix: Increased to 90vh as requested */
             }
             
             .carousel-viewport {
-                min-height: 250px;  /* Fix: Reduced from 300px */
-                max-height: 75vh;  /* Fix: Increased from 65vh to 75vh for more vertical space on mobile */
+                min-height: clamp(15rem, 45vh, 25rem);  /* Fix: Responsive min height for mobile */
+                max-height: 80vh;  /* Fix: Increased for more vertical space on mobile */
             }
             
             .carousel-header {
-                padding: 1rem;
+                padding: clamp(0.6rem, 1.2vw, 1rem);  /* Fix: Responsive padding for mobile */
             }
             
             .current-category-info {
-                gap: 1rem;
+                gap: clamp(0.6rem, 1.5vw, 1rem);  /* Fix: Responsive gap for mobile */
             }
             
             .accolade-item {
@@ -767,6 +769,8 @@
         @media (max-width: 480px) {
             .accolades-progress-section {
                 border-radius: 10px;
+                min-height: clamp(18rem, 45vh, 25rem);  /* Fix: Responsive min height for small mobile */
+                max-height: 85vh;  /* Fix: Slightly less for smaller screens */
             }
             
             .carousel-header {
@@ -778,11 +782,11 @@
             }
             
             .current-category-name {
-                font-size: 1rem;  /* Fix: Further reduced for small mobile */
+                font-size: clamp(0.9rem, 1.6vw, 1.1rem);  /* Fix: Responsive for small mobile */
             }
             
             .category-main-icon {
-                font-size: 1.2rem;  /* Fix: Further reduced for small mobile */
+                font-size: clamp(1rem, 1.8vw, 1.3rem);  /* Fix: Responsive for small mobile */
             }
         }
         
@@ -1882,7 +1886,7 @@
             }
             
             .accolades-progress-section {
-                max-height: none;
+                max-height: 90vh;  /* Fix: Maintain max-height even on larger screens */
                 min-height: auto;
             }
         }
@@ -1898,6 +1902,10 @@
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
+            height: auto;  /* Fix: Flexible height */
+            min-height: clamp(32rem, 65vh, 45rem);  /* Fix: Responsive min height */
+            max-height: 90vh;  /* Fix: Increased from 85vh to 90vh as requested */
+            overflow: visible;  /* Fix: Changed from hidden to visible */
             height: 100%;
             min-height: 500px;  /* Fix: Reduced from 700px */
             max-width: 100%;
