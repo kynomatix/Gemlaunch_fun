@@ -343,21 +343,7 @@ def app_dashboard():
     # Get referral info for achievements
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        # Return HTMX-optimized template
-        return render_template('app/dashboard_htmx.html',
-                             user=user, 
-                             created_tokens=created_tokens, 
-                             holdings=holdings,
-                             activities=activities,
-                             user_achievements=user_achievements,
-                             user_achievement_ids=user_achievement_ids,
-                             all_achievements=all_achievements,
-                             total_achievements=total_achievements,
-                             achievement_points=achievement_points,
-                             referral=referral)
-    
+    # Use single template that handles both HTMX and direct access
     return render_template('app/dashboard.html', 
                          user=user, 
                          created_tokens=created_tokens, 
@@ -422,10 +408,7 @@ def create_token():
             flash(f'Error creating token: {str(e)}', 'error')
             return redirect(url_for('create_token'))
     
-    # Check if this is an HTMX request
-    if request.headers.get('HX-Request'):
-        return render_template('app/create_token_htmx.html', user=user)
-    
+    # Use single template that handles both HTMX and direct access
     return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
