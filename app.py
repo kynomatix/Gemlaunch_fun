@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
-import models_extended
+from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -463,6 +463,280 @@ def token_detail_legacy(token_id):
                              recent_trades=[],
                              user_holding=None,
                              user=get_current_user())
+
+# Chat API endpoints
+@app.route('/api/token/<contract_address>/messages', methods=['GET', 'POST'])
+@require_wallet_connection
+def token_messages(contract_address):
+    """Get or send chat messages for a token"""
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    user = get_current_user()
+    
+    if request.method == 'GET':
+        # Get messages with user info
+        messages = ChatMessage.query.filter_by(
+            token_id=token.id, 
+            is_deleted=False
+        ).order_by(ChatMessage.created_at.desc()).limit(50).all()
+        
+        # Convert to dict format for frontend
+        message_list = []
+        for msg in reversed(messages):
+            message_list.append({
+                'id': msg.id,
+                'user': msg.user.display_name or f"User-{msg.user.wallet_address[:8]}",
+                'wallet': msg.user.wallet_address,
+                'message': msg.content,
+                'message_type': msg.message_type,
+                'love_count': msg.love_count,
+                'created_at': msg.created_at.isoformat(),
+                'is_pinned': msg.is_pinned
+            })
+        
+        return jsonify({'messages': message_list})
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        message_text = data.get('message', '').strip()
+        
+        if not message_text:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+        
+        if len(message_text) > 500:
+            return jsonify({'error': 'Message too long (max 500 characters)'}), 400
+        
+        # Create new message
+        message = ChatMessage(
+            token_id=token.id,
+            user_id=user.id,
+            content=message_text,
+            message_type=data.get('message_type', 'regular')
+        )
+        db.session.add(message)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': {
+                'id': message.id,
+                'user': user.display_name or f"User-{user.wallet_address[:8]}",
+                'wallet': user.wallet_address,
+                'message': message.content,
+                'created_at': message.created_at.isoformat()
+            }
+        })
+
+@app.route('/api/token/<contract_address>/polls', methods=['GET', 'POST'])
+@require_wallet_connection
+def token_polls(contract_address):
+    """Get or create polls for a token"""
+    from datetime import datetime, timedelta, timezone
+    
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    user = get_current_user()
+    
+    if request.method == 'GET':
+        # Get active polls
+        polls = Poll.query.filter_by(token_id=token.id, is_active=True).all()
+        
+        poll_list = []
+        for poll in polls:
+            # Get options with vote counts
+            options_data = []
+            for option in poll.options:
+                options_data.append({
+                    'id': option.id,
+                    'text': option.option_text,
+                    'vote_count': option.vote_count
+                })
+            
+            poll_list.append({
+                'id': poll.id,
+                'creator': poll.creator.display_name or f"User-{poll.creator.wallet_address[:8]}",
+                'question': poll.question,
+                'options': options_data,
+                'total_votes': poll.total_votes,
+                'vote_cost': int(poll.vote_cost) if poll.vote_cost else 0,
+                'created_at': poll.created_at.isoformat(),
+                'ends_at': poll.ends_at.isoformat() if poll.ends_at else None
+            })
+        
+        return jsonify({'polls': poll_list})
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        question = data.get('question', '').strip()
+        options_text = data.get('options', [])
+        vote_cost = data.get('vote_cost', 100)
+        duration_hours = data.get('duration_hours', 24)
+        
+        if not question:
+            return jsonify({'error': 'Question is required'}), 400
+        
+        if len(options_text) < 2:
+            return jsonify({'error': 'At least 2 options required'}), 400
+        
+        # Create poll
+        poll = Poll(
+            token_id=token.id,
+            creator_id=user.id,
+            question=question,
+            vote_cost=vote_cost,
+            ends_at=datetime.now(timezone.utc) + timedelta(hours=duration_hours)
+        )
+        db.session.add(poll)
+        db.session.flush()  # Get poll ID
+        
+        # Create options
+        for opt_text in options_text:
+            option = PollOption(
+                poll_id=poll.id,
+                option_text=opt_text
+            )
+            db.session.add(option)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'poll': {
+                'id': poll.id,
+                'creator': user.display_name or f"User-{user.wallet_address[:8]}",
+                'question': poll.question,
+                'created_at': poll.created_at.isoformat()
+            }
+        })
+
+@app.route('/api/token/<contract_address>/polls/<int:poll_id>/vote', methods=['POST'])
+@require_wallet_connection
+def vote_on_poll(contract_address, poll_id):
+    """Vote on a poll"""
+    user = get_current_user()
+    data = request.get_json()
+    option_id = data.get('option_id')
+    
+    if not option_id:
+        return jsonify({'error': 'Option ID required'}), 400
+    
+    # Get poll and option
+    poll = Poll.query.get_or_404(poll_id)
+    option = PollOption.query.filter_by(id=option_id, poll_id=poll_id).first_or_404()
+    
+    # Check if already voted
+    existing_vote = PollVote.query.filter_by(poll_id=poll_id, user_id=user.id).first()
+    if existing_vote:
+        return jsonify({'error': 'Already voted on this poll'}), 400
+    
+    # Check user has enough tokens (would need holdings check here)
+    # For now, just record the vote
+    
+    # Create vote
+    vote = PollVote(
+        poll_id=poll_id,
+        option_id=option_id,
+        user_id=user.id
+    )
+    db.session.add(vote)
+    
+    # Update vote count
+    option.vote_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'new_vote_count': option.vote_count})
+
+@app.route('/api/token/<contract_address>/spotlight', methods=['GET', 'POST'])
+@require_wallet_connection
+def token_spotlight(contract_address):
+    """Get or create spotlight messages"""
+    from datetime import datetime, timedelta, timezone
+    
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    user = get_current_user()
+    
+    if request.method == 'GET':
+        # Get active spotlight messages
+        spotlights = ChatMessage.query.filter_by(
+            token_id=token.id,
+            is_pinned=True,
+            is_deleted=False
+        ).order_by(ChatMessage.created_at.desc()).limit(5).all()
+        
+        spotlight_list = []
+        for msg in spotlights:
+            spotlight_list.append({
+                'id': msg.id,
+                'user': msg.user.display_name or f"User-{msg.user.wallet_address[:8]}",
+                'message': msg.content,
+                'created_at': msg.created_at.isoformat()
+            })
+        
+        return jsonify({'spotlights': spotlight_list})
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        message_text = data.get('message', '').strip()
+        
+        if not message_text:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+        
+        # Create spotlight message
+        message = ChatMessage(
+            token_id=token.id,
+            user_id=user.id,
+            content=message_text,
+            message_type='spotlight',
+            is_pinned=True
+        )
+        db.session.add(message)
+        db.session.commit()
+        
+        # Schedule unpinning after 1 hour (would need a background task)
+        
+        return jsonify({
+            'success': True,
+            'spotlight': {
+                'id': message.id,
+                'user': user.display_name or f"User-{user.wallet_address[:8]}",
+                'message': message.content,
+                'created_at': message.created_at.isoformat()
+            }
+        })
+
+@app.route('/api/token/<contract_address>/message/<int:message_id>/react', methods=['POST'])
+@require_wallet_connection
+def react_to_message(contract_address, message_id):
+    """Add reaction to a message"""
+    user = get_current_user()
+    data = request.get_json()
+    reaction_type = data.get('reaction_type', 'love')
+    
+    # Get message
+    message = ChatMessage.query.get_or_404(message_id)
+    
+    # Check if already reacted
+    existing = MessageReaction.query.filter_by(
+        message_id=message_id,
+        user_id=user.id
+    ).first()
+    
+    if existing:
+        # Toggle reaction off
+        db.session.delete(existing)
+        message.love_count = max(0, message.love_count - 1)
+        db.session.commit()
+        return jsonify({'success': True, 'removed': True, 'new_count': message.love_count})
+    else:
+        # Add reaction
+        reaction = MessageReaction(
+            message_id=message_id,
+            user_id=user.id,
+            reaction_type=reaction_type
+        )
+        db.session.add(reaction)
+        message.love_count += 1
+        db.session.commit()
+        return jsonify({'success': True, 'added': True, 'new_count': message.love_count})
 
 # Leaderboard routes
 @app.route('/app/leaderboard')

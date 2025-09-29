@@ -2658,7 +2658,7 @@
         }
         
         // Initialize chat state on page load
-        function initializeChatState() {
+        async function initializeChatState() {
             console.log('💎 Initializing chat state...');
             
             // Check ownership and set up appropriate interface
@@ -2674,40 +2674,77 @@
                 }
             }
             
-            // Load existing loves state
-            const existingMessages = document.querySelectorAll('.chat-message');
-            console.log(`Found ${existingMessages.length} existing messages`);
-            
-            existingMessages.forEach(msg => {
-                const messageId = msg.getAttribute('data-message-id');
-                if (!messageId) return;
-                
-                // Check if user has loved this message
-                const isLoved = chatState.userLoves.includes(messageId);
-                const loveBtn = msg.querySelector('.love-btn');
-                
-                if (loveBtn && isLoved) {
-                    loveBtn.classList.add('loved');
-                    console.log(`❤️ Restored love state for message ${messageId}`);
+            // Load messages from database
+            try {
+                const response = await fetch(`/api/token/{{ token.contract_address }}/messages`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const chatContainer = document.getElementById('chatMessages');
+                    
+                    // Clear existing static messages
+                    chatContainer.innerHTML = '';
+                    
+                    // Add messages from database
+                    data.messages.forEach(msg => {
+                        addMessageToChat(msg.user, msg.message, false, msg.id);
+                    });
+                    
+                    console.log(`📥 Loaded ${data.messages.length} messages from database`);
                 }
-                
-                // Update love counts from stored state
-                const countSpan = msg.querySelector('.love-count');
-                if (countSpan) {
-                    const savedCount = chatState.messageLoves[messageId];
-                    if (savedCount !== undefined) {
-                        countSpan.textContent = savedCount;
-                        console.log(`📊 Restored count ${savedCount} for message ${messageId}`);
-                    } else {
-                        // Initialize with current count from HTML
-                        const currentCount = parseInt(countSpan.textContent) || 0;
-                        chatState.messageLoves[messageId] = currentCount;
-                        console.log(`🆕 Initialized message ${messageId} with count ${currentCount}`);
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+            
+            // Load active polls from database
+            try {
+                const response = await fetch(`/api/token/{{ token.contract_address }}/polls`);
+                if (response.ok) {
+                    const data = await response.json();
+                    chatState.activePolls = data.polls || [];
+                    
+                    // Display active polls
+                    data.polls.forEach(poll => {
+                        displayPollInChat(poll);
+                    });
+                    
+                    console.log(`📊 Loaded ${data.polls.length} active polls from database`);
+                }
+            } catch (error) {
+                console.error('Failed to load polls:', error);
+            }
+            
+            // Load spotlight messages from database
+            try {
+                const response = await fetch(`/api/token/{{ token.contract_address }}/spotlight`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Display spotlight messages
+                    if (data.spotlights && data.spotlights.length > 0) {
+                        const spotlightContainer = document.getElementById('spotlightMessages');
+                        const listContainer = document.getElementById('spotlightMessagesList');
+                        
+                        spotlightContainer.style.display = 'block';
+                        listContainer.innerHTML = '';
+                        
+                        data.spotlights.forEach(spotlight => {
+                            const spotlightEntry = {
+                                id: spotlight.id,
+                                user: spotlight.user,
+                                message: spotlight.message,
+                                expiresAt: new Date(spotlight.created_at).getTime() + (60 * 60 * 1000) // 1 hour from creation
+                            };
+                            updateSpotlightDisplay(spotlightEntry);
+                        });
                     }
+                    
+                    console.log(`✨ Loaded ${data.spotlights.length} spotlight messages from database`);
                 }
-            });
+            } catch (error) {
+                console.error('Failed to load spotlight messages:', error);
+            }
             
-            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol} | Loved messages: [${chatState.userLoves.join(', ')}] | Username: ${savedUsername || 'Not set'}`);
+            console.log(`💎 Chat initialized | Balance: ${chatState.userTokenBalance.toLocaleString()} $${tokenSymbol} | Username: ${savedUsername || 'Not set'}`);
         }
         
         // Check token ownership and set up appropriate interface
@@ -3445,7 +3482,7 @@
             container.insertBefore(newOption, addBtn);
         }
         
-        function createPollSubmit() {
+        async function createPollSubmit() {
             const question = document.getElementById('pollQuestion').value.trim();
             const duration = parseInt(document.getElementById('pollDuration').value);
             const voteCost = parseInt(document.getElementById('voteCost').value);
@@ -3484,40 +3521,56 @@
                 return;
             }
             
-            // No deduction - poll creation is FREE for holders who meet the minimum
-            // Only votes will cost tokens (100 per vote, which are burned)
-            
-            // Create poll object
-            const poll = {
-                id: Date.now(),
-                question: question,
-                options: options.map(opt => ({ text: opt, votes: 0, voters: [] })),
-                duration: duration,
-                voteCost: voteCost,
-                creator: 'You',
-                createdAt: new Date(),
-                expiresAt: new Date(Date.now() + duration * 60 * 60 * 1000),
-                totalVotes: 0
-            };
-            
-            // Store poll in chat state
-            if (!chatState.polls) chatState.polls = [];
-            chatState.polls.push(poll);
-            
-            // Add poll to chat
-            addPollToChat(poll);
-            
-            // Close modal
-            closePollModal();
-            
-            // Show success notification
-            showNotification(
-                '🗳️ Poll Created!',
-                `Your poll "${question}" has been created successfully! No tokens were deducted. Community members can vote for ${voteCost} tokens per vote (burned).`,
-                'success'
-            );
-            
-            console.log(`🗳️ Poll created: "${question}" | FREE (min holding: ${minHoldingRequired} tokens) | Vote cost: ${voteCost} tokens`);
+            // Save poll to database
+            try {
+                const response = await fetch(`/api/token/{{ token.contract_address }}/polls`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        options: options,
+                        duration_hours: duration,
+                        vote_cost: voteCost
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Reload polls from database
+                    const pollsResponse = await fetch(`/api/token/{{ token.contract_address }}/polls`);
+                    if (pollsResponse.ok) {
+                        const pollsData = await pollsResponse.json();
+                        chatState.activePolls = pollsData.polls || [];
+                        
+                        // Display the new poll
+                        const newPoll = pollsData.polls.find(p => p.id === data.poll.id);
+                        if (newPoll) {
+                            displayPollInChat(newPoll);
+                        }
+                    }
+                    
+                    // Close modal
+                    closePollModal();
+                    
+                    // Show success notification
+                    showNotification(
+                        '🗳️ Poll Created!',
+                        `Your poll "${question}" has been created successfully and saved to database! No tokens were deducted. Community members can vote for ${voteCost} tokens per vote (burned).`,
+                        'success'
+                    );
+                    
+                    console.log(`🗳️ Poll saved to database: "${question}" | FREE (min holding: ${minHoldingRequired} tokens) | Vote cost: ${voteCost} tokens`);
+                } else {
+                    const error = await response.json();
+                    showNotification('❌ Error', error.error || 'Failed to create poll', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to create poll:', error);
+                showNotification('❌ Error', 'Failed to create poll. Please try again.', 'error');
+            }
         }
         
         function addPollToChat(poll) {
@@ -4008,45 +4061,63 @@
             window.pendingSpotlight = { message, minHolding, tokenData };
         }
         
-        function confirmSpotlight() {
+        async function confirmSpotlight() {
             closeNotificationModal();
             
             if (!window.pendingSpotlight) return;
             
             const { message, minHolding, tokenData } = window.pendingSpotlight;
             
-            // Continue with spotlight creation (NO TOKEN DEDUCTION - FREE FOR HOLDERS)
-            if (true) {
-                // NO tokens deducted - this is FREE for holders who meet the minimum
+            try {
+                // Save spotlight message to database
+                const response = await fetch(`/api/token/{{ token.contract_address }}/spotlight`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message
+                    })
+                });
                 
-                // Create spotlight message entry
-                const spotlightEntry = {
-                    id: Date.now(),
-                    message: message,
-                    minHolding: minHolding,
-                    timestamp: new Date(),
-                    expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
-                    user: localStorage.getItem('connectedWallet')?.slice(0, 10) + '...' || 'You'
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Create spotlight message entry for display
+                    const spotlightEntry = {
+                        id: data.spotlight.id,
+                        message: message,
+                        minHolding: minHolding,
+                        timestamp: new Date(),
+                        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+                        user: data.spotlight.user
                 };
                 
-                // Add to state
-                if (!chatState.spotlightMessages) chatState.spotlightMessages = [];
-                chatState.spotlightMessages.push(spotlightEntry);
-                
-                // Show pinned message at top
-                updateSpotlightDisplay(spotlightEntry);
-                
-                // Clear input
-                document.getElementById('chatInput').value = '';
-                
-                // Show success notification
-                showNotification(
-                    '📌 Message Pinned!',
-                    `Your message has been pinned to the top of chat for 1 hour. No tokens were deducted.`,
-                    'success'
-                );
-                
-                console.log(`📌 Spotlight pinned for 1 hour | Min holding: ${minHolding} tokens | FREE`);
+                    // Add to state
+                    if (!chatState.spotlightMessages) chatState.spotlightMessages = [];
+                    chatState.spotlightMessages.push(spotlightEntry);
+                    
+                    // Show pinned message at top
+                    updateSpotlightDisplay(spotlightEntry);
+                    
+                    // Clear input
+                    document.getElementById('chatInput').value = '';
+                    
+                    // Show success notification
+                    showNotification(
+                        '📌 Message Pinned!',
+                        `Your message has been pinned to the top of chat for 1 hour and saved to database. No tokens were deducted.`,
+                        'success'
+                    );
+                    
+                    console.log(`📌 Spotlight saved to database | Min holding: ${minHolding} tokens | FREE`);
+                } else {
+                    const error = await response.json();
+                    showNotification('❌ Error', error.error || 'Failed to create spotlight message', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to create spotlight:', error);
+                showNotification('❌ Error', 'Failed to create spotlight message. Please try again.', 'error');
             }
         }
         
@@ -4295,81 +4366,43 @@
             alert(`${currentTradeMode === 'buy' ? 'Buying' : 'Selling'} ${document.getElementById('tokenAmount').value} ${{ token.symbol }} for ${kasAmount} KAS`);
         }
         
-        function sendMessage() {
+        async function sendMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
             
             if (!message) return;
             
-            const messagesDiv = document.getElementById('chatMessages');
-            const newMessage = document.createElement('div');
-            const messageId = Date.now();
-            
-            // Check if this is a reply
-            const replyToId = input.dataset.replyTo;
-            
-            if (replyToId) {
-                // Find the original message being replied to
-                const originalMessage = document.querySelector(`[data-message-id="${replyToId}"]`);
-                const originalUser = originalMessage?.querySelector('.chat-user')?.textContent?.replace(':', '') || 'Unknown User';
-                const originalText = originalMessage?.querySelector('.chat-text')?.textContent || 'Message not found';
+            // Save message to database
+            try {
+                const response = await fetch(`/api/token/{{ token.contract_address }}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        message_type: 'regular'
+                    })
+                });
                 
-                // Create reply message with new modern structure
-                newMessage.className = 'chat-message reply-message';
-                newMessage.setAttribute('data-message-id', messageId);
-                newMessage.setAttribute('data-reply-to', replyToId);
-                newMessage.innerHTML = `
-                    <div class="reply-header">
-                        <i class="fas fa-reply reply-icon"></i>
-                        <span class="reply-reference">${originalUser}</span>
-                        <span class="reply-preview">${originalText.length > 30 ? originalText.substring(0, 30) + '...' : originalText}</span>
-                    </div>
-                    <div class="message-content">
-                        <span class="chat-user verified-user">You</span>
-                        <span class="chat-text">${message}</span>
-                    </div>
-                    <div class="message-actions">
-                        <button class="message-action love-btn" onclick="toggleLove(${messageId})" title="Love this message">
-                            <i class="fas fa-heart"></i>
-                            <span class="love-count">0</span>
-                        </button>
-                        <button class="message-action reply-btn" onclick="replyToMessage(${messageId})" title="Reply to this message">
-                            <i class="fas fa-reply"></i>
-                        </button>
-                    </div>
-                `;
-                
-                // Clear reply state
-                cancelReply();
-                
-                console.log(`✅ Reply sent to message ${replyToId}: "${message}"`);
-            } else {
-                // Regular message
-                newMessage.className = 'chat-message';
-                newMessage.setAttribute('data-message-id', messageId);
-                newMessage.innerHTML = `
-                    <div class="message-content">
-                        <span class="chat-user verified-user">You</span>
-                        <span class="chat-text">${message}</span>
-                    </div>
-                    <div class="message-actions">
-                        <button class="message-action love-btn" onclick="toggleLove(${messageId})" title="Love this message">
-                            <i class="fas fa-heart"></i>
-                            <span class="love-count">0</span>
-                        </button>
-                        <button class="message-action reply-btn" onclick="replyToMessage(${messageId})" title="Reply to this message">
-                            <i class="fas fa-reply"></i>
-                        </button>
-                    </div>
-                `;
-                
-                console.log(`💬 Regular message sent: "${message}"`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Add message to chat
+                    addMessageToChat(data.message.user, data.message.message, false, data.message.id);
+                    
+                    // Clear input
+                    input.value = '';
+                    
+                    console.log(`💬 Message saved to database: "${message}"`);
+                } else {
+                    const error = await response.json();
+                    showNotification('❌ Error', error.error || 'Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                showNotification('❌ Error', 'Failed to send message. Please try again.', 'error');
             }
-            
-            messagesDiv.appendChild(newMessage);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            
-            input.value = '';
         }
         
         // Auto-update token amount on KAS input
