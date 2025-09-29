@@ -484,7 +484,7 @@ def token_messages(contract_address):
         for msg in reversed(messages):
             message_list.append({
                 'id': msg.id,
-                'user': msg.user.display_name or msg.user.wallet_address[-6:],
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'wallet': msg.user.wallet_address,
                 'message': msg.content,
                 'message_type': msg.message_type,
@@ -680,7 +680,7 @@ def token_spotlight(contract_address):
         for msg in spotlights:
             spotlight_list.append({
                 'id': msg.id,
-                'user': msg.user.display_name or msg.user.wallet_address[-6:],
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'message': msg.content,
                 'created_at': msg.created_at.isoformat()
             })
