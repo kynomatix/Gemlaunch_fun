@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Turbo for SPA-like navigation -->
+    <script src="https://unpkg.com/@hotwired/turbo@7/dist/turbo.es2017-umd.js"></script>
+    
     {% block extra_head %}{% endblock %}
     <style>
         /* Unified App Layout Styles */
@@ -380,24 +384,32 @@
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     
     <script>
-        // Sidebar Toggle
-        function toggleSidebar() {
+        // Sidebar Toggle - Global function
+        window.toggleSidebar = function() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
             
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('sidebar-collapsed');
-            
-            // Save state
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            if (sidebar && mainContent) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('sidebar-collapsed');
+                
+                // Save state
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            }
         }
         
-        // Restore sidebar state
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize sidebar and wallet on page load
+        function initializePage() {
+            // Restore sidebar state
             const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-            if (isCollapsed) {
-                document.getElementById('sidebar').classList.add('collapsed');
-                document.getElementById('mainContent').classList.add('sidebar-collapsed');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (sidebar && mainContent) {
+                if (isCollapsed) {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                }
             }
             
             // Store user wallet address for ownership checks
@@ -407,17 +419,34 @@
             {% else %}
             localStorage.removeItem('connectedWallet');
             {% endif %}
+        }
+        
+        // Run initialization on DOM ready
+        document.addEventListener('DOMContentLoaded', initializePage);
+        
+        // Run initialization after Turbo navigation
+        document.addEventListener('turbo:load', initializePage);
+        
+        // Preserve scroll position during Turbo navigation
+        document.addEventListener('turbo:before-render', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                const scrollTop = sidebar.scrollTop;
+                event.detail.resume = () => {
+                    document.getElementById('sidebar').scrollTop = scrollTop;
+                };
+            }
         });
         
         // Disconnect wallet
-        async function disconnectWallet() {
+        window.disconnectWallet = async function() {
             try {
                 const response = await fetch('/api/disconnect-wallet', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 if (response.ok) {
-                    window.location.href = '/app';
+                    Turbo.visit('/app');
                 }
             } catch (error) {
                 console.error('Error disconnecting wallet:', error);
