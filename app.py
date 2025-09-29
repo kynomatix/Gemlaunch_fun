@@ -603,6 +603,7 @@ def token_polls(contract_address):
             return jsonify({'error': 'At least 2 options required'}), 400
         
         try:
+            logging.debug("Attempting to create poll object")
             # Create poll
             poll = Poll(
                 token_id=token.id,
@@ -611,28 +612,35 @@ def token_polls(contract_address):
                 vote_cost=vote_cost,
                 ends_at=datetime.now(timezone.utc) + timedelta(hours=duration_hours)
             )
+            logging.debug(f"Poll object created: token_id={token.id}, creator_id={user.id}")
             db.session.add(poll)
             db.session.flush()  # Get poll ID
+            logging.debug(f"Poll flushed with ID: {poll.id}")
             
             # Create options
-            for opt_text in options_text:
+            for i, opt_text in enumerate(options_text):
+                logging.debug(f"Creating option {i+1}: {opt_text}")
                 option = PollOption(
                     poll_id=poll.id,
                     option_text=opt_text
                 )
                 db.session.add(option)
             
+            logging.debug("Committing poll to database...")
             db.session.commit()
+            logging.debug("Poll successfully committed!")
             
             # Get creator display name safely
             creator_name = user.display_name or user.wallet_address[-6:]
             try:
                 if hasattr(user, 'profile') and user.profile and user.profile.username:
                     creator_name = user.profile.username
-            except:
+                    logging.debug(f"Using profile username: {creator_name}")
+            except Exception as e:
+                logging.debug(f"Could not get profile username: {e}")
                 pass
             
-            return jsonify({
+            response_data = {
                 'success': True,
                 'poll': {
                     'id': poll.id,
@@ -640,7 +648,9 @@ def token_polls(contract_address):
                     'question': poll.question,
                     'created_at': poll.created_at.isoformat()
                 }
-            })
+            }
+            logging.debug(f"Returning success response: {response_data}")
+            return jsonify(response_data)
         except Exception as e:
             logging.error(f"Failed to create poll: {str(e)}")
             import traceback
