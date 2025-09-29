@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
+from sqlalchemy.orm import joinedload, selectinload
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
 import models_extended
 
@@ -316,15 +317,22 @@ def app_dashboard():
     if not user:
         return render_template('app/connect_wallet.html')
     
-    # Get user's created tokens and holdings
+    # Get user's created tokens and holdings with eager loading
     created_tokens = Token.query.filter_by(creator_id=user.id).all()
-    holdings = Holding.query.filter_by(user_id=user.id).all()
+    holdings = Holding.query.options(
+        joinedload(Holding.token)
+    ).filter_by(user_id=user.id).all()
     
-    # Get user's activities
-    activities = Activity.query.filter_by(user_id=user.id).order_by(Activity.created_at.desc()).limit(20).all()
+    # Get user's activities with eager loading of related entities
+    activities = Activity.query.options(
+        joinedload(Activity.token),
+        joinedload(Activity.achievement)
+    ).filter_by(user_id=user.id).order_by(Activity.created_at.desc()).limit(20).all()
     
-    # Get user's achievements
-    user_achievements = UserAchievement.query.filter_by(user_id=user.id).all()
+    # Get user's achievements with eager loading of achievement details
+    user_achievements = UserAchievement.query.options(
+        joinedload(UserAchievement.achievement)
+    ).filter_by(user_id=user.id).all()
     user_achievement_ids = [ua.achievement_id for ua in user_achievements]
     
     # Get all achievements for display
@@ -411,17 +419,23 @@ def token_marketplace():
     if not user:
         return render_template('app/connect_wallet.html')
     
-    # Show all tokens, including pending ones for UI demo
-    tokens = Token.query.order_by(Token.created_at.desc()).all()
+    # Show all tokens with eager loading of creator information
+    tokens = Token.query.options(
+        joinedload(Token.creator)
+    ).order_by(Token.created_at.desc()).all()
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
 def token_detail(contract_address):
     """Individual token detail page"""
-    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    token = Token.query.options(
+        joinedload(Token.creator)
+    ).filter_by(contract_address=contract_address).first_or_404()
     
-    # Get recent trades
-    recent_trades = Trade.query.filter_by(token_id=token.id, tx_status='confirmed').order_by(Trade.confirmed_at.desc()).limit(10).all()
+    # Get recent trades with eager loading of user information
+    recent_trades = Trade.query.options(
+        joinedload(Trade.user)
+    ).filter_by(token_id=token.id, tx_status='confirmed').order_by(Trade.confirmed_at.desc()).limit(10).all()
     
     # Get user's holding if connected
     user_holding = None
@@ -458,8 +472,11 @@ def leaderboard():
     if not user:
         return render_template('app/connect_wallet.html')
     
-    # Get top users by GEM points
-    top_users = User.query.order_by(User.gem_points.desc()).limit(50).all()
+    # Get top users by GEM points with eager loading of related data
+    top_users = User.query.options(
+        selectinload(User.earned_achievements).joinedload(UserAchievement.achievement),
+        joinedload(User.profile)
+    ).order_by(User.gem_points.desc()).limit(50).all()
     
     # Get user's rank
     user_rank = None
@@ -496,8 +513,10 @@ def profile():
     # Get connected wallets
     connected_wallets = ConnectedWallet.query.filter_by(user_id=user.id).all()
     
-    # Get user's achievements
-    user_achievements = UserAchievement.query.filter_by(user_id=user.id).all()
+    # Get user's achievements with eager loading
+    user_achievements = UserAchievement.query.options(
+        joinedload(UserAchievement.achievement)
+    ).filter_by(user_id=user.id).all()
     
     # Get referral info
     referral = Referral.query.filter_by(referrer_id=user.id).first()
@@ -611,8 +630,10 @@ def profile():
             db.session.rollback()
             flash('Error updating profile. Please try again.', 'error')
     
-    # Get referred users for referrals tab
-    referred_users = User.query.join(Referral, Referral.referee_id == User.id).filter(
+    # Get referred users for referrals tab with eager loading
+    referred_users = User.query.options(
+        joinedload(User.profile)
+    ).join(Referral, Referral.referee_id == User.id).filter(
         Referral.referrer_id == user.id
     ).all()
     
@@ -636,14 +657,20 @@ def activities():
     if not user:
         return render_template('app/connect_wallet.html')
     
-    # Get user's recent activities
-    user_activities = Activity.query.filter_by(user_id=user.id).order_by(
+    # Get user's recent activities with eager loading
+    user_activities = Activity.query.options(
+        joinedload(Activity.token),
+        joinedload(Activity.achievement),
+        joinedload(Activity.trade)
+    ).filter_by(user_id=user.id).order_by(
         Activity.created_at.desc()
     ).limit(50).all()
     
-    # Get available achievements and user's progress
+    # Get available achievements and user's progress with eager loading
     all_achievements = Achievement.query.filter_by(is_active=True).all()
-    user_achievements = {ua.achievement_id: ua for ua in UserAchievement.query.filter_by(user_id=user.id).all()}
+    user_achievements = {ua.achievement_id: ua for ua in UserAchievement.query.options(
+        joinedload(UserAchievement.achievement)
+    ).filter_by(user_id=user.id).all()}
     
     return render_template('app/activities.html', 
                          user=user, 
