@@ -3938,7 +3938,7 @@
             const cost = tokenData.superchat_gate_tokens || 500;
             
             if (chatState.userTokenBalance < cost) {
-                showNotification('
+                showNotification(
                     '❌ Insufficient Balance', 
                     `Spotlight messages require ${cost.toLocaleString()} ${tokenData.symbol} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} ${tokenData.symbol}\n\nYou need ${(cost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
                     'error'
@@ -4095,6 +4095,27 @@
         }
         
         // Removed duplicate createPoll - using modal version above
+        function createAirdrop() {
+            // Get current token creator  
+            const userWallet = localStorage.getItem('connectedWallet');
+            const tokenCreator = '{{ token.creator.wallet_address }}'.toLowerCase();
+            
+            if (userWallet.toLowerCase() !== tokenCreator) {
+                showNotification('🚫 Access Denied', 'Only the token creator can create airdrops.', 'error');
+                return;
+            }
+            
+            const amount = prompt('Enter airdrop amount per wallet:');
+            if (!amount) return;
+            
+            const recipients = prompt('Enter wallet addresses separated by commas:');
+            if (!recipients) return;
+            
+            const walletList = recipients.split(',').map(w => w.trim());
+            const totalAmount = parseFloat(amount) * walletList.length;
+            
+            alert(`Airdrop Created!\n\nAmount per wallet: ${amount} {{ token.symbol }}\nRecipients: ${walletList.length} wallets\nTotal: ${totalAmount} {{ token.symbol }}\n\n(In production, this would distribute tokens)`);
+        }
         
         function createAirdrop() {
             const options = [
