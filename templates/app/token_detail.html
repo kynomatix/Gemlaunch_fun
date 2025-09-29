@@ -2717,7 +2717,12 @@
             
             // Load active polls from database
             try {
-                const response = await fetch(`/api/token/{{ token.contract_address }}/polls`);
+                const userWallet = localStorage.getItem('connectedWallet');
+                const response = await fetch(`/api/token/{{ token.contract_address }}/polls`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
                 if (response.ok) {
                     const data = await response.json();
                     chatState.activePolls = data.polls || [];
@@ -3543,10 +3548,12 @@
             
             // Save poll to database
             try {
+                const userWallet = localStorage.getItem('connectedWallet');
                 const response = await fetch(`/api/token/{{ token.contract_address }}/polls`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': userWallet
                     },
                     body: JSON.stringify({
                         question: question,
@@ -3560,7 +3567,11 @@
                     const data = await response.json();
                     
                     // Reload polls from database
-                    const pollsResponse = await fetch(`/api/token/{{ token.contract_address }}/polls`);
+                    const pollsResponse = await fetch(`/api/token/{{ token.contract_address }}/polls`, {
+                        headers: {
+                            'X-Wallet-Address': userWallet
+                        }
+                    });
                     if (pollsResponse.ok) {
                         const pollsData = await pollsResponse.json();
                         chatState.activePolls = pollsData.polls || [];
