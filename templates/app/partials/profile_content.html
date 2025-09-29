@@ -1,0 +1,366 @@
+<div class="profile-container">
+    <div class="profile-header">
+        <h1 class="profile-title">
+            <i class="fas fa-user-circle"></i>
+            Profile
+        </h1>
+        <p class="profile-subtitle">Manage your account, wallets, and referral program</p>
+        
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('profile')">
+                <i class="fas fa-user"></i>
+                Profile
+            </button>
+            <button class="tab-btn" onclick="switchTab('referrals')">
+                <i class="fas fa-link"></i>
+                Referrals
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Profile Tab -->
+        <div id="profile-tab" class="tab-pane active">
+            <div class="profile-grid">
+        <!-- Profile Information -->
+        <div class="profile-section">
+            <div class="section-header">
+                <h2>Profile Information</h2>
+                <button class="btn-edit-profile" id="editProfileBtn" onclick="toggleEditMode()">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+            
+            <!-- View Mode -->
+            <div class="profile-fields" id="profileView">
+                <div class="field-group">
+                    <label>Username</label>
+                    <div class="field-value">{{ (user_profile.username if user_profile else None) or user.display_name or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Display Name</label>
+                    <div class="field-value">{{ user.display_name or (user_profile.username if user_profile else None) or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Bio</label>
+                    <div class="field-value">{{ (user_profile.bio if user_profile else None) or 'No bio added yet' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Twitter</label>
+                    <div class="field-value">{{ (user_profile.twitter_handle if user_profile else None) or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Telegram</label>
+                    <div class="field-value">{{ (user_profile.telegram_handle if user_profile else None) or 'Not set' }}</div>
+                </div>
+                
+                <div class="field-group">
+                    <label>Discord</label>
+                    <div class="field-value">{{ (user_profile.discord_handle if user_profile else None) or 'Not set' }}</div>
+                </div>
+            </div>
+            
+            <!-- Edit Mode -->
+            <div class="profile-edit-form" id="profileEdit" style="display: none;">
+                <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" 
+                                   value="{{ user_profile.username if user_profile else '' }}" 
+                                   placeholder="Enter username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="display_name">Display Name</label>
+                            <input type="text" id="display_name" name="display_name" 
+                                   value="{{ user.display_name or '' }}" 
+                                   placeholder="Enter display name">
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="bio">Bio</label>
+                            <textarea id="bio" name="bio" rows="4" 
+                                      placeholder="Tell us about yourself...">{{ user_profile.bio if user_profile else '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="twitter_handle">Twitter</label>
+                            <input type="text" id="twitter_handle" name="twitter_handle" 
+                                   value="{{ user_profile.twitter_handle if user_profile else '' }}" 
+                                   placeholder="@yourusername">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="telegram_handle">Telegram</label>
+                            <input type="text" id="telegram_handle" name="telegram_handle" 
+                                   value="{{ user_profile.telegram_handle if user_profile else '' }}" 
+                                   placeholder="@yourusername">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="discord_handle">Discord</label>
+                            <input type="text" id="discord_handle" name="discord_handle" 
+                                   value="{{ user_profile.discord_handle if user_profile else '' }}" 
+                                   placeholder="username#0000">
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="profile_picture">Profile Picture</label>
+                            <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+                            <small class="form-text">Max size: 5MB. Formats: JPG, PNG, GIF, WebP</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="cancelEdit()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Profile Picture Section -->
+        <div class="profile-picture-section">
+            <div class="section-header">
+                <h2>Profile Picture</h2>
+            </div>
+            
+            <div class="profile-picture-container">
+                {% if user_profile and user_profile.profile_picture_url %}
+                <img src="{{ url_for('static', filename=user_profile.profile_picture_url) }}" alt="Profile Picture" class="profile-picture">
+                {% else %}
+                <div class="profile-picture-placeholder">
+                    <i class="fas fa-user"></i>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Wallet Connections -->
+        <div class="wallet-section">
+            <div class="section-header">
+                <h2>Connected Wallets</h2>
+            </div>
+            
+            <div class="wallet-list">
+                <div class="wallet-item primary">
+                    <div class="wallet-info">
+                        <i class="fas fa-wallet"></i>
+                        <div>
+                            <span class="wallet-label">Primary Wallet</span>
+                            <span class="wallet-address">{{ user.wallet_address[:10] }}...{{ user.wallet_address[-8:] }}</span>
+                        </div>
+                    </div>
+                    <span class="wallet-badge">Active</span>
+                </div>
+                
+                {% for wallet in connected_wallets %}
+                <div class="wallet-item">
+                    <div class="wallet-info">
+                        <i class="fas fa-link"></i>
+                        <div>
+                            <span class="wallet-label">Connected Wallet</span>
+                            <span class="wallet-address">{{ wallet.wallet_address[:10] }}...{{ wallet.wallet_address[-8:] }}</span>
+                        </div>
+                    </div>
+                    <button class="btn-disconnect" onclick="disconnectWallet('{{ wallet.wallet_address }}')">
+                        Disconnect
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+        </div>
+
+        <!-- Referrals Tab -->
+        <div id="referrals-tab" class="tab-pane">
+            <div class="referral-dashboard">
+                <!-- Referral Stats -->
+                <div class="referral-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-users"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">{{ referral_count }}</span>
+                            <span class="stat-label">Total Referrals</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-check-circle"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">{{ active_referrals }}</span>
+                            <span class="stat-label">Active Users</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-gem"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">{{ "{:,}".format(referral_earnings or 0) }}</span>
+                            <span class="stat-label">GEM Earned</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-percentage"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">5%</span>
+                            <span class="stat-label">Commission Rate</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Referral Link -->
+                <div class="referral-link-section">
+                    <h3>Your Referral Link</h3>
+                    <p>Share this link to earn rewards when new users join and trade</p>
+                    <div class="referral-link-container">
+                        <input type="text" id="referralLink" value="{{ referral_link }}" readonly>
+                        <button class="btn-copy" onclick="copyReferralLink()">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <div class="share-buttons">
+                        <button class="share-btn twitter" onclick="shareOnTwitter()">
+                            <i class="fab fa-twitter"></i>
+                            Share on Twitter
+                        </button>
+                        <button class="share-btn telegram" onclick="shareOnTelegram()">
+                            <i class="fab fa-telegram"></i>
+                            Share on Telegram
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Referrals -->
+                {% if recent_referrals %}
+                <div class="recent-referrals">
+                    <h3>Recent Referrals</h3>
+                    <div class="referral-list">
+                        {% for referral in recent_referrals %}
+                        <div class="referral-item">
+                            <div class="referral-info">
+                                <span class="referral-user">{{ referral.referred_user.display_name or 'Anonymous' }}</span>
+                                <span class="referral-date">{{ referral.created_at.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                            <div class="referral-earnings">
+                                {% if referral.commission_earned %}
+                                <span class="earnings-amount">+{{ referral.commission_earned }} GEM</span>
+                                {% else %}
+                                <span class="pending-badge">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initializePageScripts() {
+    // Initialize profile page functionality
+    console.log('Initializing Profile page scripts');
+}
+
+function toggleEditMode() {
+    const viewMode = document.getElementById('profileView');
+    const editMode = document.getElementById('profileEdit');
+    const editBtn = document.getElementById('editProfileBtn');
+    
+    if (viewMode.style.display === 'none') {
+        viewMode.style.display = 'block';
+        editMode.style.display = 'none';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    } else {
+        viewMode.style.display = 'none';
+        editMode.style.display = 'block';
+        editBtn.innerHTML = '<i class="fas fa-times"></i>';
+    }
+}
+
+function cancelEdit() {
+    const viewMode = document.getElementById('profileView');
+    const editMode = document.getElementById('profileEdit');
+    const editBtn = document.getElementById('editProfileBtn');
+    
+    viewMode.style.display = 'block';
+    editMode.style.display = 'none';
+    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+}
+
+function switchTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Update tab panes
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+    
+    // Activate selected tab
+    event.target.classList.add('active');
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+
+function copyReferralLink() {
+    const linkInput = document.getElementById('referralLink');
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    
+    // Show feedback
+    const copyBtn = event.target.closest('.btn-copy');
+    const originalHTML = copyBtn.innerHTML;
+    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    setTimeout(() => {
+        copyBtn.innerHTML = originalHTML;
+    }, 2000);
+}
+
+function shareOnTwitter() {
+    const link = document.getElementById('referralLink').value;
+    const text = 'Join me on Gemlaunch.fun! Launch and trade meme tokens on Kaspa 🚀';
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(link)}`;
+    window.open(url, '_blank');
+}
+
+function shareOnTelegram() {
+    const link = document.getElementById('referralLink').value;
+    const text = 'Join me on Gemlaunch.fun! Launch and trade meme tokens on Kaspa 🚀';
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
+function disconnectWallet(address) {
+    if (confirm('Are you sure you want to disconnect this wallet?')) {
+        fetch('/api/disconnect-secondary-wallet', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({wallet_address: address})
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    }
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePageScripts);
+} else {
+    initializePageScripts();
+}
+</script>

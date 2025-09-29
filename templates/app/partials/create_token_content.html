@@ -1,0 +1,271 @@
+<div class="create-main">
+    <div class="create-container">
+        <div class="create-header">
+            <h1>Launch Your Token</h1>
+            <p>Create the next viral meme token on Kaspa</p>
+        </div>
+        
+        <div class="mode-selector">
+            <button class="mode-option active" onclick="selectMode('basic')">
+                <h3>Basic Token</h3>
+                <p>Simple bonding curve, 1B supply</p>
+            </button>
+            <button class="mode-option" onclick="selectMode('advanced')">
+                <h3>Advanced Token</h3>
+                <p>Custom parameters, more control</p>
+            </button>
+        </div>
+        
+        <!-- Immutability Note -->
+        <div class="immutable-note">
+            <i class="fas fa-info-circle"></i>
+            Note: Once created, your token parameters cannot be changed. Choose wisely!
+        </div>
+        
+        <form id="createTokenForm" class="create-form">
+            <!-- Basic Fields (Always Shown) -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tokenName">Token Name <span class="required">*</span></label>
+                    <input type="text" id="tokenName" name="tokenName" placeholder="e.g., Kaspa Moon" required>
+                </div>
+                <div class="form-group">
+                    <label for="tokenSymbol">Symbol <span class="required">*</span></label>
+                    <input type="text" id="tokenSymbol" name="tokenSymbol" placeholder="e.g., KMOON" maxlength="10" required>
+                </div>
+            </div>
+            
+            <div class="form-group full-width">
+                <label for="tokenDescription">Description <span class="required">*</span></label>
+                <div id="descriptionEditor" class="description-editor"></div>
+                <input type="hidden" id="tokenDescription" name="tokenDescription">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tokenImage">Token Image</label>
+                    <div class="image-upload">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p>Click to upload image</p>
+                        <span class="upload-hint">PNG, JPG, GIF (max 5MB)</span>
+                        <input type="file" id="tokenImage" name="tokenImage" accept="image/*">
+                    </div>
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
+                
+                <div class="form-group social-links">
+                    <label>Social Links</label>
+                    <input type="url" id="website" name="website" placeholder="Website URL">
+                    <input type="text" id="twitter" name="twitter" placeholder="Twitter handle">
+                    <input type="text" id="telegram" name="telegram" placeholder="Telegram group">
+                    <input type="text" id="discord" name="discord" placeholder="Discord server">
+                </div>
+            </div>
+            
+            <!-- Advanced Fields (Hidden by Default) -->
+            <div id="advancedFields" class="advanced-fields" style="display: none;">
+                <h3>Advanced Parameters</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="maxSupply">Max Supply</label>
+                        <input type="number" id="maxSupply" name="maxSupply" placeholder="1,000,000,000" value="1000000000">
+                        <span class="field-hint">Total token supply</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="initialPrice">Initial Price (KAS)</label>
+                        <input type="number" id="initialPrice" name="initialPrice" placeholder="0.00001" step="0.00001" value="0.00001">
+                        <span class="field-hint">Starting price per token</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bondingTarget">Bonding Target (KAS)</label>
+                        <input type="number" id="bondingTarget" name="bondingTarget" placeholder="30,000" value="30000">
+                        <span class="field-hint">KAS needed for graduation</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="creatorAllocation">Creator Allocation (%)</label>
+                        <input type="number" id="creatorAllocation" name="creatorAllocation" placeholder="5" min="0" max="10" value="5">
+                        <span class="field-hint">Your token allocation (0-10%)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="previewToken()">
+                    <i class="fas fa-eye"></i>
+                    Preview
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-rocket"></i>
+                    Launch Token (0.5 KAS)
+                </button>
+            </div>
+        </form>
+        
+        <!-- Preview Modal -->
+        <div id="previewModal" class="preview-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Token Preview</h2>
+                    <button onclick="closePreview()" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body" id="previewContent">
+                    <!-- Preview content will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Initialize Quill Editor and Form Scripts -->
+<script>
+var quill;
+
+function initializePageScripts() {
+    console.log('Initializing Create Token page scripts...');
+    
+    // Initialize Quill editor if not already initialized
+    if (!quill && document.getElementById('descriptionEditor')) {
+        quill = new Quill('#descriptionEditor', {
+            theme: 'snow',
+            placeholder: 'Describe your token and its mission...',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    ['link', 'blockquote'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['clean']
+                ]
+            }
+        });
+        
+        // Update hidden input when content changes
+        quill.on('text-change', function() {
+            document.getElementById('tokenDescription').value = quill.root.innerHTML;
+        });
+    }
+    
+    // Initialize image upload handler
+    initImageUploadHandler();
+    
+    // Initialize form submission
+    initializeCreateTokenForm();
+    
+    console.log('Create Token page scripts initialized');
+}
+
+function initImageUploadHandler() {
+    const imageInput = document.getElementById('tokenImage');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Token preview">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+}
+
+function selectMode(mode) {
+    // Update mode selector
+    document.querySelectorAll('.mode-option').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.closest('.mode-option').classList.add('active');
+    
+    // Show/hide advanced fields
+    const advancedFields = document.getElementById('advancedFields');
+    if (mode === 'advanced') {
+        advancedFields.style.display = 'block';
+    } else {
+        advancedFields.style.display = 'none';
+    }
+}
+
+function previewToken() {
+    const modal = document.getElementById('previewModal');
+    const content = document.getElementById('previewContent');
+    
+    // Get form values
+    const name = document.getElementById('tokenName').value || 'Token Name';
+    const symbol = document.getElementById('tokenSymbol').value || 'SYMBOL';
+    const description = quill.root.innerHTML || 'No description';
+    
+    // Create preview HTML
+    content.innerHTML = `
+        <div class="preview-token">
+            <h3>${name} (${symbol})</h3>
+            <div class="preview-description">${description}</div>
+            <div class="preview-stats">
+                <div class="stat">
+                    <span>Max Supply:</span>
+                    <strong>${document.getElementById('maxSupply').value || '1,000,000,000'}</strong>
+                </div>
+                <div class="stat">
+                    <span>Initial Price:</span>
+                    <strong>${document.getElementById('initialPrice').value || '0.00001'} KAS</strong>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+}
+
+function closePreview() {
+    document.getElementById('previewModal').style.display = 'none';
+}
+
+function initializeCreateTokenForm() {
+    const form = document.getElementById('createTokenForm');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = new FormData(form);
+            
+            // Add description from Quill
+            formData.set('description', quill.root.innerHTML);
+            
+            // Get mode
+            const isAdvanced = document.querySelector('.mode-option.active').textContent.includes('Advanced');
+            formData.set('token_type', isAdvanced ? 'advanced' : 'basic');
+            
+            try {
+                const response = await fetch('/api/create-token', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Token created successfully!');
+                    window.location.href = `/app/token/${data.token_id}`;
+                } else {
+                    alert('Error creating token: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating token. Please try again.');
+            }
+        });
+    }
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePageScripts);
+} else {
+    initializePageScripts();
+}
+</script>

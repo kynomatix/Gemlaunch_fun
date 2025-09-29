@@ -1,0 +1,128 @@
+<div class="marketplace-main">
+    <div class="marketplace-header">
+        <h1>Token Marketplace</h1>
+        <p>Discover and trade the hottest meme tokens on Kaspa</p>
+    </div>
+    
+    <div class="filters">
+        <button class="filter-btn active" data-filter="all">All Tokens</button>
+        <button class="filter-btn" data-filter="new">New Launches</button>
+        <button class="filter-btn" data-filter="trending">Trending</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+    </div>
+    
+    <div class="tokens-grid">
+        {% for token in tokens %}
+        <div class="token-card" data-category="{{ 'completed' if token.is_graduated else 'new' }}" onclick="window.location.href='/app/token/{{ token.id }}'">
+            <div class="token-header">
+                <div class="token-avatar">
+                    {% if token.image_url %}
+                    <img src="{{ url_for('static', filename=token.image_url) }}" alt="{{ token.name }}">
+                    {% else %}
+                    <i class="fas fa-gem"></i>
+                    {% endif %}
+                </div>
+                <div class="token-info">
+                    <div class="token-info-header">
+                        <h3>{{ token.name }}</h3>
+                        {% if token.token_type == 'advanced' %}
+                        <span class="marketplace-token-badge advanced">
+                            <i class="fas fa-star"></i>
+                            Advanced
+                        </span>
+                        {% else %}
+                        <span class="marketplace-token-badge basic">
+                            Basic
+                        </span>
+                        {% endif %}
+                    </div>
+                    <span class="token-symbol">{{ token.symbol }}</span>
+                    {% if token.contract_address %}
+                    <div class="contract-address-small">
+                        <i class="fas fa-file-contract"></i>
+                        {{ token.contract_address[:8] }}...{{ token.contract_address[-6:] }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <p class="token-description">{{ token.description[:100] }}{% if token.description|length > 100 %}...{% endif %}</p>
+            
+            <div class="token-stats">
+                <div class="stat">
+                    <span class="stat-label">Price</span>
+                    <span class="stat-value">${{ "{:,.4f}".format(token.current_price) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Market Cap</span>
+                    <span class="stat-value">${{ "{:,.0f}".format(token.current_market_cap) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">24h Volume</span>
+                    <span class="stat-value">${{ "{:,.0f}".format(token.volume_24h or 0) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Holders</span>
+                    <span class="stat-value">{{ token.holder_count }}</span>
+                </div>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-header">
+                    <span>Bonding Progress</span>
+                    <span>{{ "{:.1f}".format((token.circulating_supply / token.total_supply * 100) if token.total_supply else 0) }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (token.circulating_supply / token.total_supply * 100) if token.total_supply else 0 }}%;"></div>
+                </div>
+            </div>
+            
+            {% if token.is_graduated %}
+            <div class="graduated-badge">
+                <i class="fas fa-graduation-cap"></i>
+                Graduated
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function initializePageScripts() {
+    // Initialize marketplace filters
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const tokenCards = document.querySelectorAll('.token-card');
+    
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active button
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Filter tokens
+            const filter = btn.getAttribute('data-filter');
+            
+            tokenCards.forEach(card => {
+                if (filter === 'all') {
+                    card.style.display = 'block';
+                } else if (filter === 'new') {
+                    card.style.display = card.getAttribute('data-category') === 'new' ? 'block' : 'none';
+                } else if (filter === 'completed') {
+                    card.style.display = card.getAttribute('data-category') === 'completed' ? 'block' : 'none';
+                } else if (filter === 'trending') {
+                    // For now, show all as trending (you can implement actual trending logic)
+                    card.style.display = 'block';
+                }
+            });
+        });
+    });
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePageScripts);
+} else {
+    initializePageScripts();
+}
+</script>
