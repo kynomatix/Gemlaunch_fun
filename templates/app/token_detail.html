@@ -4289,8 +4289,9 @@
                 const savedUsername = localStorage.getItem('username');
                 return savedUsername ? 'verified-user' : 'wallet-user';
             }
-            // For demo, alternate between verified and wallet users
-            return Math.random() > 0.5 ? 'verified-user' : 'wallet-user';
+            // Use consistent class based on username - users with custom usernames get verified color
+            // Users showing only wallet addresses get wallet color
+            return user.includes('...') || user.match(/^[a-f0-9]{6}$/i) ? 'wallet-user' : 'verified-user';
         }
         
         // Removed duplicate createPoll - using modal version above
