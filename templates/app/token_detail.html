@@ -2701,7 +2701,7 @@
                     
                     // Add messages from database
                     data.messages.forEach(msg => {
-                        addMessageToChat(msg.user, msg.message, false, msg.id);
+                        addMessageToChat(msg.user, msg.message, false, msg.id, msg.wallet);
                     });
                     
                     console.log(`📥 Loaded ${data.messages.length} messages from database`);
@@ -4234,13 +4234,14 @@
             setTimeout(updateTimer, 60000); // First update after 1 minute
         }
         
-        function addMessageToChat(user, message, isSpotlight = false) {
+        function addMessageToChat(user, message, isSpotlight = false, msgId = null, wallet = null) {
             const messagesContainer = document.getElementById('chatMessages');
-            const messageId = Date.now();
+            const messageId = msgId || Date.now();
             
             // Get proper username display
             const displayName = getUserDisplayName(user);
-            const userClass = getUsernameClass(user);
+            // Use wallet address for consistent color assignment, fallback to username
+            const userClass = getUsernameClass(wallet || user);
             
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${isSpotlight ? 'spotlight-in-chat' : ''}`;
@@ -4284,14 +4285,25 @@
             return user;
         }
         
-        function getUsernameClass(user) {
-            if (user === 'You') {
+        function getUsernameClass(walletOrUser) {
+            if (walletOrUser === 'You') {
                 const savedUsername = localStorage.getItem('username');
                 return savedUsername ? 'verified-user' : 'wallet-user';
             }
-            // Use consistent class based on username - users with custom usernames get verified color
-            // Users showing only wallet addresses get wallet color
-            return user.includes('...') || user.match(/^[a-f0-9]{6}$/i) ? 'wallet-user' : 'verified-user';
+            
+            // Wallet addresses always get verified color
+            if (walletOrUser && walletOrUser.startsWith('0x')) {
+                return 'verified-user';
+            }
+            
+            // For displayed usernames: wallet fragments get gray, custom names get cyan
+            // Check if it looks like a wallet fragment (starts with ... or is 6 hex chars)
+            if (walletOrUser && (walletOrUser.startsWith('...') || /^[a-f0-9]{6}$/i.test(walletOrUser))) {
+                return 'wallet-user';
+            }
+            
+            // All other usernames (like "Degen") get verified color
+            return 'verified-user';
         }
         
         // Removed duplicate createPoll - using modal version above
