@@ -110,55 +110,6 @@
             </div>
         </div>
 
-        <!-- Achievement Showcase -->
-        <div class="achievements-section">
-            <div class="section-header">
-                <h3>
-                    <i class="fas fa-star"></i>
-                    Recent Achievements
-                </h3>
-                <a href="/app/activities" class="view-all-link">View All</a>
-            </div>
-            
-            <div class="achievements-grid">
-                <div class="achievement-card">
-                    <div class="achievement-icon">🚀</div>
-                    <div class="achievement-info">
-                        <h4>First Launch</h4>
-                        <p>Create your first memecoin</p>
-                        <span class="points-reward">+100 Points</span>
-                    </div>
-                </div>
-                
-                <div class="achievement-card">
-                    <div class="achievement-icon">💎</div>
-                    <div class="achievement-info">
-                        <h4>Diamond Hands</h4>
-                        <p>Hold tokens for 30+ days</p>
-                        <span class="points-reward">+250 Points</span>
-                    </div>
-                </div>
-                
-                <div class="achievement-card">
-                    <div class="achievement-icon">📈</div>
-                    <div class="achievement-info">
-                        <h4>Pump Master</h4>
-                        <p>Create token that reaches graduation</p>
-                        <span class="points-reward">+500 Points</span>
-                    </div>
-                </div>
-                
-                <div class="achievement-card">
-                    <div class="achievement-icon">🔥</div>
-                    <div class="achievement-info">
-                        <h4>Volume Trader</h4>
-                        <p>Trade over $10K in volume</p>
-                        <span class="points-reward">+300 Points</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Competition Info -->
         <div class="competition-section">
             <div class="section-header">
@@ -242,7 +193,6 @@
     gap: 2rem;
     grid-template-areas: 
         "user-rank rankings"
-        "achievements achievements"
         "competition competition";
 }
 
@@ -254,15 +204,12 @@
     grid-area: rankings;
 }
 
-.achievements-section {
-    grid-area: achievements;
-}
 
 .competition-section {
     grid-area: competition;
 }
 
-.rank-card, .rankings-section, .achievements-section, .competition-section {
+.rank-card, .rankings-section, .competition-section {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 20px;
     padding: 2rem;
@@ -645,7 +592,7 @@
         font-size: 2rem;
     }
     
-    .rank-card, .rankings-section, .achievements-section, .competition-section {
+    .rank-card, .rankings-section, .competition-section {
         padding: 1.5rem;
     }
     

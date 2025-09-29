@@ -1152,6 +1152,207 @@ def update_referral_code():
         db.session.rollback()
         return jsonify({'error': 'Failed to update referral code. Please try again.'}), 500
 
+# Admin Routes
+@app.route('/admin')
+def admin_dashboard():
+    """Admin dashboard - protected route"""
+    # Simple protection - check for admin parameter or specific wallet
+    admin_key = request.args.get('key')
+    if admin_key != 'gemlaunch-admin-2024':  # Simple key for now
+        return "Access Denied", 403
+    
+    # Get system stats
+    total_users = User.query.count()
+    total_tokens = Token.query.count()
+    total_volume = db.session.query(db.func.sum(Trade.kas_amount)).scalar() or 0
+    total_points = db.session.query(db.func.sum(User.gem_points)).scalar() or 0
+    
+    # Get recent activities
+    recent_activities = Activity.query.order_by(Activity.created_at.desc()).limit(10).all()
+    
+    # Get top users
+    top_users = User.query.order_by(User.gem_points.desc()).limit(10).all()
+    
+    return render_template('admin/dashboard.html',
+                         total_users=total_users,
+                         total_tokens=total_tokens,
+                         total_volume=float(total_volume),
+                         total_points=total_points,
+                         recent_activities=recent_activities,
+                         top_users=top_users)
+
+@app.route('/admin/users')
+def admin_users():
+    """Admin user management"""
+    admin_key = request.args.get('key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return "Access Denied", 403
+    
+    # Get all users with profiles
+    users = db.session.query(User, UserProfile).outerjoin(
+        UserProfile, User.id == UserProfile.user_id
+    ).order_by(User.gem_points.desc()).all()
+    
+    # Get all achievements for dropdown
+    achievements = Achievement.query.order_by(Achievement.category, Achievement.gem_points_reward).all()
+    
+    return render_template('admin/users.html', users=users, achievements=achievements)
+
+@app.route('/admin/award-points', methods=['POST'])
+def admin_award_points():
+    """Award points to a user"""
+    admin_key = request.form.get('admin_key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        user_id = request.form.get('user_id')
+        points = int(request.form.get('points', 0))
+        reason = request.form.get('reason', 'Admin award')
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Award points
+        user.gem_points = (user.gem_points or 0) + points
+        
+        # Log activity
+        activity = Activity()
+        activity.user_id = user.id
+        activity.activity_type = 'admin_award'
+        activity.title = 'Points Awarded'
+        activity.description = f"{reason} (+{points} points)"
+        activity.points_earned = points
+        db.session.add(activity)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'new_points': user.gem_points})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/grant-accolade', methods=['POST'])
+def admin_grant_accolade():
+    """Grant an accolade to a user"""
+    admin_key = request.form.get('admin_key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        user_id = request.form.get('user_id')
+        achievement_id = request.form.get('achievement_id')
+        
+        user = User.query.get(user_id)
+        achievement = Achievement.query.get(achievement_id)
+        
+        if not user or not achievement:
+            return jsonify({'error': 'User or achievement not found'}), 404
+        
+        # Check if already has this achievement
+        existing = UserAchievement.query.filter_by(
+            user_id=user_id,
+            achievement_id=achievement_id
+        ).first()
+        
+        if existing:
+            return jsonify({'error': 'User already has this accolade'}), 400
+        
+        # Grant achievement
+        user_achievement = UserAchievement()
+        user_achievement.user_id = user.id
+        user_achievement.achievement_id = achievement.id
+        db.session.add(user_achievement)
+        
+        # Award points
+        user.gem_points = (user.gem_points or 0) + achievement.gem_points_reward
+        
+        # Log activity
+        activity = Activity()
+        activity.user_id = user.id
+        activity.activity_type = 'achievement_earned'
+        activity.title = f'Earned: {achievement.name}'
+        activity.description = achievement.description
+        activity.achievement_id = achievement.id
+        activity.points_earned = achievement.gem_points_reward
+        db.session.add(activity)
+        
+        # Create accolade log
+        from datetime import datetime
+        from sqlalchemy import text
+        db.session.execute(
+            text("INSERT INTO accolade_logs (user_id, achievement_id, awarded_by, reason, created_at) VALUES (:uid, :aid, :by, :reason, :now)"),
+            {'uid': user.id, 'aid': achievement.id, 'by': 'Admin', 'reason': 'Manual grant', 'now': datetime.now()}
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Granted {achievement.name} to {user.display_name}',
+            'points_awarded': achievement.gem_points_reward
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/tokens')
+def admin_tokens():
+    """Admin token management"""
+    admin_key = request.args.get('key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return "Access Denied", 403
+    
+    # Get all tokens with creator info
+    tokens = Token.query.join(User, Token.creator_id == User.id).order_by(
+        Token.current_market_cap.desc()
+    ).all()
+    
+    # Get partner tokens
+    from sqlalchemy import text
+    partner_tokens = db.session.execute(
+        text("SELECT t.*, pt.* FROM token t LEFT JOIN partner_tokens pt ON t.id = pt.token_id WHERE pt.id IS NOT NULL")
+    ).fetchall()
+    
+    return render_template('admin/tokens.html', tokens=tokens, partner_tokens=partner_tokens)
+
+@app.route('/admin/set-partner', methods=['POST'])
+def admin_set_partner():
+    """Set a token as partner with multiplier"""
+    admin_key = request.form.get('admin_key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        token_id = request.form.get('token_id')
+        multiplier = float(request.form.get('multiplier', 1.5))
+        
+        # Check if already partner
+        from sqlalchemy import text
+        existing = db.session.execute(
+            text("SELECT * FROM partner_tokens WHERE token_id = :tid"),
+            {'tid': token_id}
+        ).first()
+        
+        if existing:
+            # Update multiplier
+            db.session.execute(
+                text("UPDATE partner_tokens SET point_multiplier = :mult WHERE token_id = :tid"),
+                {'mult': multiplier, 'tid': token_id}
+            )
+        else:
+            # Create new partner
+            db.session.execute(
+                text("INSERT INTO partner_tokens (token_id, point_multiplier) VALUES (:tid, :mult)"),
+                {'tid': token_id, 'mult': multiplier}
+            )
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Partner status updated'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 # Initialize database when app starts
 init_database()
 

@@ -1,0 +1,426 @@
+{% extends "app/base_layout.html" %}
+
+{% block title %}Admin - User Management{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1><i class="fas fa-users"></i> User Management</h1>
+        <div class="admin-nav">
+            <a href="/admin?key=gemlaunch-admin-2024" class="nav-link">Dashboard</a>
+            <a href="/admin/users?key=gemlaunch-admin-2024" class="nav-link active">Users</a>
+            <a href="/admin/tokens?key=gemlaunch-admin-2024" class="nav-link">Tokens</a>
+        </div>
+    </div>
+
+    <!-- User List -->
+    <div class="admin-section">
+        <h2>All Users</h2>
+        <div class="data-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Display Name</th>
+                        <th>Username</th>
+                        <th>Wallet</th>
+                        <th>Points</th>
+                        <th>Tokens</th>
+                        <th>Volume</th>
+                        <th>Account Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user, profile in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.display_name or 'Anonymous' }}</td>
+                        <td>{{ profile.username if profile else 'N/A' }}</td>
+                        <td title="{{ user.wallet_address }}">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</td>
+                        <td><span class="points-value">{{ "{:,}".format(user.gem_points or 0) }}</span></td>
+                        <td>{{ user.total_tokens_created or 0 }}</td>
+                        <td>${{ "{:,.0f}".format(user.total_trading_volume or 0) }}</td>
+                        <td>
+                            <span class="account-type {{ (profile.account_type or 'Standard').lower() }}">
+                                {{ profile.account_type if profile else 'Standard' }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="action-btn" onclick="openUserModal({{ user.id }}, '{{ user.display_name }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- User Action Modal -->
+<div id="userModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>User Actions</h3>
+            <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="user-info">
+                <h4 id="modalUserName"></h4>
+                <p>User ID: <span id="modalUserId"></span></p>
+            </div>
+            
+            <!-- Award Points -->
+            <div class="action-section">
+                <h4><i class="fas fa-gem"></i> Award Points</h4>
+                <form id="awardPointsForm">
+                    <input type="hidden" id="pointsUserId" name="user_id">
+                    <input type="hidden" name="admin_key" value="gemlaunch-admin-2024">
+                    <div class="form-group">
+                        <label>Points to Award:</label>
+                        <input type="number" name="points" required min="1" max="10000">
+                    </div>
+                    <div class="form-group">
+                        <label>Reason:</label>
+                        <input type="text" name="reason" required placeholder="e.g., Community contribution">
+                    </div>
+                    <button type="submit" class="submit-btn">Award Points</button>
+                </form>
+            </div>
+            
+            <!-- Grant Accolade -->
+            <div class="action-section">
+                <h4><i class="fas fa-trophy"></i> Grant Accolade</h4>
+                <form id="grantAccoladeForm">
+                    <input type="hidden" id="accoladeUserId" name="user_id">
+                    <input type="hidden" name="admin_key" value="gemlaunch-admin-2024">
+                    <div class="form-group">
+                        <label>Select Accolade:</label>
+                        <select name="achievement_id" required>
+                            <option value="">Choose an accolade...</option>
+                            {% for achievement in achievements %}
+                            <option value="{{ achievement.id }}">
+                                {{ achievement.icon }} {{ achievement.name }} ({{ achievement.gem_points_reward }} pts) - {{ achievement.category }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">Grant Accolade</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.admin-header h1 {
+    color: #20B2AA;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.nav-link {
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: #CCCCCC;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.nav-link:hover, .nav-link.active {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+}
+
+.admin-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.admin-section h2 {
+    color: #20B2AA;
+    margin-bottom: 1.5rem;
+}
+
+.data-table {
+    overflow-x: auto;
+}
+
+.data-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background: rgba(32, 178, 170, 0.1);
+    color: #20B2AA;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(32, 178, 170, 0.3);
+}
+
+.data-table td {
+    padding: 1rem;
+    color: #CCCCCC;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-table tr:hover {
+    background: rgba(32, 178, 170, 0.05);
+}
+
+.points-value {
+    font-weight: 600;
+    color: #20B2AA;
+}
+
+.account-type {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.account-type.vip {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+.account-type.premium {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+}
+
+.account-type.standard {
+    background: rgba(255, 255, 255, 0.1);
+    color: #888;
+}
+
+.action-btn {
+    background: rgba(32, 178, 170, 0.2);
+    border: 1px solid rgba(32, 178, 170, 0.5);
+    color: #20B2AA;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.action-btn:hover {
+    background: rgba(32, 178, 170, 0.3);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid rgba(32, 178, 170, 0.5);
+    width: 80%;
+    max-width: 600px;
+    border-radius: 15px;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    background: rgba(32, 178, 170, 0.1);
+    border-bottom: 1px solid rgba(32, 178, 170, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 15px 15px 0 0;
+}
+
+.modal-header h3 {
+    color: #20B2AA;
+    margin: 0;
+}
+
+.close {
+    color: #888;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #20B2AA;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.user-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.user-info h4 {
+    color: #20B2AA;
+    margin: 0 0 0.5rem 0;
+}
+
+.action-section {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.action-section h4 {
+    color: #20B2AA;
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    color: #CCCCCC;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    color: #FFF;
+    border-radius: 8px;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+}
+</style>
+
+<script>
+let currentUserId = null;
+
+function openUserModal(userId, userName) {
+    currentUserId = userId;
+    document.getElementById('modalUserId').textContent = userId;
+    document.getElementById('modalUserName').textContent = userName || 'Anonymous';
+    document.getElementById('pointsUserId').value = userId;
+    document.getElementById('accoladeUserId').value = userId;
+    document.getElementById('userModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('userModal').style.display = 'none';
+}
+
+// Award Points Form
+document.getElementById('awardPointsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    try {
+        const response = await fetch('/admin/award-points', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('Points awarded successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to award points');
+    }
+});
+
+// Grant Accolade Form
+document.getElementById('grantAccoladeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    try {
+        const response = await fetch('/admin/grant-accolade', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to grant accolade');
+    }
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('userModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}
