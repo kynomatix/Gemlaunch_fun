@@ -450,22 +450,14 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Spotlight Messages (Pinned/Boosted) -->
-                    <div class="spotlight-messages" id="spotlightMessages" style="display: none;">
-                        <div class="spotlight-header">
-                            <i class="fas fa-star"></i>
-                            <span>Spotlight Messages</span>
+                    <!-- Spotlight Messages (Pinned for 1 hour) -->
+                    <div class="spotlight-messages" id="spotlightMessages" style="display: none; background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05)); border: 2px solid rgba(255, 215, 0, 0.4); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; position: relative;">
+                        <div class="spotlight-header" style="position: absolute; top: -12px; left: 20px; background: #1a1a2e; padding: 0 12px;">
+                            <i class="fas fa-thumbtack" style="color: #FFD700;"></i>
+                            <span style="color: #FFD700; font-weight: 600;">PINNED SPOTLIGHT (1 HOUR)</span>
                         </div>
-                        <div class="spotlight-message">
-                            <div class="spotlight-glow"></div>
-                            <div class="message-content">
-                                <span class="chat-user spotlight-user">0xFFF...123:</span>
-                                <span class="chat-text">🎉 HUGE NEWS! Just partnered with major DEX! 🚀</span>
-                            </div>
-                            <div class="spotlight-cost">
-                                <i class="fas fa-coins"></i>
-                                <span>500 ${{ token.symbol }}</span>
-                            </div>
+                        <div id="spotlightMessagesList" style="margin-top: 10px;">
+                            <!-- Dynamically populated spotlight messages -->
                         </div>
                     </div>
                     
@@ -3926,7 +3918,7 @@
             }
         }
         
-        // Enhanced spotlight messages with realistic token deduction
+        // Token-gated spotlight messages (based on holdings, no cost)
         function spotlightMessage() {
             const message = document.getElementById('chatInput').value.trim();
             if (!message) {
@@ -3935,40 +3927,49 @@
             }
             
             const tokenData = getCurrentTokenData();
-            const cost = tokenData.superchat_gate_tokens || 500;
+            const minHolding = tokenData.superchat_gate_tokens || 500;
             
-            if (chatState.userTokenBalance < cost) {
+            if (chatState.userTokenBalance < minHolding) {
                 showNotification(
-                    '❌ Insufficient Balance', 
-                    `Spotlight messages require ${cost.toLocaleString()} ${tokenData.symbol} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} ${tokenData.symbol}\n\nYou need ${(cost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
+                    '🚫 Token Holdings Required', 
+                    `Spotlight messages require holding at least ${minHolding.toLocaleString()} ${tokenData.symbol} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} ${tokenData.symbol}\n\nYou need ${(minHolding - chatState.userTokenBalance).toLocaleString()} more tokens.\n\n(Set by token creator in settings)`,
                     'error'
                 );
                 return;
             }
             
-            // Show spotlight confirmation modal with clear cost display
-            showSpotlightConfirmation(message, cost, tokenData);
+            // Show spotlight confirmation modal (FREE - just checks holdings)
+            showSpotlightConfirmation(message, minHolding, tokenData);
         }
         
-        function showSpotlightConfirmation(message, cost, tokenData) {
+        function showSpotlightConfirmation(message, minHolding, tokenData) {
             const modal = document.getElementById('notificationModal');
             const modalContent = modal.querySelector('.modal-content');
             const titleElement = document.getElementById('notificationTitle');
             const messageElement = document.getElementById('notificationMessage');
             
-            titleElement.innerHTML = '<i class="fas fa-star" style="color: #FFD700;"></i> Spotlight Message Confirmation';
+            titleElement.innerHTML = '<i class="fas fa-thumbtack" style="color: #FFD700;"></i> Pin Spotlight Message';
             messageElement.innerHTML = `
                 <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05)); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
                     <div style="color: #FFF; font-style: italic; margin-bottom: 0.5rem;">"${message}"</div>
-                    <div style="color: #999; font-size: 0.9rem;">This message will be highlighted in the chat</div>
+                    <div style="color: #FFD700; font-size: 0.9rem;">
+                        <i class="fas fa-clock"></i> Will be pinned to top of chat for 1 hour
+                    </div>
                 </div>
                 <div style="background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; padding: 1rem; text-align: center;">
-                    <div style="color: #20B2AA; font-size: 1.2rem; font-weight: 600;">Cost: ${cost.toLocaleString()} ${tokenData.symbol}</div>
-                    <div style="color: #999; margin-top: 0.5rem;">This will be deducted from your balance</div>
-                    <div style="color: #AAA; margin-top: 0.25rem; font-size: 0.85rem;">Balance after: ${(chatState.userTokenBalance - cost).toLocaleString()} ${tokenData.symbol}</div>
+                    <div style="color: #20B2AA; font-size: 1rem; font-weight: 600;">
+                        <i class="fas fa-check-circle"></i> Token Holding Verified
+                    </div>
+                    <div style="color: #999; margin-top: 0.5rem;">Your balance: ${chatState.userTokenBalance.toLocaleString()} ${tokenData.symbol}</div>
+                    <div style="color: #AAA; margin-top: 0.25rem; font-size: 0.85rem;">Minimum required: ${minHolding.toLocaleString()} ${tokenData.symbol} (set by creator)</div>
+                    <div style="color: #FFD700; margin-top: 0.75rem; font-weight: 500; font-size: 1rem;">
+                        <i class="fas fa-gift"></i> FREE - No tokens will be deducted
+                    </div>
                 </div>
                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
-                    <button onclick="confirmSpotlight()" style="background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer;">Confirm & Spotlight</button>
+                    <button onclick="confirmSpotlight()" style="background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);">
+                        <i class="fas fa-thumbtack"></i> Pin Message for 1 Hour
+                    </button>
                     <button onclick="closeNotificationModal()" style="background: rgba(255, 255, 255, 0.1); color: #FFF; border: 1px solid rgba(255, 255, 255, 0.2); padding: 0.75rem 2rem; border-radius: 8px; cursor: pointer;">Cancel</button>
                 </div>
             `;
@@ -3976,8 +3977,8 @@
             modalContent.classList.remove('error', 'success');
             modal.style.display = 'flex';
             
-            // Store data for confirmation
-            window.pendingSpotlight = { message, cost, tokenData };
+            // Store data for confirmation (no cost)
+            window.pendingSpotlight = { message, minHolding, tokenData };
         }
         
         function confirmSpotlight() {
@@ -3985,45 +3986,40 @@
             
             if (!window.pendingSpotlight) return;
             
-            const { message, cost, tokenData } = window.pendingSpotlight;
+            const { message, minHolding, tokenData } = window.pendingSpotlight;
             
-            // Continue with spotlight creation
+            // Continue with spotlight creation (NO TOKEN DEDUCTION - FREE FOR HOLDERS)
             if (true) {
-                // Deduct tokens
-                chatState.userTokenBalance -= cost;
+                // NO tokens deducted - this is FREE for holders who meet the minimum
                 
                 // Create spotlight message entry
                 const spotlightEntry = {
                     id: Date.now(),
                     message: message,
-                    cost: cost,
+                    minHolding: minHolding,
                     timestamp: new Date(),
-                    user: 'You'
+                    expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+                    user: localStorage.getItem('connectedWallet')?.slice(0, 10) + '...' || 'You'
                 };
+                
+                // Add to state
+                if (!chatState.spotlightMessages) chatState.spotlightMessages = [];
                 chatState.spotlightMessages.push(spotlightEntry);
                 
-                // Show in UI
-                const spotlightContainer = document.getElementById('spotlightMessages');
-                spotlightContainer.style.display = 'block';
-                
-                const spotlightMsg = spotlightContainer.querySelector('.spotlight-message');
-                spotlightMsg.querySelector('.chat-text').textContent = message;
-                spotlightMsg.querySelector('.spotlight-cost span').textContent = `${cost} $${tokenSymbol}`;
-                
-                // Add to chat messages as regular message too
-                addMessageToChat('You', message, true);
+                // Show pinned message at top
+                updateSpotlightDisplay(spotlightEntry);
                 
                 // Clear input
                 document.getElementById('chatInput').value = '';
-                console.log(`Spotlighted: "${message}" | Balance: ${chatState.userTokenBalance}`);
                 
-                // Update UI with new balance
-                updateTokenBalance();
+                // Show success notification
+                showNotification(
+                    '📌 Message Pinned!',
+                    `Your message has been pinned to the top of chat for 1 hour. No tokens were deducted.`,
+                    'success'
+                );
                 
-                // Auto-hide spotlight after 45 seconds
-                setTimeout(() => {
-                    spotlightContainer.style.display = 'none';
-                }, 45000);
+                console.log(`📌 Spotlight pinned for 1 hour | Min holding: ${minHolding} tokens | FREE`);
             }
         }
         
@@ -4033,6 +4029,88 @@
             balanceElements.forEach(el => {
                 el.textContent = chatState.userTokenBalance.toLocaleString();
             });
+        }
+        
+        function updateSpotlightDisplay(spotlightEntry) {
+            const container = document.getElementById('spotlightMessages');
+            const listContainer = document.getElementById('spotlightMessagesList');
+            
+            if (!listContainer) {
+                console.error('Spotlight list container not found');
+                return;
+            }
+            
+            // Show container
+            container.style.display = 'block';
+            
+            // Create spotlight message element
+            const spotlightElement = document.createElement('div');
+            spotlightElement.className = 'pinned-spotlight-msg';
+            spotlightElement.setAttribute('data-id', spotlightEntry.id);
+            spotlightElement.innerHTML = `
+                <div style="display: flex; gap: 1rem; align-items: start; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border-left: 3px solid #FFD700;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 600; color: #FFD700;">${spotlightEntry.user}</span>
+                            <span style="color: #999; font-size: 0.85rem;">Pinned just now</span>
+                            <span style="margin-left: auto; color: #FFD700; font-size: 0.85rem;">
+                                <i class="fas fa-clock"></i> <span class="time-remaining">59m</span> remaining
+                            </span>
+                        </div>
+                        <div style="color: #FFF; font-size: 1.05rem; line-height: 1.4;">
+                            ${spotlightEntry.message}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add to top of list
+            listContainer.insertBefore(spotlightElement, listContainer.firstChild);
+            
+            // Set timer to remove after 1 hour
+            setTimeout(() => {
+                removeSpotlight(spotlightEntry.id);
+            }, 60 * 60 * 1000);
+            
+            // Update timer display every minute
+            updateSpotlightTimer(spotlightEntry.id, spotlightEntry.expiresAt);
+        }
+        
+        function removeSpotlight(spotlightId) {
+            const element = document.querySelector(`[data-id="${spotlightId}"]`);
+            if (element) {
+                element.remove();
+                
+                // Hide container if no more spotlights
+                const listContainer = document.getElementById('spotlightMessagesList');
+                if (listContainer && listContainer.children.length === 0) {
+                    document.getElementById('spotlightMessages').style.display = 'none';
+                }
+            }
+            
+            // Remove from state
+            if (chatState.spotlightMessages) {
+                chatState.spotlightMessages = chatState.spotlightMessages.filter(s => s.id !== spotlightId);
+            }
+        }
+        
+        function updateSpotlightTimer(spotlightId, expiresAt) {
+            const updateTimer = () => {
+                const element = document.querySelector(`[data-id="${spotlightId}"] .time-remaining`);
+                if (!element) return;
+                
+                const timeLeft = Math.max(0, expiresAt - Date.now());
+                const minutes = Math.floor(timeLeft / 60000);
+                
+                if (minutes > 0) {
+                    element.textContent = `${minutes}m`;
+                    setTimeout(updateTimer, 60000); // Update every minute
+                } else {
+                    removeSpotlight(spotlightId);
+                }
+            };
+            
+            setTimeout(updateTimer, 60000); // First update after 1 minute
         }
         
         function addMessageToChat(user, message, isSpotlight = false) {
