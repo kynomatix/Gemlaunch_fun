@@ -498,11 +498,11 @@
                 <button class="modal-close" onclick="closePollModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="poll-gating-info" id="pollGatingInfo" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.25); border-radius: 8px; margin-bottom: 1rem;">
-                    <i class="fas fa-coins" style="font-size: 1.5rem; color: #FFD700;"></i>
+                <div class="poll-gating-info" id="pollGatingInfo" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; margin-bottom: 1rem;">
+                    <i class="fas fa-shield-alt" style="font-size: 1.5rem; color: #20B2AA;"></i>
                     <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #FFD700;">Token-Gated Poll</div>
-                        <div style="color: #AAA; font-size: 0.9rem;">Creating polls costs tokens • Only token holders can vote</div>
+                        <div style="font-weight: 600; color: #20B2AA;">Token-Gated Poll</div>
+                        <div style="color: #AAA; font-size: 0.9rem;">FREE to create for token holders • Votes cost 100 tokens (burned)</div>
                     </div>
                 </div>
                 
@@ -540,10 +540,11 @@
                         <small>Voters spend tokens to participate - prevents spam</small>
                     </div>
                     
-                    <div class="poll-cost-info" style="padding: 1rem; background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(32, 178, 170, 0.05)); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; text-align: center; margin-top: 1rem;">
-                        <i class="fas fa-coins" style="color: #20B2AA;"></i>
-                        <span>Poll creation will cost: <strong id="pollCostAmount" style="color: #20B2AA; font-size: 1.1rem;">1,000 {{ token.symbol }}</strong></span>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #999;">This amount will be deducted from your balance</div>
+                    <div class="poll-cost-info" style="padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05)); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 8px; text-align: center; margin-top: 1rem;">
+                        <i class="fas fa-check-circle" style="color: #FFD700;"></i>
+                        <span style="color: #FFD700; font-weight: 600;">Poll creation is FREE for holders!</span>
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #AAA;">Minimum holding: <strong id="pollHoldingAmount" style="color: #20B2AA;">1,000 {{ token.symbol }}</strong> tokens</div>
+                        <div style="margin-top: 0.25rem; font-size: 0.85rem; color: #999;">Votes will cost 100 tokens each (burned)</div>
                     </div>
                 </form>
             </div>
@@ -3167,8 +3168,8 @@
                 
                 if (userBalance < minTokensRequired) {
                     showNotification(
-                        '❌ Insufficient Tokens', 
-                        `Poll creation requires at least ${minTokensRequired.toLocaleString()} ${tokenData.symbol} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nThis is set by the token creator in chat settings.`,
+                        '❌ Insufficient Holdings', 
+                        `Poll creation requires holding at least ${minTokensRequired.toLocaleString()} ${tokenData.symbol} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nPoll creation is FREE but requires minimum holdings (set by token creator).`,
                         'error'
                     );
                     return;
@@ -3180,7 +3181,7 @@
                 if (userBalance < minTokensRequired) {
                     showNotification(
                         '🏛️ DAO Governance Required', 
-                        `Advanced token governance requires at least ${minTokensRequired.toLocaleString()} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nOnly larger holders can create polls in DAO governance mode.`,
+                        `Advanced token governance requires holding at least ${minTokensRequired.toLocaleString()} tokens.\n\nYour balance: ${userBalance.toLocaleString()} tokens\n\nPoll creation is FREE but requires larger holdings in DAO mode.`,
                         'error'
                     );
                     return;
@@ -3197,26 +3198,27 @@
         
         function updatePollGatingInfo(tokenData) {
             const gatingInfo = document.getElementById('pollGatingInfo');
-            const costElement = document.getElementById('pollCostAmount');
+            const holdingElement = document.getElementById('pollHoldingAmount');
             const userBalance = chatState.userTokenBalance || 0;
-            const pollCost = tokenData.type === 'basic' ? (tokenData.poll_gate_tokens || 1000) : 10000;
+            const minHolding = tokenData.type === 'basic' ? (tokenData.poll_gate_tokens || 1000) : 10000;
             
-            // Update cost display
-            if (costElement) {
-                costElement.textContent = `${pollCost.toLocaleString()} ${tokenData.symbol}`;
+            // Update holding requirement display
+            if (holdingElement) {
+                holdingElement.textContent = `${minHolding.toLocaleString()} ${tokenData.symbol}`;
             }
             
             // Update gating info message  
             if (gatingInfo) {
-                const hasEnoughTokens = userBalance >= pollCost;
+                const hasEnoughTokens = userBalance >= minHolding;
                 gatingInfo.innerHTML = `
-                    <i class="fas fa-coins" style="font-size: 1.5rem; color: ${hasEnoughTokens ? '#FFD700' : '#ff4444'};"></i>
+                    <i class="fas fa-shield-alt" style="font-size: 1.5rem; color: ${hasEnoughTokens ? '#20B2AA' : '#ff4444'};"></i>
                     <div style="flex: 1;">
-                        <div style="font-weight: 600; color: ${hasEnoughTokens ? '#FFD700' : '#ff4444'};">Token-Gated Poll</div>
+                        <div style="font-weight: 600; color: ${hasEnoughTokens ? '#20B2AA' : '#ff4444'};">Token-Gated Poll</div>
                         <div style="color: #AAA; font-size: 0.9rem;">
-                            Cost: <strong style="color: #20B2AA;">${pollCost.toLocaleString()} ${tokenData.symbol}</strong> • 
+                            ${hasEnoughTokens ? '✅ FREE to create! You meet the holding requirement' : '❌ Insufficient holdings to create poll'}<br>
+                            Required: <strong style="color: #20B2AA;">${minHolding.toLocaleString()} ${tokenData.symbol}</strong> • 
                             Your balance: <strong style="color: ${hasEnoughTokens ? '#20B2AA' : '#ff4444'};">${userBalance.toLocaleString()} ${tokenData.symbol}</strong>
-                            ${!hasEnoughTokens ? '<br><span style="color: #ff4444;">⚠️ Insufficient balance to create poll!</span>' : ''}
+                            <br><span style="color: #999;">Votes: 100 tokens each (burned)</span>
                         </div>
                     </div>
                 `;
@@ -3444,21 +3446,20 @@
                 return;
             }
             
-            // Check poll creation cost based on token type
+            // Check poll creation token-gating based on holdings (FREE, not cost)
             const tokenData = getCurrentTokenData();
-            const pollCreationCost = tokenData.type === 'basic' ? (tokenData.poll_gate_tokens || 1000) : 10000;
-            if (chatState.userTokenBalance < pollCreationCost) {
+            const minHoldingRequired = tokenData.type === 'basic' ? (tokenData.poll_gate_tokens || 1000) : 10000;
+            if (chatState.userTokenBalance < minHoldingRequired) {
                 showNotification(
-                    '💰 Insufficient Balance',
-                    `Poll creation requires ${pollCreationCost} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} tokens\n\nNeed ${(pollCreationCost - chatState.userTokenBalance).toLocaleString()} more tokens.`,
+                    '🚫 Insufficient Holdings',
+                    `Poll creation requires holding at least ${minHoldingRequired.toLocaleString()} tokens.\n\nYour balance: ${chatState.userTokenBalance.toLocaleString()} tokens\n\nNeed ${(minHoldingRequired - chatState.userTokenBalance).toLocaleString()} more tokens.\n\n(Set by token creator in settings)`,
                     'error'
                 );
                 return;
             }
             
-            // Deduct poll creation cost
-            chatState.userTokenBalance -= pollCreationCost;
-            updateTokenBalance();
+            // No deduction - poll creation is FREE for holders who meet the minimum
+            // Only votes will cost tokens (100 per vote, which are burned)
             
             // Create poll object
             const poll = {
@@ -3486,11 +3487,11 @@
             // Show success notification
             showNotification(
                 '🗳️ Poll Created!',
-                `Your poll "${question}" has been created successfully! Community members can now vote using ${voteCost} tokens per vote.`,
+                `Your poll "${question}" has been created successfully! No tokens were deducted. Community members can vote for ${voteCost} tokens per vote (burned).`,
                 'success'
             );
             
-            console.log(`🗳️ Poll created: "${question}" | Cost: ${pollCreationCost} tokens | Vote cost: ${voteCost} tokens`);
+            console.log(`🗳️ Poll created: "${question}" | FREE (min holding: ${minHoldingRequired} tokens) | Vote cost: ${voteCost} tokens`);
         }
         
         function addPollToChat(poll) {
