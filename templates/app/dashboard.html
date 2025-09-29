@@ -36,9 +36,9 @@
         }
         
         .stat-card:hover {
-            transform: translateY(-3px);
-            border-color: rgba(32, 178, 170, 0.5);
-            box-shadow: 0 10px 25px rgba(32, 178, 170, 0.15);
+            transform: translateY(-1px);
+            border-color: rgba(32, 178, 170, 0.4);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.1);
         }
         
         .stat-number {
@@ -91,9 +91,9 @@
         }
         
         .token-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(32, 178, 170, 0.5);
-            box-shadow: 0 10px 30px rgba(32, 178, 170, 0.2);
+            transform: translateY(-2px);
+            border-color: rgba(32, 178, 170, 0.4);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.15);
         }
         
         .token-header {
@@ -263,7 +263,7 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, transparent, rgba(32, 178, 170, 0.3), transparent);
-            animation: headerShimmer 4s infinite;
+            animation: headerShimmer 8s infinite ease-in-out;
         }
 
         @keyframes headerShimmer {
@@ -282,12 +282,12 @@
             font-size: 3rem;
             color: #20B2AA;
             text-shadow: 0 0 20px rgba(32, 178, 170, 0.5);
-            animation: iconPulse 2s ease-in-out infinite;
+            animation: iconPulse 4s ease-in-out infinite;
         }
 
         @keyframes iconPulse {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+            50% { transform: scale(1.02); }
         }
 
         .category-title-block {
@@ -322,7 +322,7 @@
             background-size: 200% 100%;
             border-radius: 20px;
             transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: progressShimmer 3s linear infinite;
+            animation: progressShimmer 6s linear infinite;
             display: flex;
             align-items: center;
             justify-content: flex-end;
@@ -368,21 +368,21 @@
             cursor: pointer;
             transition: all 0.3s ease;
             z-index: 10;
-            box-shadow: 0 5px 20px rgba(32, 178, 170, 0.4);
+            box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
         }
 
         .carousel-nav-left {
-            left: -30px;
+            left: 10px;
         }
 
         .carousel-nav-right {
-            right: -30px;
+            right: 10px;
         }
 
         .carousel-nav:hover {
-            transform: translateY(-50%) scale(1.1);
+            transform: translateY(-50%) scale(1.05);
             background: linear-gradient(135deg, #20B2AA, #00CED1);
-            box-shadow: 0 8px 30px rgba(32, 178, 170, 0.6);
+            box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
         }
 
         .carousel-nav:active {
@@ -395,7 +395,7 @@
             height: 100%;
             border-radius: 50%;
             border: 2px solid #20B2AA;
-            animation: navPulse 1.5s ease-out infinite;
+            animation: navPulse 3s ease-out infinite;
         }
 
         @keyframes navPulse {
@@ -404,7 +404,7 @@
                 opacity: 1;
             }
             100% {
-                transform: scale(1.5);
+                transform: scale(1.3);
                 opacity: 0;
             }
         }
@@ -418,7 +418,7 @@
 
         .carousel-categories-track {
             display: flex;
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             will-change: transform;
         }
 
@@ -427,7 +427,7 @@
             flex-shrink: 0;
             opacity: 0;
             transform: scale(0.9);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
         .carousel-slide.active {
@@ -464,7 +464,7 @@
 
         .carousel-dot:hover {
             background: rgba(32, 178, 170, 0.3);
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
 
         .carousel-dot.active {
@@ -483,7 +483,7 @@
 
         .carousel-dot.active .dot-inner {
             width: 100%;
-            animation: dotProgress 5s linear;
+            animation: dotProgress 8s linear;
         }
 
         @keyframes dotProgress {
@@ -518,14 +518,14 @@
 
         /* Enhanced accolade items for carousel */
         .carousel-slide .accolade-item {
-            animation: slideInUp 0.5s ease forwards;
+            animation: slideInUp 0.8s ease forwards;
             animation-delay: calc(var(--item-index, 0) * 0.1s);
         }
 
         @keyframes slideInUp {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(10px);
             }
             to {
                 opacity: 1;
@@ -536,7 +536,7 @@
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(5px);
             }
             to {
                 opacity: 1;
@@ -1249,16 +1249,16 @@
                 document.querySelector('.carousel-nav-left');
             
             if (navButton) {
-                navButton.style.transform = 'translateY(-50%) scale(1.2)';
+                navButton.style.transform = 'translateY(-50%) scale(1.1)';
                 setTimeout(() => {
                     navButton.style.transform = 'translateY(-50%) scale(1)';
-                }, 200);
+                }, 300);
             }
             
             // Reset transition flag
             setTimeout(() => {
                 isTransitioning = false;
-            }, 500);
+            }, 800);
         }
         
         function goToCategory(index) {
@@ -1280,7 +1280,7 @@
             
             setTimeout(() => {
                 isTransitioning = false;
-            }, 500);
+            }, 800);
         }
         
         function updateCarouselPosition() {
@@ -1331,10 +1331,10 @@
             if (nameElement) {
                 nameElement.textContent = categoryName;
                 // Add animation
-                nameElement.style.animation = 'fadeInUp 0.5s ease';
+                nameElement.style.animation = 'fadeInUp 0.8s ease';
                 setTimeout(() => {
                     nameElement.style.animation = '';
-                }, 500);
+                }, 800);
             }
             
             if (iconElement) {
@@ -1420,10 +1420,10 @@
                 item.style.transform = 'translateY(20px)';
                 
                 setTimeout(() => {
-                    item.style.transition = 'all 0.5s ease';
+                    item.style.transition = 'all 0.8s ease';
                     item.style.opacity = '1';
                     item.style.transform = 'translateY(0)';
-                }, index * 100);
+                }, index * 150);
             });
             
             const activityItems = document.querySelectorAll('.activity-item');
@@ -1432,10 +1432,10 @@
                 item.style.transform = 'translateY(20px)';
                 
                 setTimeout(() => {
-                    item.style.transition = 'all 0.5s ease';
+                    item.style.transition = 'all 0.8s ease';
                     item.style.opacity = '1';
                     item.style.transform = 'translateY(0)';
-                }, 300 + (index * 80));
+                }, 400 + (index * 120));
             });
             
             const pointsSources = document.querySelectorAll('.points-source');
@@ -1444,10 +1444,10 @@
                 source.style.transform = 'translateY(20px)';
                 
                 setTimeout(() => {
-                    source.style.transition = 'all 0.5s ease';
+                    source.style.transition = 'all 0.8s ease';
                     source.style.opacity = '1';
                     source.style.transform = 'translateY(0)';
-                }, 600 + (index * 100));
+                }, 800 + (index * 150));
             });
         });
     </script>
@@ -1716,8 +1716,8 @@
         .accolade-item.completed {
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.08));
             border-color: #20B2AA;
-            box-shadow: 0 0 20px rgba(32, 178, 170, 0.1),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 10px rgba(32, 178, 170, 0.08),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.08);
             opacity: 1 !important;
         }
 
@@ -1729,7 +1729,7 @@
             width: 4px;
             height: 100%;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
-            animation: pulseGlow 2s ease-in-out infinite;
+            animation: pulseGlow 4s ease-in-out infinite;
         }
         
         @keyframes pulseGlow {
@@ -1743,13 +1743,13 @@
         }
 
         .accolade-item:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(32, 178, 170, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.15);
         }
         
         .accolade-item.completed:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 12px 35px rgba(32, 178, 170, 0.3);
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 6px 20px rgba(32, 178, 170, 0.2);
         }
         
         .completed-badge {
@@ -1794,7 +1794,7 @@
         }
         
         .accolade-icon.icon-glow {
-            animation: iconGlow 3s ease-in-out infinite;
+            animation: iconGlow 5s ease-in-out infinite;
         }
         
         @keyframes iconGlow {
@@ -1862,7 +1862,7 @@
             align-items: center;
             justify-content: flex-end;
             padding-right: 5px;
-            animation: shimmer 3s ease-in-out infinite;
+            animation: shimmer 6s ease-in-out infinite;
         }
         
         @keyframes shimmer {
@@ -1872,7 +1872,7 @@
         }
         
         .accolade-item:hover .progress-fill {
-            animation: shimmer 1.5s ease-in-out infinite;
+            animation: shimmer 4s ease-in-out infinite;
             box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
         }
         
@@ -1935,7 +1935,7 @@
         }
         
         .accolade-item:hover .accolade-reward {
-            transform: scale(1.05);
+            transform: scale(1.02);
         }
 
         .filter-options {
