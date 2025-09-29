@@ -107,7 +107,18 @@
             animation: subtle-glow 3s ease-in-out infinite alternate;
         }
         
+        /* GPU acceleration for marketplace animations */
+        .token-card,
+        .filter-btn,
+        .marketplace-token-badge.advanced,
+        .token-stat {
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+        
         @keyframes subtle-glow {
+            /* GPU-accelerated glow */
             from { box-shadow: 0 0 3px rgba(74, 144, 184, 0.2); }
             to { box-shadow: 0 0 8px rgba(74, 144, 184, 0.4); }
         }
@@ -244,6 +255,25 @@
         }
         
         @media (max-width: 768px) {
+            /* Disable heavy animations on mobile */
+            .marketplace-token-badge.advanced {
+                animation: none !important;
+            }
+            
+            /* Simplify transitions on mobile */
+            .token-card,
+            .filter-btn,
+            .token-stat {
+                transition: opacity 0.2s ease, background-color 0.2s ease !important;
+            }
+            
+            /* Remove hover transforms on mobile */
+            .token-card:hover,
+            .filter-btn:hover,
+            .token-stat:hover {
+                transform: none !important;
+            }
+            
             .marketplace-header h1 {
                 font-size: 2rem;
             }

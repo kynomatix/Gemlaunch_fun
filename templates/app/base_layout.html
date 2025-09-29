@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Turbo for SPA-like navigation -->
+    <!-- Turbo for SPA-like navigation (keep in head for navigation performance) -->
     <script src="https://unpkg.com/@hotwired/turbo@7/dist/turbo.es2017-umd.js"></script>
     
     {% block extra_head %}{% endblock %}
@@ -267,8 +267,36 @@
             background: linear-gradient(135deg, #0D0D0D 0%, #1A2E2E 50%, #162E3E 100%);
         }
         
-        /* Mobile Responsive */
+        /* GPU Acceleration for animated elements */
+        .sidebar-toggle,
+        .topbar-icon,
+        .nav-item,
+        .app-sidebar,
+        .app-main {
+            will-change: transform;
+            transform: translateZ(0);
+        }
+        
+        /* Mobile Responsive - Remove heavy animations */
         @media (max-width: 768px) {
+            /* Disable particles and floating elements on mobile */
+            #particles-js,
+            .floating-elements {
+                display: none !important;
+            }
+            
+            /* Disable complex animations on mobile - keep only essential transitions */
+            * {
+                animation: none !important;
+            }
+            
+            /* Override transitions to be simpler on mobile */
+            .sidebar-toggle,
+            .topbar-icon,
+            .nav-item,
+            .logout-btn {
+                transition: opacity 0.2s ease, background-color 0.2s ease !important;
+            }
             .app-topbar {
                 padding: 0 1rem;
             }
@@ -379,9 +407,9 @@
         </main>
     </div>
     
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <!-- Scripts with defer for non-critical JavaScript -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script defer src="{{ url_for('static', filename='js/particles.js') }}"></script>
     
     <script>
         // Sidebar Toggle - Global function

@@ -9,6 +9,29 @@
             box-sizing: border-box;
         }
         
+        /* GPU Acceleration for all animated elements */
+        .stat-card,
+        .token-card,
+        .action-btn,
+        .carousel-item,
+        .carousel-wrapper,
+        .carousel-dot,
+        .accolade-item,
+        .category-progress-fill,
+        .accolade-item-content,
+        .category-main-icon,
+        .carousel-header::before,
+        .carousel-header::after,
+        .accolades-carousel,
+        .activities-grid > *,
+        .shimmer::after,
+        .progress-pulse::after {
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
         /* CRITICAL FIX: Ensure all dashboard content stays below sidebar and topbar */
         /* Sidebar has z-index: 999, Topbar has z-index: 1000 */
         
@@ -293,6 +316,34 @@
         }
         
         @media (max-width: 768px) {
+            /* Disable heavy animations on mobile for better performance */
+            .shimmer::after,
+            .category-main-icon,
+            .category-progress-fill,
+            .carousel-header::before,
+            .carousel-header::after,
+            .accolade-item,
+            .progress-pulse::after,
+            .accolades-carousel::before,
+            .accolades-carousel::after {
+                animation: none !important;
+            }
+            
+            /* Simplify transitions on mobile */
+            .stat-card,
+            .token-card,
+            .action-btn,
+            .carousel-item {
+                transition: opacity 0.2s ease, background-color 0.2s ease !important;
+            }
+            
+            /* Remove complex hover effects on mobile */
+            .stat-card:hover,
+            .token-card:hover,
+            .accolade-item:hover {
+                transform: none !important;
+            }
+            
             .quick-actions {
                 flex-direction: column;
             }
@@ -2523,6 +2574,7 @@
         }
         
         @keyframes shimmer {
+            /* GPU-accelerated shimmer */
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }

@@ -157,6 +157,17 @@
 </div>
 
 <style>
+/* GPU Acceleration for leaderboard animations */
+.rank-card,
+.rank-row,
+.reward-tier,
+.progress-fill,
+.rank-position-display i {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
 .leaderboard-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -584,6 +595,26 @@
 }
 
 @media (max-width: 768px) {
+    /* Disable animations on mobile for better performance */
+    .rank-position-display i,
+    .rank-row,
+    .reward-tier {
+        animation: none !important;
+    }
+    
+    /* Simplify transitions on mobile */
+    .rank-row,
+    .reward-tier,
+    .rank-card {
+        transition: opacity 0.2s ease, background-color 0.2s ease !important;
+    }
+    
+    /* Remove hover transforms on mobile */
+    .rank-row:hover,
+    .reward-tier:hover {
+        transform: none !important;
+    }
+    
     .leaderboard-container {
         padding: 1rem;
     }

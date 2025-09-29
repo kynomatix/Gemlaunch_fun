@@ -1,13 +1,15 @@
 // Particles.js Configuration
-particlesJS('particles-js', {
-    "particles": {
-        "number": {
-            "value": 80,
-            "density": {
-                "enable": true,
-                "value_area": 800
-            }
-        },
+// Check if mobile device (screen width < 768px)
+if (window.innerWidth >= 768) {
+    particlesJS('particles-js', {
+        "particles": {
+            "number": {
+                "value": 25,  // Reduced from 80 to 25 for 60% CPU reduction
+                "density": {
+                    "enable": true,
+                    "value_area": 1200  // Increased area for better spacing with fewer particles
+                }
+            },
         "color": {
             "value": ["#20B2AA", "#00CED1", "#40E0D0"]
         },
@@ -102,13 +104,24 @@ particlesJS('particles-js', {
             }
         }
     },
-    "retina_detect": true
-});
+        "retina_detect": true
+    });
+} else {
+    // Disable particles entirely on mobile for better performance
+    const particlesContainer = document.getElementById('particles-js');
+    if (particlesContainer) {
+        particlesContainer.style.display = 'none';
+    }
+}
 
 // Floating elements animation
 function createFloatingElements() {
+    // Skip floating elements on mobile devices
+    if (window.innerWidth < 768) {
+        return;
+    }
     const container = document.querySelector('.floating-elements');
-    const elementCount = 15;
+    const elementCount = 8;  // Reduced from 15 to 8 for better performance
     
     for (let i = 0; i < elementCount; i++) {
         const element = document.createElement('div');
