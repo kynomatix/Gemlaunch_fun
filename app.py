@@ -430,7 +430,8 @@ def token_marketplace():
 def token_detail(contract_address):
     """Individual token detail page"""
     token = Token.query.options(
-        joinedload(Token.creator)
+        joinedload(Token.creator),
+        joinedload(Token.settings)  # Load token settings
     ).filter_by(contract_address=contract_address).first_or_404()
     
     # Get recent trades with eager loading of user information
@@ -443,6 +444,13 @@ def token_detail(contract_address):
     user = get_current_user()
     if user:
         user_holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
+    
+    # Ensure token has settings (create if missing)
+    if not token.settings:
+        token_settings = TokenSettings(token_id=token.id)
+        db.session.add(token_settings)
+        db.session.commit()
+        token.settings = token_settings
     
     return render_template('app/token_detail.html', 
                          token=token, 

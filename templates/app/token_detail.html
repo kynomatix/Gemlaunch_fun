@@ -2667,6 +2667,14 @@
         const tokenSymbol = '{{ token.symbol }}';
         const tokenName = '{{ token.name }}';
         
+        // Token settings from backend (use defaults if not set)
+        const tokenSettings = {
+            holdersOnlyChat: {{ (token.settings.holders_only_chat|lower) if token.settings else 'false' }},
+            minTokensToChat: {{ token.settings.min_tokens_to_chat if token.settings else 0 }},
+            minTokensForSpotlight: {{ token.settings.min_tokens_for_spotlight if token.settings else 500 }},
+            minTokensToCreatePoll: {{ token.settings.min_tokens_to_create_poll if token.settings else 1000 }}
+        };
+        
         let currentChartType = 'marketcap';
         let myChart = null;
         
@@ -2800,18 +2808,19 @@
                 settingsBtn.style.display = 'block';  // Always show for token gating features
             }
             
-            // Set up Holders Only toggle/badge based on ownership
+            // Set up Holders Only toggle/badge based on ownership and token settings
             const tokenGateContainer = document.getElementById('tokenGateContainer');
             if (tokenGateContainer) {
                 if (isTokenOwner) {
                     // Creator gets interactive toggle
-                    const isHoldersOnly = localStorage.getItem(`holdersOnly_${tokenSymbol}`) === 'true';
+                    const isHoldersOnly = tokenSettings.holdersOnlyChat;
+                    const minTokens = tokenSettings.minTokensToChat;
                     tokenGateContainer.innerHTML = `
                         <div class="token-gate-toggle" title="Toggle holders-only mode">
                             <input type="checkbox" id="tokenGateToggle" class="toggle-switch" ${isHoldersOnly ? 'checked' : ''} onchange="toggleTokenGate()">
                             <label for="tokenGateToggle" class="toggle-label">
                                 <i class="fas fa-lock"></i>
-                                <span class="toggle-text">Holders Only</span>
+                                <span class="toggle-text">Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + ' min)' : ''}</span>
                             </label>
                         </div>
                     `;
@@ -2821,12 +2830,13 @@
                     }
                 } else {
                     // Non-creators get visual badge if holders-only mode is active
-                    const isHoldersOnly = localStorage.getItem(`holdersOnly_${tokenSymbol}`) === 'true';
+                    const isHoldersOnly = tokenSettings.holdersOnlyChat;
+                    const minTokens = tokenSettings.minTokensToChat;
                     if (isHoldersOnly) {
                         tokenGateContainer.innerHTML = `
                             <div class="token-gate-badge" title="Holders-only chat active">
                                 <i class="fas fa-shield-alt"></i>
-                                <span>Holders Only</span>
+                                <span>Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + ' tokens)' : ''}</span>
                             </div>
                         `;
                     } else {
@@ -3569,7 +3579,7 @@
             
             // Check poll creation token-gating based on holdings (FREE, not cost)
             const tokenData = getCurrentTokenData();
-            const minHoldingRequired = tokenData.type === 'basic' ? (tokenData.poll_gate_tokens || 1000) : 10000;
+            const minHoldingRequired = tokenSettings.minTokensToCreatePoll;
             if (chatState.userTokenBalance < minHoldingRequired) {
                 showNotification(
                     '🚫 Insufficient Holdings',
@@ -3774,6 +3784,7 @@
             const toggle = document.getElementById('tokenGateToggle');
             const status = document.getElementById('tokenGateStatus');
             const chatInput = document.getElementById('chatInput');
+            const minTokensRequired = tokenSettings.minTokensToChat;
             
             // Save the state for this specific token
             localStorage.setItem(`holdersOnly_${tokenSymbol}`, toggle.checked);
@@ -3781,21 +3792,21 @@
             if (toggle.checked) {
                 status.style.display = 'block';
                 
-                // Realistic token balance check
-                if (chatState.userTokenBalance >= 1000) {
+                // Use actual token settings for minimum holding requirement
+                if (chatState.userTokenBalance >= minTokensRequired) {
                     chatInput.placeholder = `✅ Verified holder (${chatState.userTokenBalance.toLocaleString()} tokens)`;
                     chatInput.disabled = false;
-                    status.querySelector('.gate-info span').textContent = `Only $${tokenSymbol} holders can chat`;
+                    status.querySelector('.gate-info span').textContent = `Only $${tokenSymbol} holders can chat${minTokensRequired > 0 ? ' (min: ' + minTokensRequired.toLocaleString() + ')' : ''}`;
                     status.style.borderColor = 'rgba(50, 205, 50, 0.4)';
                     status.style.background = 'rgba(50, 205, 50, 0.1)';
                     console.log(`Token gate enabled - user verified with ${chatState.userTokenBalance} tokens`);
                 } else {
-                    chatInput.placeholder = `❌ Need ${1000 - chatState.userTokenBalance} more tokens to chat`;
+                    chatInput.placeholder = `❌ Need ${minTokensRequired - chatState.userTokenBalance} more tokens to chat`;
                     chatInput.disabled = true;
-                    status.querySelector('.gate-info span').textContent = `Insufficient balance: ${chatState.userTokenBalance} tokens`;
+                    status.querySelector('.gate-info span').textContent = `Insufficient balance: ${chatState.userTokenBalance} tokens (need ${minTokensRequired})`;
                     status.style.borderColor = 'rgba(255, 107, 107, 0.4)';
                     status.style.background = 'rgba(255, 107, 107, 0.1)';
-                    console.log(`Token gate enabled - user rejected: ${chatState.userTokenBalance} < 1000`);
+                    console.log(`Token gate enabled - user rejected: ${chatState.userTokenBalance} < ${minTokensRequired}`);
                 }
             } else {
                 status.style.display = 'none';
@@ -4093,7 +4104,7 @@
             }
             
             const tokenData = getCurrentTokenData();
-            const minHolding = tokenData.superchat_gate_tokens || 500;
+            const minHolding = tokenSettings.minTokensForSpotlight;
             
             if (chatState.userTokenBalance < minHolding) {
                 showNotification(
