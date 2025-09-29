@@ -284,7 +284,7 @@
             {% if tokens %}
                 <div class="tokens-grid">
                     {% for token in tokens %}
-                        <div class="token-card" onclick="window.location.href='{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}'">
+                        <a href="{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}" class="token-card" style="text-decoration: none; display: block; color: inherit;">
                             <div class="token-header">
                                 <div class="token-avatar">
                                     {{ token.symbol[0] if token.symbol else '?' }}
@@ -346,7 +346,7 @@
                             <p style="text-align: center; color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0;">
                                 {{ "%.1f"|format(token.progress_to_graduation) }}% to DEX graduation
                             </p>
-                        </div>
+                        </a>
                     {% endfor %}
                 </div>
             {% else %}

@@ -510,33 +510,38 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
-        // Initialize Rich Text Editor
-        let quill = new Quill('#description-editor', {
-            theme: 'snow',
-            placeholder: 'Tell the community about your token... 🚀💎🌟',
-            modules: {
-                toolbar: [
-                    [{ 'header': [3, 4, false] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link'],
-                    ['clean']
-                ]
-            }
-        });
-        
-        // Update hidden input when content changes
-        quill.on('text-change', function() {
-            document.getElementById('description').value = quill.root.innerHTML;
-        });
+        // Initialize Rich Text Editor only if Quill is available and element exists
+        let quill = null;
+        if (typeof Quill !== 'undefined' && document.getElementById('description-editor')) {
+            quill = new Quill('#description-editor', {
+                theme: 'snow',
+                placeholder: 'Tell the community about your token... 🚀💎🌟',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [3, 4, false] }],
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+            
+            // Update hidden input when content changes
+            quill.on('text-change', function() {
+                document.getElementById('description').value = quill.root.innerHTML;
+            });
+        }
         
         // Emoji insertion helper
         function insertEmoji(emoji) {
-            const range = quill.getSelection();
-            if (range) {
-                quill.insertText(range.index, emoji);
-            } else {
-                quill.insertText(quill.getLength() - 1, emoji);
+            if (quill) {
+                const range = quill.getSelection();
+                if (range) {
+                    quill.insertText(range.index, emoji);
+                } else {
+                    quill.insertText(quill.getLength() - 1, emoji);
+                }
             }
         }
         
