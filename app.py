@@ -318,7 +318,7 @@ def app_dashboard():
     
     # Get user's created tokens and holdings
     created_tokens = Token.query.filter_by(creator_id=user.id).all()
-    user_holdings = Holding.query.filter_by(user_id=user.id).all()
+    holdings = Holding.query.filter_by(user_id=user.id).all()
     
     # Get user's activities
     activities = Activity.query.filter_by(user_id=user.id).order_by(Activity.created_at.desc()).limit(20).all()
@@ -341,9 +341,9 @@ def app_dashboard():
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
     return render_template('app/dashboard.html', 
-                         user=user,
-                         created_tokens=created_tokens,
-                         user_holdings=user_holdings,
+                         user=user, 
+                         created_tokens=created_tokens, 
+                         holdings=holdings,
                          activities=activities,
                          user_achievements=user_achievements,
                          user_achievement_ids=user_achievement_ids,
@@ -413,7 +413,6 @@ def token_marketplace():
     
     # Show all tokens, including pending ones for UI demo
     tokens = Token.query.order_by(Token.created_at.desc()).all()
-    
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
@@ -475,8 +474,8 @@ def leaderboard():
         user_rank = users_above + 1
     
     return render_template('app/leaderboard.html', 
-                         user=user,
-                         top_users=top_users,
+                         user=user, 
+                         top_users=top_users, 
                          user_rank=user_rank)
 
 @app.route('/app/profile', methods=['GET', 'POST'])
@@ -617,17 +616,13 @@ def profile():
         Referral.referrer_id == user.id
     ).all()
     
-    return render_template('app/profile.html',
-                         user=user,
+    return render_template('app/profile.html', 
+                         user=user, 
                          user_profile=user_profile,
                          connected_wallets=connected_wallets,
                          user_achievements=user_achievements,
                          referral=referral,
-                         referral_link=referral.referral_link if referral else '',
-                         referral_count=len(referred_users),
-                         active_referrals=len([u for u in referred_users if u.total_trading_volume and u.total_trading_volume > 0]),
-                         referral_earnings=sum([u.gem_points * 0.05 for u in referred_users]) if referred_users else 0,
-                         recent_referrals=referred_users[:10])  # Show last 10 referrals)
+                         referred_users=referred_users)
 
 @app.route('/app/referrals')
 def referrals():
