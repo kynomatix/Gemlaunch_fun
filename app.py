@@ -413,6 +413,7 @@ def create_token():
     return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
+@app.route('/app/marketplace')  # Add marketplace alias
 def token_marketplace():
     """Token marketplace - main home page (pump.fun style)"""
     user = get_current_user()
@@ -1135,24 +1136,39 @@ def init_database():
             if not Token.query.first():
                 print("Creating sample tokens...")
                 
-                # Create sample users for token creation
-                sample_user = User.query.first()
-                if not sample_user:
-                    # Create a default sample user for other tokens
-                    sample_user = User()
-                    sample_user.wallet_address = '0x1234567890abcdef1234567890abcdef12345678'
-                    sample_user.display_name = 'Sample Creator'
-                    sample_user.wallet_type = 'kastle'
-                    db.session.add(sample_user)
-                
-                # Create the specific user (you) as creator for DOGKAS and MOON
+                # Create the specific user (you) as creator for LASER and MOON
                 user_creator = User.query.filter_by(wallet_address='0xa51d8f597570353ae50a25df90ade162d2305ffa').first()
                 if not user_creator:
                     user_creator = User()
                     user_creator.wallet_address = '0xa51d8f597570353ae50a25df90ade162d2305ffa'
-                    user_creator.display_name = 'Token Creator'
+                    user_creator.display_name = 'Degen'
                     user_creator.wallet_type = 'kastle'
                     db.session.add(user_creator)
+                
+                # Create different sample users for other tokens
+                doge_creator = User.query.filter_by(wallet_address='0x2a3b4c5d6e7f8901234567890abcdef123456789').first()
+                if not doge_creator:
+                    doge_creator = User()
+                    doge_creator.wallet_address = '0x2a3b4c5d6e7f8901234567890abcdef123456789'
+                    doge_creator.display_name = 'DogeLord'
+                    doge_creator.wallet_type = 'kastle'
+                    db.session.add(doge_creator)
+                
+                pepe_creator = User.query.filter_by(wallet_address='0x9f8e7d6c5b4a39281726354647382910abcdef12').first()
+                if not pepe_creator:
+                    pepe_creator = User()
+                    pepe_creator.wallet_address = '0x9f8e7d6c5b4a39281726354647382910abcdef12'
+                    pepe_creator.display_name = 'PepeKing'
+                    pepe_creator.wallet_type = 'kastle'
+                    db.session.add(pepe_creator)
+                
+                floki_creator = User.query.filter_by(wallet_address='0x5d4c3b2a1908765432101234567890abcdef1234').first()
+                if not floki_creator:
+                    floki_creator = User()
+                    floki_creator.wallet_address = '0x5d4c3b2a1908765432101234567890abcdef1234'
+                    floki_creator.display_name = 'VikingDev'
+                    floki_creator.wallet_type = 'kastle'
+                    db.session.add(floki_creator)
                 
                 db.session.commit()
                 
@@ -1166,7 +1182,7 @@ def init_database():
                         'market_cap': 45000,
                         'price': 0.000045,
                         'image_url': 'https://upload.wikimedia.org/wikipedia/en/d/d0/Dogecoin_Logo.png',
-                        'creator': user_creator  # YOU own this token
+                        'creator': doge_creator  # Different creator
                     },
                     {
                         'name': 'Moon Rocket',
@@ -1176,7 +1192,7 @@ def init_database():
                         'market_cap': 28000,
                         'price': 0.000028,
                         'image_url': 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Rocket_icon.png',
-                        'creator': user_creator  # YOU own this token too
+                        'creator': user_creator  # YOU own this token
                     },
                     {
                         'name': 'Laser Eyes',
@@ -1186,7 +1202,7 @@ def init_database():
                         'market_cap': 67000,
                         'price': 0.000067,
                         'image_url': 'https://i.imgur.com/laser-eyes.png',
-                        'creator': sample_user  # Different creator
+                        'creator': user_creator  # YOU own this token
                     },
                     {
                         'name': 'PepeCoin',
@@ -1196,7 +1212,7 @@ def init_database():
                         'market_cap': 15000,
                         'price': 0.000015,
                         'image_url': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/63/Feelsbadman.jpg/256px-Feelsbadman.jpg',
-                        'creator': sample_user  # Different creator
+                        'creator': pepe_creator  # Different creator
                     },
                     {
                         'name': 'FlokiKas',
@@ -1206,7 +1222,7 @@ def init_database():
                         'market_cap': 32000,
                         'price': 0.000032,
                         'image_url': 'https://s2.coinmarketcap.com/static/img/coins/200x200/10804.png',
-                        'creator': sample_user  # Different creator
+                        'creator': floki_creator  # Different creator
                     }
                 ]
                 
