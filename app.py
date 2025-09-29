@@ -325,7 +325,14 @@ def app_dashboard():
     
     # Get user's achievements
     user_achievements = UserAchievement.query.filter_by(user_id=user.id).all()
-    total_achievements = Achievement.query.count()
+    user_achievement_ids = [ua.achievement_id for ua in user_achievements]
+    
+    # Get all achievements for display
+    all_achievements = Achievement.query.filter_by(is_active=True).order_by(
+        Achievement.category, Achievement.gem_points_reward
+    ).all()
+    
+    total_achievements = len(all_achievements)
     
     # Calculate achievement points
     achievement_points = sum(ua.achievement.gem_points_reward for ua in user_achievements)
@@ -339,6 +346,8 @@ def app_dashboard():
                          holdings=holdings,
                          activities=activities,
                          user_achievements=user_achievements,
+                         user_achievement_ids=user_achievement_ids,
+                         all_achievements=all_achievements,
                          total_achievements=total_achievements,
                          achievement_points=achievement_points,
                          referral=referral)

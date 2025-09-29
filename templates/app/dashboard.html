@@ -464,125 +464,60 @@
                         </div>
                         
                         <div class="achievements-list">
-                            <div class="achievement-item {{ 'completed' if user.total_tokens_created and user.total_tokens_created > 0 else 'locked' }}">
-                                <div class="achievement-icon">
-                                    <i class="fas fa-rocket"></i>
-                                </div>
-                                <div class="achievement-details">
-                                    <h4>First Launch</h4>
-                                    <p>Create your first memecoin on Kaspa</p>
-                                    <div class="achievement-progress">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (100 if (user.total_tokens_created or 0) >= 1 else ((user.total_tokens_created or 0) * 100))|int }}%"></div>
-                                        </div>
-                                        <span class="progress-text">{{ user.total_tokens_created or 0 }}/1 tokens</span>
-                                    </div>
-                                </div>
-                                <div class="achievement-reward">
-                                    <span class="points">+100</span>
-                                    <span class="label">Points</span>
-                                </div>
-                            </div>
+                            {% for achievement in all_achievements[:12] %}
+                            {% set is_completed = achievement.id in user_achievement_ids %}
+                            {% set progress_pct = 0 %}
+                            {% set current_val = 0 %}
+                            {% set target_val = achievement.requirement_value|int %}
+                            {% set progress_text = "" %}
                             
-                            <div class="achievement-item {{ 'completed' if user.total_trading_volume and user.total_trading_volume >= 1000 else 'locked' }}">
-                                <div class="achievement-icon">
-                                    <i class="fas fa-chart-line"></i>
-                                </div>
-                                <div class="achievement-details">
-                                    <h4>Active Trader</h4>
-                                    <p>Trade $1,000 worth of tokens</p>
-                                    <div class="achievement-progress">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (100 if (user.total_trading_volume or 0) >= 1000 else ((user.total_trading_volume or 0) / 1000 * 100))|int }}%"></div>
-                                        </div>
-                                        <span class="progress-text">${{ "{:,.0f}".format(user.total_trading_volume or 0) }}/$1,000</span>
-                                    </div>
-                                </div>
-                                <div class="achievement-reward">
-                                    <span class="points">+150</span>
-                                    <span class="label">Points</span>
-                                </div>
-                            </div>
+                            {% if achievement.requirement_type == 'tokens_created' %}
+                                {% set current_val = user.total_tokens_created or 0 %}
+                                {% set progress_text = current_val ~ "/" ~ target_val ~ " tokens" %}
+                            {% elif achievement.requirement_type == 'trading_volume' %}
+                                {% set current_val = user.total_trading_volume or 0 %}
+                                {% set progress_text = "$" ~ "{:,.0f}".format(current_val) ~ "/$" ~ "{:,.0f}".format(target_val) %}
+                            {% elif achievement.requirement_type == 'referrals' %}
+                                {% set current_val = referral.qualified_signups if referral else 0 %}
+                                {% set progress_text = current_val ~ "/" ~ target_val ~ " referrals" %}
+                            {% elif achievement.requirement_type == 'graduated_tokens' %}
+                                {% set progress_text = "0/" ~ target_val ~ " graduations" %}
+                            {% elif achievement.requirement_type == 'holding_days' %}
+                                {% set progress_text = "Hold for " ~ target_val ~ "+ days" %}
+                            {% elif achievement.requirement_type == 'trades_count' %}
+                                {% set progress_text = "Make your first trade" %}
+                            {% endif %}
                             
-                            <div class="achievement-item {{ 'completed' if user.total_trading_volume and user.total_trading_volume >= 10000 else 'locked' }}">
-                                <div class="achievement-icon">
-                                    <i class="fas fa-fire"></i>
-                                </div>
-                                <div class="achievement-details">
-                                    <h4>Volume Trader</h4>
-                                    <p>Trade $10,000 worth of tokens</p>
-                                    <div class="achievement-progress">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (100 if (user.total_trading_volume or 0) >= 10000 else ((user.total_trading_volume or 0) / 10000 * 100))|int }}%"></div>
-                                        </div>
-                                        <span class="progress-text">${{ "{:,.0f}".format(user.total_trading_volume or 0) }}/$10,000</span>
-                                    </div>
-                                </div>
-                                <div class="achievement-reward">
-                                    <span class="points">+300</span>
-                                    <span class="label">Points</span>
-                                </div>
-                            </div>
+                            {% if target_val > 0 and achievement.requirement_type in ['tokens_created', 'trading_volume', 'referrals'] %}
+                                {% set progress_pct = (100 if current_val >= target_val else ((current_val / target_val) * 100))|int %}
+                            {% endif %}
                             
-                            <div class="achievement-item {{ 'completed' if user.total_tokens_created and user.total_tokens_created >= 5 else 'locked' }}">
+                            <div class="achievement-item {{ 'completed' if is_completed else 'locked' }}">
                                 <div class="achievement-icon">
-                                    <i class="fas fa-coins"></i>
+                                    {% if achievement.icon and achievement.icon|length <= 2 %}
+                                        <span style="font-size: 1.5rem;">{{ achievement.icon }}</span>
+                                    {% else %}
+                                        <i class="fas fa-star"></i>
+                                    {% endif %}
                                 </div>
                                 <div class="achievement-details">
-                                    <h4>Token Creator</h4>
-                                    <p>Launch 5 different tokens</p>
+                                    <h4>{{ achievement.name }}</h4>
+                                    <p>{{ achievement.description }}</p>
+                                    {% if progress_text %}
                                     <div class="achievement-progress">
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (100 if (user.total_tokens_created or 0) >= 5 else ((user.total_tokens_created or 0) / 5 * 100))|int }}%"></div>
+                                            <div class="progress-fill" style="width: {{ progress_pct }}%"></div>
                                         </div>
-                                        <span class="progress-text">{{ user.total_tokens_created or 0 }}/5 tokens</span>
+                                        <span class="progress-text">{{ progress_text }}</span>
                                     </div>
+                                    {% endif %}
                                 </div>
                                 <div class="achievement-reward">
-                                    <span class="points">+400</span>
+                                    <span class="points">+{{ achievement.gem_points_reward }}</span>
                                     <span class="label">Points</span>
                                 </div>
                             </div>
-                            
-                            <div class="achievement-item {{ 'completed' if referral and referral.qualified_signups and referral.qualified_signups >= 10 else 'locked' }}">
-                                <div class="achievement-icon">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="achievement-details">
-                                    <h4>Community Builder</h4>
-                                    <p>Refer 10 qualified users</p>
-                                    <div class="achievement-progress">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: {{ (100 if (referral.qualified_signups if referral else 0) >= 10 else (((referral.qualified_signups if referral else 0) / 10) * 100))|int }}%"></div>
-                                        </div>
-                                        <span class="progress-text">{{ referral.qualified_signups if referral else 0 }}/10 referrals</span>
-                                    </div>
-                                </div>
-                                <div class="achievement-reward">
-                                    <span class="points">+500</span>
-                                    <span class="label">Points</span>
-                                </div>
-                            </div>
-                            
-                            <div class="achievement-item locked">
-                                <div class="achievement-icon">
-                                    <i class="fas fa-crown"></i>
-                                </div>
-                                <div class="achievement-details">
-                                    <h4>Graduation Master</h4>
-                                    <p>Create a token that graduates to DEX</p>
-                                    <div class="achievement-progress">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: 0%"></div>
-                                        </div>
-                                        <span class="progress-text">0/1 graduations</span>
-                                    </div>
-                                </div>
-                                <div class="achievement-reward">
-                                    <span class="points">+1000</span>
-                                    <span class="label">Points</span>
-                                </div>
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
 
