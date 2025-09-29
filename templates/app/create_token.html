@@ -510,10 +510,19 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
-        // Initialize Rich Text Editor only if Quill is available and element exists
-        let quill = null;
-        if (typeof Quill !== 'undefined' && document.getElementById('description-editor')) {
-            quill = new Quill('#description-editor', {
+        // Wrap Quill initialization in a function that can be re-called
+        function initQuill() {
+            // Check if already initialized to prevent duplicates
+            const editorEl = document.getElementById('description-editor');
+            if (!editorEl || editorEl.dataset.quillInitialized === 'true') return;
+            
+            // Only initialize if Quill is available
+            if (typeof Quill === 'undefined') {
+                console.error('Quill library not loaded');
+                return;
+            }
+            
+            const quill = new Quill('#description-editor', {
                 theme: 'snow',
                 placeholder: 'Tell the community about your token... 🚀💎🌟',
                 modules: {
@@ -527,20 +536,45 @@
                 }
             });
             
-            // Update hidden input when content changes
+            // Mark as initialized
+            editorEl.dataset.quillInitialized = 'true';
+            
+            // Update hidden input on change
             quill.on('text-change', function() {
                 document.getElementById('description').value = quill.root.innerHTML;
             });
+            
+            // Store instance for later cleanup if needed
+            window.quillInstance = quill;
         }
+        
+        // Initialize on DOMContentLoaded for first load
+        document.addEventListener('DOMContentLoaded', initQuill);
+        
+        // Reinitialize on Turbo navigation
+        document.addEventListener('turbo:load', initQuill);
+        
+        // Clean up before Turbo caches the page
+        document.addEventListener('turbo:before-cache', function() {
+            const editorEl = document.getElementById('description-editor');
+            if (editorEl && window.quillInstance) {
+                // Save current content to hidden field
+                document.getElementById('description').value = window.quillInstance.root.innerHTML;
+                // Mark as not initialized for next visit
+                editorEl.dataset.quillInitialized = 'false';
+                // Destroy Quill instance
+                window.quillInstance = null;
+            }
+        });
         
         // Emoji insertion helper
         function insertEmoji(emoji) {
-            if (quill) {
-                const range = quill.getSelection();
+            if (window.quillInstance) {
+                const range = window.quillInstance.getSelection();
                 if (range) {
-                    quill.insertText(range.index, emoji);
+                    window.quillInstance.insertText(range.index, emoji);
                 } else {
-                    quill.insertText(quill.getLength() - 1, emoji);
+                    window.quillInstance.insertText(window.quillInstance.getLength() - 1, emoji);
                 }
             }
         }
