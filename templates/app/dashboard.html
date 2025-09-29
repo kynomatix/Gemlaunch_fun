@@ -1605,5 +1605,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<!-- Main.js already loaded in base layout -->
+{{ super() }}
+<!-- Additional dashboard-specific scripts can go here if needed -->
 {% endblock %}
