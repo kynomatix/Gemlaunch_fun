@@ -464,7 +464,7 @@
                         </div>
                         
                         <div class="achievements-list">
-                            {% for achievement in all_achievements[:12] %}
+                            {% for achievement in all_achievements %}
                             {% set is_completed = achievement.id in user_achievement_ids %}
                             {% set progress_pct = 0 %}
                             {% set current_val = 0 %}
@@ -981,6 +981,27 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        
+        .achievements-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .achievements-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .achievements-list::-webkit-scrollbar-thumb {
+            background: rgba(32, 178, 170, 0.5);
+            border-radius: 3px;
+        }
+        
+        .achievements-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(32, 178, 170, 0.7);
         }
 
         .achievement-item {
