@@ -1,0 +1,111 @@
+<!-- Create Token content include file -->
+<div class="create-main">
+    <div class="create-container container">
+        <div class="create-header">
+            <h1>Create Your Token</h1>
+            <p>Launch your token on Kaspa blockchain in seconds</p>
+        </div>
+        
+        <div class="mode-selector">
+            <button class="mode-option active" data-mode="simple">
+                <h3>Simple Mode</h3>
+                <p>Quick launch with default settings</p>
+            </button>
+            <button class="mode-option" data-mode="advanced">
+                <h3>Advanced Mode</h3>
+                <p>Full control over token parameters</p>
+            </button>
+        </div>
+        
+        <form method="POST" action="{{ url_for('create_token') }}" class="create-form">
+            <input type="hidden" name="mode" id="mode" value="simple">
+            
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h3>Basic Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Token Name *</label>
+                        <input type="text" id="name" name="name" required placeholder="e.g., Doge Kaspa">
+                        <small>Choose a catchy name for your token</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="symbol">Token Symbol *</label>
+                        <input type="text" id="symbol" name="symbol" required placeholder="e.g., DOGKAS" maxlength="10">
+                        <small>3-10 characters, letters only</small>
+                    </div>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="description">Description *</label>
+                    <div id="description-editor" class="description-editor"></div>
+                    <input type="hidden" id="description" name="description" required>
+                    <small>Describe your token and its purpose. Be creative!</small>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="image">Token Image</label>
+                        <div class="image-upload">
+                            <input type="file" id="image" name="image" accept="image/*">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <p>Click to upload image</p>
+                            <small>PNG, JPG, GIF (max 5MB)</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Social Links (Optional)</label>
+                        <div class="social-inputs">
+                            <div class="input-group">
+                                <span class="input-prefix"><i class="fas fa-globe"></i></span>
+                                <input type="url" name="website" placeholder="Website URL">
+                            </div>
+                            <div class="input-group">
+                                <span class="input-prefix"><i class="fab fa-twitter"></i></span>
+                                <input type="text" name="twitter" placeholder="Twitter handle">
+                            </div>
+                            <div class="input-group">
+                                <span class="input-prefix"><i class="fab fa-telegram"></i></span>
+                                <input type="text" name="telegram" placeholder="Telegram link">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Simple Immutability Note -->
+            <div class="immutable-note">
+                <i class="fas fa-info-circle"></i>
+                Token details cannot be changed after creation
+            </div>
+            
+            <!-- Advanced Settings (Hidden by default) -->
+            <div class="form-section advanced-section" style="display: none;">
+                <h3>Advanced Settings</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="total_supply">Total Supply</label>
+                        <input type="number" id="total_supply" name="total_supply" value="1000000000" min="1000000" max="1000000000000">
+                        <small>Total number of tokens to create</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="reserved_percentage">Reserved %</label>
+                        <input type="number" id="reserved_percentage" name="reserved_percentage" value="0" min="0" max="50" step="1">
+                        <small>Percentage reserved for creator (0-50%)</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Button -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket"></i> Launch Token (0.5 KAS)
+                </button>
+                <p class="fee-note">
+                    <i class="fas fa-info-circle"></i> 
+                    Creation fee: 0.5 KAS + gas fees
+                </p>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,443 @@
+{% extends "app/htmx_layout.html" %}
+
+{% block extra_head %}
+<!-- Quill.js Rich Text Editor -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
+<style>
+        .create-main {
+            padding-top: 100px;
+            min-height: 100vh;
+        }
+        
+        .create-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .create-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .create-header h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 0.5rem;
+        }
+        
+        .mode-option {
+            flex: 1;
+            padding: 1rem;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            color: #CCCCCC;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .mode-option.active {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            font-weight: 600;
+        }
+        
+        .mode-option h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .mode-option p {
+            margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+        
+        .create-form {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 20px;
+            padding: 2.5rem;
+            backdrop-filter: blur(20px);
+        }
+        
+        /* Simple immutability note */
+        .immutable-note {
+            margin: 1.5rem 0 1rem 0;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #CCCCCC;
+            text-align: center;
+        }
+        
+        .immutable-note i {
+            color: #20B2AA;
+            margin-right: 0.5rem;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .image-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            border: 2px dashed rgba(32, 178, 170, 0.3);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .image-upload:hover {
+            border-color: #20B2AA;
+            background: rgba(32, 178, 170, 0.05);
+        }
+        
+        .image-upload input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .upload-icon {
+            font-size: 2rem;
+            color: #20B2AA;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Rich Text Editor Styling */
+        .description-editor {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            min-height: 120px;
+            transition: all 0.3s ease;
+        }
+        
+        .description-editor:focus-within {
+            border-color: #20B2AA;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+        }
+        
+        .ql-toolbar {
+            border: none !important;
+            border-bottom: 1px solid rgba(32, 178, 170, 0.2) !important;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .ql-container {
+            border: none !important;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 1rem;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .ql-editor {
+            min-height: 80px;
+            padding: 1rem;
+            color: #FFFFFF !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .ql-editor.ql-blank::before {
+            color: rgba(255, 255, 255, 0.5) !important;
+            font-style: normal;
+        }
+        
+        .ql-snow .ql-stroke {
+            stroke: #CCCCCC;
+        }
+        
+        .ql-snow .ql-fill {
+            fill: #CCCCCC;
+        }
+        
+        .ql-snow .ql-picker {
+            color: #CCCCCC;
+        }
+        
+        .ql-snow .ql-picker-options {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+        }
+        
+        /* Form Elements */
+        .form-section {
+            margin-bottom: 2rem;
+        }
+        
+        .form-section h3 {
+            color: #FFFFFF;
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(32, 178, 170, 0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+        
+        .form-group input[type="text"],
+        .form-group input[type="url"],
+        .form-group input[type="number"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 8px;
+            color: #FFFFFF;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #20B2AA;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #CCCCCC;
+            font-size: 0.85rem;
+        }
+        
+        /* Social Inputs */
+        .social-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+        
+        .input-prefix {
+            padding: 0.75rem 1rem;
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: #20B2AA;
+        }
+        
+        .input-group input {
+            flex: 1;
+            border-radius: 0 8px 8px 0 !important;
+        }
+        
+        /* Form Actions */
+        .form-actions {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        
+        .btn-lg {
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+        }
+        
+        .fee-note {
+            margin-top: 1rem;
+            color: #CCCCCC;
+            font-size: 0.9rem;
+        }
+        
+        /* Advanced Section */
+        .advanced-section {
+            border-top: 1px solid rgba(32, 178, 170, 0.2);
+            padding-top: 2rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .mode-selector {
+                flex-direction: column;
+            }
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'app/create_token_content_inc.html' %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Create Token specific functionality
+(function() {
+    let quill = null;
+    
+    // Initialize Quill editor
+    function initializeQuillEditor() {
+        if (document.getElementById('description-editor')) {
+            quill = new Quill('#description-editor', {
+                theme: 'snow',
+                placeholder: 'Describe your token and its purpose. Be creative!',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+            
+            // Update hidden input when editor changes
+            quill.on('text-change', function() {
+                document.getElementById('description').value = quill.root.innerHTML;
+            });
+        }
+    }
+    
+    // Mode selector functionality
+    function initializeModeSelector() {
+        const modeOptions = document.querySelectorAll('.mode-option');
+        const advancedSection = document.querySelector('.advanced-section');
+        const modeInput = document.getElementById('mode');
+        
+        modeOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove active class from all
+                modeOptions.forEach(opt => opt.classList.remove('active'));
+                // Add active class to clicked
+                this.classList.add('active');
+                
+                const mode = this.dataset.mode;
+                modeInput.value = mode;
+                
+                // Show/hide advanced section
+                if (mode === 'advanced') {
+                    advancedSection.style.display = 'block';
+                    advancedSection.style.animation = 'fadeIn 0.5s ease';
+                } else {
+                    advancedSection.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Image upload preview
+    function initializeImageUpload() {
+        const imageInput = document.getElementById('image');
+        const uploadDiv = document.querySelector('.image-upload');
+        
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        // Update upload div with preview
+                        uploadDiv.innerHTML = `
+                            <img src="${e.target.result}" style="max-width: 100%; max-height: 120px; border-radius: 10px;">
+                            <small style="margin-top: 0.5rem;">Click to change</small>
+                            <input type="file" id="image" name="image" accept="image/*" style="position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                        `;
+                        // Re-attach event listener to new input
+                        initializeImageUpload();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }
+    
+    // Form validation
+    function initializeFormValidation() {
+        const form = document.querySelector('.create-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const name = document.getElementById('name').value.trim();
+                const symbol = document.getElementById('symbol').value.trim();
+                const description = document.getElementById('description').value.trim();
+                
+                if (!name || !symbol || !description) {
+                    e.preventDefault();
+                    alert('Please fill in all required fields');
+                    return false;
+                }
+                
+                // Symbol validation
+                if (!/^[A-Za-z]+$/.test(symbol)) {
+                    e.preventDefault();
+                    alert('Token symbol must contain only letters');
+                    return false;
+                }
+            });
+        }
+    }
+    
+    // Initialize everything
+    initializeQuillEditor();
+    initializeModeSelector();
+    initializeImageUpload();
+    initializeFormValidation();
+    
+    // Export for re-initialization after HTMX swaps
+    window.initializeCreateTokenScripts = function() {
+        initializeQuillEditor();
+        initializeModeSelector();
+        initializeImageUpload();
+        initializeFormValidation();
+    };
+})();
+</script>
+{% endblock %}

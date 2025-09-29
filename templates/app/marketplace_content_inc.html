@@ -1,0 +1,110 @@
+<!-- Marketplace content include file -->
+<div class="marketplace-main">
+    <div class="container">
+        <div class="marketplace-header">
+            <h1>Token Marketplace</h1>
+            <p>Discover and trade the latest Kaspa tokens</p>
+        </div>
+        
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">
+                All Tokens
+            </button>
+            <button class="filter-btn" data-filter="new">
+                New Launches
+            </button>
+            <button class="filter-btn" data-filter="trending">
+                <i class="fas fa-fire"></i> Trending
+            </button>
+            <button class="filter-btn" data-filter="graduating">
+                Near Graduation
+            </button>
+            <button class="filter-btn" data-filter="my-tokens">
+                My Tokens
+            </button>
+        </div>
+        
+        <div class="tokens-grid">
+            {% for token in tokens %}
+            <div class="token-card" onclick="window.location.href='/app/token/{{ token.contract_address }}'">
+                <div class="token-header">
+                    <div class="token-avatar">
+                        {% if token.image_url %}
+                            <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 100%; height: 100%; border-radius: 50%;">
+                        {% else %}
+                            {{ token.symbol[:2] }}
+                        {% endif %}
+                    </div>
+                    <div class="token-info">
+                        <div class="token-info-header">
+                            <h3>{{ token.name }} ({{ token.symbol }})</h3>
+                            {% if token.deployment_status == 'deployed' %}
+                                <span class="marketplace-token-badge advanced">
+                                    <i class="fas fa-gem"></i> Pro
+                                </span>
+                            {% else %}
+                                <span class="marketplace-token-badge basic">
+                                    <i class="fas fa-star"></i> Basic
+                                </span>
+                            {% endif %}
+                        </div>
+                        {% if token.contract_address %}
+                            <div class="contract-address-small">
+                                <i class="fas fa-link"></i>
+                                {{ token.contract_address[:6] }}...{{ token.contract_address[-4:] }}
+                            </div>
+                        {% endif %}
+                        <p>{{ token.description[:50] }}{% if token.description|length > 50 %}...{% endif %}</p>
+                    </div>
+                </div>
+                
+                <div class="token-stats">
+                    <div class="stat">
+                        <span class="stat-label">Market Cap</span>
+                        <span class="stat-value">
+                            {% if token.current_market_cap %}
+                                ${{ "{:,.0f}".format(token.current_market_cap) }}
+                            {% else %}
+                                $0
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Holders</span>
+                        <span class="stat-value">{{ token.holder_count or 0 }}</span>
+                    </div>
+                </div>
+                
+                <div class="token-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (token.current_market_cap / 70000 * 100) if token.current_market_cap else 0 }}%"></div>
+                    </div>
+                    <div class="progress-label">
+                        {{ "{:.1f}".format((token.current_market_cap / 70000 * 100) if token.current_market_cap else 0) }}% to graduation
+                    </div>
+                </div>
+                
+                <div class="token-footer">
+                    <span class="creator">
+                        Created by {{ token.creator.display_name or 'Anonymous' }}
+                    </span>
+                    <span class="time-ago">
+                        {% if token.created_at %}
+                            {{ token.created_at.strftime('%Y-%m-%d') }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if not tokens %}
+        <div class="empty-state">
+            <i class="fas fa-coins"></i>
+            <h3>No tokens yet</h3>
+            <p>Be the first to create a token!</p>
+            <a href="{{ url_for('create_token') }}" class="btn btn-primary">Create Token</a>
+        </div>
+        {% endif %}
+    </div>
+</div>

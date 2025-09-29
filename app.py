@@ -422,6 +422,10 @@ def create_token():
             flash(f'Error creating token: {str(e)}', 'error')
             return redirect(url_for('create_token'))
     
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        return render_template('app/create_token_htmx.html', user=user)
+    
     return render_template('app/create_token.html', user=user)
 
 @app.route('/app/tokens')
@@ -435,6 +439,11 @@ def token_marketplace():
     
     # Show all tokens, including pending ones for UI demo
     tokens = Token.query.order_by(Token.created_at.desc()).all()
+    
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        return render_template('app/marketplace_htmx.html', tokens=tokens, user=user)
+    
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
@@ -496,6 +505,13 @@ def leaderboard():
     if user_rank is None:
         users_above = User.query.filter(User.gem_points > user.gem_points).count()
         user_rank = users_above + 1
+    
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        return render_template('app/leaderboard_htmx.html', 
+                             user=user, 
+                             top_users=top_users, 
+                             user_rank=user_rank)
     
     return render_template('app/leaderboard.html', 
                          user=user, 
@@ -641,6 +657,16 @@ def profile():
     referred_users = User.query.join(Referral, Referral.referee_id == User.id).filter(
         Referral.referrer_id == user.id
     ).all()
+    
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        return render_template('app/profile_htmx.html', 
+                             user=user, 
+                             user_profile=user_profile,
+                             connected_wallets=connected_wallets,
+                             user_achievements=user_achievements,
+                             referral=referral,
+                             referred_users=referred_users)
     
     return render_template('app/profile.html', 
                          user=user, 
