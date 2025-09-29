@@ -124,6 +124,62 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Recent Trades -->
+                <div class="recent-trades-container" style="margin-top: 1.5rem;">
+                    <div class="trades-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0; color: #20B2AA;">Recent Trades</h3>
+                        <span class="live-indicator" style="display: flex; align-items: center; gap: 0.5rem; color: #22c55e; font-size: 0.85rem;">
+                            <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                            Live
+                        </span>
+                    </div>
+                    <div class="trades-table" style="background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 30, 0.3)); border: 1px solid rgba(32, 178, 170, 0.2); border-radius: 10px; overflow: hidden;">
+                        <div class="trades-list" style="max-height: 300px; overflow-y: auto;">
+                            {% if recent_trades %}
+                                {% for trade in recent_trades[:10] %}
+                                <div class="trade-item" style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;">
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <span class="trade-type-badge" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: {% if trade.trade_type == 'buy' %}rgba(34, 197, 94, 0.2); color: #22c55e;{% else %}rgba(239, 68, 68, 0.2); color: #ef4444;{% endif %}">
+                                            {{ trade.trade_type.upper() }}
+                                        </span>
+                                        <div style="display: flex; flex-direction: column;">
+                                            <span style="color: #FFF; font-size: 0.9rem;">
+                                                {{ "{:,.0f}".format(trade.token_amount) }} {{ token.symbol }}
+                                            </span>
+                                            <span style="color: #999; font-size: 0.75rem;">
+                                                {{ "{:,.2f}".format(trade.kas_amount) }} KAS
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="color: #BBB; font-size: 0.85rem;">
+                                            {% if trade.user %}
+                                                {{ trade.user.wallet_address[:6] }}...{{ trade.user.wallet_address[-4:] }}
+                                            {% else %}
+                                                Unknown
+                                            {% endif %}
+                                        </div>
+                                        <div style="color: #777; font-size: 0.75rem;">
+                                            {% if trade.confirmed_at %}
+                                                {{ trade.confirmed_at.strftime('%H:%M:%S') }}
+                                            {% else %}
+                                                Pending
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div style="padding: 2rem; text-align: center; color: #999;">
+                                    <i class="fas fa-exchange-alt" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+                                    <p style="margin: 0;">No trades yet</p>
+                                    <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: #666;">Be the first to trade!</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Right Panel - Trading & Chat -->
@@ -774,6 +830,36 @@
             min-width: 0;
             overflow-x: auto;
             margin: 0; /* Ensure no margin interferes with flex gap */
+        }
+        
+        .recent-trades-container {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(32, 178, 170, 0.02));
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .trade-item:hover {
+            background: rgba(32, 178, 170, 0.1) !important;
+        }
+        
+        .trades-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .trades-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .trades-list::-webkit-scrollbar-thumb {
+            background: rgba(32, 178, 170, 0.5);
+            border-radius: 3px;
+        }
+        
+        .trades-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(32, 178, 170, 0.7);
         }
         
         .right-panel {
