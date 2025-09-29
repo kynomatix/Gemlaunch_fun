@@ -265,11 +265,11 @@
             <!-- Dashboard Tabs -->
             <div class="dashboard-tabs">
                 <div class="tab-navigation">
-                    <button class="tab-btn active" onclick="switchTab('tokens')">
+                    <button class="tab-btn active" data-tab="tokens">
                         <i class="fas fa-coins"></i>
                         Tokens
                     </button>
-                    <button class="tab-btn" onclick="switchTab('achievements')">
+                    <button class="tab-btn" data-tab="achievements">
                         <i class="fas fa-star"></i>
                         Accolades & Progress
                     </button>
@@ -597,7 +597,7 @@
                             </div>
                             
                             <div class="points-tips">
-                                <h4 onclick="toggleTips()">
+                                <h4 id="tipsHeader" style="cursor: pointer;">
                                     Ways to Earn More Points
                                     <i class="fas fa-chevron-down tips-toggle" id="tipsToggle"></i>
                                 </h4>
@@ -703,10 +703,7 @@
         </div>
     </main>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Scripts are loaded from base_layout.html -->
     
     <script>
         // Wallet disconnect functionality
@@ -740,8 +737,10 @@
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
             
             // Add active class to selected tab and button
-            document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(`${tabName}-tab`).classList.add('active');
+            const targetBtn = document.querySelector(`button[data-tab="${tabName}"]`);
+            if (targetBtn) targetBtn.classList.add('active');
+            const targetTab = document.getElementById(`${tabName}-tab`);
+            if (targetTab) targetTab.classList.add('active');
         }
 
         // Activities filtering functionality
@@ -772,6 +771,19 @@
 
         // Animation on load for activities
         document.addEventListener('DOMContentLoaded', function() {
+            // Attach tab switching events
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
+            
+            // Attach tips toggle event
+            const tipsHeader = document.getElementById('tipsHeader');
+            if (tipsHeader) {
+                tipsHeader.addEventListener('click', toggleTips);
+            }
+            
             const achievementItems = document.querySelectorAll('.accolade-item');
             achievementItems.forEach((item, index) => {
                 item.style.opacity = '0';
@@ -1593,5 +1605,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- Main.js already loaded in base layout -->
 {% endblock %}
