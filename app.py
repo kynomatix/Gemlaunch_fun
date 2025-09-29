@@ -328,7 +328,7 @@ def app_dashboard():
     total_achievements = Achievement.query.count()
     
     # Calculate achievement points
-    achievement_points = sum(achievement.points_earned for achievement in user_achievements)
+    achievement_points = sum(ua.achievement.gem_points_reward for ua in user_achievements)
     
     # Get referral info for achievements
     referral = Referral.query.filter_by(referrer_id=user.id).first()
