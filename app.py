@@ -533,16 +533,9 @@ def token_messages(contract_address):
 def token_polls(contract_address):
     """Get or create polls for a token"""
     from datetime import datetime, timedelta, timezone
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    
-    logging.debug(f"Poll endpoint called - Method: {request.method}, Contract: {contract_address}")
-    logging.debug(f"Headers: {dict(request.headers)}")
     
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
     user = get_current_user()
-    
-    logging.debug(f"Token found: {token.symbol}, User: {user.wallet_address if user else 'None'}")
     
     if request.method == 'GET':
         # Get active polls with creator profile
@@ -583,27 +576,20 @@ def token_polls(contract_address):
         return jsonify({'polls': poll_list})
     
     elif request.method == 'POST':
-        logging.debug("POST request received for poll creation")
         data = request.get_json()
-        logging.debug(f"Request data: {data}")
         
         question = data.get('question', '').strip()
         options_text = data.get('options', [])
         vote_cost = data.get('vote_cost', 100)
         duration_hours = data.get('duration_hours', 24)
         
-        logging.debug(f"Question: {question}, Options: {options_text}, Vote cost: {vote_cost}, Duration: {duration_hours}")
-        
         if not question:
-            logging.error("No question provided")
             return jsonify({'error': 'Question is required'}), 400
         
         if len(options_text) < 2:
-            logging.error(f"Not enough options: {len(options_text)}")
             return jsonify({'error': 'At least 2 options required'}), 400
         
         try:
-            logging.debug("Attempting to create poll object")
             # Create poll
             poll = Poll(
                 token_id=token.id,
@@ -612,35 +598,28 @@ def token_polls(contract_address):
                 vote_cost=vote_cost,
                 ends_at=datetime.now(timezone.utc) + timedelta(hours=duration_hours)
             )
-            logging.debug(f"Poll object created: token_id={token.id}, creator_id={user.id}")
             db.session.add(poll)
             db.session.flush()  # Get poll ID
-            logging.debug(f"Poll flushed with ID: {poll.id}")
             
             # Create options
-            for i, opt_text in enumerate(options_text):
-                logging.debug(f"Creating option {i+1}: {opt_text}")
+            for opt_text in options_text:
                 option = PollOption(
                     poll_id=poll.id,
                     option_text=opt_text
                 )
                 db.session.add(option)
             
-            logging.debug("Committing poll to database...")
             db.session.commit()
-            logging.debug("Poll successfully committed!")
             
             # Get creator display name safely
             creator_name = user.display_name or user.wallet_address[-6:]
             try:
                 if hasattr(user, 'profile') and user.profile and user.profile.username:
                     creator_name = user.profile.username
-                    logging.debug(f"Using profile username: {creator_name}")
-            except Exception as e:
-                logging.debug(f"Could not get profile username: {e}")
+            except:
                 pass
             
-            response_data = {
+            return jsonify({
                 'success': True,
                 'poll': {
                     'id': poll.id,
@@ -648,15 +627,11 @@ def token_polls(contract_address):
                     'question': poll.question,
                     'created_at': poll.created_at.isoformat()
                 }
-            }
-            logging.debug(f"Returning success response: {response_data}")
-            return jsonify(response_data)
+            })
         except Exception as e:
-            logging.error(f"Failed to create poll: {str(e)}")
-            import traceback
-            logging.error(f"Traceback: {traceback.format_exc()}")
+            logging.error(f"Failed to create poll: {e}")
             db.session.rollback()
-            return jsonify({'error': f'Failed to create poll: {str(e)}'}), 500
+            return jsonify({'error': 'Failed to create poll'}), 500
 
 @app.route('/api/token/<contract_address>/polls/<int:poll_id>/vote', methods=['POST'])
 @require_wallet_connection

@@ -2724,7 +2724,7 @@
                     
                     // Display active polls
                     data.polls.forEach(poll => {
-                        displayPollInChat(poll);
+                        addPollToChat(poll);
                     });
                     
                     console.log(`📊 Loaded ${data.polls.length} active polls from database`);
@@ -3574,7 +3574,7 @@
                         // Display the new poll
                         const newPoll = pollsData.polls.find(p => p.id === data.poll.id);
                         if (newPoll) {
-                            displayPollInChat(newPoll);
+                            addPollToChat(newPoll);
                         }
                     }
                     
