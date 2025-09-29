@@ -451,12 +451,8 @@
                         </div>
                     </div>
                     <!-- Spotlight Messages (Pinned for 1 hour) -->
-                    <div class="spotlight-messages" id="spotlightMessages" style="display: none; background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05)); border: 2px solid rgba(255, 215, 0, 0.4); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; position: relative;">
-                        <div class="spotlight-header" style="position: absolute; top: -12px; left: 20px; background: #1a1a2e; padding: 0 12px;">
-                            <i class="fas fa-thumbtack" style="color: #FFD700;"></i>
-                            <span style="color: #FFD700; font-weight: 600;">PINNED SPOTLIGHT (1 HOUR)</span>
-                        </div>
-                        <div id="spotlightMessagesList" style="margin-top: 10px;">
+                    <div class="spotlight-messages" id="spotlightMessages" style="display: none;">
+                        <div id="spotlightMessagesList">
                             <!-- Dynamically populated spotlight messages -->
                         </div>
                     </div>
@@ -1607,33 +1603,63 @@
         /* Spotlight Messages (Pinned/Boosted) */
         .spotlight-messages {
             margin-bottom: 1rem;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 140, 0, 0.05));
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 10px;
-            padding: 1rem;
-            position: relative;
-            overflow: hidden;
         }
         
-        .spotlight-header {
+        .pinned-spotlight-msg {
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.95), rgba(20, 20, 35, 0.98));
+            border: 2px solid rgba(255, 215, 0, 0.6);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            position: relative;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+        
+        .pinned-spotlight-msg:before {
+            content: '📌 PINNED SPOTLIGHT (1HOUR)';
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: #1a1a2e;
+            padding: 0 8px;
+            color: #FFD700;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .spotlight-content {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1.5rem;
+        }
+        
+        .spotlight-user {
             color: #FFD700;
             font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 0.8rem;
+            font-size: 1rem;
+            white-space: nowrap;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
-        .spotlight-message {
+        .spotlight-text {
+            flex: 1;
+            color: #FFF;
+            font-size: 1.05rem;
+            font-weight: 400;
+            padding: 0 1rem;
+        }
+        
+        .spotlight-timer {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.2);
-            border-radius: 8px;
-            padding: 0.8rem;
-            position: relative;
+            gap: 0.25rem;
+            color: #FFD700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            margin-left: auto;
         }
         
         .spotlight-glow {
@@ -4044,23 +4070,20 @@
             // Show container
             container.style.display = 'block';
             
-            // Create spotlight message element
+            // Get proper username display (inherit from user if valid)
+            const displayUser = getUserDisplayName(spotlightEntry.user);
+            
+            // Create spotlight message element with sleek horizontal layout
             const spotlightElement = document.createElement('div');
             spotlightElement.className = 'pinned-spotlight-msg';
             spotlightElement.setAttribute('data-id', spotlightEntry.id);
             spotlightElement.innerHTML = `
-                <div style="display: flex; gap: 1rem; align-items: start; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border-left: 3px solid #FFD700;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <span style="font-weight: 600; color: #FFD700;">${spotlightEntry.user}</span>
-                            <span style="color: #999; font-size: 0.85rem;">Pinned just now</span>
-                            <span style="margin-left: auto; color: #FFD700; font-size: 0.85rem;">
-                                <i class="fas fa-clock"></i> <span class="time-remaining">59m</span> remaining
-                            </span>
-                        </div>
-                        <div style="color: #FFF; font-size: 1.05rem; line-height: 1.4;">
-                            ${spotlightEntry.message}
-                        </div>
+                <div class="spotlight-content">
+                    <div class="spotlight-user">${displayUser}</div>
+                    <div style="color: #666; font-size: 0.85rem; margin-left: -0.5rem;">Pinned just now</div>
+                    <div class="spotlight-text">${spotlightEntry.message}</div>
+                    <div class="spotlight-timer">
+                        🕐 <span class="time-remaining">59m</span> <span style="font-size: 0.85rem;">remaining</span>
                     </div>
                 </div>
             `;
@@ -4107,6 +4130,7 @@
                     element.textContent = `${minutes}m`;
                     setTimeout(updateTimer, 60000); // Update every minute
                 } else {
+                    element.textContent = '0m';
                     removeSpotlight(spotlightId);
                 }
             };
