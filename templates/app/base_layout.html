@@ -420,15 +420,15 @@
             }
         }
         
-        // Set active navigation item
-        function setActiveNav(element) {
+        // Set active navigation item (make it globally available)
+        window.setActiveNav = function(element) {
             // Remove active class from all nav items
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             // Add active class to clicked element
             element.classList.add('active');
-        }
+        };
         
         // Handle HTMX events for page-specific scripts
         document.addEventListener('htmx:afterSwap', function(event) {

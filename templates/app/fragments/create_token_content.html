@@ -47,8 +47,7 @@
 
                     <div class="form-group full-width">
                         <label for="description">Description (Optional)</label>
-                        <div class="description-editor" id="description-editor"></div>
-                        <input type="hidden" id="description" name="description">
+                        <textarea id="description" name="description" placeholder="Tell the community about your token... 🚀💎🌟" rows="4" style="width: 100%; padding: 1rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 10px; color: #FFFFFF; resize: vertical;"></textarea>
                     </div>
 
                     <div class="form-group full-width">
@@ -73,60 +72,37 @@
                         <div class="social-links-content" id="social-links-content" style="display: none; margin-top: 1rem;">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="website">
-                                        <i class="fas fa-globe" style="margin-right: 0.5rem; color: #20B2AA;"></i>
-                                        Website
-                                    </label>
-                                    <input type="url" id="website" name="website" placeholder="https://yourwebsite.com">
+                                    <label for="website"><i class="fas fa-globe"></i> Website</label>
+                                    <input type="url" id="website" name="website" placeholder="https://yourtoken.com">
                                 </div>
                                 <div class="form-group">
-                                    <label for="twitter">
-                                        <i class="fab fa-twitter" style="margin-right: 0.5rem; color: #20B2AA;"></i>
-                                        X (Twitter)
-                                    </label>
-                                    <input type="url" id="twitter" name="twitter" placeholder="https://x.com/yourusername">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="telegram">
-                                        <i class="fab fa-telegram" style="margin-right: 0.5rem; color: #20B2AA;"></i>
-                                        Telegram
-                                    </label>
-                                    <input type="url" id="telegram" name="telegram" placeholder="https://t.me/yourchannel">
+                                    <label for="twitter"><i class="fab fa-twitter"></i> Twitter/X</label>
+                                    <input type="text" id="twitter" name="twitter" placeholder="@yourtoken">
                                 </div>
                                 <div class="form-group">
-                                    <!-- Empty column for layout balance -->
+                                    <label for="telegram"><i class="fab fa-telegram"></i> Telegram</label>
+                                    <input type="text" id="telegram" name="telegram" placeholder="https://t.me/yourtoken">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Advanced Options -->
-                    <div class="advanced-section" id="advanced-options">
-                        <h3 style="color: #20B2AA; margin-bottom: 1rem;">Advanced Configuration</h3>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="total_supply">Total Supply</label>
-                                <input type="number" id="total_supply" name="total_supply" value="1000000000" min="1000000" max="100000000000" step="1000000">
-                                <div class="supply-info">
-                                    <h4>💡 Supply Guidelines</h4>
-                                    <p>Most successful memecoins use 1B tokens. Lower supply = higher individual token price, higher supply = lower price with more decimal places.</p>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="reserved_percentage">Reserved Tokens (%)</label>
-                                <div class="range-labels">
-                                    <span>0%</span>
-                                    <span id="reserve-display">0%</span>
-                                    <span>25%</span>
-                                </div>
-                                <input type="range" id="reserved_percentage" name="reserved_percentage" min="0" max="25" value="0" class="range-input" oninput="updateReserveDisplay(this.value)">
-                                <div class="supply-info">
-                                    <h4>🔒 Reserved Tokens</h4>
-                                    <p>Keep up to 25% of tokens for team, marketing, partnerships, or future development. Reserved tokens are locked until manually deployed.</p>
-                                </div>
+                    <!-- Advanced Options (Hidden by default) -->
+                    <div class="advanced-options" id="advanced-options">
+                        <h3 style="color: #20B2AA; margin-bottom: 1rem;">
+                            <i class="fas fa-cog"></i> Advanced Settings
+                        </h3>
+                        <div class="form-group">
+                            <label for="total_supply">Total Supply</label>
+                            <input type="number" id="total_supply" name="total_supply" value="1000000000" min="1000000" max="100000000000" step="1000000">
+                            <small>Min: 1M tokens, Max: 100B tokens</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="reserved_percentage">Reserved Supply: <span id="reserve-display">0%</span></label>
+                            <input type="range" id="reserved_percentage" name="reserved_percentage" min="0" max="25" value="0" class="range-input" oninput="updateReserveDisplay(this.value)">
+                            <div class="supply-info">
+                                <h4>🔒 Reserved Tokens</h4>
+                                <p>Keep up to 25% of tokens for team, marketing, partnerships, or future development. Reserved tokens are locked until manually deployed.</p>
                             </div>
                         </div>
                     </div>
@@ -143,306 +119,72 @@
                     </button>
                 </form>
             </div>
-        </div>
-    </main>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    
-    <script>
-        // Initialize Rich Text Editor
-        let quill = new Quill('#description-editor', {
-            theme: 'snow',
-            placeholder: 'Tell the community about your token... 🚀💎🌟',
-            modules: {
-                toolbar: [
-                    [{ 'header': [3, 4, false] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link'],
-                    ['clean']
-                ]
-            }
-        });
-        
-        // Update hidden input when content changes
-        quill.on('text-change', function() {
-            document.getElementById('description').value = quill.root.innerHTML;
-        });
-        
-        // Emoji insertion helper
-        function insertEmoji(emoji) {
-            const range = quill.getSelection();
-            if (range) {
-                quill.insertText(range.index, emoji);
-            } else {
-                quill.insertText(quill.getLength() - 1, emoji);
-            }
-        }
-        
-        function setMode(mode) {
-            // Update mode selector
-            document.querySelectorAll('.mode-option').forEach(option => {
-                option.classList.remove('active');
-            });
-            event.target.closest('.mode-option').classList.add('active');
-            
-            // Update hidden input
-            document.getElementById('mode').value = mode;
-            
-            // Show/hide advanced options
-            const advancedSection = document.getElementById('advanced-options');
-            if (mode === 'advanced') {
-                advancedSection.classList.add('active');
-            } else {
-                advancedSection.classList.remove('active');
-            }
-        }
-        
-        function updateReserveDisplay(value) {
-            document.getElementById('reserve-display').textContent = value + '%';
-        }
-        
-        // Global variable to track compressed file
-        let currentCompressedFile = null;
-        
-        // Initialize image upload handler
-        function initImageUploadHandler() {
-            const imageInput = document.getElementById('image');
-            if (imageInput) {
-                imageInput.addEventListener('change', handleImageUpload);
-            }
-        }
-        
-        // Image upload handler with compression and validation
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // Validate file size (initial check)
-                if (file.size > 10 * 1024 * 1024) { // 10MB initial limit
-                    alert('⚠️ Image too large! Please select an image under 10MB.');
-                    e.target.value = '';
-                    return;
-                }
-                
-                // Validate file type
-                if (!file.type.startsWith('image/')) {
-                    alert('⚠️ Please select a valid image file (PNG, JPG, GIF, WebP)');
-                    e.target.value = '';
-                    return;
-                }
-                
-                // Show compression progress
-                const uploadArea = document.querySelector('.image-upload');
-                uploadArea.innerHTML = `
-                    <input type="file" id="image" name="image" accept="image/*">
-                    <i class="fas fa-spinner fa-spin upload-icon"></i>
-                    <h4>Compressing for blockchain...</h4>
-                    <p>Optimizing image size</p>
-                `;
-                
-                // Re-attach event listener to new input
-                initImageUploadHandler();
-                
-                // Validate image dimensions first
-                validateImageDimensions(file, function(isValid, errorMessage) {
-                    if (!isValid) {
-                        uploadArea.innerHTML = `
-                            <input type="file" id="image" name="image" accept="image/*">
-                            <i class="fas fa-exclamation-triangle upload-icon" style="color: #FF6B6B;"></i>
-                            <h4 style="color: #FF6B6B;">Image Requirements Not Met</h4>
-                            <p>${errorMessage}</p>
-                            <p style="font-size: 0.8rem; color: #CCCCCC;">Upload a larger image (min 1000x1000px)</p>
-                        `;
-                        initImageUploadHandler();
-                        return;
-                    }
-                    
-                    // Warn about format conversion if PNG
-                    if (file.type === 'image/png') {
-                        console.log('ℹ️ PNG will be converted to JPEG for blockchain optimization. Transparency will be lost.');
-                    }
-                    
-                    // Proceed with compression
-                    compressImage(file, function(compressedFile, originalSize, compressedSize, success) {
-                    if (!success) {
-                        // Compression failed - file too large
-                        currentCompressedFile = null; // Clear stale reference
-                        uploadArea.innerHTML = `
-                            <input type="file" id="image" name="image" accept="image/*">
-                            <i class="fas fa-exclamation-triangle upload-icon" style="color: #FF6B6B;"></i>
-                            <h4 style="color: #FF6B6B;">Image Too Large</h4>
-                            <p>Unable to compress below 500KB limit for blockchain storage</p>
-                            <p style="font-size: 0.8rem; color: #CCCCCC;">Try a smaller or simpler image</p>
-                        `;
-                        initImageUploadHandler();
-                        return;
-                    }
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        uploadArea.innerHTML = `
-                            <input type="file" id="image" name="image" accept="image/*">
-                            <img src="${e.target.result}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
-                            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
-                                ✅ Optimized: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)}
-                            </p>
-                            <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change image</p>
-                        `;
-                        
-                        // Re-attach event listener and store compressed file
-                        initImageUploadHandler();
-                        currentCompressedFile = compressedFile;
-                        replaceFileInput(compressedFile);
-                    };
-                    reader.readAsDataURL(compressedFile);
-                    });
-                });
-            }
-        }
-        
-        // Initialize handler on page load
-        initImageUploadHandler();
-        
-        // Social links toggle functionality
-        function toggleSocialLinks() {
-            const content = document.getElementById('social-links-content');
-            const chevron = document.getElementById('social-chevron');
-            
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                chevron.style.transform = 'rotate(180deg)';
-            } else {
-                content.style.display = 'none';
-                chevron.style.transform = 'rotate(0deg)';
-            }
-        }
-        
-        // Image dimension validation
-        function validateImageDimensions(file, callback) {
-            const img = new Image();
-            img.onload = function() {
-                if (img.width < 1000 || img.height < 1000) {
-                    callback(false, `Image too small: ${img.width}x${img.height}px. Minimum 1000x1000px required.`);
-                } else {
-                    callback(true, '');
-                }
-            };
-            img.onerror = function() {
-                callback(false, 'Invalid image file');
-            };
-            img.src = URL.createObjectURL(file);
-        }
-        
-        // Image compression function for blockchain optimization
-        function compressImage(file, callback) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-            
-            img.onload = function() {
-                // Try progressively smaller sizes if needed
-                const maxSizes = [512, 256, 128]; // Max dimensions to try
-                const qualities = [0.8, 0.6, 0.4, 0.2]; // Quality levels to try
-                
-                let sizeIndex = 0;
-                let qualityIndex = 0;
-                
-                function tryCompress() {
-                    // Calculate optimal dimensions
-                    let { width, height } = calculateOptimalSize(img.width, img.height, maxSizes[sizeIndex]);
-                    
-                    canvas.width = width;
-                    canvas.height = height;
-                    
-                    // Clear and draw
-                    ctx.clearRect(0, 0, width, height);
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // Convert to blob
-                    canvas.toBlob(function(blob) {
-                        if (blob.size <= 500 * 1024) {
-                            // Success - under 500KB limit
-                            callback(new File([blob], file.name, { type: 'image/jpeg' }), file.size, blob.size, true);
-                        } else {
-                            // Still too large, try next quality level
-                            qualityIndex++;
-                            if (qualityIndex < qualities.length) {
-                                tryCompress();
-                            } else {
-                                // Try smaller dimensions
-                                qualityIndex = 0;
-                                sizeIndex++;
-                                if (sizeIndex < maxSizes.length) {
-                                    tryCompress();
-                                } else {
-                                    // Failed to compress below limit
-                                    callback(null, file.size, blob.size, false);
-                                }
-                            }
-                        }
-                    }, 'image/jpeg', qualities[qualityIndex]);
-                }
-                
-                tryCompress();
-            };
-            
-            img.onerror = function() {
-                callback(null, file.size, 0, false);
-            };
-            
-            img.src = URL.createObjectURL(file);
-        }
-        
-        // Calculate optimal image size for blockchain storage
-        function calculateOptimalSize(width, height, maxSize) {
-            if (width <= maxSize && height <= maxSize) {
-                return { width, height };
-            }
-            
-            const ratio = Math.min(maxSize / width, maxSize / height);
-            return {
-                width: Math.floor(width * ratio),
-                height: Math.floor(height * ratio)
-            };
-        }
-        
-        // Format file size for display
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        }
-        
-        // Replace file input with compressed file
-        function replaceFileInput(compressedFile) {
-            const input = document.getElementById('image');
-            const dt = new DataTransfer();
-            dt.items.add(compressedFile);
-            input.files = dt.files;
-        }
-        
-        // Form submission validation
-        document.querySelector('.create-form').addEventListener('submit', function(e) {
-            if (currentCompressedFile && currentCompressedFile.size > 500 * 1024) {
-                e.preventDefault();
-                alert('⚠️ Image file is still too large for blockchain storage. Please select a smaller image.');
-                return false;
-            }
-        });
-        
-        // Auto-uppercase symbol input
-        document.getElementById('symbol').addEventListener('input', function(e) {
-            e.target.value = e.target.value.toUpperCase();
-        });
-</script>
 <script>
 function initializePageScripts() {
-    // Create token form scripts
+    // Mode switching
+    window.setMode = function(mode) {
+        // Update mode selector
+        document.querySelectorAll('.mode-option').forEach(option => {
+            option.classList.remove('active');
+        });
+        event.target.closest('.mode-option').classList.add('active');
+        
+        // Update hidden input
+        document.getElementById('mode').value = mode;
+        
+        // Show/hide advanced options
+        const advancedSection = document.getElementById('advanced-options');
+        if (mode === 'advanced') {
+            advancedSection.classList.add('active');
+        } else {
+            advancedSection.classList.remove('active');
+        }
+    };
+    
+    // Reserve display update
+    window.updateReserveDisplay = function(value) {
+        document.getElementById('reserve-display').textContent = value + '%';
+    };
+    
+    // Toggle social links
+    window.toggleSocialLinks = function() {
+        const content = document.getElementById('social-links-content');
+        const chevron = document.getElementById('social-chevron');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            chevron.style.transform = 'rotate(180deg)';
+        } else {
+            content.style.display = 'none';
+            chevron.style.transform = 'rotate(0deg)';
+        }
+    };
+    
+    // Auto-uppercase symbol input
+    const symbolInput = document.getElementById('symbol');
+    if (symbolInput) {
+        symbolInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+        });
+    }
+    
+    // File upload handling
+    const imageInput = document.getElementById('image');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Check file size
+                if (file.size > 500 * 1024) {
+                    alert('⚠️ Image size must be less than 500KB for blockchain storage');
+                    e.target.value = '';
+                }
+            }
+        });
+    }
 }
+
+// Initialize immediately
 initializePageScripts();
 </script>
