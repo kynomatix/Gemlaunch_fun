@@ -489,7 +489,8 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            opacity: 0;  /* Hide arrows by default */
+            transition: all 0.3s ease, opacity 0.3s ease;  /* Added opacity transition */
             z-index: 10;  /* Keep low but still clickable (below sidebar 999) */
             box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
             flex-shrink: 0;
@@ -512,6 +513,12 @@
 
         .carousel-nav:active {
             transform: translateY(-50%) scale(0.95);
+        }
+
+        /* Show arrows when hovering over the accolades section */
+        .accolades-progress-section:hover .carousel-nav,
+        .accolades-carousel:hover .carousel-nav {
+            opacity: 1;
         }
 
         .nav-pulse {
