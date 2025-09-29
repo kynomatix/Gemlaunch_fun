@@ -1594,19 +1594,4 @@
 
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-<script>
-    // Ensure toggleSidebar is available
-    if (typeof toggleSidebar === 'undefined') {
-        window.toggleSidebar = function() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('sidebar-collapsed');
-            
-            // Save state
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-        }
-    }
-</script>
 {% endblock %}

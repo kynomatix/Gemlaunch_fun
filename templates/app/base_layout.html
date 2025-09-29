@@ -376,21 +376,26 @@
     </div>
     
     <!-- Scripts -->
+    <script>
+        // Define toggleSidebar globally before any other scripts
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (sidebar && mainContent) {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('sidebar-collapsed');
+                
+                // Save state
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            }
+        }
+    </script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     
     <script>
-        // Sidebar Toggle
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('sidebar-collapsed');
-            
-            // Save state
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-        }
         
         // Restore sidebar state
         document.addEventListener('DOMContentLoaded', function() {
