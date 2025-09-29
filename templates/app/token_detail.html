@@ -2492,10 +2492,6 @@
         }
     </style>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-    
     <script>
         // Auto-collapse sidebar on token detail pages and initialize chat
         document.addEventListener('DOMContentLoaded', function() {
@@ -2853,9 +2849,25 @@
         
         // Initialize on Turbo load (handles both initial page load and navigation)
         document.addEventListener('turbo:load', function() {
-            // Only initialize if we're on the token detail page
+            // Only initialize if we're on the token detail page and Chart.js is loaded
             if (document.getElementById('tokenChart')) {
-                initializeTokenChart();
+                // Wait for Chart.js to be available
+                if (typeof Chart !== 'undefined') {
+                    initializeTokenChart();
+                } else {
+                    // If Chart.js isn't loaded yet, wait a bit and try again
+                    let retries = 0;
+                    const checkChart = setInterval(() => {
+                        if (typeof Chart !== 'undefined') {
+                            clearInterval(checkChart);
+                            initializeTokenChart();
+                        } else if (retries++ > 20) {
+                            // After 2 seconds, stop trying
+                            clearInterval(checkChart);
+                            console.error('Chart.js failed to load');
+                        }
+                    }, 100);
+                }
             }
         });
         
