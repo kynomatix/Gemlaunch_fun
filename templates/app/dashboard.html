@@ -271,7 +271,7 @@
                     </button>
                     <button class="tab-btn" onclick="switchTab('achievements')">
                         <i class="fas fa-star"></i>
-                        Achievements & Progress
+                        Accolades & Progress
                     </button>
                 </div>
 
@@ -435,7 +435,7 @@
             </div>
                     </div>
 
-                    <!-- Achievements & Progress Tab -->
+                    <!-- Accolades & Progress Tab -->
                     <div id="achievements-tab" class="tab-pane">
 
             <!-- Activities & Achievements Section -->
@@ -443,17 +443,17 @@
                 <div class="section-header">
                     <h2 class="section-title">
                         <i class="fas fa-star"></i>
-                        Achievements & Progress
+                        Accolades & Progress
                     </h2>
                 </div>
                 
                 <div class="activities-grid">
-                    <!-- Achievement Progress -->
-                    <div class="achievements-progress-section">
+                    <!-- Accolades Progress -->
+                    <div class="accolades-progress-section">
                         <div class="section-header">
                             <h3>
                                 <i class="fas fa-star"></i>
-                                Achievement Progress
+                                Accolades Progress
                             </h3>
                             <div class="progress-summary">
                                 <span class="completed">{{ user_achievements|length if user_achievements else 0 }}</span>
@@ -463,7 +463,7 @@
                             </div>
                         </div>
                         
-                        <div class="achievements-list">
+                        <div class="accolades-list">
                             {% for achievement in all_achievements %}
                             {% set is_completed = achievement.id in user_achievement_ids %}
                             {% set progress_pct = 0 %}
@@ -492,19 +492,25 @@
                                 {% set progress_pct = (100 if current_val >= target_val else ((current_val / target_val) * 100))|int %}
                             {% endif %}
                             
-                            <div class="achievement-item {{ 'completed' if is_completed else 'locked' }}">
-                                <div class="achievement-icon">
-                                    {% if achievement.icon and achievement.icon|length <= 2 %}
-                                        <span style="font-size: 1.5rem;">{{ achievement.icon }}</span>
+                            <div class="accolade-item {{ 'completed' if is_completed else 'locked' }}">
+                                <div class="accolade-icon">
+                                    {% if achievement.category == 'trader' %}
+                                        <i class="fas fa-chart-line"></i>
+                                    {% elif achievement.category == 'creator' %}
+                                        <i class="fas fa-rocket"></i>
+                                    {% elif achievement.category == 'social' %}
+                                        <i class="fas fa-users"></i>
+                                    {% elif achievement.category == 'seasonal' %}
+                                        <i class="fas fa-trophy"></i>
                                     {% else %}
                                         <i class="fas fa-star"></i>
                                     {% endif %}
                                 </div>
-                                <div class="achievement-details">
+                                <div class="accolade-details">
                                     <h4>{{ achievement.name }}</h4>
                                     <p>{{ achievement.description }}</p>
                                     {% if progress_text %}
-                                    <div class="achievement-progress">
+                                    <div class="accolade-progress">
                                         <div class="progress-bar">
                                             <div class="progress-fill" style="width: {{ progress_pct }}%"></div>
                                         </div>
@@ -512,7 +518,7 @@
                                     </div>
                                     {% endif %}
                                 </div>
-                                <div class="achievement-reward">
+                                <div class="accolade-reward">
                                     <span class="points">+{{ achievement.gem_points_reward }}</span>
                                     <span class="label">Points</span>
                                 </div>
@@ -522,7 +528,7 @@
                     </div>
 
                     <!-- Sidebar with Points and Activities -->
-                    <div class="achievements-sidebar">
+                    <div class="accolades-sidebar">
                         <!-- Points Breakdown -->
                         <div class="points-breakdown-section">
                             <div class="section-header">
@@ -766,7 +772,7 @@
 
         // Animation on load for activities
         document.addEventListener('DOMContentLoaded', function() {
-            const achievementItems = document.querySelectorAll('.achievement-item');
+            const achievementItems = document.querySelectorAll('.accolade-item');
             achievementItems.forEach((item, index) => {
                 item.style.opacity = '0';
                 item.style.transform = 'translateY(20px)';
@@ -936,7 +942,7 @@
             }
         }
 
-        .achievements-progress-section {
+        .accolades-progress-section {
             grid-area: achievements;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
@@ -945,11 +951,11 @@
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 300px);
-            min-height: 600px;
+            height: 100%;
+            min-height: 700px;
         }
 
-        .achievements-sidebar {
+        .accolades-sidebar {
             grid-area: sidebar;
             display: flex;
             flex-direction: column;
@@ -981,9 +987,9 @@
             color: #888888;
         }
 
-        .achievements-list {
+        .accolades-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 1.5rem;
             overflow-y: auto;
             padding-right: 0.5rem;
@@ -992,25 +998,25 @@
             margin-top: 1rem;
         }
         
-        .achievements-list::-webkit-scrollbar {
+        .accolades-list::-webkit-scrollbar {
             width: 6px;
         }
         
-        .achievements-list::-webkit-scrollbar-track {
+        .accolades-list::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 3px;
         }
         
-        .achievements-list::-webkit-scrollbar-thumb {
+        .accolades-list::-webkit-scrollbar-thumb {
             background: rgba(32, 178, 170, 0.5);
             border-radius: 3px;
         }
         
-        .achievements-list::-webkit-scrollbar-thumb:hover {
+        .accolades-list::-webkit-scrollbar-thumb:hover {
             background: rgba(32, 178, 170, 0.7);
         }
 
-        .achievement-item {
+        .accolade-item {
             background: rgba(255, 255, 255, 0.03);
             border-radius: 12px;
             padding: 1.5rem;
@@ -1024,12 +1030,12 @@
             min-height: 120px;
         }
 
-        .achievement-item.completed {
+        .accolade-item.completed {
             background: rgba(32, 178, 170, 0.1);
             border-color: #20B2AA;
         }
 
-        .achievement-item.completed::before {
+        .accolade-item.completed::before {
             content: '';
             position: absolute;
             top: 0;
@@ -1039,16 +1045,16 @@
             background: linear-gradient(135deg, #20B2AA, #00CED1);
         }
 
-        .achievement-item.locked {
+        .accolade-item.locked {
             opacity: 0.6;
         }
 
-        .achievement-item:hover {
+        .accolade-item:hover {
             background: rgba(255, 255, 255, 0.08);
             transform: translateY(-2px);
         }
 
-        .achievement-icon {
+        .accolade-icon {
             width: 65px;
             height: 65px;
             border-radius: 50%;
@@ -1057,41 +1063,41 @@
             align-items: center;
             justify-content: center;
             color: #20B2AA;
-            font-size: 2rem;
+            font-size: 1.8rem;
             flex-shrink: 0;
         }
 
-        .achievement-item.completed .achievement-icon {
+        .accolade-item.completed .accolade-icon {
             background: rgba(32, 178, 170, 0.2);
-            color: #00CED1;
+            color: #20B2AA;
         }
 
-        .achievement-details {
+        .accolade-details {
             flex: 1;
             min-width: 0;
         }
         
-        .achievement-details h4 {
+        .accolade-details h4 {
             color: #FFFFFF;
             margin-bottom: 0.5rem;
             font-size: 1.15rem;
             font-weight: 600;
         }
 
-        .achievement-details p {
+        .accolade-details p {
             color: #888888;
             font-size: 0.95rem;
             margin-bottom: 0.8rem;
             line-height: 1.4;
         }
 
-        .achievement-progress {
+        .accolade-progress {
             display: flex;
             align-items: center;
             gap: 0.8rem;
         }
 
-        .achievement-progress .progress-bar {
+        .accolade-progress .progress-bar {
             flex: 1;
             height: 6px;
             background: rgba(255, 255, 255, 0.1);
@@ -1099,7 +1105,7 @@
             overflow: hidden;
         }
 
-        .achievement-progress .progress-fill {
+        .accolade-progress .progress-fill {
             height: 100%;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
             border-radius: 3px;
@@ -1112,7 +1118,7 @@
             white-space: nowrap;
         }
 
-        .achievement-reward {
+        .accolade-reward {
             text-align: center;
             flex-shrink: 0;
             padding: 0.6rem 1rem;
@@ -1121,14 +1127,14 @@
             min-width: 90px;
         }
 
-        .achievement-reward .points {
+        .accolade-reward .points {
             color: #20B2AA;
             font-weight: 700;
             font-size: 1.25rem;
             display: block;
         }
         
-        .achievement-reward .label {
+        .accolade-reward .label {
             color: #888888;
             font-size: 0.75rem;
             text-transform: uppercase;
@@ -1509,7 +1515,7 @@
                     "points points";
             }
             
-            .achievements-progress-section {
+            .accolades-progress-section {
                 grid-area: achievements;
             }
             
@@ -1531,7 +1537,7 @@
                     "points";
             }
             
-            .achievement-item {
+            .accolade-item {
                 grid-template-columns: auto 1fr;
                 grid-template-areas: 
                     "icon details"
@@ -1539,15 +1545,15 @@
                 gap: 0.8rem;
             }
             
-            .achievement-icon {
+            .accolade-icon {
                 grid-area: icon;
             }
             
-            .achievement-details {
+            .accolade-details {
                 grid-area: details;
             }
             
-            .achievement-reward {
+            .accolade-reward {
                 grid-area: reward;
                 text-align: left;
                 padding-top: 0.5rem;
