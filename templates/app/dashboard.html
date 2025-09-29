@@ -983,7 +983,7 @@
 
         .achievements-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
             gap: 1.5rem;
             overflow-y: auto;
             padding-right: 0.5rem;
@@ -1015,13 +1015,13 @@
             border-radius: 12px;
             padding: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            display: grid;
-            grid-template-columns: auto 1fr auto;
+            display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 1.5rem;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            min-height: 120px;
         }
 
         .achievement-item.completed {
@@ -1049,15 +1049,15 @@
         }
 
         .achievement-icon {
-            width: 50px;
-            height: 50px;
+            width: 65px;
+            height: 65px;
             border-radius: 50%;
             background: rgba(32, 178, 170, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #20B2AA;
-            font-size: 1.5rem;
+            font-size: 2rem;
             flex-shrink: 0;
         }
 
@@ -1066,16 +1066,23 @@
             color: #00CED1;
         }
 
+        .achievement-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
         .achievement-details h4 {
             color: #FFFFFF;
             margin-bottom: 0.5rem;
-            font-size: 1rem;
+            font-size: 1.15rem;
+            font-weight: 600;
         }
 
         .achievement-details p {
             color: #888888;
-            font-size: 0.85rem;
+            font-size: 0.95rem;
             margin-bottom: 0.8rem;
+            line-height: 1.4;
         }
 
         .achievement-progress {
@@ -1108,12 +1115,25 @@
         .achievement-reward {
             text-align: center;
             flex-shrink: 0;
+            padding: 0.6rem 1rem;
+            background: rgba(32, 178, 170, 0.08);
+            border-radius: 10px;
+            min-width: 90px;
         }
 
         .achievement-reward .points {
             color: #20B2AA;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 1.25rem;
+            display: block;
+        }
+        
+        .achievement-reward .label {
+            color: #888888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 0.2rem;
             display: block;
         }
 
