@@ -484,7 +484,7 @@ def token_messages(contract_address):
         for msg in reversed(messages):
             message_list.append({
                 'id': msg.id,
-                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
+                'user': msg.user.display_name or msg.user.wallet_address[-6:],
                 'wallet': msg.user.wallet_address,
                 'message': msg.content,
                 'message_type': msg.message_type,
@@ -519,7 +519,7 @@ def token_messages(contract_address):
             'success': True,
             'message': {
                 'id': message.id,
-                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
+                'user': user.display_name or user.wallet_address[-6:],
                 'wallet': user.wallet_address,
                 'message': message.content,
                 'created_at': message.created_at.isoformat()
@@ -557,9 +557,17 @@ def token_polls(contract_address):
                     'vote_count': option.vote_count
                 })
             
+            # Get creator display name safely
+            creator_name = poll.creator.display_name or poll.creator.wallet_address[-6:]
+            try:
+                if hasattr(poll.creator, 'profile') and poll.creator.profile and poll.creator.profile.username:
+                    creator_name = poll.creator.profile.username
+            except:
+                pass
+                
             poll_list.append({
                 'id': poll.id,
-                'creator': (poll.creator.profile.username if poll.creator.profile and poll.creator.profile.username else poll.creator.display_name) or poll.creator.wallet_address[-6:],
+                'creator': creator_name,
                 'question': poll.question,
                 'options': options_data,
                 'total_votes': poll.total_votes,
@@ -590,36 +598,49 @@ def token_polls(contract_address):
             logging.error(f"Not enough options: {len(options_text)}")
             return jsonify({'error': 'At least 2 options required'}), 400
         
-        # Create poll
-        poll = Poll(
-            token_id=token.id,
-            creator_id=user.id,
-            question=question,
-            vote_cost=vote_cost,
-            ends_at=datetime.now(timezone.utc) + timedelta(hours=duration_hours)
-        )
-        db.session.add(poll)
-        db.session.flush()  # Get poll ID
-        
-        # Create options
-        for opt_text in options_text:
-            option = PollOption(
-                poll_id=poll.id,
-                option_text=opt_text
+        try:
+            # Create poll
+            poll = Poll(
+                token_id=token.id,
+                creator_id=user.id,
+                question=question,
+                vote_cost=vote_cost,
+                ends_at=datetime.now(timezone.utc) + timedelta(hours=duration_hours)
             )
-            db.session.add(option)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'poll': {
-                'id': poll.id,
-                'creator': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
-                'question': poll.question,
-                'created_at': poll.created_at.isoformat()
-            }
-        })
+            db.session.add(poll)
+            db.session.flush()  # Get poll ID
+            
+            # Create options
+            for opt_text in options_text:
+                option = PollOption(
+                    poll_id=poll.id,
+                    option_text=opt_text
+                )
+                db.session.add(option)
+            
+            db.session.commit()
+            
+            # Get creator display name safely
+            creator_name = user.display_name or user.wallet_address[-6:]
+            try:
+                if hasattr(user, 'profile') and user.profile and user.profile.username:
+                    creator_name = user.profile.username
+            except:
+                pass
+            
+            return jsonify({
+                'success': True,
+                'poll': {
+                    'id': poll.id,
+                    'creator': creator_name,
+                    'question': poll.question,
+                    'created_at': poll.created_at.isoformat()
+                }
+            })
+        except Exception as e:
+            logging.error(f"Failed to create poll: {e}")
+            db.session.rollback()
+            return jsonify({'error': 'Failed to create poll'}), 500
 
 @app.route('/api/token/<contract_address>/polls/<int:poll_id>/vote', methods=['POST'])
 @require_wallet_connection
@@ -680,7 +701,7 @@ def token_spotlight(contract_address):
         for msg in spotlights:
             spotlight_list.append({
                 'id': msg.id,
-                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
+                'user': msg.user.display_name or msg.user.wallet_address[-6:],
                 'message': msg.content,
                 'created_at': msg.created_at.isoformat()
             })
@@ -711,7 +732,7 @@ def token_spotlight(contract_address):
             'success': True,
             'spotlight': {
                 'id': message.id,
-                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
+                'user': user.display_name or user.wallet_address[-6:],
                 'message': message.content,
                 'created_at': message.created_at.isoformat()
             }
