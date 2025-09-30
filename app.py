@@ -470,6 +470,11 @@ def token_detail(contract_address):
     if user:
         user_holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
     
+    # Check if current user is the token owner
+    is_owner = False
+    if user and token.creator:
+        is_owner = user.wallet_address.lower() == token.creator.wallet_address.lower()
+    
     # Ensure token has settings (create if missing)
     if not token.settings:
         token_settings = TokenSettings(token_id=token.id)
@@ -481,7 +486,8 @@ def token_detail(contract_address):
                          token=token, 
                          recent_trades=recent_trades,
                          user_holding=user_holding,
-                         user=user)
+                         user=user,
+                         is_owner=is_owner)
 
 # Fallback route for legacy numeric IDs (backwards compatibility)
 @app.route('/app/token/<int:token_id>')

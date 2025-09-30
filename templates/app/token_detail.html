@@ -246,10 +246,12 @@
                             <div class="token-gate-container" id="tokenGateContainer">
                                 <!-- Will be populated by JavaScript based on ownership -->
                             </div>
-                            <!-- Settings Button - For token gating features -->
-                            <button class="chat-settings-btn" id="chatSettingsBtn" onclick="openChatSettings()" title="Chat Settings" style="display: none;">
+                            <!-- Settings Button - For token owner only -->
+                            {% if is_owner %}
+                            <button class="chat-settings-btn" id="chatSettingsBtn" onclick="openChatSettings()" title="Chat Settings">
                                 <i class="fas fa-cog"></i>
                             </button>
+                            {% endif %}
                         </div>
                     </div>
                     
@@ -2879,11 +2881,7 @@
             
             console.log(`🔐 Ownership check - User: ${userWallet}, Creator: ${tokenCreatorAddress}, Is Owner: ${isTokenOwner}`);
             
-            // Show settings button only for token owner
-            const settingsBtn = document.getElementById('chatSettingsBtn');
-            if (settingsBtn) {
-                settingsBtn.style.display = isTokenOwner ? 'block' : 'none';  // Only show to token owner
-            }
+            // Settings button visibility is now handled server-side
             
             // Set up Holders Only toggle/badge based on ownership and token settings
             const tokenGateContainer = document.getElementById('tokenGateContainer');
@@ -3877,25 +3875,8 @@
         function openChatSettings() {
             console.log('🔧 Opening chat settings...');
             
-            // Check if user is token owner
-            const userWallet = localStorage.getItem('connectedWallet');
-            const tokenCreatorAddress = '{{ token.creator.wallet_address }}';
-            const isTokenOwner = userWallet && userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
-            
-            console.log(`👤 User wallet: ${userWallet}`);
-            console.log(`🏆 Token creator: ${tokenCreatorAddress}`);
-            console.log(`🔐 Is owner: ${isTokenOwner}`);
-            
-            if (!isTokenOwner) {
-                showNotification(
-                    '🔒 Access Restricted', 
-                    `Only the token creator can access chat settings.\n\nToken creator: ${tokenCreatorAddress.slice(0, 10)}...\nYour wallet: ${userWallet.slice(0, 10)}...`,
-                    'error'
-                );
-                return;
-            }
-            
-            console.log('✅ Token owner verified, showing settings modal');
+            // Settings button is only shown to token owners (checked server-side)
+            // so we can proceed directly to show the modal
             
             // Create modal overlay
             const modalOverlay = document.createElement('div');
