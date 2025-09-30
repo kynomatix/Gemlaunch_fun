@@ -44,14 +44,6 @@
                 <button class="modal-close" onclick="closePollModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="poll-gating-info" id="pollGatingInfo" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; margin-bottom: 1rem;">
-                    <i class="fas fa-shield-alt" style="font-size: 1.5rem; color: #20B2AA;"></i>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #20B2AA;">Token-Gated Poll</div>
-                        <div style="color: #AAA; font-size: 0.9rem;">FREE to create for token holders • Votes cost 100 tokens (burned)</div>
-                    </div>
-                </div>
-                
                 <form id="pollForm">
                     <div class="form-group">
                         <label for="pollQuestion">Poll Question</label>
@@ -70,7 +62,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="pollDuration">Poll Duration</label>
+                        <label for="pollDuration">Duration</label>
                         <select id="pollDuration" class="form-control" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; padding: 0.75rem; border-radius: 8px; font-size: 1rem; cursor: pointer;">
                             <option value="1">1 Hour</option>
                             <option value="6">6 Hours</option>
@@ -81,16 +73,12 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="voteCost">Vote Cost (tokens per vote)</label>
+                        <label for="voteCost">Vote Cost (tokens burned per vote)</label>
                         <input type="number" id="voteCost" value="100" min="10" max="10000" step="10">
-                        <small>Voters spend tokens to participate - prevents spam</small>
                     </div>
                     
-                    <div class="poll-cost-info" style="padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05)); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 8px; text-align: center; margin-top: 1rem;">
-                        <i class="fas fa-check-circle" style="color: #FFD700;"></i>
-                        <span style="color: #FFD700; font-weight: 600;">Poll creation is FREE for holders!</span>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #AAA;">Minimum holding: <strong id="pollHoldingAmount" style="color: #20B2AA;">1,000 {{ token.symbol }}</strong> tokens</div>
-                        <div style="margin-top: 0.25rem; font-size: 0.85rem; color: #999;">Votes will cost 100 tokens each (burned)</div>
+                    <div style="padding: 0.75rem; background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; margin-top: 1rem;">
+                        <div style="font-size: 0.85rem; color: #AAA;">Required to create: <strong id="pollHoldingAmount" style="color: #20B2AA;">{{ token.settings.min_tokens_to_create_poll if token.settings else 1000 }} {{ token.symbol }}</strong></div>
                     </div>
                 </form>
             </div>

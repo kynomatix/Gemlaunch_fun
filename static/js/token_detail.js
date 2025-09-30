@@ -1083,9 +1083,15 @@
                                     </div>
                                     
                                     <div class="form-group">
-                                        <label>Spotlight threshold</label>
+                                        <label>Minimum tokens for spotlight</label>
                                         <input type="number" class="form-control" id="minTokensForSpotlight" value="${this.tokenSettings.minTokensForSpotlight || 500}">
-                                        <small class="setting-hint">Tokens needed for spotlight messages</small>
+                                        <small class="setting-hint">Tokens required to create spotlight messages</small>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Minimum tokens to create poll</label>
+                                        <input type="number" class="form-control" id="minTokensToCreatePoll" value="${this.tokenSettings.minTokensToCreatePoll || 1000}">
+                                        <small class="setting-hint">Tokens required to create polls</small>
                                     </div>
                                 </div>
                             </div>
@@ -1126,6 +1132,18 @@
                                         <input type="number" class="form-control" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
                                         <small class="setting-hint">Minimum balance required to chat</small>
                                     </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Minimum tokens for spotlight</label>
+                                        <input type="number" class="form-control" id="minTokensForSpotlight" value="${this.tokenSettings.minTokensForSpotlight || 500}">
+                                        <small class="setting-hint">Tokens required to create spotlight messages</small>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Minimum tokens to create poll</label>
+                                        <input type="number" class="form-control" id="minTokensToCreatePoll" value="${this.tokenSettings.minTokensToCreatePoll || 1000}">
+                                        <small class="setting-hint">Tokens required to create polls</small>
+                                    </div>
                                 </div>
                                 
                                 <div class="basic-token-note">
@@ -1164,15 +1182,13 @@
             // Save settings logic
             const holdersOnly = document.getElementById('holdersOnlyChat').checked;
             const minTokens = document.getElementById('minTokensToChat').value;
+            const spotlightThreshold = document.getElementById('minTokensForSpotlight').value;
+            const pollThreshold = document.getElementById('minTokensToCreatePoll').value;
             
             this.tokenSettings.holdersOnlyChat = holdersOnly;
             this.tokenSettings.minTokensToChat = parseInt(minTokens) || 0;
-            
-            if (this.isProToken) {
-                // Save additional pro token settings
-                const spotlightThreshold = document.getElementById('minTokensForSpotlight').value;
-                this.tokenSettings.minTokensForSpotlight = parseInt(spotlightThreshold) || 500;
-            }
+            this.tokenSettings.minTokensForSpotlight = parseInt(spotlightThreshold) || 500;
+            this.tokenSettings.minTokensToCreatePoll = parseInt(pollThreshold) || 1000;
             
             console.log('💾 Saving chat settings:', this.tokenSettings);
             
