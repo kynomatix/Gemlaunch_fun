@@ -244,9 +244,8 @@
                     })
                 });
                 
-                const data = await response.json();
-                
                 if (response.ok) {
+                    const data = await response.json();
                     TokenDetail.modals.alert('Success', 'Poll created successfully!', 'success');
                     closePollModal();
                     // Clear form
@@ -261,11 +260,20 @@
                     // Reload polls
                     TokenDetail.loadMessages();
                 } else {
-                    TokenDetail.modals.alert('Error', data.error || 'Failed to create poll', 'error');
+                    // Try to get error message from response
+                    let errorMessage = 'Failed to create poll';
+                    try {
+                        const data = await response.json();
+                        errorMessage = data.error || errorMessage;
+                    } catch (e) {
+                        console.error('Could not parse error response:', e);
+                    }
+                    console.error('Poll creation failed with status:', response.status, errorMessage);
+                    TokenDetail.modals.alert('Error', errorMessage, 'error');
                 }
             } catch (error) {
                 console.error('Error creating poll:', error);
-                TokenDetail.modals.alert('Error', 'Failed to create poll. Please try again.', 'error');
+                TokenDetail.modals.alert('Error', `Failed to create poll: ${error.message || 'Network error'}`, 'error');
             }
         }
         
