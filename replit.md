@@ -79,6 +79,13 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Restored spotlight messages to dedicated pinned panel above chat (no longer mixed in regular chat)
 - Spotlight panel now stays visible at top of chat, messages don't scroll away
 - Removed duplicate spotlight display in regular chat flow - spotlight messages only appear in dedicated panel
+- Implemented comprehensive XSS security fixes across entire chat system and UI
+- Added escapeHtml() utility function to sanitize all user-controlled HTML content
+- Fixed XSS vulnerabilities in poll rendering (creator, question, option text)
+- Fixed XSS vulnerabilities in chat messages (displayName, message, reply references)
+- Fixed XSS vulnerabilities in spotlight messages (user, message)
+- Fixed XSS vulnerabilities in modal helpers (alert, confirm, prompt - all title/message/input fields)
+- All user-controlled strings now properly escaped before innerHTML insertion or HTML attribute assignment
 
 # User Preferences
 

@@ -16,11 +16,11 @@
                     <div id="customAlertModal" class="modal" style="display: flex;">
                         <div class="modal-content" style="max-width: 400px;">
                             <div class="modal-header">
-                                <h3><i class="fas ${iconClass}" style="color: ${iconColor};"></i> ${title}</h3>
+                                <h3><i class="fas ${iconClass}" style="color: ${iconColor};"></i> ${TokenDetail.escapeHtml(title)}</h3>
                                 <button class="modal-close" onclick="TokenDetail.modals.closeModal('customAlertModal')">&times;</button>
                             </div>
                             <div class="modal-body">
-                                <p style="color: #CCC; margin: 0; line-height: 1.5;">${message}</p>
+                                <p style="color: #CCC; margin: 0; line-height: 1.5;">${TokenDetail.escapeHtml(message)}</p>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-primary" onclick="TokenDetail.modals.closeModal('customAlertModal')">
@@ -52,11 +52,11 @@
                     <div id="customConfirmModal" class="modal" style="display: flex;">
                         <div class="modal-content" style="max-width: 450px;">
                             <div class="modal-header">
-                                <h3>${title}</h3>
+                                <h3>${TokenDetail.escapeHtml(title)}</h3>
                                 <button class="modal-close" onclick="TokenDetail.modals.closeModal('customConfirmModal')">&times;</button>
                             </div>
                             <div class="modal-body">
-                                <div style="color: #CCC; line-height: 1.5;">${message}</div>
+                                <div style="color: #CCC; line-height: 1.5;">${TokenDetail.escapeHtml(message)}</div>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
@@ -92,14 +92,14 @@
                     <div id="customPromptModal" class="modal" style="display: flex;">
                         <div class="modal-content" style="max-width: 500px;">
                             <div class="modal-header">
-                                <h3>${title}</h3>
+                                <h3>${TokenDetail.escapeHtml(title)}</h3>
                                 <button class="modal-close" onclick="TokenDetail.modals.closeModal('customPromptModal')">&times;</button>
                             </div>
                             <div class="modal-body">
-                                <p style="color: #CCC; margin-bottom: 1rem; line-height: 1.5;">${message}</p>
+                                <p style="color: #CCC; margin-bottom: 1rem; line-height: 1.5;">${TokenDetail.escapeHtml(message)}</p>
                                 <input type="text" id="promptInput" class="form-control" 
-                                       value="${defaultValue || ''}" 
-                                       placeholder="${placeholder}"
+                                       value="${TokenDetail.escapeHtml(defaultValue || '')}" 
+                                       placeholder="${TokenDetail.escapeHtml(placeholder)}"
                                        style="width: 100%;">
                             </div>
                             <div class="modal-footer">
@@ -742,7 +742,7 @@
                 replyReferenceHTML = `
                     <div class="reply-reference">
                         <i class="fas fa-reply"></i>
-                        <span>Replying to <strong>@${replyTo.user}</strong>: ${replyTo.text}</span>
+                        <span>Replying to <strong>@${this.escapeHtml(replyTo.user)}</strong>: ${this.escapeHtml(replyTo.text)}</span>
                     </div>
                 `;
             }
@@ -769,8 +769,8 @@
             messageDiv.innerHTML = `
                 ${replyReferenceHTML}
                 <div class="message-content">
-                    <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${displayName}:</span>
-                    <span class="chat-text">${message} ${isSpotlight ? '✨' : ''}</span>
+                    <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${this.escapeHtml(displayName)}:</span>
+                    <span class="chat-text">${this.escapeHtml(message)} ${isSpotlight ? '✨' : ''}</span>
                 </div>
                 <div class="message-actions">
                     <button class="message-action love-btn ${isLoved ? 'active' : ''}" onclick="TokenDetail.toggleLove(${messageId})" title="Love this message">
@@ -922,7 +922,7 @@
             replyIndicator.innerHTML = `
                 <div class="reply-info">
                     <i class="fas fa-reply"></i>
-                    <span>Replying to <strong>${username}</strong>: ${messageText}${messageText.length >= 50 ? '...' : ''}</span>
+                    <span>Replying to <strong>${this.escapeHtml(username)}</strong>: ${this.escapeHtml(messageText)}${messageText.length >= 50 ? '...' : ''}</span>
                 </div>
                 <button class="cancel-reply" onclick="TokenDetail.clearReply()">
                     <i class="fas fa-times"></i>
@@ -1297,10 +1297,219 @@
             modal.style.display = 'flex';
         },
         
+        // HTML escape utility to prevent XSS
+        escapeHtml: function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+        
         // Poll and spotlight functions
         addPollToChat: function(poll) {
             console.log('📊 Adding poll to chat:', poll);
-            // Implementation here
+            
+            const chatContainer = document.getElementById('chatMessages');
+            if (!chatContainer) return;
+            
+            // Calculate total votes
+            const totalVotes = poll.total_votes || 0;
+            
+            // Calculate time remaining
+            const now = new Date();
+            const endsAt = new Date(poll.ends_at);
+            const timeRemainingMs = Math.max(0, endsAt - now);
+            const hoursRemaining = Math.floor(timeRemainingMs / (1000 * 60 * 60));
+            const minutesRemaining = Math.floor((timeRemainingMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            let timeDisplay = '';
+            if (timeRemainingMs <= 0) {
+                timeDisplay = 'Ended';
+            } else if (hoursRemaining > 0) {
+                timeDisplay = `${hoursRemaining}h ${minutesRemaining}m left`;
+            } else {
+                timeDisplay = `${minutesRemaining}m left`;
+            }
+            
+            // Check if poll has ended
+            const hasEnded = timeRemainingMs <= 0;
+            
+            // Check if user already voted
+            const userHasVoted = poll.user_has_voted || false;
+            
+            // Create poll container
+            const pollDiv = document.createElement('div');
+            pollDiv.className = 'chat-poll';
+            pollDiv.setAttribute('data-poll-id', poll.id);
+            pollDiv.style.cssText = `
+                background: linear-gradient(135deg, rgba(32, 178, 170, 0.15) 0%, rgba(0, 206, 209, 0.1) 100%);
+                border: 1px solid rgba(32, 178, 170, 0.3);
+                border-radius: 12px;
+                padding: 1rem;
+                margin: 1rem 0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            `;
+            
+            // Build options HTML
+            let optionsHTML = '';
+            poll.options.forEach(option => {
+                const percentage = totalVotes > 0 ? Math.round((option.vote_count / totalVotes) * 100) : 0;
+                const isDisabled = userHasVoted || hasEnded;
+                const voteWidth = `${percentage}%`;
+                
+                optionsHTML += `
+                    <div class="poll-option ${isDisabled ? 'disabled' : ''}" 
+                         onclick="${isDisabled ? '' : `TokenDetail.votePoll(${poll.id}, ${option.id})`}"
+                         style="
+                            position: relative;
+                            background: rgba(255, 255, 255, 0.05);
+                            border: 1px solid rgba(32, 178, 170, 0.2);
+                            border-radius: 8px;
+                            padding: 0.75rem;
+                            margin: 0.5rem 0;
+                            cursor: ${isDisabled ? 'not-allowed' : 'pointer'};
+                            transition: all 0.3s ease;
+                            overflow: hidden;
+                            ${isDisabled ? 'opacity: 0.7;' : ''}
+                         "
+                         ${isDisabled ? '' : 'onmouseenter="this.style.borderColor=\'#20B2AA\'; this.style.background=\'rgba(32, 178, 170, 0.1)\';"'}
+                         ${isDisabled ? '' : 'onmouseleave="this.style.borderColor=\'rgba(32, 178, 170, 0.2)\'; this.style.background=\'rgba(255, 255, 255, 0.05)\';"'}
+                    >
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            height: 100%;
+                            width: ${voteWidth};
+                            background: linear-gradient(90deg, rgba(32, 178, 170, 0.2) 0%, rgba(0, 206, 209, 0.1) 100%);
+                            transition: width 0.5s ease;
+                            border-radius: 8px 0 0 8px;
+                        "></div>
+                        <div style="position: relative; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #E0E0E0; font-weight: 500;">${this.escapeHtml(option.text)}</span>
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="color: #20B2AA; font-weight: 600; font-size: 0.9rem;">${percentage}%</span>
+                                <span style="color: #888; font-size: 0.85rem;">${option.vote_count} vote${option.vote_count !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Build the complete poll HTML
+            pollDiv.innerHTML = `
+                <div style="display: flex; align-items: start; gap: 0.75rem; margin-bottom: 1rem;">
+                    <div style="font-size: 1.2rem; color: #20B2AA; margin-top: 0.25rem;">
+                        <i class="fas fa-poll"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                            <div>
+                                <div style="color: #20B2AA; font-weight: 600; margin-bottom: 0.25rem;">
+                                    ${this.escapeHtml(poll.creator)}
+                                </div>
+                                <div style="color: #E0E0E0; font-size: 1.1rem; font-weight: 500; margin-bottom: 0.75rem;">
+                                    ${this.escapeHtml(poll.question)}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${optionsHTML}
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(32, 178, 170, 0.2);">
+                            <div style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #00CED1; font-size: 0.85rem;">
+                                    <i class="fas fa-users"></i>
+                                    <span>${totalVotes} vote${totalVotes !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #00CED1; font-size: 0.85rem;">
+                                    <i class="fas fa-fire"></i>
+                                    <span>${poll.vote_cost} ${this.tokenSymbol} per vote</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: ${hasEnded ? '#FF5252' : '#00CED1'}; font-size: 0.85rem;">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${timeDisplay}</span>
+                                </div>
+                            </div>
+                            ${userHasVoted ? `
+                                <div style="color: #4CAF50; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>You voted</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add to chat
+            chatContainer.appendChild(pollDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        },
+        
+        // Vote on a poll
+        votePoll: async function(pollId, optionId) {
+            const userWallet = localStorage.getItem('connectedWallet');
+            if (!userWallet) {
+                this.modals.alert('❌ Error', 'Please connect your wallet to vote on polls.', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/polls/${pollId}/vote`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': userWallet
+                    },
+                    body: JSON.stringify({
+                        option_id: optionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Show success message
+                    this.modals.alert('✅ Vote Recorded', 'Your vote has been successfully recorded!', 'success');
+                    
+                    // Reload polls to update the display
+                    await this.reloadPolls();
+                } else {
+                    // Show error message
+                    this.modals.alert('❌ Error', data.error || 'Failed to vote on poll. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to vote on poll:', error);
+                this.modals.alert('❌ Error', 'Failed to vote on poll. Please try again.', 'error');
+            }
+        },
+        
+        // Reload polls from server
+        reloadPolls: async function() {
+            try {
+                const userWallet = localStorage.getItem('connectedWallet');
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/polls`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Remove existing polls from chat
+                    const chatContainer = document.getElementById('chatMessages');
+                    const existingPolls = chatContainer.querySelectorAll('.chat-poll');
+                    existingPolls.forEach(poll => poll.remove());
+                    
+                    // Re-add updated polls
+                    data.polls.forEach(poll => {
+                        this.addPollToChat(poll);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to reload polls:', error);
+            }
         },
         
         // Add spotlight message WITHOUT controlling container visibility
@@ -1340,12 +1549,12 @@
                             font-weight: 600;
                             color: #20B2AA;
                             margin-bottom: 0.25rem;
-                        ">${spotlight.user}</div>
+                        ">${this.escapeHtml(spotlight.user)}</div>
                         <div class="spotlight-text" style="
                             color: #E0E0E0;
                             font-size: 1rem;
                             line-height: 1.4;
-                        ">${spotlight.message}</div>
+                        ">${this.escapeHtml(spotlight.message)}</div>
                     </div>
                 </div>
                 <div class="spotlight-time" style="
