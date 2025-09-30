@@ -411,7 +411,7 @@
                             
                             <div class="token-stats">
                                 <div class="token-stat">
-                                    <div class="token-stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
+                                    <div class="token-stat-value">${{ "%.6f"|format((token.current_price|float) * 0.8) }}</div>
                                     <div class="token-stat-label">Price</div>
                                 </div>
                                 <div class="token-stat">
