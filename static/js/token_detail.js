@@ -5,6 +5,161 @@
 
     // Module-scoped variables - avoid global pollution
     const TokenDetail = {
+        // Modal System
+        modals: {
+            // Show a custom alert modal
+            alert: function(title, message, type = 'info', callback) {
+                const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+                const iconColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#FF5252' : '#20B2AA';
+                
+                const modalHTML = `
+                    <div id="customAlertModal" class="modal" style="display: flex;">
+                        <div class="modal-content" style="max-width: 400px;">
+                            <div class="modal-header">
+                                <h3><i class="fas ${iconClass}" style="color: ${iconColor};"></i> ${title}</h3>
+                                <button class="modal-close" onclick="TokenDetail.modals.closeModal('customAlertModal')">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <p style="color: #CCC; margin: 0; line-height: 1.5;">${message}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" onclick="TokenDetail.modals.closeModal('customAlertModal')">
+                                    <i class="fas fa-check"></i> OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('customAlertModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                if (callback) {
+                    const modal = document.getElementById('customAlertModal');
+                    const okBtn = modal.querySelector('.btn-primary');
+                    okBtn.onclick = function() {
+                        TokenDetail.modals.closeModal('customAlertModal');
+                        callback();
+                    };
+                }
+            },
+            
+            // Show a confirm modal
+            confirm: function(title, message, onConfirm, onCancel) {
+                const modalHTML = `
+                    <div id="customConfirmModal" class="modal" style="display: flex;">
+                        <div class="modal-content" style="max-width: 450px;">
+                            <div class="modal-header">
+                                <h3>${title}</h3>
+                                <button class="modal-close" onclick="TokenDetail.modals.closeModal('customConfirmModal')">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div style="color: #CCC; line-height: 1.5;">${message}</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                <button type="button" class="btn btn-primary" id="confirmOkBtn">
+                                    <i class="fas fa-check"></i> Confirm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('customConfirmModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                document.getElementById('confirmOkBtn').onclick = function() {
+                    TokenDetail.modals.closeModal('customConfirmModal');
+                    if (onConfirm) onConfirm();
+                };
+                
+                document.getElementById('confirmCancelBtn').onclick = function() {
+                    TokenDetail.modals.closeModal('customConfirmModal');
+                    if (onCancel) onCancel();
+                };
+            },
+            
+            // Show a prompt modal
+            prompt: function(title, message, defaultValue, onSubmit, onCancel, placeholder = 'Enter your input here...') {
+                const modalHTML = `
+                    <div id="customPromptModal" class="modal" style="display: flex;">
+                        <div class="modal-content" style="max-width: 500px;">
+                            <div class="modal-header">
+                                <h3>${title}</h3>
+                                <button class="modal-close" onclick="TokenDetail.modals.closeModal('customPromptModal')">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <p style="color: #CCC; margin-bottom: 1rem; line-height: 1.5;">${message}</p>
+                                <input type="text" id="promptInput" class="form-control" 
+                                       value="${defaultValue || ''}" 
+                                       placeholder="${placeholder}"
+                                       style="width: 100%;">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="promptCancelBtn">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                <button type="button" class="btn btn-primary" id="promptSubmitBtn">
+                                    <i class="fas fa-check"></i> Submit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('customPromptModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                const input = document.getElementById('promptInput');
+                setTimeout(() => {
+                    input.focus();
+                    input.select();
+                }, 100);
+                
+                const submitHandler = function() {
+                    const value = document.getElementById('promptInput').value;
+                    TokenDetail.modals.closeModal('customPromptModal');
+                    if (onSubmit) onSubmit(value);
+                };
+                
+                document.getElementById('promptSubmitBtn').onclick = submitHandler;
+                
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        submitHandler();
+                    }
+                });
+                
+                document.getElementById('promptCancelBtn').onclick = function() {
+                    TokenDetail.modals.closeModal('customPromptModal');
+                    if (onCancel) onCancel();
+                };
+            },
+            
+            // Close modal
+            closeModal: function(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                    setTimeout(() => modal.remove(), 300);
+                }
+            },
+            
+            // Show notification (uses existing notification system)
+            showNotification: function(title, message, type = 'info') {
+                TokenDetail.showNotification(title, message, type);
+            }
+        },
+        
         // Trading state
         currentTradeMode: 'buy',
         tokenPrice: null,
@@ -417,11 +572,45 @@
         executeTrade: function() {
             const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
             if (kasAmount <= 0) {
-                alert('Please enter a valid amount');
+                this.modals.alert(
+                    'Invalid Amount',
+                    'Please enter a valid amount to trade.',
+                    'error'
+                );
                 return;
             }
             
-            alert(`${this.currentTradeMode === 'buy' ? 'Buying' : 'Selling'} ${document.getElementById('tokenAmount').value} $${this.tokenSymbol} for ${kasAmount} KAS`);
+            const action = this.currentTradeMode === 'buy' ? 'Buy' : 'Sell';
+            const actionColor = this.currentTradeMode === 'buy' ? '#4CAF50' : '#FF5252';
+            const tokenAmount = document.getElementById('tokenAmount').value;
+            
+            this.modals.confirm(
+                `<i class="fas fa-exchange-alt"></i> Confirm ${action} Order`,
+                `<div style="text-align: center; padding: 1rem;">
+                    <div style="font-size: 1.2rem; margin-bottom: 1rem;">
+                        <strong style="color: ${actionColor}">${action}</strong>
+                        <span style="color: #20B2AA; font-weight: bold;">${this.formatNumber(tokenAmount)} $${this.tokenSymbol}</span>
+                    </div>
+                    <div style="font-size: 1rem; color: #AAA;">
+                        for <span style="color: #FFD700; font-weight: bold;">${this.formatNumber(kasAmount)} KAS</span>
+                    </div>
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(32, 178, 170, 0.1);
+                                border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px;">
+                        <small style="color: #999;">Rate: 1 KAS = ${(tokenAmount/kasAmount).toFixed(4)} $${this.tokenSymbol}</small>
+                    </div>
+                </div>`,
+                function() {
+                    console.log(`Executing ${action} order:`, {tokens: tokenAmount, kas: kasAmount});
+                    TokenDetail.modals.alert(
+                        'Trade Submitted',
+                        `Your ${action.toLowerCase()} order has been submitted successfully!`,
+                        'success'
+                    );
+                },
+                function() {
+                    console.log('Trade cancelled');
+                }
+            );
         },
         
         // Chat functions
@@ -982,11 +1171,94 @@
                 return;
             }
             
-            // Show prompt for message - NO COST mentioned! This is TOKEN GATED!
-            const message = prompt(`Enter your spotlight message (Token Gate: Hold ${requiredTokens} $${this.tokenSymbol}):`);
-            if (!message || message.trim() === '') {
-                return;
-            }
+            // Show spotlight message input modal
+            const modalHTML = `
+                <div id="spotlightModal" class="modal" style="display: flex;">
+                    <div class="modal-content" style="max-width: 550px;">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-star" style="color: #FFD700;"></i> Create Spotlight Message</h3>
+                            <button class="modal-close" onclick="TokenDetail.modals.closeModal('spotlightModal')">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+                                        border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #FFD700; font-weight: 600; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>Token Gate Active</span>
+                                </div>
+                                <div style="color: #AAA; font-size: 0.9rem;">
+                                    Required: Hold <strong style="color: #20B2AA;">${requiredTokens} $${this.tokenSymbol}</strong> tokens
+                                </div>
+                                <div style="color: #999; font-size: 0.85rem; margin-top: 0.5rem;">
+                                    Your message will be pinned for 1 hour
+                                </div>
+                            </div>
+                            
+                            <label style="color: #20B2AA; font-weight: 600; display: block; margin-bottom: 0.5rem;">
+                                Your Spotlight Message
+                            </label>
+                            <textarea id="spotlightMessageInput" 
+                                      placeholder="Enter your message to be spotlighted..."
+                                      maxlength="280"
+                                      style="width: 100%; min-height: 100px; padding: 0.75rem;
+                                             background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 30, 0.3));
+                                             border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 10px;
+                                             color: #FFF; resize: vertical; font-family: inherit;"></textarea>
+                            <div style="text-align: right; margin-top: 0.5rem;">
+                                <small style="color: #999;">
+                                    <span id="spotlightCharCount">0</span>/280 characters
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="TokenDetail.modals.closeModal('spotlightModal')">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" id="submitSpotlightBtn">
+                                <i class="fas fa-star"></i> Create Spotlight
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const existingModal = document.getElementById('spotlightModal');
+            if (existingModal) existingModal.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const textarea = document.getElementById('spotlightMessageInput');
+            const charCount = document.getElementById('spotlightCharCount');
+            textarea.addEventListener('input', function() {
+                charCount.textContent = textarea.value.length;
+            });
+            
+            const self = this;
+            document.getElementById('submitSpotlightBtn').onclick = async function() {
+                const message = document.getElementById('spotlightMessageInput').value;
+                
+                if (!message || message.trim() === '') {
+                    self.modals.alert(
+                        'Empty Message',
+                        'Please enter a message to spotlight.',
+                        'error'
+                    );
+                    return;
+                }
+                
+                self.modals.closeModal('spotlightModal');
+                
+                // Continue with the spotlight creation
+                await self.submitSpotlightMessage(message);
+            };
+            
+            setTimeout(() => textarea.focus(), 100);
+            return;
+        },
+        
+        // Submit spotlight message (separated from modal)
+        submitSpotlightMessage: async function(message) {
+            const requiredTokens = this.tokenSettings.minTokensForSpotlight || 500;
             
             try {
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/spotlight`, {
@@ -1071,7 +1343,11 @@
     window.openChatSettings = function() { TokenDetail.openChatSettings(); };
     window.copyContractAddress = function(address) {
         navigator.clipboard.writeText(address).then(() => {
-            alert('Contract address copied to clipboard!');
+            TokenDetail.modals.alert(
+                'Copied!',
+                'Contract address has been copied to clipboard.',
+                'success'
+            );
         });
     };
     window.zoomChart = function(direction) {

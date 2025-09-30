@@ -235,7 +235,8 @@
         }
         
         function spotlightMessage() {
-            alert('Spotlight feature coming soon!');
+            // Call the proper TokenDetail createSpotlight function
+            TokenDetail.createSpotlight();
         }
         
         function createAirdrop() {
@@ -243,37 +244,193 @@
             const tokenCreator = '{{ token.creator.wallet_address }}'.toLowerCase();
             
             if (userWallet.toLowerCase() !== tokenCreator) {
-                showNotification('🚫 Access Denied', 'Only the token creator can create airdrops.', 'error');
+                TokenDetail.modals.alert(
+                    'Access Denied',
+                    'Only the token creator can create airdrops.',
+                    'error'
+                );
                 return;
             }
             
-            const options = [
-                'Random Raffle (Random selection)',
-                'Top Contributors (Based on leaderboard)',
-                'Active Chatters (Last 24h activity)',
-                'Token Holders (Minimum balance)',
-                'Early Supporters (First 100 holders)'
-            ];
+            // Show custom airdrop modal
+            const modalHTML = `
+                <div id="airdropModal" class="modal" style="display: flex;">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-gift" style="color: #FFD700;"></i> Create Airdrop</h3>
+                            <button class="modal-close" onclick="TokenDetail.modals.closeModal('airdropModal')">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+                                        border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #FFD700; font-weight: 600;">
+                                    <i class="fas fa-coins"></i>
+                                    <span>Token Distribution Campaign</span>
+                                </div>
+                                <div style="color: #AAA; font-size: 0.9rem; margin-top: 0.5rem;">
+                                    Reward your community with ${{ token.symbol }} tokens
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="color: #20B2AA; font-weight: 600; display: block; margin-bottom: 0.75rem;">Select Airdrop Type</label>
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                    <label class="radio-option" style="display: flex; align-items: center; padding: 0.75rem;
+                                                background: rgba(32, 178, 170, 0.05); border: 1px solid rgba(32, 178, 170, 0.2);
+                                                border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                        <input type="radio" name="airdropType" value="1" checked style="margin-right: 0.75rem;">
+                                        <div>
+                                            <strong style="color: #20B2AA;">🎲 Random Raffle</strong>
+                                            <div style="color: #999; font-size: 0.85rem;">Random selection from eligible participants</div>
+                                        </div>
+                                    </label>
+                                    <label class="radio-option" style="display: flex; align-items: center; padding: 0.75rem;
+                                                background: rgba(32, 178, 170, 0.05); border: 1px solid rgba(32, 178, 170, 0.2);
+                                                border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                        <input type="radio" name="airdropType" value="2" style="margin-right: 0.75rem;">
+                                        <div>
+                                            <strong style="color: #20B2AA;">🏆 Top Contributors</strong>
+                                            <div style="color: #999; font-size: 0.85rem;">Based on leaderboard rankings</div>
+                                        </div>
+                                    </label>
+                                    <label class="radio-option" style="display: flex; align-items: center; padding: 0.75rem;
+                                                background: rgba(32, 178, 170, 0.05); border: 1px solid rgba(32, 178, 170, 0.2);
+                                                border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                        <input type="radio" name="airdropType" value="3" style="margin-right: 0.75rem;">
+                                        <div>
+                                            <strong style="color: #20B2AA;">💬 Active Chatters</strong>
+                                            <div style="color: #999; font-size: 0.85rem;">Last 24h activity in chat</div>
+                                        </div>
+                                    </label>
+                                    <label class="radio-option" style="display: flex; align-items: center; padding: 0.75rem;
+                                                background: rgba(32, 178, 170, 0.05); border: 1px solid rgba(32, 178, 170, 0.2);
+                                                border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                        <input type="radio" name="airdropType" value="4" style="margin-right: 0.75rem;">
+                                        <div>
+                                            <strong style="color: #20B2AA;">💎 Token Holders</strong>
+                                            <div style="color: #999; font-size: 0.85rem;">Users with minimum balance</div>
+                                        </div>
+                                    </label>
+                                    <label class="radio-option" style="display: flex; align-items: center; padding: 0.75rem;
+                                                background: rgba(32, 178, 170, 0.05); border: 1px solid rgba(32, 178, 170, 0.2);
+                                                border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                        <input type="radio" name="airdropType" value="5" style="margin-right: 0.75rem;">
+                                        <div>
+                                            <strong style="color: #20B2AA;">🚀 Early Supporters</strong>
+                                            <div style="color: #999; font-size: 0.85rem;">First 100 token holders</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label style="color: #20B2AA; font-weight: 600; display: block; margin-bottom: 0.5rem;">Total Tokens</label>
+                                    <input type="number" id="airdropAmount" placeholder="Amount to distribute" 
+                                           style="width: 100%; padding: 0.75rem; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 30, 0.3));
+                                                  border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 10px; color: #FFF;">
+                                </div>
+                                <div class="form-group">
+                                    <label style="color: #20B2AA; font-weight: 600; display: block; margin-bottom: 0.5rem;">Number of Winners</label>
+                                    <input type="number" id="airdropWinners" placeholder="How many winners?" 
+                                           style="width: 100%; padding: 0.75rem; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 30, 0.3));
+                                                  border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 10px; color: #FFF;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="TokenDetail.modals.closeModal('airdropModal')">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="submitAirdrop()">
+                                <i class="fas fa-rocket"></i> Create Airdrop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
             
-            let optionsText = 'Choose airdrop type:\n';
-            options.forEach((opt, i) => {
-                optionsText += `${i + 1}. ${opt}\n`;
+            // Remove any existing modal
+            const existingModal = document.getElementById('airdropModal');
+            if (existingModal) existingModal.remove();
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Add hover effects to radio options
+            document.querySelectorAll('.radio-option').forEach(option => {
+                option.addEventListener('mouseenter', function() {
+                    this.style.background = 'rgba(32, 178, 170, 0.1)';
+                    this.style.borderColor = '#20B2AA';
+                });
+                option.addEventListener('mouseleave', function() {
+                    this.style.background = 'rgba(32, 178, 170, 0.05)';
+                    this.style.borderColor = 'rgba(32, 178, 170, 0.2)';
+                });
             });
+        }
+        
+        function submitAirdrop() {
+            const selectedType = document.querySelector('input[name="airdropType"]:checked');
+            const amount = document.getElementById('airdropAmount').value;
+            const winners = document.getElementById('airdropWinners').value;
             
-            const choice = prompt(optionsText + '\nEnter number (1-5):');
-            const choiceNum = parseInt(choice);
-            
-            if (choiceNum >= 1 && choiceNum <= 5) {
-                const amount = prompt('How many ${{ token.symbol }} tokens to distribute?');
-                const winners = prompt('How many winners?');
-                
-                if (amount && winners) {
-                    console.log('Creating airdrop:', options[choiceNum-1]);
-                    console.log(`Amount: ${amount} tokens, Winners: ${winners}`);
-                    
-                    alert(`Airdrop created!\n\nType: ${options[choiceNum-1]}\nTotal: ${amount} ${{ token.symbol }}\nWinners: ${winners}\n\n(In production, this would start the airdrop process)`);
-                }
+            if (!amount || !winners || amount <= 0 || winners <= 0) {
+                TokenDetail.modals.alert(
+                    'Invalid Input',
+                    'Please enter valid amounts for tokens and winners.',
+                    'error'
+                );
+                return;
             }
+            
+            const types = {
+                '1': 'Random Raffle',
+                '2': 'Top Contributors',
+                '3': 'Active Chatters',
+                '4': 'Token Holders',
+                '5': 'Early Supporters'
+            };
+            
+            const typeText = types[selectedType.value];
+            
+            TokenDetail.modals.closeModal('airdropModal');
+            
+            // Show success modal
+            TokenDetail.modals.confirm(
+                '<i class="fas fa-gift" style="color: #FFD700;"></i> Confirm Airdrop',
+                `<div style="text-align: center; padding: 1rem;">
+                    <div style="margin-bottom: 1rem;">
+                        <strong style="color: #FFD700; font-size: 1.1rem;">${typeText}</strong>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;
+                                padding: 1rem; background: rgba(32, 178, 170, 0.1);
+                                border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px;">
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Total Tokens</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${amount} ${{ token.symbol }}</div>
+                        </div>
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Winners</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${winners}</div>
+                        </div>
+                    </div>
+                    <div style="color: #AAA; font-size: 0.9rem;">
+                        Each winner will receive <strong style="color: #FFD700;">${(amount/winners).toFixed(2)} ${{ token.symbol }}</strong>
+                    </div>
+                </div>`,
+                function() {
+                    console.log('Creating airdrop:', typeText, 'Amount:', amount, 'Winners:', winners);
+                    TokenDetail.modals.alert(
+                        'Airdrop Created!',
+                        `Your ${typeText} airdrop has been created successfully! ${winners} winners will receive ${(amount/winners).toFixed(2)} ${{ token.symbol }} each.`,
+                        'success'
+                    );
+                },
+                function() {
+                    console.log('Airdrop cancelled');
+                }
+            );
         }
         
         function showUsernameModal() {
