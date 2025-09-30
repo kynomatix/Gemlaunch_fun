@@ -132,7 +132,9 @@ def get_current_user():
     
     # Only return user if wallet has been cryptographically verified
     if wallet_address and wallet_verified:
-        return User.query.filter_by(wallet_address=wallet_address.lower()).first()
+        return User.query.options(
+            joinedload(User.profile)
+        ).filter_by(wallet_address=wallet_address.lower()).first()
     return None
 
 def require_wallet_connection(f):

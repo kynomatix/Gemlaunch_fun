@@ -255,7 +255,8 @@
                         </div>
                     </div>
                     
-                    <!-- Username encouragement banner -->
+                    <!-- Username encouragement banner (only show if no username set) -->
+                    {% if user and (not user.profile or not user.profile.username) %}
                     <div class="username-banner" id="usernameBanner">
                         <div class="username-banner-content">
                             <h4><i class="fas fa-user-plus"></i> Stand Out in Chat!</h4>
@@ -265,6 +266,7 @@
                             Set Username
                         </button>
                     </div>
+                    {% endif %}
                     
                     <!-- Token gate status -->
                     <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
@@ -2780,15 +2782,8 @@
             // Check ownership and set up appropriate interface
             checkTokenOwnership();
             
-            // Check if user has set a username
-            const savedUsername = localStorage.getItem('username');
-            if (savedUsername) {
-                const banner = document.getElementById('usernameBanner');
-                if (banner) {
-                    banner.style.display = 'none';
-                    console.log(`👤 Username found: ${savedUsername}, hiding banner`);
-                }
-            }
+            // Username banner is now conditionally rendered server-side based on database
+            // No need to check localStorage anymore
             
             // Load messages from database
             try {
