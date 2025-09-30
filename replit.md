@@ -92,6 +92,7 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Applied consistent button design: 21 instances updated across templates and CSS files for modern rectangular appearance
 - Added animated glowing border effect to all secondary buttons with pulsing teal/cyan glow animation
 - Border glow animates between #20B2AA and #00CED1 colors with box-shadow effects for depth
+- Unified button sizing across dashboard: all "View Token" and "View Details" buttons now have consistent 0.75rem padding with animated glow effects
 
 # User Preferences
 
