@@ -719,6 +719,21 @@
                 `;
             }
             
+            // Check if current user is token owner
+            const userWallet = localStorage.getItem('connectedWallet');
+            const isTokenOwner = userWallet && window.tokenCreatorAddress && 
+                userWallet.toLowerCase() === window.tokenCreatorAddress.toLowerCase();
+            
+            // Add delete button for token owners
+            let deleteButtonHTML = '';
+            if (isTokenOwner) {
+                deleteButtonHTML = `
+                    <button class="message-action delete-btn" onclick="TokenDetail.deleteMessage(${messageId})" title="Delete this message">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            }
+            
             messageDiv.innerHTML = `
                 ${replyReferenceHTML}
                 <div class="message-content">
@@ -733,6 +748,7 @@
                     <button class="message-action reply-btn" onclick="TokenDetail.replyToMessage(${messageId})" title="Reply to this message">
                         <i class="fas fa-reply"></i>
                     </button>
+                    ${deleteButtonHTML}
                 </div>
             `;
             
@@ -898,6 +914,70 @@
             
             // Clear reply state
             this.chatState.replyingTo = null;
+        },
+        
+        deleteMessage: async function(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageEl) return;
+            
+            // Get message details for confirmation
+            const textEl = messageEl.querySelector('.chat-text');
+            const messageText = textEl ? textEl.textContent.substring(0, 50) : '';
+            
+            // Show confirmation modal
+            this.modals.confirm(
+                '<i class="fas fa-exclamation-triangle" style="color: #FF5252;"></i> Delete Message',
+                `<div style="padding: 0.5rem;">
+                    <p style="color: #CCC; margin-bottom: 1rem;">Are you sure you want to delete this message?</p>
+                    <div style="background: rgba(255, 82, 82, 0.1); border: 1px solid rgba(255, 82, 82, 0.3); 
+                                border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem;">
+                        <p style="color: #AAA; margin: 0; font-style: italic;">"${messageText}${messageText.length >= 50 ? '...' : ''}"</p>
+                    </div>
+                    <p style="color: #999; font-size: 0.9rem; margin: 0;">
+                        <i class="fas fa-info-circle"></i> This action cannot be undone.
+                    </p>
+                </div>`,
+                async () => {
+                    // User confirmed deletion
+                    try {
+                        const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            // Remove message from UI with animation
+                            messageEl.style.transition = 'all 0.3s ease';
+                            messageEl.style.opacity = '0';
+                            messageEl.style.transform = 'translateX(-20px)';
+                            
+                            setTimeout(() => {
+                                messageEl.remove();
+                            }, 300);
+                            
+                            // Remove from chat state
+                            delete this.chatState.messagesData[messageId];
+                            delete this.chatState.messageLoves[messageId];
+                            this.chatState.userLoves = this.chatState.userLoves.filter(id => id !== messageId);
+                            
+                            this.modals.showNotification('Message Deleted', 'The message has been removed successfully.', 'success');
+                            console.log(`🗑️ Deleted message ${messageId}`);
+                        } else {
+                            const error = await response.json();
+                            this.modals.showNotification('Delete Failed', error.error || 'Failed to delete message', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting message:', error);
+                        this.modals.showNotification('Error', 'Failed to delete message. Please try again.', 'error');
+                    }
+                },
+                () => {
+                    // User cancelled deletion
+                    console.log('Message deletion cancelled');
+                }
+            );
         },
         
         toggleTokenGate: function() {

@@ -1241,6 +1241,31 @@
     100% { transform: scale(1); }
 }
 
+/* Delete Button - Red/Warning Color Scheme */
+.message-action.delete-btn {
+    background: linear-gradient(135deg, rgba(255, 82, 82, 0.1), rgba(220, 53, 69, 0.05));
+    border-color: rgba(255, 82, 82, 0.3);
+    color: #FF5252;
+}
+
+.message-action.delete-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 82, 82, 0.2), rgba(220, 53, 69, 0.1));
+    border-color: #FF5252;
+    color: #FFF;
+    box-shadow: 0 4px 12px rgba(255, 82, 82, 0.4);
+}
+
+.message-action.delete-btn:hover i {
+    color: #FFF;
+    animation: trashShake 0.3s ease;
+}
+
+@keyframes trashShake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg); }
+    75% { transform: rotate(5deg); }
+}
+
 .message-action i {
     font-size: 0.9rem;
     transition: transform 0.3s ease;

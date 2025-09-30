@@ -598,6 +598,39 @@ def token_messages(contract_address):
             'message': response_msg
         })
 
+@app.route('/api/token/<contract_address>/message/<int:message_id>', methods=['DELETE'])
+@require_wallet_connection
+def delete_message(contract_address, message_id):
+    """Delete a message (token owner only)"""
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    user = get_current_user()
+    
+    # Verify that the user is the token owner
+    if not token.creator or user.wallet_address.lower() != token.creator.wallet_address.lower():
+        return jsonify({'error': 'Only token owner can delete messages'}), 403
+    
+    # Get the message
+    message = ChatMessage.query.filter_by(id=message_id, token_id=token.id).first()
+    
+    if not message:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    # Delete the message
+    try:
+        db.session.delete(message)
+        db.session.commit()
+        
+        logging.info(f"Token owner {user.wallet_address} deleted message {message_id} in token {token.symbol}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Message deleted successfully'
+        })
+    except Exception as e:
+        logging.error(f"Failed to delete message: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete message'}), 500
+
 @app.route('/api/token/<contract_address>/polls', methods=['GET', 'POST'])
 @require_wallet_connection
 def token_polls(contract_address):
