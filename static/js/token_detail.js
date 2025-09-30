@@ -751,6 +751,7 @@
     window.setQuickAmount = function(amount) { TokenDetail.setQuickAmount(amount); };
     window.executeTrade = function() { TokenDetail.executeTrade(); };
     window.sendMessage = function() { TokenDetail.sendMessage(); };
+    window.openChatSettings = function() { TokenDetail.openChatSettings(); };
     window.copyContractAddress = function(address) {
         navigator.clipboard.writeText(address).then(() => {
             alert('Contract address copied to clipboard!');
