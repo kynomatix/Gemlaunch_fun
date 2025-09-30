@@ -29,34 +29,37 @@
     </div>
     {% endif %}
     
-    <!-- Accolades Section - PRO TOKENS ONLY -->
+    <!-- Accolades Section - PRO TOKENS ONLY (Collapsible to save space) -->
     {% if is_pro_token %}
-    <!-- Pro Token: Treasury-based rewards controlled by token owner -->
-    <div class="accolades-section pro-token-accolades">
-        <div class="accolades-header">
-            <h4><i class="fas fa-crown"></i> Token Rewards</h4>
-            <span class="accolade-badge pro">Treasury Pool: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }}%</span>
+    <div class="achievement-guide">
+        <div class="achievement-header">
+            <h4><i class="fas fa-crown"></i> Token Rewards <span class="accolade-badge pro" style="margin-left: 0.5rem;">Treasury: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }}%</span></h4>
+            <button class="achievement-toggle" onclick="toggleTokenRewards()">
+                <i class="fas fa-chevron-down"></i>
+            </button>
         </div>
-        <div class="accolade-items">
-            <div class="accolade-item">
-                <i class="fas fa-comment-dots"></i>
-                <div>
-                    <strong>Active Participation</strong>
-                    <span>Earn ${{ token.symbol }} tokens from treasury for quality contributions</span>
+        <div class="achievement-content collapsed" id="tokenRewardsContent">
+            <div class="accolade-items">
+                <div class="accolade-item">
+                    <i class="fas fa-comment-dots"></i>
+                    <div>
+                        <strong>Chat Participation</strong>
+                        <span>Earn ${{ token.symbol }} from treasury for quality contributions</span>
+                    </div>
                 </div>
-            </div>
-            <div class="accolade-item">
-                <i class="fas fa-fire"></i>
-                <div>
-                    <strong>Viral Content</strong>
-                    <span>Get bonus token rewards when your messages get high engagement</span>
+                <div class="accolade-item">
+                    <i class="fas fa-chart-line"></i>
+                    <div>
+                        <strong>High Engagement</strong>
+                        <span>Get bonus rewards when your messages get lots of reactions</span>
+                    </div>
                 </div>
-            </div>
-            <div class="accolade-item">
-                <i class="fas fa-trophy"></i>
-                <div>
-                    <strong>Community Milestones</strong>
-                    <span>Share in airdrop distributions at key market cap levels</span>
+                <div class="accolade-item">
+                    <i class="fas fa-trophy"></i>
+                    <div>
+                        <strong>Top Holder Rewards</strong>
+                        <span>Earn airdrops from treasury based on your holdings</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -73,7 +76,7 @@
         </div>
     </div>
     
-    <!-- Accolades Guide (Pro Tokens Only) -->
+    <!-- Measurable Activities Guide (Pro Tokens Only) -->
     {% if is_pro_token %}
     <div class="achievement-guide">
         <div class="achievement-header">
@@ -85,35 +88,35 @@
         <div class="achievement-content collapsed" id="achievementContent">
             <div class="achievement-list">
                 <div class="achievement-item pro-only">
-                    <span class="badge governance">🏛️</span>
+                    <span class="badge governance">💬</span>
                     <div class="achievement-info">
-                        <strong>{{ token.symbol }} DAO Governor</strong>
-                        <p>Participate in 10+ governance votes for this token</p>
+                        <strong>Active Chatter</strong>
+                        <p>Send quality messages in the {{ token.symbol }} chat</p>
                     </div>
                 </div>
                 <div class="achievement-item pro-only">
-                    <span class="badge liquidity">💧</span>
+                    <span class="badge liquidity">📊</span>
                     <div class="achievement-info">
-                        <strong>{{ token.symbol }} Liquidity Provider</strong>
-                        <p>Add 10,000+ {{ token.symbol }} tokens to liquidity pool</p>
+                        <strong>Poll Participant</strong>
+                        <p>Vote in {{ token.symbol }} community polls</p>
                     </div>
                 </div>
                 <div class="achievement-item pro-only">
-                    <span class="badge advisor">🧠</span>
+                    <span class="badge advisor">❤️</span>
                     <div class="achievement-info">
-                        <strong>{{ token.symbol }} Technical Advisor</strong>
-                        <p>Provide valuable development insights for {{ token.name }}</p>
+                        <strong>Engagement Leader</strong>
+                        <p>Get reactions and replies on your messages</p>
                     </div>
                 </div>
                 <div class="achievement-item pro-only">
-                    <span class="badge community-builder">🏗️</span>
+                    <span class="badge community-builder">💎</span>
                     <div class="achievement-info">
-                        <strong>{{ token.symbol }} Community Builder</strong>
-                        <p>Successfully onboard 50+ new users to {{ token.name }}</p>
+                        <strong>Diamond Holder</strong>
+                        <p>Buy and hold {{ token.symbol }} tokens long-term</p>
                     </div>
                 </div>
                 <div class="accolade-note">
-                    <p><strong>Note:</strong> Pro token holders can earn {{ token.symbol }} airdrops from the treasury. Basic tokens can only earn platform-wide reputation points.</p>
+                    <p><strong>Note:</strong> Treasury rewards are distributed by the token creator. Focus on active participation and holding to maximize your chances.</p>
                 </div>
             </div>
         </div>
