@@ -550,8 +550,8 @@
                     break;
                     
                 case 'near-grad':
-                    // Show tokens 70-99% to graduation
-                    visibleTokens = visibleTokens.filter(t => !t.graduated && t.progress >= 70);
+                    // Show tokens 80-99% to graduation
+                    visibleTokens = visibleTokens.filter(t => !t.graduated && t.progress >= 80);
                     visibleTokens.sort((a, b) => b.progress - a.progress);
                     break;
                     
