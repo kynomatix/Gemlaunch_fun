@@ -315,6 +315,28 @@
             color: #20B2AA;
         }
         
+        .token-view-btn {
+            display: block;
+            background: rgba(32, 178, 170, 0.1);
+            color: #20B2AA;
+            border: 2px solid #20B2AA;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .token-view-btn:hover {
+            background: rgba(32, 178, 170, 0.2);
+            color: #20B2AA;
+            text-decoration: none;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.3);
+        }
+        
         @media (max-width: 768px) {
             /* Disable heavy animations on mobile for better performance */
             .shimmer::after,
@@ -1242,7 +1264,13 @@
                     {% for holding in holdings %}
                         <div class="token-card">
                             <div class="token-header">
-                                <div class="token-image">💎</div>
+                                <div class="token-image">
+                                    {% if holding.token.image_url %}
+                                        <img src="{{ holding.token.image_url }}" alt="{{ holding.token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                    {% else %}
+                                        💎
+                                    {% endif %}
+                                </div>
                                 <div class="token-info">
                                     <h3>{{ holding.token.name }}</h3>
                                     <div class="token-symbol">${{ holding.token.symbol }}</div>
@@ -1321,67 +1349,6 @@
                         <h3>No tokens created yet</h3>
                         <p>Ready to launch your first memecoin?</p>
                         <a href="/app/create" class="btn btn-primary">Create Your First Token</a>
-                    </div>
-                {% endif %}
-            </div>
-
-            <!-- Holdings Section -->
-            <div class="dashboard-section">
-                <div class="section-header">
-                    <h2 class="section-title">Your Holdings</h2>
-                </div>
-
-                {% if holdings %}
-                    <div class="token-grid">
-                        {% for holding in holdings %}
-                            <div class="token-card">
-                                <div class="token-header">
-                                    <div class="token-image">
-                                        {% if holding.token.image_url %}
-                                            <img src="{{ holding.token.image_url }}" alt="{{ holding.token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
-                                        {% else %}
-                                            💎
-                                        {% endif %}
-                                    </div>
-                                    <div class="token-info">
-                                        <h3>{{ holding.token.name }}</h3>
-                                        <div class="token-symbol">${{ holding.token.symbol }}</div>
-                                    </div>
-                                </div>
-
-                                <div class="token-stats">
-                                    <div class="token-stat">
-                                        <div class="token-stat-value">{{ "%.0f"|format(holding.token_amount or 0) }}</div>
-                                        <div class="token-stat-label">Tokens</div>
-                                    </div>
-                                    <div class="token-stat">
-                                        <div class="token-stat-value">${{ "%.2f"|format(holding.current_value) }}</div>
-                                        <div class="token-stat-label">Value</div>
-                                    </div>
-                                    <div class="token-stat">
-                                        <div class="token-stat-value" style="color: {{ '#00FF64' if holding.profit_loss >= 0 else '#FF3232' }}">
-                                            {{ "+" if holding.profit_loss >= 0 else "" }}{{ "%.1f"|format(holding.profit_loss_percentage) }}%
-                                        </div>
-                                        <div class="token-stat-label">P&L</div>
-                                    </div>
-                                    <div class="token-stat">
-                                        <div class="token-stat-value">${{ "%.4f"|format(holding.token.current_price or 0) }}</div>
-                                        <div class="token-stat-label">Price</div>
-                                    </div>
-                                </div>
-
-                                <a href="/app/token/{{ holding.token.id }}" class="btn btn-secondary" style="margin-top: 1rem; text-align: center;">
-                                    Trade
-                                </a>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-wallet"></i>
-                        <h3>No token holdings</h3>
-                        <p>Start trading to build your portfolio!</p>
-                        <a href="/app/tokens" class="btn btn-primary">Explore Tokens</a>
                     </div>
                 {% endif %}
             </div>
