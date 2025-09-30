@@ -422,6 +422,7 @@ def create_token():
             new_token.deployment_status = 'pending'  # Mock status for UI
             new_token.current_price = 0.001  # Mock starting price
             new_token.current_market_cap = 1000  # Start at $1K market cap
+            new_token.reserved_percentage = float(reserved_percentage)
             
             # Generate mock contract address
             import secrets
@@ -1297,6 +1298,11 @@ def init_database():
                     token.deployment_status = 'deployed'
                     token.trade_count = 42  # Mock trades
                     token.holder_count = 156  # Mock holders
+                    # Make some tokens pro (with reserved percentage)
+                    if token_data['symbol'] in ['KAS', 'KDOG']:
+                        token.reserved_percentage = 25.0  # Pro token with max treasury
+                    else:
+                        token.reserved_percentage = 0.0  # Basic token
                     # Add social links
                     token.website = token_data.get('website')
                     token.twitter = token_data.get('twitter')
