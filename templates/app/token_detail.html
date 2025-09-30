@@ -257,8 +257,8 @@
                             input.remove();
                         }
                     });
-                    // Reload polls
-                    TokenDetail.loadMessages();
+                    // Reload chat to show the new poll
+                    TokenDetail.initializeChatState();
                 } else {
                     // Try to get error message from response
                     let errorMessage = 'Failed to create poll';
