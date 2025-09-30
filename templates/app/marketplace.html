@@ -318,18 +318,49 @@
 
             <!-- Filters -->
             <div class="filters">
-                <button class="filter-btn active">🔥 Trending</button>
-                <button class="filter-btn">🆕 New Launches</button>
-                <button class="filter-btn">📈 Top Gainers</button>
-                <button class="filter-btn">🎯 Near Graduation</button>
-                <button class="filter-btn">💎 Graduated</button>
+                <button class="filter-btn active" data-filter="all">
+                    <i class="fas fa-th"></i> All
+                </button>
+                <button class="filter-btn" data-filter="trending">
+                    <i class="fas fa-fire"></i> Trending
+                </button>
+                <button class="filter-btn" data-filter="social">
+                    <i class="fas fa-comments"></i> Social Activity
+                </button>
+                <button class="filter-btn" data-filter="new">
+                    <i class="fas fa-rocket"></i> New
+                </button>
+                <button class="filter-btn" data-filter="gainers">
+                    <i class="fas fa-chart-line"></i> Top Gainers
+                </button>
+                <button class="filter-btn" data-filter="near-grad">
+                    <i class="fas fa-trophy"></i> Near Graduation
+                </button>
+                <button class="filter-btn" data-filter="graduated">
+                    <i class="fas fa-gem"></i> Graduated
+                </button>
+                <button class="filter-btn" data-filter="pro">
+                    <i class="fas fa-star"></i> Pro
+                </button>
+                <button class="filter-btn" data-filter="basic">
+                    <i class="fas fa-cog"></i> Basic
+                </button>
             </div>
 
             <!-- Tokens Grid -->
             {% if tokens %}
                 <div class="tokens-grid">
                     {% for token in tokens %}
-                        <a href="{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}" class="token-card" style="text-decoration: none; display: block; color: inherit;">
+                        <a href="{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}" 
+                           class="token-card" 
+                           style="text-decoration: none; display: block; color: inherit;"
+                           data-type="{{ 'pro' if token.is_pro else 'basic' }}"
+                           data-graduated="{{ 'true' if token.is_graduated else 'false' }}"
+                           data-progress="{{ token.progress_to_graduation }}"
+                           data-created="{{ token.created_at.timestamp() }}"
+                           data-trades="{{ token.trade_count or 0 }}"
+                           data-views="{{ token.view_count or 0 }}"
+                           data-holders="{{ token.holder_count or 0 }}">
                             <div class="token-header">
                                 <div class="token-avatar">
                                     {% if token.image_url %}
@@ -453,8 +484,107 @@
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            // In a real app, this would filter the tokens
-            console.log('Filter selected:', this.textContent);
+            
+            const filter = this.getAttribute('data-filter');
+            const tokenCards = document.querySelectorAll('.token-card');
+            const currentTime = Date.now() / 1000; // Unix timestamp
+            
+            // Collect tokens with their scores for sorting
+            const tokensWithScores = Array.from(tokenCards).map(card => {
+                const trades = parseInt(card.getAttribute('data-trades')) || 0;
+                const views = parseInt(card.getAttribute('data-views')) || 0;
+                const holders = parseInt(card.getAttribute('data-holders')) || 0;
+                const created = parseFloat(card.getAttribute('data-created')) || 0;
+                const progress = parseFloat(card.getAttribute('data-progress')) || 0;
+                const type = card.getAttribute('data-type');
+                const graduated = card.getAttribute('data-graduated') === 'true';
+                
+                // Calculate social/trending score (trades + views + holders)
+                const socialScore = trades * 3 + views + holders * 2;
+                const trendingScore = socialScore + (1 / (currentTime - created + 1)) * 1000; // Boost recent tokens
+                const ageInHours = (currentTime - created) / 3600;
+                
+                return {
+                    card,
+                    trades,
+                    views,
+                    holders,
+                    created,
+                    progress,
+                    type,
+                    graduated,
+                    socialScore,
+                    trendingScore,
+                    ageInHours
+                };
+            });
+            
+            // Filter and sort based on selected filter
+            let visibleTokens = tokensWithScores;
+            
+            switch(filter) {
+                case 'all':
+                    // Show all, sorted by creation date (newest first)
+                    visibleTokens.sort((a, b) => b.created - a.created);
+                    break;
+                    
+                case 'trending':
+                    // Sort by trending score (combines social activity + recency)
+                    visibleTokens.sort((a, b) => b.trendingScore - a.trendingScore);
+                    break;
+                    
+                case 'social':
+                    // Sort by social activity score
+                    visibleTokens.sort((a, b) => b.socialScore - a.socialScore);
+                    break;
+                    
+                case 'new':
+                    // Only show tokens created within last 7 days, sorted by newest
+                    visibleTokens = visibleTokens.filter(t => t.ageInHours < 168);
+                    visibleTokens.sort((a, b) => b.created - a.created);
+                    break;
+                    
+                case 'gainers':
+                    // Sort by trade count (proxy for activity/gains)
+                    visibleTokens.sort((a, b) => b.trades - a.trades);
+                    break;
+                    
+                case 'near-grad':
+                    // Show tokens 70-99% to graduation
+                    visibleTokens = visibleTokens.filter(t => !t.graduated && t.progress >= 70);
+                    visibleTokens.sort((a, b) => b.progress - a.progress);
+                    break;
+                    
+                case 'graduated':
+                    // Only show graduated tokens
+                    visibleTokens = visibleTokens.filter(t => t.graduated);
+                    visibleTokens.sort((a, b) => b.socialScore - a.socialScore);
+                    break;
+                    
+                case 'pro':
+                    // Only show pro tokens
+                    visibleTokens = visibleTokens.filter(t => t.type === 'pro');
+                    visibleTokens.sort((a, b) => b.trendingScore - a.trendingScore);
+                    break;
+                    
+                case 'basic':
+                    // Only show basic tokens
+                    visibleTokens = visibleTokens.filter(t => t.type === 'basic');
+                    visibleTokens.sort((a, b) => b.trendingScore - a.trendingScore);
+                    break;
+            }
+            
+            // Hide all cards first
+            tokenCards.forEach(card => card.style.display = 'none');
+            
+            // Show filtered cards in sorted order
+            const grid = document.querySelector('.tokens-grid');
+            visibleTokens.forEach(({card}) => {
+                card.style.display = 'block';
+                grid.appendChild(card); // Re-append to maintain order
+            });
+            
+            console.log(`Filter: ${filter} - Showing ${visibleTokens.length}/${tokenCards.length} tokens`);
         });
     });
 </script>
