@@ -1421,33 +1421,38 @@
     // Expose the module to global scope for HTML event handlers
     window.TokenDetail = TokenDetail;
     
-    // Initialize event listeners when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize function - runs on turbo:load and DOMContentLoaded
+    function initializeTokenPage() {
         // Chart.js initialization
         if (window.Chart && document.getElementById('tokenChart')) {
             setTimeout(() => TokenDetail.initChart(), 100);
         }
         
-        // Chart type toggle buttons
+        // Chart type toggle buttons - only add if not already added
         document.querySelectorAll('.chart-type-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                
-                TokenDetail.currentChartType = this.getAttribute('data-type');
-                TokenDetail.initChart();
-            });
+            if (!btn.dataset.listenerAdded) {
+                btn.dataset.listenerAdded = 'true';
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    TokenDetail.currentChartType = this.getAttribute('data-type');
+                    TokenDetail.initChart();
+                });
+            }
         });
         
-        // Trading input listener
+        // Trading input listener - only add if not already added
         const kasAmountInput = document.getElementById('kasAmount');
-        if (kasAmountInput) {
+        if (kasAmountInput && !kasAmountInput.dataset.listenerAdded) {
+            kasAmountInput.dataset.listenerAdded = 'true';
             kasAmountInput.addEventListener('input', () => TokenDetail.updateTokenAmount());
         }
         
-        // Chat enter key
+        // Chat enter key - only add if not already added
         const chatInput = document.getElementById('chatInput');
-        if (chatInput) {
+        if (chatInput && !chatInput.dataset.listenerAdded) {
+            chatInput.dataset.listenerAdded = 'true';
             chatInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1455,7 +1460,18 @@
                 }
             });
         }
-    });
+    }
+    
+    // Initialize on turbo:load (fires on both initial load AND Turbo navigation)
+    document.addEventListener('turbo:load', initializeTokenPage);
+    
+    // Fallback for non-Turbo scenarios
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeTokenPage);
+    } else {
+        // DOM already loaded, initialize immediately
+        initializeTokenPage();
+    }
     
     // Additional global functions for HTML event handlers
     window.setTradeMode = function(mode) { TokenDetail.setTradeMode(mode); };

@@ -129,8 +129,9 @@
         window.tokenCreatorAddress = '{{ token.creator.wallet_address }}';
         window.isProToken = {{ 'true' if is_pro_token else 'false' }};
         
-        // Initialize the module when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
+        // This inline script re-executes on every page load (including Turbo navigation)
+        // So we can initialize TokenDetail directly when Turbo finishes loading
+        function initTokenDetailOnce() {
             // DEBUG: Check what's being passed from backend
             console.log('TEMPLATE DEBUG - is_pro_token from backend:', {{ is_pro_token|tojson }});
             console.log('TEMPLATE DEBUG - token.reserved_percentage:', {{ token.reserved_percentage }});
@@ -148,7 +149,11 @@
                     minTokensToCreatePoll: {{ token.settings.min_tokens_to_create_poll if token.settings else 1000 }}
                 }
             });
-        });
+        }
+        
+        // Call immediately - this script runs after Turbo has loaded the page
+        // or on initial DOMContentLoaded
+        initTokenDetailOnce();
         
         // Modal functions that remain global for simplicity
         function closePollModal() {
