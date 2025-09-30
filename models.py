@@ -114,7 +114,6 @@ class Token(db.Model):
     # Relationships
     trades = db.relationship('Trade', backref='token', lazy='dynamic')
     holdings = db.relationship('Holding', backref='token', lazy='dynamic')
-    settings = db.relationship('TokenSettings', uselist=False, lazy='joined')
     
     @property
     def graduation_threshold(self):
