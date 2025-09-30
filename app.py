@@ -98,6 +98,7 @@ def format_number_filter(num, include_decimals=False):
         return '0'
     
     try:
+        # Handle Decimal types from database
         num = float(num)
         abs_num = abs(num)
         
