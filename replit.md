@@ -71,6 +71,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Heart icons properly show as active (red) when user has already loved a message
 - Merged Token Rewards and How to Earn Rewards sections into single collapsible section
 - Fixed Treasury percentage to display actual reserved_percentage from token (not arbitrary calculation)
+- Enabled anonymous access to marketplace and leaderboard pages (no wallet connection required for browsing)
+- Created @wallet_optional decorator for routes that allow anonymous users while maintaining wallet-gated features
+- Added wallet-connect banners on marketplace and leaderboard for anonymous users to encourage connection
+- Updated templates to safely handle user=None and provide clear messaging about wallet benefits
 
 # User Preferences
 
