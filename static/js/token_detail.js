@@ -756,7 +756,7 @@
             let deleteButtonHTML = '';
             if (isTokenOwner) {
                 deleteButtonHTML = `
-                    <button class="message-action delete-btn" onclick="TokenDetail.deleteMessage(${messageId})" title="Delete this message">
+                    <button class="message-action delete-btn" onclick="TokenDetail.showDeleteConfirm(${messageId})" title="Delete this message">
                         <i class="fas fa-trash"></i>
                     </button>
                 `;
@@ -954,67 +954,81 @@
             this.chatState.replyingTo = null;
         },
         
+        showDeleteConfirm: function(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageEl) return;
+            
+            const deleteBtn = messageEl.querySelector('.delete-btn');
+            if (!deleteBtn) return;
+            
+            // Store original HTML
+            const originalHTML = deleteBtn.innerHTML;
+            
+            // Transform trash into confirm/cancel buttons
+            deleteBtn.innerHTML = `
+                <i class="fas fa-check" style="color: #4CAF50; cursor: pointer;" onclick="event.stopPropagation(); TokenDetail.confirmDelete(${messageId})" title="Confirm delete"></i>
+                <i class="fas fa-times" style="color: #FF5252; cursor: pointer; margin-left: 0.35rem;" onclick="event.stopPropagation(); TokenDetail.cancelDelete(${messageId})" title="Cancel"></i>
+            `;
+            deleteBtn.style.pointerEvents = 'auto';
+            deleteBtn.onclick = null;
+            
+            // Store original HTML for cancel
+            deleteBtn.dataset.originalHTML = originalHTML;
+        },
+        
+        confirmDelete: function(messageId) {
+            this.deleteMessage(messageId);
+        },
+        
+        cancelDelete: function(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageEl) return;
+            
+            const deleteBtn = messageEl.querySelector('.delete-btn');
+            if (deleteBtn && deleteBtn.dataset.originalHTML) {
+                deleteBtn.innerHTML = deleteBtn.dataset.originalHTML;
+                deleteBtn.onclick = () => this.showDeleteConfirm(messageId);
+                delete deleteBtn.dataset.originalHTML;
+            }
+        },
+        
         deleteMessage: async function(messageId) {
             const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
             if (!messageEl) return;
             
-            // Get message details for confirmation
-            const textEl = messageEl.querySelector('.chat-text');
-            const messageText = textEl ? textEl.textContent.substring(0, 50) : '';
-            
-            // Show confirmation modal
-            this.modals.confirm(
-                '<i class="fas fa-exclamation-triangle" style="color: #FF5252;"></i> Delete Message',
-                `<div style="padding: 0.5rem;">
-                    <p style="color: #CCC; margin-bottom: 1rem;">Are you sure you want to delete this message?</p>
-                    <div style="background: rgba(255, 82, 82, 0.1); border: 1px solid rgba(255, 82, 82, 0.3); 
-                                border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem;">
-                        <p style="color: #AAA; margin: 0; font-style: italic;">"${messageText}${messageText.length >= 50 ? '...' : ''}"</p>
-                    </div>
-                    <p style="color: #999; font-size: 0.9rem; margin: 0;">
-                        <i class="fas fa-info-circle"></i> This action cannot be undone.
-                    </p>
-                </div>`,
-                async () => {
-                    // User confirmed deletion
-                    try {
-                        const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-Wallet-Address': localStorage.getItem('connectedWallet')
-                            }
-                        });
-                        
-                        if (response.ok) {
-                            // Remove message from UI with animation
-                            messageEl.style.transition = 'all 0.3s ease';
-                            messageEl.style.opacity = '0';
-                            messageEl.style.transform = 'translateX(-20px)';
-                            
-                            setTimeout(() => {
-                                messageEl.remove();
-                            }, 300);
-                            
-                            // Remove from chat state
-                            delete this.chatState.messagesData[messageId];
-                            delete this.chatState.messageLoves[messageId];
-                            this.chatState.userLoves = this.chatState.userLoves.filter(id => id !== messageId);
-                            
-                            console.log(`🗑️ Deleted message ${messageId}`);
-                        } else {
-                            const error = await response.json();
-                            this.modals.showNotification('Delete Failed', error.error || 'Failed to delete message', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting message:', error);
-                        this.modals.showNotification('Error', 'Failed to delete message. Please try again.', 'error');
+            // User confirmed deletion - proceed
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
                     }
-                },
-                () => {
-                    // User cancelled deletion
-                    console.log('Message deletion cancelled');
+                });
+                
+                if (response.ok) {
+                    // Remove message from UI with animation
+                    messageEl.style.transition = 'all 0.3s ease';
+                    messageEl.style.opacity = '0';
+                    messageEl.style.transform = 'translateX(-20px)';
+                    
+                    setTimeout(() => {
+                        messageEl.remove();
+                    }, 300);
+                    
+                    // Remove from chat state
+                    delete this.chatState.messagesData[messageId];
+                    delete this.chatState.messageLoves[messageId];
+                    this.chatState.userLoves = this.chatState.userLoves.filter(id => id !== messageId);
+                    
+                    console.log(`🗑️ Deleted message ${messageId}`);
+                } else {
+                    const error = await response.json();
+                    this.showNotification('❌ Delete Failed', error.error || 'Failed to delete message', 'error');
                 }
-            );
+            } catch (error) {
+                console.error('Error deleting message:', error);
+                this.showNotification('❌ Error', 'Failed to delete message. Please try again.', 'error');
+            }
         },
         
         toggleTokenGate: function() {
