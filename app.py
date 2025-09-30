@@ -526,6 +526,14 @@ def token_messages(contract_address):
             is_deleted=False
         ).order_by(ChatMessage.created_at.desc()).limit(50).all()
         
+        # Get user's reactions for these messages
+        message_ids = [msg.id for msg in messages]
+        user_reactions = MessageReaction.query.filter(
+            MessageReaction.message_id.in_(message_ids),
+            MessageReaction.user_id == user.id
+        ).all()
+        user_loved_ids = {r.message_id for r in user_reactions}
+        
         # Convert to dict format for frontend
         message_list = []
         for msg in reversed(messages):
@@ -536,6 +544,7 @@ def token_messages(contract_address):
                 'message': msg.content,
                 'message_type': msg.message_type,
                 'love_count': msg.love_count,
+                'is_loved_by_user': msg.id in user_loved_ids,
                 'created_at': msg.created_at.isoformat(),
                 'is_pinned': msg.is_pinned
             }

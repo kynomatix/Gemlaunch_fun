@@ -271,7 +271,11 @@
                     
                     chatContainer.innerHTML = '';
                     
-                    // First pass: store all message data
+                    // Clear existing state to avoid duplicates
+                    this.chatState.messageLoves = {};
+                    this.chatState.userLoves = [];
+                    
+                    // First pass: store all message data and load reactions from database
                     data.messages.forEach(msg => {
                         this.chatState.messagesData[msg.id] = {
                             user: msg.user,
@@ -279,6 +283,12 @@
                             text: msg.message,
                             wallet: msg.wallet
                         };
+                        
+                        // Store love count and user's reaction from database
+                        this.chatState.messageLoves[msg.id] = msg.love_count || 0;
+                        if (msg.is_loved_by_user) {
+                            this.chatState.userLoves.push(msg.id);
+                        }
                     });
                     
                     // Second pass: display messages with reply information
@@ -734,6 +744,10 @@
                 `;
             }
             
+            // Get love count from state (loaded from database) or default to 0
+            const loveCount = this.chatState.messageLoves[messageId] || 0;
+            const isLoved = this.chatState.userLoves.includes(messageId);
+            
             messageDiv.innerHTML = `
                 ${replyReferenceHTML}
                 <div class="message-content">
@@ -741,9 +755,9 @@
                     <span class="chat-text">${message} ${isSpotlight ? '✨' : ''}</span>
                 </div>
                 <div class="message-actions">
-                    <button class="message-action love-btn" onclick="TokenDetail.toggleLove(${messageId})" title="Love this message">
+                    <button class="message-action love-btn ${isLoved ? 'active' : ''}" onclick="TokenDetail.toggleLove(${messageId})" title="Love this message">
                         <i class="fas fa-heart"></i>
-                        <span class="love-count">0</span>
+                        <span class="love-count">${loveCount}</span>
                     </button>
                     <button class="message-action reply-btn" onclick="TokenDetail.replyToMessage(${messageId})" title="Reply to this message">
                         <i class="fas fa-reply"></i>
@@ -755,7 +769,10 @@
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
-            this.chatState.messageLoves[messageId] = 0;
+            // Only set love count if not already set (for new messages)
+            if (this.chatState.messageLoves[messageId] === undefined) {
+                this.chatState.messageLoves[messageId] = 0;
+            }
         },
         
         getUserDisplayName: function(user) {
