@@ -518,7 +518,7 @@
                                 label: (context) => {
                                     const value = context.parsed.y;
                                     if (this.currentChartType === 'marketcap') {
-                                        return 'Market Cap: $' + (value * 0.8 / 1000).toFixed(2) + 'K';
+                                        return 'Market Cap: $' + (value / 1000).toFixed(2) + 'K';
                                     } else {
                                         return 'Price: ' + value.toFixed(6) + ' KAS ($' + (value * 0.8).toFixed(4) + ')';
                                     }
@@ -573,7 +573,7 @@
                                 },
                                 callback: (value) => {
                                     if (this.currentChartType === 'marketcap') {
-                                        return '$' + this.formatNumber(value * 0.8, true);
+                                        return '$' + this.formatNumber(value, true);
                                     } else {
                                         return value.toFixed(6) + ' KAS';
                                     }
