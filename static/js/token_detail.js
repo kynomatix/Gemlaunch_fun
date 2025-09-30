@@ -1180,8 +1180,12 @@
             console.log('✨ Updating spotlight display:', spotlight);
             
             // Use existing spotlight container from template
+            const spotlightContainer = document.getElementById('spotlightMessages');
             const listContainer = document.getElementById('spotlightMessagesList');
-            if (!listContainer) return;
+            if (!listContainer || !spotlightContainer) return;
+            
+            // Show container when adding spotlight
+            spotlightContainer.style.display = 'block';
             
             // Create spotlight message element with teal/blue theme
             const spotlightDiv = document.createElement('div');
