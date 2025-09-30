@@ -106,7 +106,7 @@
     padding: 0.6rem 1.5rem;
     background: linear-gradient(135deg, #20B2AA, #00CED1);
     border: none;
-    border-radius: 20px;
+    border-radius: 8px;
     color: #FFFFFF;
     font-weight: 600;
     cursor: pointer;
@@ -123,7 +123,7 @@
     padding: 0.6rem 1.5rem;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
+    border-radius: 8px;
     color: #CCCCCC;
     font-weight: 600;
     cursor: pointer;
