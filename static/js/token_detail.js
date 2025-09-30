@@ -35,7 +35,8 @@
             userScore: 0,
             spotlightMessages: [],
             activePolls: [],
-            airdropHistory: []
+            airdropHistory: [],
+            replyingTo: null  // Track which message is being replied to
         },
         
         // Initialize the module with data from server
@@ -430,16 +431,24 @@
             
             if (!message) return;
             
+            // Prepare request body
+            const requestBody = {
+                message: message,
+                message_type: 'regular'
+            };
+            
+            // Include reply_to_id if replying
+            if (this.chatState.replyingTo) {
+                requestBody.reply_to_id = this.chatState.replyingTo.id;
+            }
+            
             try {
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/messages`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        message_type: 'regular'
-                    })
+                    body: JSON.stringify(requestBody)
                 });
                 
                 if (response.ok) {
@@ -447,6 +456,11 @@
                     
                     this.addMessageToChat(data.message.user, data.message.message, false, data.message.id);
                     input.value = '';
+                    
+                    // Clear reply state after sending
+                    if (this.chatState.replyingTo) {
+                        this.clearReply();
+                    }
                     
                     console.log(`💬 Message saved to database: "${message}"`);
                 } else {
@@ -522,14 +536,127 @@
         },
         
         // Additional chat functions to be exposed globally
-        toggleLove: function(messageId) {
-            console.log(`❤️ Toggle love for message ${messageId}`);
-            // Implementation here
+        toggleLove: async function(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageEl) return;
+            
+            const loveBtn = messageEl.querySelector('.love-btn');
+            const heartIcon = loveBtn.querySelector('i');
+            const loveCountEl = loveBtn.querySelector('.love-count');
+            
+            // Check if already loved by this user
+            const isLoved = this.chatState.userLoves.includes(messageId);
+            
+            try {
+                // Make API call
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}/react`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Toggle love state
+                    if (isLoved) {
+                        // Remove from loved messages
+                        this.chatState.userLoves = this.chatState.userLoves.filter(id => id !== messageId);
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        loveBtn.classList.remove('loved');
+                        this.chatState.messageLoves[messageId] = Math.max(0, (this.chatState.messageLoves[messageId] || 1) - 1);
+                    } else {
+                        // Add to loved messages
+                        this.chatState.userLoves.push(messageId);
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        loveBtn.classList.add('loved', 'heartPulse');
+                        this.chatState.messageLoves[messageId] = (this.chatState.messageLoves[messageId] || 0) + 1;
+                        
+                        // Remove animation after it completes
+                        setTimeout(() => {
+                            loveBtn.classList.remove('heartPulse');
+                        }, 600);
+                    }
+                    
+                    // Update love count display
+                    loveCountEl.textContent = this.chatState.messageLoves[messageId] || 0;
+                    
+                    // Save state
+                    this.saveChatState();
+                    
+                    console.log(`❤️ ${isLoved ? 'Unloved' : 'Loved'} message ${messageId}`);
+                } else {
+                    console.error('Failed to toggle love:', await response.text());
+                    this.showNotification('❌ Error', 'Failed to react to message', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling love:', error);
+                this.showNotification('❌ Error', 'Failed to react to message', 'error');
+            }
         },
         
         replyToMessage: function(messageId) {
-            console.log(`↩️ Reply to message ${messageId}`);
-            // Implementation here
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageEl) return;
+            
+            // Get message details
+            const userEl = messageEl.querySelector('.chat-user');
+            const textEl = messageEl.querySelector('.chat-text');
+            const username = userEl ? userEl.textContent.replace(':', '') : 'Unknown';
+            const messageText = textEl ? textEl.textContent.substring(0, 50) : '';
+            
+            // Clear any existing reply indicator
+            this.clearReply();
+            
+            // Store reply state
+            this.chatState.replyingTo = {
+                id: messageId,
+                username: username,
+                text: messageText
+            };
+            
+            // Add visual indicator to the message being replied to
+            messageEl.classList.add('reply-target');
+            
+            // Create reply indicator above chat input
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            const replyIndicator = document.createElement('div');
+            replyIndicator.className = 'reply-indicator';
+            replyIndicator.id = 'replyIndicator';
+            replyIndicator.innerHTML = `
+                <div class="reply-info">
+                    <i class="fas fa-reply"></i>
+                    <span>Replying to <strong>${username}</strong>: ${messageText}${messageText.length >= 50 ? '...' : ''}</span>
+                </div>
+                <button class="cancel-reply" onclick="TokenDetail.clearReply()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            chatInputContainer.parentNode.insertBefore(replyIndicator, chatInputContainer);
+            
+            // Focus the input
+            document.getElementById('chatInput').focus();
+            
+            console.log(`↩️ Replying to message ${messageId} from ${username}`);
+        },
+        
+        clearReply: function() {
+            // Remove reply indicator
+            const replyIndicator = document.getElementById('replyIndicator');
+            if (replyIndicator) {
+                replyIndicator.remove();
+            }
+            
+            // Remove visual indicator from message
+            const replyTarget = document.querySelector('.reply-target');
+            if (replyTarget) {
+                replyTarget.classList.remove('reply-target');
+            }
+            
+            // Clear reply state
+            this.chatState.replyingTo = null;
         },
         
         toggleTokenGate: function() {
