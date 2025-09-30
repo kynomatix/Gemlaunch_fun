@@ -1,0 +1,188 @@
+<!-- Chat Panel Partial -->
+<div class="chat-panel">
+    <div class="chat-header">
+        <h3>Live Chat</h3>
+        <div class="chat-controls">
+            <!-- Holders Only Toggle/Badge -->
+            <div class="token-gate-container" id="tokenGateContainer">
+                <!-- Will be populated by JavaScript based on ownership -->
+            </div>
+            <!-- Settings Button - For token owner only -->
+            {% if is_owner %}
+            <button class="chat-settings-btn" id="chatSettingsBtn" onclick="openChatSettings()" title="Chat Settings">
+                <i class="fas fa-cog"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Username encouragement banner (only show if no username set) -->
+    {% if user and (not user.profile or not user.profile.username) %}
+    <div class="username-banner" id="usernameBanner">
+        <div class="username-banner-content">
+            <h4><i class="fas fa-user-plus"></i> Stand Out in Chat!</h4>
+            <p>Set a unique username to build your reputation and earn more engagement</p>
+        </div>
+        <button class="set-username-btn" onclick="showUsernameModal()">
+            Set Username
+        </button>
+    </div>
+    {% endif %}
+    
+    <!-- Accolades Section - PRO TOKENS ONLY -->
+    {% if is_pro_token %}
+    <!-- Pro Token: Treasury-based rewards controlled by token owner -->
+    <div class="accolades-section pro-token-accolades">
+        <div class="accolades-header">
+            <h4><i class="fas fa-crown"></i> Token Rewards</h4>
+            <span class="accolade-badge pro">Treasury Pool: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }}%</span>
+        </div>
+        <div class="accolade-items">
+            <div class="accolade-item">
+                <i class="fas fa-comment-dots"></i>
+                <div>
+                    <strong>Active Participation</strong>
+                    <span>Earn ${{ token.symbol }} tokens from treasury for quality contributions</span>
+                </div>
+            </div>
+            <div class="accolade-item">
+                <i class="fas fa-fire"></i>
+                <div>
+                    <strong>Viral Content</strong>
+                    <span>Get bonus token rewards when your messages get high engagement</span>
+                </div>
+            </div>
+            <div class="accolade-item">
+                <i class="fas fa-trophy"></i>
+                <div>
+                    <strong>Community Milestones</strong>
+                    <span>Share in airdrop distributions at key market cap levels</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <!-- BASIC TOKENS: NO ACCOLADES AT ALL -->
+    
+    <!-- Token gate status -->
+    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
+        <div class="gate-info">
+            <i class="fas fa-shield-alt"></i>
+            <span>Only ${{ token.symbol }} holders can chat</span>
+            <span class="minimum-balance">Min: 1,000 tokens</span>
+        </div>
+    </div>
+    
+    <!-- Accolades Guide (Pro Tokens Only) -->
+    {% if is_pro_token %}
+    <div class="achievement-guide">
+        <div class="achievement-header">
+            <h4><i class="fas fa-medal"></i> How to Earn {{ token.symbol }} Rewards</h4>
+            <button class="achievement-toggle" onclick="toggleAchievements()">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="achievement-content collapsed" id="achievementContent">
+            <div class="achievement-list">
+                <div class="achievement-item pro-only">
+                    <span class="badge governance">🏛️</span>
+                    <div class="achievement-info">
+                        <strong>{{ token.symbol }} DAO Governor</strong>
+                        <p>Participate in 10+ governance votes for this token</p>
+                    </div>
+                </div>
+                <div class="achievement-item pro-only">
+                    <span class="badge liquidity">💧</span>
+                    <div class="achievement-info">
+                        <strong>{{ token.symbol }} Liquidity Provider</strong>
+                        <p>Add 10,000+ {{ token.symbol }} tokens to liquidity pool</p>
+                    </div>
+                </div>
+                <div class="achievement-item pro-only">
+                    <span class="badge advisor">🧠</span>
+                    <div class="achievement-info">
+                        <strong>{{ token.symbol }} Technical Advisor</strong>
+                        <p>Provide valuable development insights for {{ token.name }}</p>
+                    </div>
+                </div>
+                <div class="achievement-item pro-only">
+                    <span class="badge community-builder">🏗️</span>
+                    <div class="achievement-info">
+                        <strong>{{ token.symbol }} Community Builder</strong>
+                        <p>Successfully onboard 50+ new users to {{ token.name }}</p>
+                    </div>
+                </div>
+                <div class="accolade-note">
+                    <p><strong>Note:</strong> Pro token holders can earn {{ token.symbol }} airdrops from the treasury. Basic tokens can only earn platform-wide reputation points.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gamified Leaderboard -->
+    <div class="chat-leaderboard">
+        <div class="leaderboard-header">
+            <h4><i class="fas fa-trophy"></i> Top Contributors</h4>
+            <button class="leaderboard-toggle" onclick="toggleLeaderboard()">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="leaderboard-content collapsed" id="leaderboardContent">
+            <!-- Dynamic contributors based on token -->
+            <div class="leaderboard-list">
+                <div class="leaderboard-item top-1">
+                    <span class="rank">🥇</span>
+                    <span class="user-name">{{ token.creator.display_name or 'Creator' }}</span>
+                    <span class="score">{{ (5000 + (token.id * 127) % 5000)|round(-2) }} pts</span>
+                </div>
+                <div class="leaderboard-item top-2">
+                    <span class="rank">🥈</span>
+                    <span class="user-name">{{ ['DegenKing', 'CryptoWhale', 'DiamondHands', 'MoonBoi', 'GemHunter'][token.id % 5] }}</span>
+                    <span class="score">{{ (3000 + (token.id * 89) % 2000)|round(-2) }} pts</span>
+                </div>
+                <div class="leaderboard-item top-3">
+                    <span class="rank">🥉</span>
+                    <span class="user-name">{{ ['ChadTrader', 'ApeMaster', 'YieldFarmer', 'NFTLord', 'DeFiDegen'][token.id % 5] }}</span>
+                    <span class="score">{{ (2000 + (token.id * 61) % 1000)|round(-2) }} pts</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div class="chat-messages" id="chatMessages">
+        <!-- Messages will be loaded from database -->
+    </div>
+    <!-- Spotlight Messages (Pinned for 1 hour) -->
+    <div class="spotlight-messages" id="spotlightMessages" style="display: none;">
+        <div id="spotlightMessagesList">
+            <!-- Dynamically populated spotlight messages -->
+        </div>
+    </div>
+    
+    <!-- Chat Action Buttons - Above Input -->
+    <div class="chat-actions-bar">
+        <div class="action-buttons">
+            <button class="action-btn spotlight-btn" onclick="spotlightMessage()" title="Spotlight your message (costs tokens)">
+                <i class="fas fa-star"></i>
+            </button>
+            <button class="action-btn poll-btn" onclick="createPoll()" title="Create a poll">
+                <i class="fas fa-poll"></i>
+            </button>
+            {% if user and token.creator and user.id == token.creator.id and is_pro_token %}
+            <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
+                <i class="fas fa-gift"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Chat Input Area -->
+    <div class="chat-input-container">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="200">
+        <button class="chat-send" onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>

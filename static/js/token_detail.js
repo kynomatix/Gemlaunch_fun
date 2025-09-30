@@ -1,0 +1,624 @@
+// Token Detail Page JavaScript Module
+// Using IIFE (Immediately Invoked Function Expression) to avoid global scope pollution
+(function(window, document) {
+    'use strict';
+
+    // Module-scoped variables - avoid global pollution
+    const TokenDetail = {
+        // Trading state
+        currentTradeMode: 'buy',
+        tokenPrice: null,
+        marketCap: null,
+        kasToUsd: 0.125,
+        tokenSymbol: null,
+        tokenName: null,
+        
+        // Chart state
+        currentChartType: 'marketcap',
+        myChart: null,
+        
+        // Token settings from backend
+        tokenSettings: {
+            holdersOnlyChat: false,
+            minTokensToChat: 0,
+            minTokensForSpotlight: 500,
+            minTokensToCreatePoll: 1000
+        },
+        
+        // Chat state management
+        chatState: {
+            userTokenBalance: 0,
+            messageLoves: {},
+            userLoves: [],
+            isTokenHolder: true,
+            userScore: 0,
+            spotlightMessages: [],
+            activePolls: [],
+            airdropHistory: []
+        },
+        
+        // Initialize the module with data from server
+        init: function(config) {
+            this.tokenPrice = config.tokenPrice;
+            this.marketCap = config.marketCap;
+            this.tokenSymbol = config.tokenSymbol;
+            this.tokenName = config.tokenName;
+            this.tokenSettings = config.tokenSettings || this.tokenSettings;
+            
+            // Initialize chat state from localStorage
+            this.chatState.userTokenBalance = parseInt(localStorage.getItem(`tokenBalance_${this.tokenSymbol}`)) || Math.floor(Math.random() * 50000) + 1000;
+            this.chatState.messageLoves = JSON.parse(localStorage.getItem(`loves_${this.tokenSymbol}`) || '{}');
+            this.chatState.userLoves = JSON.parse(localStorage.getItem(`userLoves_${this.tokenSymbol}`) || '[]');
+            this.chatState.userScore = parseInt(localStorage.getItem(`userScore_${this.tokenSymbol}`)) || 0;
+            
+            // Auto-collapse sidebar and initialize
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (sidebar && !sidebar.classList.contains('collapsed')) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'true');
+            }
+            
+            // Initialize chat with delay
+            setTimeout(() => {
+                this.initializeChatState();
+            }, 100);
+        },
+        
+        // Number formatting function
+        formatNumber: function(num, includeDecimals = false) {
+            if (num === null || num === undefined) return '0';
+            
+            const absNum = Math.abs(parseFloat(num));
+            
+            if (absNum >= 1e12) {
+                return (num / 1e12).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'T';
+            } else if (absNum >= 1e9) {
+                return (num / 1e9).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'B';
+            } else if (absNum >= 1e6) {
+                return (num / 1e6).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'M';
+            } else if (absNum >= 1e3) {
+                return (num / 1e3).toFixed(includeDecimals ? 2 : 1).replace(/\.0+$/, '') + 'K';
+            }
+            
+            return parseFloat(num).toLocaleString();
+        },
+        
+        // Save chat state periodically
+        saveChatState: function() {
+            localStorage.setItem(`loves_${this.tokenSymbol}`, JSON.stringify(this.chatState.messageLoves));
+            localStorage.setItem(`userLoves_${this.tokenSymbol}`, JSON.stringify(this.chatState.userLoves));
+            localStorage.setItem(`tokenBalance_${this.tokenSymbol}`, this.chatState.userTokenBalance);
+            localStorage.setItem(`userScore_${this.tokenSymbol}`, this.chatState.userScore);
+            console.log(`💾 Chat state saved for ${this.tokenSymbol}`);
+        },
+        
+        // Initialize chat state
+        initializeChatState: async function() {
+            console.log('💎 Initializing chat state...');
+            
+            // Check ownership and set up interface
+            this.checkTokenOwnership();
+            
+            // Load messages from database
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/messages`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const chatContainer = document.getElementById('chatMessages');
+                    
+                    chatContainer.innerHTML = '';
+                    
+                    data.messages.forEach(msg => {
+                        this.addMessageToChat(msg.user, msg.message, false, msg.id, msg.wallet);
+                    });
+                    
+                    console.log(`📥 Loaded ${data.messages.length} messages from database`);
+                }
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+            
+            // Load active polls from database
+            try {
+                const userWallet = localStorage.getItem('connectedWallet');
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/polls`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.chatState.activePolls = data.polls || [];
+                    
+                    data.polls.forEach(poll => {
+                        this.addPollToChat(poll);
+                    });
+                    
+                    console.log(`📊 Loaded ${data.polls.length} active polls from database`);
+                }
+            } catch (error) {
+                console.error('Failed to load polls:', error);
+            }
+            
+            // Load spotlight messages from database
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/spotlight`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.spotlights && data.spotlights.length > 0) {
+                        const spotlightContainer = document.getElementById('spotlightMessages');
+                        const listContainer = document.getElementById('spotlightMessagesList');
+                        
+                        spotlightContainer.style.display = 'block';
+                        listContainer.innerHTML = '';
+                        
+                        data.spotlights.forEach(spotlight => {
+                            const spotlightEntry = {
+                                id: spotlight.id,
+                                user: spotlight.user,
+                                message: spotlight.message,
+                                expiresAt: new Date(spotlight.created_at).getTime() + (60 * 60 * 1000)
+                            };
+                            this.updateSpotlightDisplay(spotlightEntry);
+                        });
+                    }
+                    
+                    console.log(`✨ Loaded ${data.spotlights.length} spotlight messages from database`);
+                }
+            } catch (error) {
+                console.error('Failed to load spotlight messages:', error);
+            }
+            
+            const savedUsername = localStorage.getItem('username');
+            console.log(`💎 Chat initialized | Balance: ${this.chatState.userTokenBalance.toLocaleString()} $${this.tokenSymbol} | Username: ${savedUsername || 'Not set'}`);
+        },
+        
+        // Check token ownership
+        checkTokenOwnership: function() {
+            const userWallet = localStorage.getItem('connectedWallet');
+            const tokenCreatorAddress = window.tokenCreatorAddress;
+            const isTokenOwner = userWallet && userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
+            const isProToken = window.isProToken;
+            
+            console.log(`🔐 Ownership check - User: ${userWallet}, Creator: ${tokenCreatorAddress}, Is Owner: ${isTokenOwner}, Is Pro: ${isProToken}`);
+            
+            // Set up Holders Only toggle/badge
+            const tokenGateContainer = document.getElementById('tokenGateContainer');
+            if (tokenGateContainer) {
+                if (isTokenOwner) {
+                    const isHoldersOnly = this.tokenSettings.holdersOnlyChat;
+                    const minTokens = this.tokenSettings.minTokensToChat;
+                    
+                    if (isProToken) {
+                        tokenGateContainer.innerHTML = `
+                            <div class="token-gate-toggle pro-token" title="Pro Token: Toggle holders-only mode">
+                                <input type="checkbox" id="tokenGateToggle" class="toggle-switch" ${isHoldersOnly ? 'checked' : ''} onchange="TokenDetail.toggleTokenGate()">
+                                <label for="tokenGateToggle" class="toggle-label">
+                                    <i class="fas fa-crown"></i>
+                                    <span class="toggle-text">Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + ' min)' : ''}</span>
+                                </label>
+                            </div>
+                        `;
+                    } else {
+                        tokenGateContainer.innerHTML = `
+                            <div class="token-gate-toggle" title="Toggle holders-only mode">
+                                <input type="checkbox" id="tokenGateToggle" class="toggle-switch" ${isHoldersOnly ? 'checked' : ''} onchange="TokenDetail.toggleTokenGate()">
+                                <label for="tokenGateToggle" class="toggle-label">
+                                    <i class="fas fa-lock"></i>
+                                    <span class="toggle-text">Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + ' min)' : ''}</span>
+                                </label>
+                            </div>
+                        `;
+                    }
+                    
+                    if (isHoldersOnly) {
+                        setTimeout(() => this.toggleTokenGate(), 100);
+                    }
+                } else {
+                    const isHoldersOnly = this.tokenSettings.holdersOnlyChat;
+                    const minTokens = this.tokenSettings.minTokensToChat;
+                    if (isHoldersOnly) {
+                        const icon = isProToken ? 'fa-crown' : 'fa-shield-alt';
+                        tokenGateContainer.innerHTML = `
+                            <div class="token-gate-badge ${isProToken ? 'pro-token' : ''}" title="Holders-only chat active">
+                                <i class="fas ${icon}"></i>
+                                <span>Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + ' tokens)' : ''}</span>
+                            </div>
+                        `;
+                    } else {
+                        tokenGateContainer.innerHTML = '';
+                    }
+                }
+            }
+        },
+        
+        // Generate realistic chart data
+        generateChartData: function(type) {
+            const now = new Date();
+            const data = [];
+            const labels = [];
+            
+            for (let i = 24; i >= 0; i--) {
+                const time = new Date(now - i * 60 * 60 * 1000);
+                labels.push(time);
+                
+                let value;
+                if (type === 'marketcap') {
+                    const baseValue = this.marketCap * 0.7;
+                    const trendFactor = (24 - i) / 24;
+                    const volatility = (Math.sin(i * 0.5) * 0.1 + Math.random() * 0.1);
+                    value = baseValue * (1 + trendFactor * 0.5 + volatility);
+                } else {
+                    const volatility = Math.sin(i * 0.3) * 0.15 + Math.random() * 0.1 - 0.05;
+                    value = this.tokenPrice * (1 + volatility);
+                }
+                data.push(value);
+            }
+            return { labels, data };
+        },
+        
+        // Initialize Chart.js chart
+        initChart: function() {
+            const ctx = document.getElementById('tokenChart').getContext('2d');
+            const chartData = this.generateChartData(this.currentChartType);
+            
+            if (this.myChart) {
+                this.myChart.destroy();
+            }
+            
+            this.myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: this.currentChartType === 'marketcap' ? 'Market Cap' : 'Price',
+                        data: chartData.data,
+                        borderColor: 'rgba(32, 178, 170, 1)',
+                        backgroundColor: 'rgba(32, 178, 170, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: '#20B2AA',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#20B2AA',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(32, 178, 170, 0.5)',
+                            borderWidth: 1,
+                            cornerRadius: 5,
+                            displayColors: false,
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.parsed.y;
+                                    if (this.currentChartType === 'marketcap') {
+                                        return 'Market Cap: $' + (value * 0.125 / 1000).toFixed(2) + 'K';
+                                    } else {
+                                        return 'Price: ' + value.toFixed(6) + ' KAS ($' + (value * 0.125).toFixed(4) + ')';
+                                    }
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#888',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#888',
+                                font: {
+                                    size: 11
+                                },
+                                callback: (value) => {
+                                    if (this.currentChartType === 'marketcap') {
+                                        return '$' + this.formatNumber(value * 0.125, true);
+                                    } else {
+                                        return value.toFixed(6) + ' KAS';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        },
+        
+        // Trading functions
+        setTradeMode: function(mode) {
+            this.currentTradeMode = mode;
+            
+            document.querySelectorAll('.trade-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.trade-tab.${mode}`).classList.add('active');
+            
+            const button = document.getElementById('tradeButton');
+            button.className = `trade-button ${mode}`;
+            button.innerHTML = mode === 'buy' 
+                ? `<i class="fas fa-rocket"></i> Buy $${this.tokenSymbol}`
+                : `<i class="fas fa-money-bill"></i> Sell $${this.tokenSymbol}`;
+        },
+        
+        setQuickAmount: function(amount) {
+            document.getElementById('kasAmount').value = amount;
+            this.updateTokenAmount();
+        },
+        
+        updateTokenAmount: function() {
+            const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+            const tokenAmount = kasAmount / this.tokenPrice;
+            document.getElementById('tokenAmount').value = Math.floor(tokenAmount);
+            
+            const usdAmount = kasAmount * this.kasToUsd;
+            const inputAddon = document.querySelector('.input-addon');
+            if (inputAddon) {
+                inputAddon.textContent = `$${usdAmount.toFixed(2)} USD`;
+            }
+        },
+        
+        executeTrade: function() {
+            const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+            if (kasAmount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            alert(`${this.currentTradeMode === 'buy' ? 'Buying' : 'Selling'} ${document.getElementById('tokenAmount').value} $${this.tokenSymbol} for ${kasAmount} KAS`);
+        },
+        
+        // Chat functions
+        sendMessage: async function() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        message_type: 'regular'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    this.addMessageToChat(data.message.user, data.message.message, false, data.message.id);
+                    input.value = '';
+                    
+                    console.log(`💬 Message saved to database: "${message}"`);
+                } else {
+                    const error = await response.json();
+                    this.showNotification('❌ Error', error.error || 'Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                this.showNotification('❌ Error', 'Failed to send message. Please try again.', 'error');
+            }
+        },
+        
+        addMessageToChat: function(user, message, isSpotlight = false, msgId = null, wallet = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageId = msgId || Date.now();
+            
+            const displayName = this.getUserDisplayName(user);
+            const userClass = this.getUsernameClass(wallet || user);
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isSpotlight ? 'spotlight-in-chat' : ''}`;
+            messageDiv.setAttribute('data-message-id', messageId);
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${displayName}:</span>
+                    <span class="chat-text">${message} ${isSpotlight ? '✨' : ''}</span>
+                </div>
+                <div class="message-actions">
+                    <button class="message-action love-btn" onclick="TokenDetail.toggleLove(${messageId})" title="Love this message">
+                        <i class="fas fa-heart"></i>
+                        <span class="love-count">0</span>
+                    </button>
+                    <button class="message-action reply-btn" onclick="TokenDetail.replyToMessage(${messageId})" title="Reply to this message">
+                        <i class="fas fa-reply"></i>
+                    </button>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            this.chatState.messageLoves[messageId] = 0;
+        },
+        
+        getUserDisplayName: function(user) {
+            if (user === 'You') {
+                const savedUsername = localStorage.getItem('username');
+                if (savedUsername) {
+                    return savedUsername;
+                } else {
+                    return '...' + Math.random().toString(36).substr(-6).toUpperCase();
+                }
+            }
+            return user;
+        },
+        
+        getUsernameClass: function(walletOrUser) {
+            if (walletOrUser === 'You') {
+                const savedUsername = localStorage.getItem('username');
+                return savedUsername ? 'verified-user' : 'wallet-user';
+            }
+            
+            if (walletOrUser && walletOrUser.startsWith('0x')) {
+                return 'verified-user';
+            }
+            
+            if (walletOrUser && (walletOrUser.startsWith('...') || /^[a-f0-9]{6}$/i.test(walletOrUser))) {
+                return 'wallet-user';
+            }
+            
+            return 'verified-user';
+        },
+        
+        // Additional chat functions to be exposed globally
+        toggleLove: function(messageId) {
+            console.log(`❤️ Toggle love for message ${messageId}`);
+            // Implementation here
+        },
+        
+        replyToMessage: function(messageId) {
+            console.log(`↩️ Reply to message ${messageId}`);
+            // Implementation here
+        },
+        
+        toggleTokenGate: function() {
+            console.log('🔒 Toggle token gate');
+            // Implementation here
+        },
+        
+        openChatSettings: function() {
+            console.log('⚙️ Open chat settings');
+            // Implementation here
+        },
+        
+        showNotification: function(title, message, type = 'info') {
+            const modal = document.getElementById('notificationModal');
+            const modalTitle = document.getElementById('notificationTitle');
+            const modalMessage = document.getElementById('notificationMessage');
+            const modalContent = modal.querySelector('.modal-content');
+            
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            
+            modalContent.className = `modal-content notification-modal ${type}`;
+            
+            modal.style.display = 'flex';
+        },
+        
+        // Poll and spotlight functions
+        addPollToChat: function(poll) {
+            console.log('📊 Adding poll to chat:', poll);
+            // Implementation here
+        },
+        
+        updateSpotlightDisplay: function(spotlight) {
+            console.log('✨ Updating spotlight display:', spotlight);
+            // Implementation here
+        }
+    };
+    
+    // Expose the module to global scope for HTML event handlers
+    window.TokenDetail = TokenDetail;
+    
+    // Initialize event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Chart.js initialization
+        if (window.Chart && document.getElementById('tokenChart')) {
+            setTimeout(() => TokenDetail.initChart(), 100);
+        }
+        
+        // Chart type toggle buttons
+        document.querySelectorAll('.chart-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                TokenDetail.currentChartType = this.getAttribute('data-type');
+                TokenDetail.initChart();
+            });
+        });
+        
+        // Trading input listener
+        const kasAmountInput = document.getElementById('kasAmount');
+        if (kasAmountInput) {
+            kasAmountInput.addEventListener('input', () => TokenDetail.updateTokenAmount());
+        }
+        
+        // Chat enter key
+        const chatInput = document.getElementById('chatInput');
+        if (chatInput) {
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    TokenDetail.sendMessage();
+                }
+            });
+        }
+    });
+    
+    // Additional global functions for HTML event handlers
+    window.setTradeMode = function(mode) { TokenDetail.setTradeMode(mode); };
+    window.setQuickAmount = function(amount) { TokenDetail.setQuickAmount(amount); };
+    window.executeTrade = function() { TokenDetail.executeTrade(); };
+    window.sendMessage = function() { TokenDetail.sendMessage(); };
+    window.copyContractAddress = function(address) {
+        navigator.clipboard.writeText(address).then(() => {
+            alert('Contract address copied to clipboard!');
+        });
+    };
+    window.zoomChart = function(direction) {
+        // Implement zoom functionality
+        console.log('Zoom chart:', direction);
+    };
+    window.resetChart = function() {
+        TokenDetail.initChart();
+    };
+    
+})(window, document);

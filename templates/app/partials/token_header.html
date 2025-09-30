@@ -1,0 +1,94 @@
+<!-- Token Header Partial -->
+<div class="token-header">
+    <!-- Left Side - Token Info -->
+    <div class="token-info-section">
+        <div class="token-identity">
+            <div class="token-avatar">
+                {{ token.symbol[0] if token.symbol else '?' }}
+            </div>
+            <div class="token-details">
+                <div class="token-title-row">
+                    <h1 class="token-name">{{ token.name }}</h1>
+                    <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
+                        {% if is_pro_token %}
+                            <i class="fas fa-star"></i>
+                            <span id="tokenTypeText">PRO</span>
+                        {% else %}
+                            <span id="tokenTypeText">BASIC</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="token-meta-info">
+                    <span class="token-symbol">${{ token.symbol }}</span>
+                    <span class="dot">•</span>
+                    <span>Created by 
+                        {% if token.creator.display_name %}
+                            <span class="creator-name">
+                                <i class="fas fa-user-check"></i>
+                                {{ token.creator.display_name }}
+                            </span>
+                        {% else %}
+                            <span class="creator-name">
+                                {{ token.creator.wallet_address[-6:] }}
+                            </span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="contract-address" title="{% if token.contract_address %}Contract Address - Click to copy{% else %}Not deployed yet{% endif %}">
+                    <i class="fas fa-file-contract"></i>
+                    {% if token.contract_address %}
+                        <span onclick="copyContractAddress('{{ token.contract_address }}')">{{ token.contract_address[:10] }}...{{ token.contract_address[-8:] }}</span>
+                    {% else %}
+                        <span>Not deployed yet</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% if token.description %}
+        <p class="token-description">{{ token.description }}</p>
+        {% endif %}
+        
+        <!-- Social Links -->
+        {% if token.website or token.twitter or token.telegram %}
+        <div class="token-social-links">
+            {% if token.website %}
+            <a href="{{ token.website }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Website">
+                <i class="fas fa-globe"></i>
+            </a>
+            {% endif %}
+            {% if token.twitter %}
+            <a href="{{ token.twitter }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="X (Twitter)">
+                <i class="fab fa-twitter"></i>
+            </a>
+            {% endif %}
+            {% if token.telegram %}
+            <a href="{{ token.telegram }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Telegram">
+                <i class="fab fa-telegram"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Right Side - Stats -->
+    <div class="token-stats-section">
+        <div class="stat-item">
+            <div class="stat-label">PRICE</div>
+            <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
+            <div class="stat-sub">${{ "%.4f"|format(token.current_price|float * 0.125) }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">MARKET CAP</div>
+            <div class="stat-value">${{ ((token.current_market_cap|float or 0) * 0.125)|format_number(True) }}</div>
+            <div class="stat-sub">{{ (token.current_market_cap or 0)|format_number }} KAS</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">SUPPLY</div>
+            <div class="stat-value">{{ (token.circulating_supply or 0)|format_number }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">HOLDERS</div>
+            <div class="stat-value">{{ token.holder_count or 0 }}</div>
+        </div>
+    </div>
+</div>
