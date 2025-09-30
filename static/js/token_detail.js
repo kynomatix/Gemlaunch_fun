@@ -555,40 +555,37 @@
                                     <h4><i class="fas fa-coins"></i> Treasury Management</h4>
                                     <p>Configure how treasury funds are distributed to active community members.</p>
                                     
-                                    <div class="setting-item">
+                                    <div class="form-group">
                                         <label>Daily Reward Pool</label>
-                                        <input type="number" value="1000" placeholder="Tokens per day">
-                                        <span class="setting-hint">Tokens distributed daily from treasury</span>
+                                        <input type="number" class="form-control" value="1000" placeholder="Tokens per day">
+                                        <small class="setting-hint">Tokens distributed daily from treasury</small>
                                     </div>
                                     
-                                    <div class="setting-item">
+                                    <div class="form-group">
                                         <label>Airdrop Threshold</label>
-                                        <input type="number" value="100000" placeholder="Market cap for airdrops">
-                                        <span class="setting-hint">Market cap milestone for community airdrops</span>
+                                        <input type="number" class="form-control" value="100000" placeholder="Market cap for airdrops">
+                                        <small class="setting-hint">Market cap milestone for community airdrops</small>
                                     </div>
                                 </div>
                                 
                                 <div class="settings-section">
                                     <h4><i class="fas fa-shield-alt"></i> Chat Access Control</h4>
                                     
-                                    <div class="setting-item">
-                                        <label>
-                                            <input type="checkbox" id="holdersOnlyChat" ${this.tokenSettings.holdersOnlyChat ? 'checked' : ''}>
-                                            Holders-only chat
-                                        </label>
-                                        <span class="setting-hint">Only token holders can send messages</span>
+                                    <div class="form-check" style="margin-bottom: 1.5rem;">
+                                        <input type="checkbox" id="holdersOnlyChat" ${this.tokenSettings.holdersOnlyChat ? 'checked' : ''}>
+                                        <label for="holdersOnlyChat">Holders-only chat</label>
                                     </div>
                                     
-                                    <div class="setting-item">
+                                    <div class="form-group">
                                         <label>Minimum tokens to chat</label>
-                                        <input type="number" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
-                                        <span class="setting-hint">Minimum balance required to chat</span>
+                                        <input type="number" class="form-control" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
+                                        <small class="setting-hint">Minimum balance required to chat</small>
                                     </div>
                                     
-                                    <div class="setting-item">
+                                    <div class="form-group">
                                         <label>Spotlight threshold</label>
-                                        <input type="number" id="minTokensForSpotlight" value="${this.tokenSettings.minTokensForSpotlight || 500}">
-                                        <span class="setting-hint">Tokens needed for spotlight messages</span>
+                                        <input type="number" class="form-control" id="minTokensForSpotlight" value="${this.tokenSettings.minTokensForSpotlight || 500}">
+                                        <small class="setting-hint">Tokens needed for spotlight messages</small>
                                     </div>
                                 </div>
                             </div>
@@ -619,18 +616,15 @@
                                 <div class="settings-section">
                                     <h4><i class="fas fa-shield-alt"></i> Chat Access Control</h4>
                                     
-                                    <div class="setting-item">
-                                        <label>
-                                            <input type="checkbox" id="holdersOnlyChat" ${this.tokenSettings.holdersOnlyChat ? 'checked' : ''}>
-                                            Holders-only chat
-                                        </label>
-                                        <span class="setting-hint">Only token holders can send messages</span>
+                                    <div class="form-check" style="margin-bottom: 1.5rem;">
+                                        <input type="checkbox" id="holdersOnlyChat" ${this.tokenSettings.holdersOnlyChat ? 'checked' : ''}>
+                                        <label for="holdersOnlyChat">Holders-only chat</label>
                                     </div>
                                     
-                                    <div class="setting-item">
+                                    <div class="form-group">
                                         <label>Minimum tokens to chat</label>
-                                        <input type="number" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
-                                        <span class="setting-hint">Minimum balance required to chat</span>
+                                        <input type="number" class="form-control" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
+                                        <small class="setting-hint">Minimum balance required to chat</small>
                                     </div>
                                 </div>
                                 
