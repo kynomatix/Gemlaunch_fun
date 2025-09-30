@@ -439,17 +439,13 @@ def token_marketplace():
     
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
-@app.route('/app/token/<identifier>')
-def token_detail(identifier):
-    """Individual token detail page - accepts symbol or contract address"""
-    # Try to find by symbol first (more user-friendly), then by contract address
+@app.route('/app/token/<contract_address>')
+def token_detail(contract_address):
+    """Individual token detail page"""
     token = Token.query.options(
         joinedload(Token.creator),
         joinedload(Token.settings)  # Load token settings
-    ).filter(
-        (Token.symbol == identifier.upper()) | 
-        (Token.contract_address == identifier)
-    ).first_or_404()
+    ).filter_by(contract_address=contract_address).first_or_404()
     
     # Get recent trades with eager loading of user information
     recent_trades = Trade.query.options(
