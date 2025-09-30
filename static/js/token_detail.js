@@ -1213,7 +1213,9 @@
             
             spotlightDiv.innerHTML = `
                 <div style="display: flex; align-items: start; gap: 0.75rem;">
-                    <div class="spotlight-icon" style="font-size: 1.5rem; color: #20B2AA;">📌</div>
+                    <div class="spotlight-icon" style="font-size: 0.9rem; color: #20B2AA; margin-top: 0.2rem;">
+                        <i class="fas fa-thumbtack"></i>
+                    </div>
                     <div class="spotlight-content" style="flex: 1;">
                         <div class="spotlight-user" style="
                             font-weight: 600;
@@ -1228,13 +1230,13 @@
                         <div class="spotlight-time" style="
                             display: flex;
                             align-items: center;
-                            gap: 0.5rem;
+                            gap: 0.25rem;
                             margin-top: 0.5rem;
                             color: #00CED1;
                             font-size: 0.85rem;
                         ">
-                            <i class="fas fa-clock" style="color: #00CED1;"></i>
-                            <span id="spotlight-timer-${spotlight.id}">${timeRemaining} minutes remaining</span>
+                            <i class="fas fa-clock" style="color: #00CED1; font-size: 0.8rem;"></i>
+                            <span id="spotlight-timer-${spotlight.id}">${timeRemaining}m</span>
                         </div>
                     </div>
                 </div>
@@ -1249,9 +1251,9 @@
                 const timerElement = document.getElementById(`spotlight-timer-${spotlight.id}`);
                 if (timerElement) {
                     if (remaining > 0) {
-                        timerElement.textContent = `${remaining} minutes remaining`;
+                        timerElement.textContent = `${remaining}m`;
                     } else {
-                        timerElement.innerHTML = '<span style="color: #dc3545;">Expiring...</span>';
+                        timerElement.innerHTML = '<span style="color: #dc3545;">0m</span>';
                         clearInterval(timerId);
                     }
                 }
