@@ -69,6 +69,8 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Backend API returns love_count and is_loved_by_user for each message from MessageReaction table
 - Frontend loads reaction data from database instead of localStorage, ensuring accurate counts after refresh
 - Heart icons properly show as active (red) when user has already loved a message
+- Merged Token Rewards and How to Earn Rewards sections into single collapsible section
+- Fixed Treasury percentage to display actual reserved_percentage from token (not arbitrary calculation)
 
 # User Preferences
 

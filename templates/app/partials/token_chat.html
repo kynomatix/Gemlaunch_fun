@@ -29,63 +29,16 @@
     </div>
     {% endif %}
     
-    <!-- Accolades Section - PRO TOKENS ONLY (Collapsible to save space) -->
+    <!-- Token Rewards Section - PRO TOKENS ONLY (Collapsible) -->
     {% if is_pro_token %}
     <div class="achievement-guide">
         <div class="achievement-header">
-            <h4><i class="fas fa-crown"></i> Token Rewards <span class="accolade-badge pro" style="margin-left: 0.5rem;">Treasury: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }}%</span></h4>
+            <h4><i class="fas fa-crown"></i> How to Earn {{ token.symbol }} Rewards <span class="accolade-badge pro" style="margin-left: 0.5rem;">Treasury: {{ token.reserved_percentage|round(1) if token.reserved_percentage else 0 }}%</span></h4>
             <button class="achievement-toggle" onclick="toggleTokenRewards()">
                 <i class="fas fa-chevron-down"></i>
             </button>
         </div>
         <div class="achievement-content collapsed" id="tokenRewardsContent">
-            <div class="accolade-items">
-                <div class="accolade-item">
-                    <i class="fas fa-comment-dots"></i>
-                    <div>
-                        <strong>Chat Participation</strong>
-                        <span>Earn ${{ token.symbol }} from treasury for quality contributions</span>
-                    </div>
-                </div>
-                <div class="accolade-item">
-                    <i class="fas fa-chart-line"></i>
-                    <div>
-                        <strong>High Engagement</strong>
-                        <span>Get bonus rewards when your messages get lots of reactions</span>
-                    </div>
-                </div>
-                <div class="accolade-item">
-                    <i class="fas fa-trophy"></i>
-                    <div>
-                        <strong>Top Holder Rewards</strong>
-                        <span>Earn airdrops from treasury based on your holdings</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    <!-- BASIC TOKENS: NO ACCOLADES AT ALL -->
-    
-    <!-- Token gate status -->
-    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
-        <div class="gate-info">
-            <i class="fas fa-shield-alt"></i>
-            <span>Only ${{ token.symbol }} holders can chat</span>
-            <span class="minimum-balance">Min: 1,000 tokens</span>
-        </div>
-    </div>
-    
-    <!-- Measurable Activities Guide (Pro Tokens Only) -->
-    {% if is_pro_token %}
-    <div class="achievement-guide">
-        <div class="achievement-header">
-            <h4><i class="fas fa-medal"></i> How to Earn {{ token.symbol }} Rewards</h4>
-            <button class="achievement-toggle" onclick="toggleAchievements()">
-                <i class="fas fa-chevron-down"></i>
-            </button>
-        </div>
-        <div class="achievement-content collapsed" id="achievementContent">
             <div class="achievement-list">
                 <div class="achievement-item pro-only">
                     <span class="badge governance">💬</span>
@@ -122,6 +75,16 @@
         </div>
     </div>
     {% endif %}
+    <!-- BASIC TOKENS: NO ACCOLADES AT ALL -->
+    
+    <!-- Token gate status -->
+    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
+        <div class="gate-info">
+            <i class="fas fa-shield-alt"></i>
+            <span>Only ${{ token.symbol }} holders can chat</span>
+            <span class="minimum-balance">Min: 1,000 tokens</span>
+        </div>
+    </div>
 
     <!-- Gamified Leaderboard -->
     <div class="chat-leaderboard">

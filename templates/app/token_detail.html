@@ -219,21 +219,6 @@
             }
         }
         
-        function toggleAchievements() {
-            const content = document.getElementById('achievementContent');
-            const button = document.querySelector('.achievement-toggle i');
-            
-            if (content.classList.contains('collapsed')) {
-                content.classList.remove('collapsed');
-                content.style.maxHeight = content.scrollHeight + 'px';
-                button.classList.replace('fa-chevron-down', 'fa-chevron-up');
-            } else {
-                content.classList.add('collapsed');
-                content.style.maxHeight = '0';
-                button.classList.replace('fa-chevron-up', 'fa-chevron-down');
-            }
-        }
-        
         function toggleLeaderboard() {
             const content = document.getElementById('leaderboardContent');
             const button = document.querySelector('.leaderboard-toggle i');
