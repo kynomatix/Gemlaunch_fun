@@ -988,7 +988,6 @@
                             delete this.chatState.messageLoves[messageId];
                             this.chatState.userLoves = this.chatState.userLoves.filter(id => id !== messageId);
                             
-                            this.modals.showNotification('Message Deleted', 'The message has been removed successfully.', 'success');
                             console.log(`🗑️ Deleted message ${messageId}`);
                         } else {
                             const error = await response.json();
