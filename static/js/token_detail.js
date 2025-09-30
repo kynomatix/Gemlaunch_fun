@@ -191,7 +191,8 @@
             spotlightMessages: [],
             activePolls: [],
             airdropHistory: [],
-            replyingTo: null  // Track which message is being replied to
+            replyingTo: null,  // Track which message is being replied to
+            messagesData: {}  // Store message data for reply lookups
         },
         
         // Initialize the module with data from server
@@ -270,8 +271,26 @@
                     
                     chatContainer.innerHTML = '';
                     
+                    // First pass: store all message data
                     data.messages.forEach(msg => {
-                        this.addMessageToChat(msg.user, msg.message, false, msg.id, msg.wallet);
+                        this.chatState.messagesData[msg.id] = {
+                            user: msg.user,
+                            username: msg.user,
+                            text: msg.message,
+                            wallet: msg.wallet
+                        };
+                    });
+                    
+                    // Second pass: display messages with reply information
+                    data.messages.forEach(msg => {
+                        this.addMessageToChat(
+                            msg.user, 
+                            msg.message, 
+                            false, 
+                            msg.id, 
+                            msg.wallet,
+                            msg.reply_to || null
+                        );
                     });
                     
                     console.log(`📥 Loaded ${data.messages.length} messages from database`);
@@ -643,7 +662,15 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    this.addMessageToChat(data.message.user, data.message.message, false, data.message.id);
+                    // Pass reply information if available
+                    this.addMessageToChat(
+                        data.message.user, 
+                        data.message.message, 
+                        false, 
+                        data.message.id,
+                        data.message.wallet,
+                        data.message.reply_to || null
+                    );
                     input.value = '';
                     
                     // Clear reply state after sending
@@ -662,18 +689,38 @@
             }
         },
         
-        addMessageToChat: function(user, message, isSpotlight = false, msgId = null, wallet = null) {
+        addMessageToChat: function(user, message, isSpotlight = false, msgId = null, wallet = null, replyTo = null) {
             const messagesContainer = document.getElementById('chatMessages');
             const messageId = msgId || Date.now();
             
             const displayName = this.getUserDisplayName(user);
             const userClass = this.getUsernameClass(wallet || user);
             
+            // Store message data for future reply references
+            this.chatState.messagesData[messageId] = {
+                user: user,
+                username: displayName,
+                text: message,
+                wallet: wallet
+            };
+            
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${isSpotlight ? 'spotlight-in-chat' : ''}`;
             messageDiv.setAttribute('data-message-id', messageId);
             
+            // Build reply reference if this message is a reply
+            let replyReferenceHTML = '';
+            if (replyTo) {
+                replyReferenceHTML = `
+                    <div class="reply-reference">
+                        <i class="fas fa-reply"></i>
+                        <span>Replying to <strong>@${replyTo.user}</strong>: ${replyTo.text}</span>
+                    </div>
+                `;
+            }
+            
             messageDiv.innerHTML = `
+                ${replyReferenceHTML}
                 <div class="message-content">
                     <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${displayName}:</span>
                     <span class="chat-text">${message} ${isSpotlight ? '✨' : ''}</span>
@@ -799,11 +846,12 @@
             // Clear any existing reply indicator
             this.clearReply();
             
-            // Store reply state
+            // Store reply state with full message text for sending to backend
+            const fullText = textEl ? textEl.textContent.replace('✨', '').trim() : '';
             this.chatState.replyingTo = {
                 id: messageId,
                 username: username,
-                text: messageText
+                text: fullText.substring(0, 100) + (fullText.length > 100 ? '...' : '')
             };
             
             // Add visual indicator to the message being replied to

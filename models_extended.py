@@ -14,6 +14,9 @@ class ChatMessage(db.Model):
     content = db.Column(db.Text, nullable=False)
     message_type = db.Column(db.String(32), default='regular')  # regular, spotlight, announcement
     
+    # Reply functionality
+    reply_to_id = db.Column(db.Integer, db.ForeignKey('chat_message.id'), nullable=True)
+    
     # Message metadata
     is_pinned = db.Column(db.Boolean, default=False)
     is_deleted = db.Column(db.Boolean, default=False)
@@ -31,6 +34,7 @@ class ChatMessage(db.Model):
     token = db.relationship('Token', backref='chat_messages')
     user = db.relationship('User', backref='chat_messages')
     reactions = db.relationship('MessageReaction', backref='message', lazy='dynamic', cascade='all, delete-orphan')
+    reply_to = db.relationship('ChatMessage', remote_side=[id], backref='replies')
     
     def __repr__(self):
         return f'<ChatMessage {self.id} in {self.token.symbol}>'

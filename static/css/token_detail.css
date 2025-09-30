@@ -1672,6 +1672,47 @@
     animation: slideDown 0.3s ease;
 }
 
+/* Reply Reference Inside Messages */
+.reply-reference {
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.08), rgba(0, 206, 209, 0.04));
+    border-left: 2px solid rgba(32, 178, 170, 0.4);
+    border-radius: 6px;
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.9;
+    transition: all 0.3s ease;
+}
+
+.reply-reference:hover {
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.12), rgba(0, 206, 209, 0.06));
+    opacity: 1;
+}
+
+.reply-reference i {
+    color: #20B2AA;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+.reply-reference strong {
+    color: #20B2AA;
+    font-weight: 600;
+    margin-right: 0.25rem;
+}
+
+.reply-reference span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
 @keyframes slideDown {
     from {
         transform: translateY(-10px);

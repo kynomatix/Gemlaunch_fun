@@ -517,9 +517,10 @@ def token_messages(contract_address):
     user = get_current_user()
     
     if request.method == 'GET':
-        # Get messages with user info and profile
+        # Get messages with user info and profile, including reply-to relationships
         messages = ChatMessage.query.options(
-            joinedload(ChatMessage.user).joinedload(User.profile)
+            joinedload(ChatMessage.user).joinedload(User.profile),
+            joinedload(ChatMessage.reply_to).joinedload(ChatMessage.user).joinedload(User.profile)
         ).filter_by(
             token_id=token.id, 
             is_deleted=False
@@ -528,7 +529,7 @@ def token_messages(contract_address):
         # Convert to dict format for frontend
         message_list = []
         for msg in reversed(messages):
-            message_list.append({
+            msg_dict = {
                 'id': msg.id,
                 'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'wallet': msg.user.wallet_address,
@@ -537,7 +538,18 @@ def token_messages(contract_address):
                 'love_count': msg.love_count,
                 'created_at': msg.created_at.isoformat(),
                 'is_pinned': msg.is_pinned
-            })
+            }
+            
+            # Add reply information if this message is a reply
+            if msg.reply_to_id and msg.reply_to:
+                reply_user_name = (msg.reply_to.user.profile.username if msg.reply_to.user.profile and msg.reply_to.user.profile.username else msg.reply_to.user.display_name) or msg.reply_to.user.wallet_address[-6:]
+                msg_dict['reply_to'] = {
+                    'id': msg.reply_to.id,
+                    'user': reply_user_name,
+                    'text': msg.reply_to.content[:100] + ('...' if len(msg.reply_to.content) > 100 else '')
+                }
+            
+            message_list.append(msg_dict)
         
         return jsonify({'messages': message_list})
     
@@ -556,20 +568,34 @@ def token_messages(contract_address):
             token_id=token.id,
             user_id=user.id,
             content=message_text,
-            message_type=data.get('message_type', 'regular')
+            message_type=data.get('message_type', 'regular'),
+            reply_to_id=data.get('reply_to_id')  # Store reply_to_id if provided
         )
         db.session.add(message)
         db.session.commit()
         
+        # If this is a reply, load the reply_to information
+        response_msg = {
+            'id': message.id,
+            'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
+            'wallet': user.wallet_address,
+            'message': message.content,
+            'created_at': message.created_at.isoformat()
+        }
+        
+        if message.reply_to_id:
+            db.session.refresh(message)  # Refresh to get the relationship
+            if message.reply_to:
+                reply_user_name = (message.reply_to.user.profile.username if message.reply_to.user.profile and message.reply_to.user.profile.username else message.reply_to.user.display_name) or message.reply_to.user.wallet_address[-6:]
+                response_msg['reply_to'] = {
+                    'id': message.reply_to.id,
+                    'user': reply_user_name,
+                    'text': message.reply_to.content[:100] + ('...' if len(message.reply_to.content) > 100 else '')
+                }
+        
         return jsonify({
             'success': True,
-            'message': {
-                'id': message.id,
-                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
-                'wallet': user.wallet_address,
-                'message': message.content,
-                'created_at': message.created_at.isoformat()
-            }
+            'message': response_msg
         })
 
 @app.route('/api/token/<contract_address>/polls', methods=['GET', 'POST'])
