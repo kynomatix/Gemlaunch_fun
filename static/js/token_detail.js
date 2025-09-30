@@ -12,6 +12,7 @@
         kasToUsd: 0.125,
         tokenSymbol: null,
         tokenName: null,
+        isProToken: false,
         
         // Chart state
         currentChartType: 'marketcap',
@@ -43,6 +44,7 @@
             this.marketCap = config.marketCap;
             this.tokenSymbol = config.tokenSymbol;
             this.tokenName = config.tokenName;
+            this.isProToken = config.isProToken || false;
             this.tokenSettings = config.tokenSettings || this.tokenSettings;
             
             // Initialize chat state from localStorage
@@ -182,7 +184,7 @@
             const userWallet = localStorage.getItem('connectedWallet');
             const tokenCreatorAddress = window.tokenCreatorAddress;
             const isTokenOwner = userWallet && userWallet.toLowerCase() === tokenCreatorAddress.toLowerCase();
-            const isProToken = window.isProToken;
+            const isProToken = this.isProToken;
             
             console.log(`🔐 Ownership check - User: ${userWallet}, Creator: ${tokenCreatorAddress}, Is Owner: ${isTokenOwner}, Is Pro: ${isProToken}`);
             
@@ -222,9 +224,9 @@
                     const isHoldersOnly = this.tokenSettings.holdersOnlyChat;
                     const minTokens = this.tokenSettings.minTokensToChat;
                     if (isHoldersOnly) {
-                        const icon = isProToken ? 'fa-crown' : 'fa-shield-alt';
+                        const icon = this.isProToken ? 'fa-crown' : 'fa-shield-alt';
                         tokenGateContainer.innerHTML = `
-                            <div class="token-gate-badge ${isProToken ? 'pro-token' : ''}" title="Holders-only chat active">
+                            <div class="token-gate-badge ${this.isProToken ? 'pro-token' : ''}" title="Holders-only chat active">
                                 <i class="fas ${icon}"></i>
                                 <span>Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + ' tokens)' : ''}</span>
                             </div>
@@ -535,8 +537,155 @@
         },
         
         openChatSettings: function() {
-            console.log('⚙️ Open chat settings');
-            // Implementation here
+            console.log('🔧 Opening chat settings...');
+            console.log('🔧 Token type:', this.isProToken ? 'pro' : 'basic', 'Is Pro:', this.isProToken);
+            
+            // Different settings for pro vs basic tokens
+            if (this.isProToken) {
+                // Pro Token Settings Modal - includes treasury management
+                const modalHtml = `
+                    <div id="chatSettingsModal" class="modal" style="display: flex;">
+                        <div class="modal-content chat-settings-modal">
+                            <div class="modal-header">
+                                <h3><i class="fas fa-crown"></i> Pro Token Settings</h3>
+                                <button class="modal-close" onclick="TokenDetail.closeChatSettings()">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="settings-section">
+                                    <h4><i class="fas fa-coins"></i> Treasury Management</h4>
+                                    <p>Configure how treasury funds are distributed to active community members.</p>
+                                    
+                                    <div class="setting-item">
+                                        <label>Daily Reward Pool</label>
+                                        <input type="number" value="1000" placeholder="Tokens per day">
+                                        <span class="setting-hint">Tokens distributed daily from treasury</span>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <label>Airdrop Threshold</label>
+                                        <input type="number" value="100000" placeholder="Market cap for airdrops">
+                                        <span class="setting-hint">Market cap milestone for community airdrops</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="settings-section">
+                                    <h4><i class="fas fa-shield-alt"></i> Chat Access Control</h4>
+                                    
+                                    <div class="setting-item">
+                                        <label>
+                                            <input type="checkbox" id="holdersOnlyChat" ${this.tokenSettings.holdersOnlyChat ? 'checked' : ''}>
+                                            Holders-only chat
+                                        </label>
+                                        <span class="setting-hint">Only token holders can send messages</span>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <label>Minimum tokens to chat</label>
+                                        <input type="number" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
+                                        <span class="setting-hint">Minimum balance required to chat</span>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <label>Spotlight threshold</label>
+                                        <input type="number" id="minTokensForSpotlight" value="${this.tokenSettings.minTokensForSpotlight || 500}">
+                                        <span class="setting-hint">Tokens needed for spotlight messages</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="TokenDetail.closeChatSettings()">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="TokenDetail.saveChatSettings()">Save Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal to page if not already present
+                if (!document.getElementById('chatSettingsModal')) {
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                }
+                
+                document.getElementById('chatSettingsModal').style.display = 'flex';
+            } else {
+                // Basic Token Settings - simple chat controls only
+                const modalHtml = `
+                    <div id="chatSettingsModal" class="modal" style="display: flex;">
+                        <div class="modal-content chat-settings-modal">
+                            <div class="modal-header">
+                                <h3><i class="fas fa-cog"></i> Chat Settings</h3>
+                                <button class="modal-close" onclick="TokenDetail.closeChatSettings()">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="settings-section">
+                                    <h4><i class="fas fa-shield-alt"></i> Chat Access Control</h4>
+                                    
+                                    <div class="setting-item">
+                                        <label>
+                                            <input type="checkbox" id="holdersOnlyChat" ${this.tokenSettings.holdersOnlyChat ? 'checked' : ''}>
+                                            Holders-only chat
+                                        </label>
+                                        <span class="setting-hint">Only token holders can send messages</span>
+                                    </div>
+                                    
+                                    <div class="setting-item">
+                                        <label>Minimum tokens to chat</label>
+                                        <input type="number" id="minTokensToChat" value="${this.tokenSettings.minTokensToChat || 0}">
+                                        <span class="setting-hint">Minimum balance required to chat</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="basic-token-note">
+                                    <i class="fas fa-info-circle"></i>
+                                    <p>Basic tokens have limited features. Create a Pro token with treasury allocation to unlock rewards, airdrops, and advanced community management.</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="TokenDetail.closeChatSettings()">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="TokenDetail.saveChatSettings()">Save Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal to page if not already present  
+                if (!document.getElementById('chatSettingsModal')) {
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                }
+                
+                document.getElementById('chatSettingsModal').style.display = 'flex';
+            }
+            
+            console.log('🔧 Chat settings modal opened successfully');
+        },
+        
+        closeChatSettings: function() {
+            const modal = document.getElementById('chatSettingsModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            console.log('🔧 Settings modal closed');
+        },
+        
+        saveChatSettings: function() {
+            // Save settings logic
+            const holdersOnly = document.getElementById('holdersOnlyChat').checked;
+            const minTokens = document.getElementById('minTokensToChat').value;
+            
+            this.tokenSettings.holdersOnlyChat = holdersOnly;
+            this.tokenSettings.minTokensToChat = parseInt(minTokens) || 0;
+            
+            if (this.isProToken) {
+                // Save additional pro token settings
+                const spotlightThreshold = document.getElementById('minTokensForSpotlight').value;
+                this.tokenSettings.minTokensForSpotlight = parseInt(spotlightThreshold) || 500;
+            }
+            
+            console.log('💾 Saving chat settings:', this.tokenSettings);
+            
+            // TODO: Send settings to server via API
+            
+            this.closeChatSettings();
+            this.showNotification('Settings Saved', 'Chat settings have been updated successfully.', 'success');
         },
         
         showNotification: function(title, message, type = 'info') {

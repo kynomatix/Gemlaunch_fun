@@ -136,6 +136,7 @@
                 marketCap: {{ token.current_market_cap }},
                 tokenSymbol: '{{ token.symbol }}',
                 tokenName: '{{ token.name }}',
+                isProToken: {{ 'true' if is_pro_token else 'false' }},
                 tokenSettings: {
                     holdersOnlyChat: {{ (token.settings.holders_only_chat|lower) if token.settings else 'false' }},
                     minTokensToChat: {{ token.settings.min_tokens_to_chat if token.settings else 0 }},
@@ -277,9 +278,7 @@
         }
         
         function openChatSettings() {
-            console.log('Opening chat settings...');
-            // To be implemented with proper settings modal
-            alert('Chat settings modal coming soon!');
+            TokenDetail.openChatSettings();
         }
     </script>
 {% endblock %}

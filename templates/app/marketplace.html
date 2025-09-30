@@ -322,8 +322,8 @@
                                 <div class="token-info">
                                     <div class="token-info-header">
                                         <h3>{{ token.name }}</h3>
-                                        <span class="marketplace-token-badge {{ 'advanced' if token.symbol in ['DOGKAS', 'LASER'] else 'basic' }}">
-                                            {% if token.symbol in ['DOGKAS', 'LASER'] %}
+                                        <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
+                                            {% if token.is_pro %}
                                                 <i class="fas fa-star"></i> Pro
                                             {% else %}
                                                 <i class="fas fa-cog"></i> Basic

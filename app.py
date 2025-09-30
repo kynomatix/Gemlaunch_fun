@@ -432,6 +432,11 @@ def token_marketplace():
     tokens = Token.query.options(
         joinedload(Token.creator)
     ).order_by(Token.created_at.desc()).all()
+    
+    # Add is_pro flag to each token for the template
+    for token in tokens:
+        token.is_pro = TokenService.is_pro_token(token)
+    
     return render_template('app/marketplace.html', tokens=tokens, user=user)
 
 @app.route('/app/token/<contract_address>')
