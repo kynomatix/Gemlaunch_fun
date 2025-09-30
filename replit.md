@@ -86,10 +86,17 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Fixed XSS vulnerabilities in spotlight messages (user, message)
 - Fixed XSS vulnerabilities in modal helpers (alert, confirm, prompt - all title/message/input fields)
 - All user-controlled strings now properly escaped before innerHTML insertion or HTML attribute assignment
+- Fixed dashboard visual anomalies: added proper styling for View Token buttons, fixed missing token images in portfolio
+- Removed duplicate Holdings section from dashboard for cleaner layout
+- Replaced all oval/pill-shaped buttons (25-50px border-radius) with sleek rectangular buttons (10px border-radius) across entire site
+- Applied consistent button design: 21 instances updated across templates and CSS files for modern rectangular appearance
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Design Preferences
+- **Button Style**: Sleek rectangular buttons with rounded corners (border-radius: 10px). NEVER use oval/pill-shaped buttons (border-radius: 25px+)
 
 # System Architecture
 
