@@ -275,77 +275,52 @@
                         </div>
                     </div>
                     
-                    <!-- Accolades Guide -->
+                    <!-- Accolades Guide (Pro Tokens Only) -->
+                    {% if is_pro_token %}
                     <div class="achievement-guide">
                         <div class="achievement-header">
-                            <h4><i class="fas fa-medal"></i> How to Earn Accolades</h4>
+                            <h4><i class="fas fa-medal"></i> How to Earn {{ token.symbol }} Rewards</h4>
                             <button class="achievement-toggle" onclick="toggleAchievements()">
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                         </div>
                         <div class="achievement-content collapsed" id="achievementContent">
                             <div class="achievement-list">
-                                {% if token.symbol in ['DOGKAS', 'LASER'] %}
-                                    <div class="achievement-item pro-only">
-                                        <span class="badge governance">🏛️</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} DAO Governor</strong>
-                                            <p>Participate in 10+ governance votes for this token</p>
-                                        </div>
+                                <div class="achievement-item pro-only">
+                                    <span class="badge governance">🏛️</span>
+                                    <div class="achievement-info">
+                                        <strong>{{ token.symbol }} DAO Governor</strong>
+                                        <p>Participate in 10+ governance votes for this token</p>
                                     </div>
-                                    <div class="achievement-item pro-only">
-                                        <span class="badge liquidity">💧</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} Liquidity Provider</strong>
-                                            <p>Add 10,000+ {{ token.symbol }} tokens to liquidity pool</p>
-                                        </div>
+                                </div>
+                                <div class="achievement-item pro-only">
+                                    <span class="badge liquidity">💧</span>
+                                    <div class="achievement-info">
+                                        <strong>{{ token.symbol }} Liquidity Provider</strong>
+                                        <p>Add 10,000+ {{ token.symbol }} tokens to liquidity pool</p>
                                     </div>
-                                    <div class="achievement-item pro-only">
-                                        <span class="badge advisor">🧠</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} Technical Advisor</strong>
-                                            <p>Provide valuable development insights for {{ token.name }}</p>
-                                        </div>
+                                </div>
+                                <div class="achievement-item pro-only">
+                                    <span class="badge advisor">🧠</span>
+                                    <div class="achievement-info">
+                                        <strong>{{ token.symbol }} Technical Advisor</strong>
+                                        <p>Provide valuable development insights for {{ token.name }}</p>
                                     </div>
-                                    <div class="achievement-item pro-only">
-                                        <span class="badge community-builder">🏗️</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} Community Builder</strong>
-                                            <p>Successfully onboard 50+ new users to {{ token.name }}</p>
-                                        </div>
+                                </div>
+                                <div class="achievement-item pro-only">
+                                    <span class="badge community-builder">🏗️</span>
+                                    <div class="achievement-info">
+                                        <strong>{{ token.symbol }} Community Builder</strong>
+                                        <p>Successfully onboard 50+ new users to {{ token.name }}</p>
                                     </div>
-                                    <div class="accolade-note">
-                                        <p><strong>Note:</strong> These are {{ token.name }}-specific accolades. Global platform accolades are tracked separately in the main leaderboard.</p>
-                                    </div>
-                                {% else %}
-                                    <div class="achievement-item">
-                                        <span class="badge token-champion">🏆</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} Champion</strong>
-                                            <p>Be the top holder of {{ token.symbol }} for 30+ days</p>
-                                        </div>
-                                    </div>
-                                    <div class="achievement-item">
-                                        <span class="badge community-builder">🏗️</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} Community Builder</strong>
-                                            <p>Bring 25+ new users to {{ token.name }} community</p>
-                                        </div>
-                                    </div>
-                                    <div class="achievement-item">
-                                        <span class="badge token-evangelist">📢</span>
-                                        <div class="achievement-info">
-                                            <strong>{{ token.symbol }} Evangelist</strong>
-                                            <p>Share {{ token.name }} content that gets 100+ engagements</p>
-                                        </div>
-                                    </div>
-                                    <div class="accolade-note">
-                                        <p><strong>Note:</strong> These are {{ token.name }}-specific accolades. Global platform accolades are tracked separately in the main leaderboard.</p>
-                                    </div>
-                                {% endif %}
+                                </div>
+                                <div class="accolade-note">
+                                    <p><strong>Note:</strong> Pro token holders can earn {{ token.symbol }} airdrops from the treasury. Basic tokens can only earn platform-wide reputation points.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Gamified Leaderboard -->
                     <div class="chat-leaderboard">
