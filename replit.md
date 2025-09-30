@@ -58,6 +58,13 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Corrected JavaScript type detection for pro tokens in getCurrentTokenData() function
 - Added crown icon for pro token holders-only toggle to distinguish from basic tokens
 - Updated settings modal to properly detect pro tokens using server-side is_pro_token flag
+- Simplified Token Rewards section to only show measurable activities (chat, polls, engagement, holding)
+- Made Token Rewards and achievement sections collapsible to save space
+- Removed unmeasurable rewards like liquidity providing, user onboarding, and DAO governance
+- Implemented message deletion capability for token owners to moderate chat (delete spam/offensive content)
+- Added delete button (trash icon) visible only to token owner with confirmation modal
+- Created secure DELETE API endpoint that validates token ownership before deletion
+- Message deletion includes smooth UI animation and proper state cleanup
 
 # User Preferences
 
