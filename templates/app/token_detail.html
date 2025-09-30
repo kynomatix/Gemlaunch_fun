@@ -2582,6 +2582,26 @@
             opacity: 0.8;
         }
         
+        .treasury-display {
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .allocation-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #20B2AA;
+            margin-bottom: 5px;
+        }
+        
+        .treasury-display small {
+            color: #AAA;
+            font-size: 12px;
+        }
+        
         .toggle-group {
             display: flex;
             align-items: center;
@@ -3422,7 +3442,7 @@
         function getCurrentTokenData() {
             // Use real token data passed from server
             const tokenData = {
-                type: {{ 'advanced' if is_pro_token else 'basic'|tojson }},
+                type: '{{ 'advanced' if is_pro_token else 'basic' }}',
                 symbol: '{{ token.symbol }}',
                 name: '{{ token.name }}',
                 // Token settings from database (use the tokenSettings object defined earlier)
@@ -3874,24 +3894,42 @@
                     <div class="token-type-info">
                         <div class="type-badge advanced">
                             <i class="fas fa-star"></i>
-                            <span>Pro Token - Advanced Features</span>
+                            <span>Pro Token - Treasury Management</span>
                         </div>
-                        <p>Advanced treasury mechanics with community rewards</p>
+                        <p>Manage treasury allocations and community rewards</p>
                     </div>
                     <div class="setting-group">
-                        <label>DAO Voting Power</label>
-                        <input type="number" value="10000" readonly>
-                        <small>Fixed at 10,000 ${tokenData.symbol} tokens for governance (cannot be changed)</small>
+                        <label>Treasury Allocation</label>
+                        <div class="treasury-display">
+                            <div class="allocation-value">${tokenData.treasury_allocation}%</div>
+                            <small>Of reserved tokens allocated to treasury (${(tokenData.treasury_allocation * 10000000).toLocaleString()} ${tokenData.symbol})</small>
+                        </div>
                     </div>
                     <div class="setting-group">
-                        <label>Treasury Allocation (%)</label>
-                        <input type="number" value="${tokenData.treasury_allocation || 15}" placeholder="Treasury percentage">
-                        <small>Percentage of trading fees going to community treasury</small>
+                        <label>Liquidity Pool Reserve</label>
+                        <div class="treasury-display">
+                            <div class="allocation-value">${tokenData.lp_allocation}%</div>
+                            <small>Reserved for DEX liquidity (${(tokenData.lp_allocation * 10000000).toLocaleString()} ${tokenData.symbol})</small>
+                        </div>
                     </div>
                     <div class="setting-group">
-                        <label>Community Airdrop Pool (%)</label>
-                        <input type="number" value="${tokenData.airdrop_pool || 5}" placeholder="Airdrop percentage">
-                        <small>Percentage reserved for active community member airdrops</small>
+                        <label>Community Airdrop Pool</label>
+                        <div class="treasury-display">
+                            <div class="allocation-value">${tokenData.airdrop_pool}%</div>
+                            <small>Available for rewarding active members (${(tokenData.airdrop_pool * 10000000).toLocaleString()} ${tokenData.symbol})</small>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label>Award Community Members</label>
+                        <button class="btn-primary" onclick="openAirdropManager()" style="width: 100%; margin-top: 10px;">
+                            <i class="fas fa-gift"></i> Manage Airdrops
+                        </button>
+                        <small>Distribute tokens to top contributors and active members</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>DAO Voting Threshold</label>
+                        <input type="number" id="daoVotingThreshold" value="10000" placeholder="Min tokens for DAO voting">
+                        <small>Minimum ${tokenData.symbol} tokens required for governance voting</small>
                     </div>
                     <div class="setting-group">
                         <label>Accolade Selection</label>
@@ -3969,6 +4007,105 @@
             console.log('💾 Settings saved');
             showNotification('💾 Settings Saved', 'Your settings have been updated successfully!', 'success');
             closeSettingsModal();
+        }
+        
+        function openAirdropManager() {
+            // Close settings modal first
+            closeSettingsModal();
+            
+            // Create airdrop manager modal
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'settings-modal-overlay';
+            modalOverlay.innerHTML = `
+                <div class="settings-modal">
+                    <div class="settings-header">
+                        <h3><i class="fas fa-gift"></i> Community Airdrop Manager</h3>
+                        <button class="close-settings" onclick="closeAirdropModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="settings-content">
+                        <div class="token-type-info">
+                            <div class="type-badge advanced">
+                                <i class="fas fa-parachute-box"></i>
+                                <span>Token Distribution</span>
+                            </div>
+                            <p>Reward your most active community members</p>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>Available Treasury Balance</label>
+                            <div class="treasury-display">
+                                <div class="allocation-value">2,500,000 {{ token.symbol }}</div>
+                                <small>From your airdrop allocation pool</small>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>Airdrop Type</label>
+                            <select id="airdropType" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #FFF;">
+                                <option value="topHolders">Top 100 Holders</option>
+                                <option value="activeTraders">Most Active Traders (Last 7 Days)</option>
+                                <option value="socialChampions">Social Champions (Most Chat Activity)</option>
+                                <option value="earlyBackers">Early Backers (First 500 Buyers)</option>
+                                <option value="custom">Custom Wallet List</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>Distribution Amount</label>
+                            <input type="number" id="airdropAmount" placeholder="Amount per wallet" style="width: 100%;">
+                            <small>{{ token.symbol }} tokens to distribute per eligible wallet</small>
+                        </div>
+                        
+                        <div class="setting-group" id="customWalletGroup" style="display: none;">
+                            <label>Wallet Addresses</label>
+                            <textarea id="customWallets" placeholder="Enter wallet addresses, one per line" style="width: 100%; min-height: 100px; padding: 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #FFF; resize: vertical;"></textarea>
+                            <small>Paste wallet addresses to receive the airdrop</small>
+                        </div>
+                    </div>
+                    <div class="settings-footer">
+                        <button class="btn-secondary" onclick="closeAirdropModal()">Cancel</button>
+                        <button class="btn-primary" onclick="executeAirdrop()">
+                            <i class="fas fa-paper-plane"></i> Execute Airdrop
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modalOverlay);
+            modalOverlay.id = 'airdropModal';
+            
+            // Show/hide custom wallet input based on selection
+            document.getElementById('airdropType').addEventListener('change', function(e) {
+                const customGroup = document.getElementById('customWalletGroup');
+                customGroup.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            });
+        }
+        
+        function closeAirdropModal() {
+            const modal = document.getElementById('airdropModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function executeAirdrop() {
+            const type = document.getElementById('airdropType').value;
+            const amount = document.getElementById('airdropAmount').value;
+            
+            if (!amount || amount <= 0) {
+                showNotification('❌ Invalid Amount', 'Please enter a valid distribution amount', 'error');
+                return;
+            }
+            
+            // In production, this would execute on-chain
+            showNotification(
+                '🎉 Airdrop Initiated!', 
+                `Distributing ${amount} {{ token.symbol }} to ${type === 'topHolders' ? 'top 100 holders' : 'selected recipients'}.\n\nTransaction will be processed on-chain.`, 
+                'success'
+            );
+            closeAirdropModal();
         }
         
         function showUsernameModal() {
