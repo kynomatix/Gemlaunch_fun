@@ -301,6 +301,21 @@
                 <p>Discover and trade community-driven memecoins on Kaspa</p>
             </div>
 
+            <!-- Wallet Connect Banner for Anonymous Users -->
+            {% if not user %}
+            <div style="background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 15px; padding: 1.5rem; margin: 0 auto 2rem auto; max-width: 800px; text-align: center;">
+                <h3 style="color: #20B2AA; margin-bottom: 0.5rem;">
+                    <i class="fas fa-wallet"></i> Connect Your Wallet
+                </h3>
+                <p style="color: rgba(255,255,255,0.7); margin-bottom: 1rem;">
+                    Connect your wallet to create tokens, trade, and participate in the community
+                </p>
+                <button class="btn-primary" onclick="connectWallet()" style="padding: 0.75rem 2rem;">
+                    <i class="fas fa-wallet"></i> Connect Wallet
+                </button>
+            </div>
+            {% endif %}
+
             <!-- Filters -->
             <div class="filters">
                 <button class="filter-btn active">🔥 Trending</button>

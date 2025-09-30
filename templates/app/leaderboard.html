@@ -13,8 +13,9 @@
     </div>
 
     <div class="leaderboard-grid">
-        <!-- Your Rank Card -->
+        <!-- Your Rank Card or Connect Wallet Banner -->
         <div class="rank-card user-rank-card">
+            {% if user %}
             <div class="rank-header">
                 <h3>
                     <i class="fas fa-user"></i>
@@ -41,6 +42,22 @@
                     </div>
                 </div>
             </div>
+            {% else %}
+            <div class="rank-header">
+                <h3>
+                    <i class="fas fa-wallet"></i>
+                    Connect Wallet
+                </h3>
+            </div>
+            <div class="rank-content" style="text-align: center; padding: 2rem;">
+                <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.7);">
+                    Connect your wallet to see your rank and compete for rewards
+                </p>
+                <button class="btn-primary" onclick="connectWallet()" style="width: 100%; max-width: 300px;">
+                    <i class="fas fa-wallet"></i> Connect Wallet
+                </button>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Top Rankings -->
@@ -58,7 +75,7 @@
 
             <div class="rankings-table">
                 {% for ranked_user in top_users[:10] %}
-                <div class="rank-row {{ 'current-user' if ranked_user.id == user.id else '' }} {{ 'top-three' if loop.index <= 3 else '' }}">
+                <div class="rank-row {{ 'current-user' if user and ranked_user.id == user.id else '' }} {{ 'top-three' if loop.index <= 3 else '' }}">
                     <div class="rank-position-display">
                         {% if loop.index == 1 %}
                             <i class="fas fa-crown gold"></i>

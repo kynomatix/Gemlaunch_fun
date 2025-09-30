@@ -148,6 +148,15 @@ def require_wallet_connection(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def wallet_optional(f):
+    """Decorator for routes that work with or without wallet connection"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # User will be None if not connected, views must handle this
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
 def index():
     """Main landing page for Gemlaunch.fun"""
@@ -422,11 +431,10 @@ def create_token():
 
 @app.route('/app/tokens')
 @app.route('/app/marketplace')  # Add marketplace alias
+@wallet_optional
 def token_marketplace():
-    """Token marketplace - main home page (pump.fun style)"""
-    user = get_current_user()
-    if not user:
-        return render_template('app/connect_wallet.html')
+    """Token marketplace - main home page (pump.fun style) - accessible without wallet"""
+    user = get_current_user()  # Will be None if not connected
     
     # Show all tokens with eager loading of creator information
     tokens = Token.query.options(
@@ -931,11 +939,10 @@ def react_to_message(contract_address, message_id):
 
 # Leaderboard routes
 @app.route('/app/leaderboard')
+@wallet_optional
 def leaderboard():
-    """Main leaderboard page with rankings and points"""
-    user = get_current_user()
-    if not user:
-        return render_template('app/connect_wallet.html')
+    """Main leaderboard page with rankings and points - accessible without wallet"""
+    user = get_current_user()  # Will be None if not connected
     
     # Get top users by GEM points with eager loading of related data
     top_users = User.query.options(
@@ -943,17 +950,18 @@ def leaderboard():
         joinedload(User.profile)
     ).order_by(User.gem_points.desc()).limit(50).all()
     
-    # Get user's rank
+    # Get user's rank (only if user is connected)
     user_rank = None
-    for i, u in enumerate(top_users, 1):
-        if u.id == user.id:
-            user_rank = i
-            break
-    
-    # If user not in top 50, calculate their actual rank
-    if user_rank is None:
-        users_above = User.query.filter(User.gem_points > user.gem_points).count()
-        user_rank = users_above + 1
+    if user:
+        for i, u in enumerate(top_users, 1):
+            if u.id == user.id:
+                user_rank = i
+                break
+        
+        # If user not in top 50, calculate their actual rank
+        if user_rank is None:
+            users_above = User.query.filter(User.gem_points > user.gem_points).count()
+            user_rank = users_above + 1
     
     return render_template('app/leaderboard.html', 
                          user=user, 
