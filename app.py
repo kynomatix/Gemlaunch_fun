@@ -847,11 +847,14 @@ def token_spotlight(contract_address):
         
         spotlight_list = []
         for msg in spotlights:
+            # Calculate when this message expires (1 hour after creation)
+            expires_at = msg.created_at + timedelta(hours=1)
             spotlight_list.append({
                 'id': msg.id,
                 'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'message': msg.content,
-                'created_at': msg.created_at.isoformat()
+                'created_at': msg.created_at.isoformat(),
+                'expires_at': expires_at.isoformat()
             })
         
         return jsonify({'spotlights': spotlight_list})

@@ -349,10 +349,10 @@
                     if (data.spotlights && data.spotlights.length > 0 && spotlightContainer && listContainer) {
                         // Add each spotlight message
                         data.spotlights.forEach(spotlight => {
-                            // Calculate when this message expires (1 hour after creation)
-                            const createdAt = new Date(spotlight.created_at).getTime();
-                            const oneHourInMs = 60 * 60 * 1000;
-                            const expiresAt = createdAt + oneHourInMs;
+                            // Use the expires_at directly from backend for consistency
+                            const expiresAt = spotlight.expires_at ? 
+                                new Date(spotlight.expires_at).getTime() : 
+                                new Date(spotlight.created_at).getTime() + (60 * 60 * 1000);
                             
                             const spotlightEntry = {
                                 id: spotlight.id,
