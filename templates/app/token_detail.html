@@ -63,7 +63,7 @@
                         <div class="poll-options-container">
                             <input type="text" class="poll-option" placeholder="Option 1" maxlength="60" required>
                             <input type="text" class="poll-option" placeholder="Option 2" maxlength="60" required>
-                            <button type="button" class="btn btn-secondary" onclick="addPollOption()" style="margin-top: 0.5rem; width: 100%;">
+                            <button type="button" class="add-option-btn" onclick="addPollOption()" style="margin-top: 0.75rem; background: none; border: none; color: #20B2AA; font-size: 0.9rem; cursor: pointer; padding: 0; text-align: left;">
                                 <i class="fas fa-plus"></i> Add Option
                             </button>
                         </div>
@@ -197,7 +197,7 @@
             container.insertBefore(newOption, addButton);
         }
         
-        function createPollSubmit() {
+        async function createPollSubmit() {
             const question = document.getElementById('pollQuestion').value;
             const options = Array.from(document.querySelectorAll('.poll-option'))
                 .map(input => input.value)
@@ -210,9 +210,50 @@
                 return;
             }
             
-            console.log('Creating poll:', { question, options, duration, voteCost });
-            alert('Poll created successfully! (Demo mode)');
-            closePollModal();
+            const userWallet = localStorage.getItem('connectedWallet');
+            if (!userWallet) {
+                alert('Please connect your wallet first');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/polls`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': userWallet
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        options: options,
+                        duration_hours: parseInt(duration),
+                        vote_cost: parseInt(voteCost)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Poll created successfully!');
+                    closePollModal();
+                    // Clear form
+                    document.getElementById('pollQuestion').value = '';
+                    document.querySelectorAll('.poll-option').forEach((input, i) => {
+                        if (i < 2) {
+                            input.value = '';
+                        } else {
+                            input.remove();
+                        }
+                    });
+                    // Reload polls
+                    TokenDetail.loadMessages();
+                } else {
+                    alert(data.error || 'Failed to create poll');
+                }
+            } catch (error) {
+                console.error('Error creating poll:', error);
+                alert('Failed to create poll. Please try again.');
+            }
         }
         
         function toggleTokenRewards() {
