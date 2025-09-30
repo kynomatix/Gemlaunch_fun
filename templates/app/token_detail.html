@@ -268,12 +268,12 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Accolades Section - Different for Basic vs Pro Tokens -->
+                    <!-- Accolades Section - PRO TOKENS ONLY -->
                     {% if is_pro_token %}
-                    <!-- Pro Token: Treasury-based rewards -->
+                    <!-- Pro Token: Treasury-based rewards controlled by token owner -->
                     <div class="accolades-section pro-token-accolades">
                         <div class="accolades-header">
-                            <h4><i class="fas fa-crown"></i> How to Earn Token Rewards</h4>
+                            <h4><i class="fas fa-crown"></i> Token Rewards</h4>
                             <span class="accolade-badge pro">Treasury Pool: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }}%</span>
                         </div>
                         <div class="accolade-items">
@@ -300,38 +300,8 @@
                             </div>
                         </div>
                     </div>
-                    {% else %}
-                    <!-- Basic Token: Platform points only -->
-                    <div class="accolades-section basic-token-accolades">
-                        <div class="accolades-header">
-                            <h4><i class="fas fa-star"></i> How to Earn Platform Points</h4>
-                            <span class="accolade-badge basic">Global Leaderboard</span>
-                        </div>
-                        <div class="accolade-items">
-                            <div class="accolade-item">
-                                <i class="fas fa-comment"></i>
-                                <div>
-                                    <strong>Chat Activity</strong>
-                                    <span>Earn platform points for active participation</span>
-                                </div>
-                            </div>
-                            <div class="accolade-item">
-                                <i class="fas fa-heart"></i>
-                                <div>
-                                    <strong>Community Support</strong>
-                                    <span>Get points for helpful and engaging messages</span>
-                                </div>
-                            </div>
-                            <div class="accolade-item">
-                                <i class="fas fa-chart-line"></i>
-                                <div>
-                                    <strong>Trading Volume</strong>
-                                    <span>Earn points based on your trading activity</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {% endif %}
+                    <!-- BASIC TOKENS: NO ACCOLADES AT ALL -->
                     
                     <!-- Token gate status -->
                     <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
@@ -1947,6 +1917,23 @@
             align-items: center;
             justify-content: center;
             z-index: 10000;
+        }
+        
+        .settings-section {
+            margin-bottom: 2rem;
+        }
+        
+        .settings-section h4 {
+            color: #20B2AA;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .settings-section h4 i {
+            color: #FFD700;
         }
         
         .settings-modal {
@@ -4069,80 +4056,80 @@
                 settingsContent = `
                     <div class="token-type-info">
                         <div class="type-badge advanced">
-                            <i class="fas fa-star"></i>
-                            <span>Pro Token - Treasury Management</span>
+                            <i class="fas fa-crown"></i>
+                            <span>Pro Token - Treasury & Rewards Management</span>
                         </div>
-                        <p>Manage treasury allocations and community rewards</p>
+                        <p>Control accolades distribution and community rewards</p>
                     </div>
-                    <div class="setting-group">
-                        <label>Treasury Allocation</label>
-                        <div class="treasury-display">
-                            <div class="allocation-value">${tokenData.treasury_allocation}%</div>
-                            <small>Of reserved tokens allocated to treasury (${(tokenData.treasury_allocation * 10000000).toLocaleString()} ${tokenData.symbol})</small>
-                        </div>
-                    </div>
-                    <div class="setting-group">
-                        <label>Liquidity Pool Reserve</label>
-                        <div class="treasury-display">
-                            <div class="allocation-value">${tokenData.lp_allocation}%</div>
-                            <small>Reserved for DEX liquidity (${(tokenData.lp_allocation * 10000000).toLocaleString()} ${tokenData.symbol})</small>
-                        </div>
-                    </div>
-                    <div class="setting-group">
-                        <label>Community Airdrop Pool</label>
-                        <div class="treasury-display">
-                            <div class="allocation-value">${tokenData.airdrop_pool}%</div>
-                            <small>Available for rewarding active members (${(tokenData.airdrop_pool * 10000000).toLocaleString()} ${tokenData.symbol})</small>
-                        </div>
-                    </div>
-                    <div class="setting-group">
-                        <label>Award Community Members</label>
-                        <button class="btn-primary" onclick="openAirdropManager()" style="width: 100%; margin-top: 10px;">
-                            <i class="fas fa-gift"></i> Manage Airdrops
-                        </button>
-                        <small>Distribute tokens to top contributors and active members</small>
-                    </div>
-                    <div class="setting-group">
-                        <label>DAO Voting Threshold</label>
-                        <input type="number" id="daoVotingThreshold" value="10000" placeholder="Min tokens for DAO voting">
-                        <small>Minimum ${tokenData.symbol} tokens required for governance voting</small>
-                    </div>
-                    <div class="setting-group">
-                        <label>Accolade Selection</label>
-                        <div class="accolade-selection">
-                            <p>Select which accolades award points in your token community:</p>
-                            <div class="accolade-grid">
-                                <div class="accolade-option pro-exclusive">
-                                    <input type="checkbox" id="accolade_governance" checked>
-                                    <label for="accolade_governance">🏛️ ${tokenData.symbol} DAO Governor</label>
-                                    <span class="accolade-points">+200 pts</span>
-                                </div>
-                                <div class="accolade-option pro-exclusive">
-                                    <input type="checkbox" id="accolade_liquidity" checked>
-                                    <label for="accolade_liquidity">💧 ${tokenData.symbol} Liquidity Provider</label>
-                                    <span class="accolade-points">+120 pts</span>
-                                </div>
-                                <div class="accolade-option pro-exclusive">
-                                    <input type="checkbox" id="accolade_advisor" checked>
-                                    <label for="accolade_advisor">🧠 ${tokenData.symbol} Technical Advisor</label>
-                                    <span class="accolade-points">+180 pts</span>
-                                </div>
-                                <div class="accolade-option pro-exclusive">
-                                    <input type="checkbox" id="accolade_community_builder" checked>
-                                    <label for="accolade_community_builder">🏗️ ${tokenData.symbol} Community Builder</label>
-                                    <span class="accolade-points">+150 pts</span>
-                                </div>
+                    
+                    <div class="settings-section">
+                        <h4><i class="fas fa-coins"></i> Treasury Allocations</h4>
+                        <div class="setting-group">
+                            <label>Treasury Pool</label>
+                            <div class="treasury-display">
+                                <div class="allocation-value">${tokenData.treasury_allocation}%</div>
+                                <small>Available for community rewards (${(tokenData.treasury_allocation * 10000000).toLocaleString()} ${tokenData.symbol})</small>
                             </div>
                         </div>
-                        <small>Points awarded for token-specific accolades contribute to both this token's leaderboard and global rankings</small>
-                    </div>
-                    <div class="setting-group">
-                        <label>Activity Rewards</label>
-                        <div class="toggle-group">
-                            <input type="checkbox" id="chatRewards" checked>
-                            <label for="chatRewards">Reward active community members</label>
+                        <div class="setting-group">
+                            <label>Liquidity Reserve</label>
+                            <div class="treasury-display">
+                                <div class="allocation-value">${tokenData.lp_allocation}%</div>
+                                <small>DEX liquidity provision (${(tokenData.lp_allocation * 10000000).toLocaleString()} ${tokenData.symbol})</small>
+                            </div>
                         </div>
-                        <small>Auto-distribute tokens to quality participants</small>
+                        <div class="setting-group">
+                            <label>Airdrop Pool</label>
+                            <div class="treasury-display">
+                                <div class="allocation-value">${tokenData.airdrop_pool}%</div>
+                                <small>Milestone rewards (${(tokenData.airdrop_pool * 10000000).toLocaleString()} ${tokenData.symbol})</small>
+                        </div>
+                    </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h4><i class="fas fa-trophy"></i> Accolades & Rewards</h4>
+                        <div class="setting-group">
+                            <label>Participation Reward</label>
+                            <input type="number" id="participationReward" value="100" placeholder="Tokens per quality message">
+                            <small>$${tokenData.symbol} tokens for active participation</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Viral Content Bonus</label>
+                            <input type="number" id="viralBonus" value="500" placeholder="Bonus for viral messages">
+                            <small>Extra $${tokenData.symbol} for high-engagement messages</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Milestone Airdrops</label>
+                            <select id="airdropSchedule">
+                                <option value="weekly">Weekly Distribution</option>
+                                <option value="biweekly">Bi-Weekly Distribution</option>
+                                <option value="monthly">Monthly Distribution</option>
+                                <option value="manual">Manual Only</option>
+                            </select>
+                            <small>Automatic treasury distribution schedule</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Community Rewards</label>
+                            <button class="btn-primary" onclick="openRewardsManager()" style="width: 100%; margin-top: 10px;">
+                                <i class="fas fa-gift"></i> Distribute Rewards
+                            </button>
+                            <small>Manually reward top contributors from treasury</small>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h4><i class="fas fa-lock"></i> Access Controls</h4>
+                        <div class="setting-group">
+                            <label>DAO Voting Threshold</label>
+                            <input type="number" id="daoVotingThreshold" value="10000" placeholder="Min tokens for DAO voting">
+                            <small>Minimum $${tokenData.symbol} tokens required for governance voting</small>
+                        </div>
+                        <div class="setting-group">
+                            <label>Holders-Only Chat</label>
+                            <input type="number" id="chatGateTokensPro" value="${tokenData.chat_gate_tokens || 0}" placeholder="0 = open chat">
+                            <small>Minimum $${tokenData.symbol} to participate (0 = open to all)</small>
+                        </div>
                     </div>
                 `;
             }
