@@ -79,12 +79,12 @@
         <div class="stat-item">
             <div class="stat-label">PRICE</div>
             <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
-            <div class="stat-sub">${{ "%.4f"|format(token.current_price|float * 0.125) }}</div>
+            <div class="stat-sub">${{ "%.4f"|format(token.current_price|float * 0.8) }}</div>
         </div>
         <div class="stat-item">
             <div class="stat-label">MARKET CAP</div>
-            <div class="stat-value">${{ ((token.current_market_cap|float or 0) * 0.125)|format_number(True) }}</div>
-            <div class="stat-sub">{{ (token.current_market_cap or 0)|format_number }} KAS</div>
+            <div class="stat-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
+            <div class="stat-sub">{{ ((token.current_market_cap|float or 0) / 0.8)|format_number }} KAS</div>
         </div>
         <div class="stat-item">
             <div class="stat-label">SUPPLY</div>
