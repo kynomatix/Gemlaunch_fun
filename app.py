@@ -466,6 +466,9 @@ def token_detail(contract_address):
     # Use TokenService to determine if token is pro
     is_pro_token = TokenService.is_pro_token(token)
     
+    # Debug logging
+    print(f"DEBUG: Token {token.symbol} - reserved_percentage: {token.reserved_percentage}, is_pro: {is_pro_token}")
+    
     # Ensure token has settings using service
     token.settings = TokenService.ensure_token_settings(token)
     
