@@ -1216,7 +1216,7 @@
             `;
             
             spotlightDiv.innerHTML = `
-                <div style="display: flex; align-items: start; gap: 0.75rem; position: relative;">
+                <div style="display: flex; align-items: start; gap: 0.75rem;">
                     <div class="spotlight-icon" style="font-size: 0.9rem; color: #20B2AA; margin-top: 0.2rem;">
                         <i class="fas fa-thumbtack"></i>
                     </div>
@@ -1232,19 +1232,19 @@
                             line-height: 1.4;
                         ">${spotlight.message}</div>
                     </div>
-                    <div class="spotlight-time" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 0.25rem;
-                        color: #00CED1;
-                        font-size: 0.85rem;
-                        position: absolute;
-                        top: 0;
-                        right: 0.75rem;
-                    ">
-                        <i class="fas fa-clock" style="color: #00CED1; font-size: 0.8rem;"></i>
-                        <span id="spotlight-timer-${spotlight.id}">${timeRemaining}m</span>
-                    </div>
+                </div>
+                <div class="spotlight-time" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 0.25rem;
+                    color: #00CED1;
+                    font-size: 0.85rem;
+                    position: absolute;
+                    top: 0.75rem;
+                    right: 0.75rem;
+                ">
+                    <i class="fas fa-clock" style="color: #00CED1; font-size: 0.8rem;"></i>
+                    <span id="spotlight-timer-${spotlight.id}">${timeRemaining}m</span>
                 </div>
             `;
             
