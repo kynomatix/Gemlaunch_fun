@@ -1649,12 +1649,106 @@
         transform: scale(1) translateY(0);
     }
 }
+
+/* Modal Styles for ProfileNotification */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #0a1414, #0f1a1a);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #20B2AA;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.modal-close:hover {
+    color: #FFF;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    padding: 0.6rem 1.5rem;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    border: none;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(32, 178, 170, 0.4);
+    background: linear-gradient(135deg, #00CED1, #20B2AA);
+}
 </style>
 
 <script>
 function copyWalletAddress(address) {
     if (!address || address === 'None' || address.trim() === '') {
-        alert('No wallet address to copy');
+        ProfileNotification.showAlert('Copy Failed', 'No wallet address to copy', 'error');
         return;
     }
     
@@ -1675,14 +1769,14 @@ function copyWalletAddress(address) {
         }, 2000);
     }).catch(function(err) {
         console.error('Failed to copy wallet address: ', err);
-        alert('Failed to copy wallet address');
+        ProfileNotification.showAlert('Copy Failed', 'Failed to copy wallet address', 'error');
     });
 }
 
 function copyReferralLink() {
     const linkInput = document.getElementById('referralLink');
     if (!linkInput.value || linkInput.value === 'Generating...') {
-        alert('Referral link is not ready yet');
+        ProfileNotification.showAlert('Not Ready', 'Referral link is not ready yet', 'info');
         return;
     }
     
@@ -1700,7 +1794,7 @@ function copyReferralLink() {
         }, 2000);
     }).catch(function(err) {
         console.error('Failed to copy referral link: ', err);
-        alert('Failed to copy referral link');
+        ProfileNotification.showAlert('Copy Failed', 'Failed to copy referral link', 'error');
     });
 }
 </script>
@@ -1708,6 +1802,55 @@ function copyReferralLink() {
 
 {% block extra_scripts %}
 <script>
+// Profile Notification Modal System
+const ProfileNotification = {
+    showAlert: function(title, message, type = 'info', callback) {
+        const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+        const iconColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#FF5252' : '#20B2AA';
+        
+        const modalHTML = `
+            <div id="profileAlertModal" class="modal" style="display: flex;">
+                <div class="modal-content" style="max-width: 400px;">
+                    <div class="modal-header">
+                        <h3><i class="fas ${iconClass}" style="color: ${iconColor};"></i> ${title}</h3>
+                        <button class="modal-close" onclick="ProfileNotification.closeModal('profileAlertModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="color: #CCC; margin: 0; line-height: 1.5;">${message}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-primary" onclick="ProfileNotification.closeModal('profileAlertModal')">
+                            <i class="fas fa-check"></i> OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const existingModal = document.getElementById('profileAlertModal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        if (callback) {
+            const modal = document.getElementById('profileAlertModal');
+            const okBtn = modal.querySelector('.btn-primary');
+            okBtn.onclick = function() {
+                ProfileNotification.closeModal('profileAlertModal');
+                callback();
+            };
+        }
+    },
+    
+    closeModal: function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            setTimeout(() => modal.remove(), 300);
+        }
+    }
+};
+
 // Toggle between view and edit mode
 function toggleEditMode() {
     const viewMode = document.getElementById('profileView');
@@ -1740,13 +1883,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Validate file size (5MB max)
             if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB');
+                ProfileNotification.showAlert('File Too Large', 'File size must be less than 5MB', 'error');
                 return;
             }
             
             // Validate file type
             if (!file.type.startsWith('image/')) {
-                alert('Please select an image file');
+                ProfileNotification.showAlert('Invalid File', 'Please select an image file', 'error');
                 return;
             }
             
@@ -1785,20 +1928,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const address = addressInput.value.trim();
             
             if (!label) {
-                alert('Please enter a wallet label');
+                ProfileNotification.showAlert('Missing Information', 'Please enter a wallet label', 'error');
                 labelInput.focus();
                 return;
             }
             
             if (!address) {
-                alert('Please enter a wallet address');
+                ProfileNotification.showAlert('Missing Information', 'Please enter a wallet address', 'error');
                 addressInput.focus();
                 return;
             }
             
             // Basic address validation (you can make this more specific for Kaspa addresses)
             if (address.length < 10) {
-                alert('Please enter a valid wallet address');
+                ProfileNotification.showAlert('Invalid Address', 'Please enter a valid wallet address', 'error');
                 addressInput.focus();
                 return;
             }
@@ -1828,7 +1971,7 @@ async function uploadProfilePicture(file) {
         }
     } catch (error) {
         console.error('Profile picture upload error:', error);
-        alert('Failed to upload profile picture. Please try again.');
+        ProfileNotification.showAlert('Upload Failed', 'Failed to upload profile picture. Please try again.', 'error');
     }
 }
 
@@ -1872,7 +2015,7 @@ async function addAdditionalWallet(label, address, labelInput, addressInput) {
         }
     } catch (error) {
         console.error('Add wallet error:', error);
-        alert(error.message || 'Failed to add wallet. Please try again.');
+        ProfileNotification.showAlert('Error', error.message || 'Failed to add wallet. Please try again.', 'error');
     } finally {
         // Restore button
         button.innerHTML = originalText;
@@ -1915,7 +2058,7 @@ async function updateReferralCode() {
     // Simple rate limiting - prevent rapid submissions
     const now = Date.now();
     if (now - lastUpdateTime < 2000) { // 2 second cooldown
-        alert('Please wait a moment before updating again');
+        ProfileNotification.showAlert('Too Fast', 'Please wait a moment before updating again', 'error');
         return;
     }
     lastUpdateTime = now;
@@ -1924,19 +2067,19 @@ async function updateReferralCode() {
     const newCode = codeInput.value.trim();
     
     if (!newCode) {
-        alert('Please enter a referral code');
+        ProfileNotification.showAlert('Missing Information', 'Please enter a referral code', 'error');
         return;
     }
     
     if (newCode.length < 3 || newCode.length > 20) {
-        alert('Referral code must be 3-20 characters long');
+        ProfileNotification.showAlert('Invalid Code', 'Referral code must be 3-20 characters long', 'error');
         return;
     }
     
     // Validate format
     const validPattern = /^[a-zA-Z0-9\-_]+$/;
     if (!validPattern.test(newCode)) {
-        alert('Referral code can only contain letters, numbers, hyphens, and underscores');
+        ProfileNotification.showAlert('Invalid Code', 'Referral code can only contain letters, numbers, hyphens, and underscores', 'error');
         return;
     }
     
@@ -1978,7 +2121,7 @@ async function updateReferralCode() {
         }
     } catch (error) {
         console.error('Update referral code error:', error);
-        alert(error.message || 'Failed to update referral code. Please try again.');
+        ProfileNotification.showAlert('Error', error.message || 'Failed to update referral code. Please try again.', 'error');
     } finally {
         updateBtn.innerHTML = originalText;
         updateBtn.disabled = false;
@@ -2013,7 +2156,7 @@ async function removeWallet(walletId) {
         }
     } catch (error) {
         console.error('Remove wallet error:', error);
-        alert(error.message || 'Failed to remove wallet. Please try again.');
+        ProfileNotification.showAlert('Error', error.message || 'Failed to remove wallet. Please try again.', 'error');
     }
 }
 
@@ -2094,12 +2237,12 @@ async function saveWalletEdit() {
     const newLabel = input.value.trim();
     
     if (!newLabel) {
-        alert('Please enter a wallet label');
+        ProfileNotification.showAlert('Missing Information', 'Please enter a wallet label', 'error');
         return;
     }
     
     if (!currentEditWalletId) {
-        alert('No wallet selected for editing');
+        ProfileNotification.showAlert('Error', 'No wallet selected for editing', 'error');
         return;
     }
     
@@ -2135,7 +2278,7 @@ async function saveWalletEdit() {
         }
     } catch (error) {
         console.error('Edit wallet error:', error);
-        alert(error.message || 'Failed to update wallet label. Please try again.');
+        ProfileNotification.showAlert('Error', error.message || 'Failed to update wallet label. Please try again.', 'error');
     } finally {
         saveBtn.textContent = originalText;
         saveBtn.disabled = false;
