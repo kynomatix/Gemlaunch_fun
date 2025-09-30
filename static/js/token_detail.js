@@ -1186,7 +1186,7 @@
             
             // Create spotlight message element with teal/blue theme
             const spotlightDiv = document.createElement('div');
-            spotlightDiv.className = 'spotlight-message-item';
+            spotlightDiv.className = 'spotlight-message';
             spotlightDiv.setAttribute('data-spotlight-id', spotlight.id);
             spotlightDiv.style.cssText = `
                 background: rgba(32, 178, 170, 0.1);
