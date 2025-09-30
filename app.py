@@ -486,11 +486,24 @@ def token_detail_legacy(token_id):
         return redirect(url_for('token_detail', contract_address=token.contract_address))
     else:
         # Fallback for tokens without contract addresses
+        user = get_current_user()
+        is_owner = False
+        if user and token.creator:
+            is_owner = user.wallet_address.lower() == token.creator.wallet_address.lower()
+        
+        # Use TokenService to determine if token is pro
+        is_pro_token = TokenService.is_pro_token(token)
+        
+        # Ensure token has settings
+        token.settings = TokenService.ensure_token_settings(token)
+        
         return render_template('app/token_detail.html', 
                              token=token, 
                              recent_trades=[],
                              user_holding=None,
-                             user=get_current_user())
+                             user=user,
+                             is_owner=is_owner,
+                             is_pro_token=is_pro_token)
 
 # Chat API endpoints
 @app.route('/api/token/<contract_address>/messages', methods=['GET', 'POST'])
