@@ -715,10 +715,42 @@ def vote_on_poll(contract_address, poll_id):
     
     return jsonify({'success': True, 'new_vote_count': option.vote_count})
 
+@app.route('/api/token/<contract_address>/holdings', methods=['GET'])
+def get_token_holdings(contract_address):
+    """Get user's token holdings for verification"""
+    wallet_address = request.headers.get('X-Wallet-Address')
+    
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address required'}), 400
+    
+    # Get token
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Get user by wallet
+    user = User.query.filter_by(wallet_address=wallet_address.lower()).first()
+    
+    if not user:
+        return jsonify({'balance': 0, 'isHolder': False})
+    
+    # Get user's holding for this token
+    holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
+    
+    if not holding:
+        return jsonify({'balance': 0, 'isHolder': False})
+    
+    # Return actual token balance
+    balance = float(holding.token_amount) if holding.token_amount else 0
+    
+    return jsonify({
+        'balance': balance,
+        'isHolder': balance > 0,
+        'wallet': wallet_address
+    })
+
 @app.route('/api/token/<contract_address>/spotlight', methods=['GET', 'POST'])
 @require_wallet_connection
 def token_spotlight(contract_address):
-    """Get or create spotlight messages"""
+    """Get or create spotlight messages - TOKEN GATED, not token cost!"""
     from datetime import datetime, timedelta, timezone
     
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
@@ -752,7 +784,24 @@ def token_spotlight(contract_address):
         if not message_text:
             return jsonify({'error': 'Message cannot be empty'}), 400
         
-        # Create spotlight message
+        # Get token settings for minimum tokens required
+        settings = TokenSettings.query.filter_by(token_id=token.id).first()
+        min_tokens_for_spotlight = 500  # Default
+        if settings:
+            min_tokens_for_spotlight = settings.min_tokens_for_spotlight or 500
+        
+        # VERIFY USER ACTUALLY HOLDS ENOUGH TOKENS (TOKEN GATE!)
+        holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
+        
+        if not holding:
+            return jsonify({'error': f'You need to hold at least {min_tokens_for_spotlight} {token.symbol} tokens to create spotlight messages'}), 403
+        
+        user_balance = float(holding.token_amount) if holding.token_amount else 0
+        
+        if user_balance < min_tokens_for_spotlight:
+            return jsonify({'error': f'You need to hold at least {min_tokens_for_spotlight} {token.symbol} tokens to create spotlight messages (You hold: {int(user_balance)})'}), 403
+        
+        # User has enough tokens - create spotlight message (NO DEDUCTION!)
         message = ChatMessage(
             token_id=token.id,
             user_id=user.id,
@@ -764,6 +813,7 @@ def token_spotlight(contract_address):
         db.session.commit()
         
         # Schedule unpinning after 1 hour (would need a background task)
+        # For now, spotlight messages will stay pinned until manually removed
         
         return jsonify({
             'success': True,
@@ -771,6 +821,7 @@ def token_spotlight(contract_address):
                 'id': message.id,
                 'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
                 'message': message.content,
+                'wallet': user.wallet_address,
                 'created_at': message.created_at.isoformat()
             }
         })

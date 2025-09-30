@@ -47,8 +47,9 @@
             this.isProToken = config.isProToken || false;
             this.tokenSettings = config.tokenSettings || this.tokenSettings;
             
-            // Initialize chat state from localStorage
-            this.chatState.userTokenBalance = parseInt(localStorage.getItem(`tokenBalance_${this.tokenSymbol}`)) || Math.floor(Math.random() * 50000) + 1000;
+            // Initialize chat state (NO FAKE BALANCE!)
+            // Real token balance will be fetched from server when needed
+            this.chatState.userTokenBalance = 0; // Will be updated from actual holdings
             this.chatState.messageLoves = JSON.parse(localStorage.getItem(`loves_${this.tokenSymbol}`) || '{}');
             this.chatState.userLoves = JSON.parse(localStorage.getItem(`userLoves_${this.tokenSymbol}`) || '[]');
             this.chatState.userScore = parseInt(localStorage.getItem(`userScore_${this.tokenSymbol}`)) || 0;
@@ -705,50 +706,105 @@
         updateSpotlightDisplay: function(spotlight) {
             console.log('✨ Updating spotlight display:', spotlight);
             
-            const spotlightContainer = document.getElementById('spotlightMessages');
-            const listContainer = document.getElementById('spotlightMessagesList');
+            let spotlightContainer = document.getElementById('spotlightMessages');
             
-            // Show spotlight container if hidden
-            if (spotlightContainer) {
-                spotlightContainer.style.display = 'block';
-            }
-            
-            if (!listContainer) {
-                // Create spotlight container if it doesn't exist
+            if (!spotlightContainer) {
+                // Create spotlight container AT THE TOP of chat (yellow pinned box)
                 const chatHeader = document.querySelector('.chat-header');
                 if (chatHeader) {
                     const spotlightHTML = `
-                        <div id="spotlightMessages" style="display: block;">
-                            <div class="spotlight-header">
-                                <i class="fas fa-star"></i>
-                                <h4>Spotlight Messages</h4>
+                        <div id="spotlightMessages" class="spotlight-pinned-container" style="
+                            display: block;
+                            background: linear-gradient(135deg, #FFF3CD, #FFE4A1);
+                            border: 2px solid #FFC107;
+                            border-radius: 10px;
+                            padding: 1rem;
+                            margin: 0.5rem 0;
+                            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+                        ">
+                            <div class="spotlight-header" style="
+                                display: flex;
+                                align-items: center;
+                                gap: 0.5rem;
+                                margin-bottom: 0.75rem;
+                                color: #856404;
+                                font-weight: 600;
+                            ">
+                                <i class="fas fa-star" style="color: #FFC107; font-size: 1.2rem;"></i>
+                                <h4 style="margin: 0; color: #856404;">📍 Pinned Spotlight Messages</h4>
                             </div>
                             <div id="spotlightMessagesList"></div>
                         </div>
                     `;
                     chatHeader.insertAdjacentHTML('afterend', spotlightHTML);
+                    spotlightContainer = document.getElementById('spotlightMessages');
                 }
-                return;
             }
             
-            // Create spotlight message element
+            const listContainer = document.getElementById('spotlightMessagesList');
+            if (!listContainer) return;
+            
+            // Create spotlight message element with yellow theme and countdown
             const spotlightDiv = document.createElement('div');
-            spotlightDiv.className = 'spotlight-message';
+            spotlightDiv.className = 'spotlight-message-item';
             spotlightDiv.setAttribute('data-spotlight-id', spotlight.id);
+            spotlightDiv.style.cssText = `
+                background: rgba(255, 255, 255, 0.8);
+                border: 1px solid #FFC107;
+                border-radius: 8px;
+                padding: 0.75rem;
+                margin-bottom: 0.5rem;
+                position: relative;
+                animation: pulseGlow 2s ease-in-out infinite;
+            `;
             
             const timeRemaining = Math.max(0, Math.floor((spotlight.expiresAt - Date.now()) / 1000 / 60));
             
             spotlightDiv.innerHTML = `
-                <div class="spotlight-icon">✨</div>
-                <div class="spotlight-content">
-                    <div class="spotlight-user">${spotlight.user}</div>
-                    <div class="spotlight-text">${spotlight.message}</div>
-                    <div class="spotlight-time">${timeRemaining} minutes remaining</div>
+                <div style="display: flex; align-items: start; gap: 0.75rem;">
+                    <div class="spotlight-icon" style="font-size: 1.5rem;">✨</div>
+                    <div class="spotlight-content" style="flex: 1;">
+                        <div class="spotlight-user" style="
+                            font-weight: 600;
+                            color: #856404;
+                            margin-bottom: 0.25rem;
+                        ">${spotlight.user}</div>
+                        <div class="spotlight-text" style="
+                            color: #333;
+                            font-size: 1rem;
+                            line-height: 1.4;
+                        ">${spotlight.message}</div>
+                        <div class="spotlight-time" style="
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                            margin-top: 0.5rem;
+                            color: #856404;
+                            font-size: 0.85rem;
+                        ">
+                            <i class="fas fa-clock" style="color: #FFC107;"></i>
+                            <span id="spotlight-timer-${spotlight.id}">${timeRemaining} minutes remaining</span>
+                        </div>
+                    </div>
                 </div>
             `;
             
             // Add to the list
             listContainer.appendChild(spotlightDiv);
+            
+            // Update timer every minute
+            const timerId = setInterval(() => {
+                const remaining = Math.max(0, Math.floor((spotlight.expiresAt - Date.now()) / 1000 / 60));
+                const timerElement = document.getElementById(`spotlight-timer-${spotlight.id}`);
+                if (timerElement) {
+                    if (remaining > 0) {
+                        timerElement.textContent = `${remaining} minutes remaining`;
+                    } else {
+                        timerElement.innerHTML = '<span style="color: #dc3545;">Expiring...</span>';
+                        clearInterval(timerId);
+                    }
+                }
+            }, 60000); // Update every minute
             
             // Also add to chat as spotlight message
             this.addMessageToChat(spotlight.user, spotlight.message, true);
@@ -766,15 +822,41 @@
         // Create spotlight message
         createSpotlight: async function() {
             const requiredTokens = this.tokenSettings.minTokensForSpotlight || 500;
+            const userWallet = localStorage.getItem('connectedWallet');
             
-            // Check if user has enough tokens
-            if (this.chatState.userTokenBalance < requiredTokens) {
-                this.showNotification('❌ Insufficient Balance', `You need at least ${requiredTokens.toLocaleString()} $${this.tokenSymbol} to create a spotlight message`, 'error');
+            if (!userWallet) {
+                this.showNotification('🔗 Wallet Required', 'Please connect your wallet to create spotlight messages', 'error');
                 return;
             }
             
-            // Show prompt for message
-            const message = prompt(`Enter your spotlight message (Cost: ${requiredTokens} $${this.tokenSymbol}):`);
+            // Check ACTUAL token holdings from server (NOT localStorage fake balance)
+            try {
+                const holdingsResponse = await fetch(`/api/token/${window.tokenContractAddress}/holdings`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                
+                if (!holdingsResponse.ok) {
+                    throw new Error('Failed to check token holdings');
+                }
+                
+                const holdingsData = await holdingsResponse.json();
+                const actualBalance = holdingsData.balance || 0;
+                
+                // TOKEN GATE CHECK - User must HOLD tokens, not spend them!
+                if (actualBalance < requiredTokens) {
+                    this.showNotification('🔐 Token Gate', `You need to HOLD at least ${requiredTokens.toLocaleString()} $${this.tokenSymbol} tokens to create spotlight messages (You hold: ${actualBalance.toLocaleString()})`, 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to verify token holdings:', error);
+                this.showNotification('❌ Error', 'Failed to verify token holdings', 'error');
+                return;
+            }
+            
+            // Show prompt for message - NO COST mentioned! This is TOKEN GATED!
+            const message = prompt(`Enter your spotlight message (Token Gate: Hold ${requiredTokens} $${this.tokenSymbol}):`);
             if (!message || message.trim() === '') {
                 return;
             }
@@ -792,19 +874,19 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    // Deduct tokens
-                    this.chatState.userTokenBalance -= requiredTokens;
-                    this.saveChatState();
+                    // NO TOKEN DEDUCTION! This is TOKEN GATED, not a cost!
+                    // Users must HOLD tokens, not spend them
                     
-                    // Update display
+                    // Update display with yellow pinned message at top
                     this.updateSpotlightDisplay({
                         id: data.spotlight.id,
                         user: data.spotlight.user,
                         message: data.spotlight.message,
+                        wallet: data.spotlight.wallet,
                         expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
                     });
                     
-                    this.showNotification('✨ Spotlight Created!', `Your message is now in the spotlight! Cost: ${requiredTokens.toLocaleString()} $${this.tokenSymbol}`, 'success');
+                    this.showNotification('✨ Spotlight Created!', `Your message is now pinned for 1 hour! (Token gated: ${requiredTokens.toLocaleString()} $${this.tokenSymbol} holding required)`, 'success');
                 } else {
                     const error = await response.json();
                     this.showNotification('❌ Error', error.error || 'Failed to create spotlight', 'error');
