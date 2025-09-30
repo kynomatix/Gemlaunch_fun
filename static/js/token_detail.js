@@ -1227,6 +1227,7 @@
                             justify-content: space-between;
                             align-items: center;
                             margin-bottom: 0.25rem;
+                            gap: 1rem;
                         ">
                             <div class="spotlight-user" style="
                                 font-weight: 600;
@@ -1238,6 +1239,8 @@
                                 gap: 0.25rem;
                                 color: #00CED1;
                                 font-size: 0.85rem;
+                                margin-left: auto;
+                                padding-left: 1rem;
                             ">
                                 <i class="fas fa-clock" style="color: #00CED1; font-size: 0.8rem;"></i>
                                 <span id="spotlight-timer-${spotlight.id}">${timeRemaining}m</span>
