@@ -332,7 +332,11 @@
                         <a href="{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}" class="token-card" style="text-decoration: none; display: block; color: inherit;">
                             <div class="token-header">
                                 <div class="token-avatar">
-                                    {{ token.symbol[0] if token.symbol else '?' }}
+                                    {% if token.image_url %}
+                                        <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                                    {% else %}
+                                        {{ token.symbol[0] if token.symbol else '?' }}
+                                    {% endif %}
                                 </div>
                                 <div class="token-info">
                                     <div class="token-info-header">

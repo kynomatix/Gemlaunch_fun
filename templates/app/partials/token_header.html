@@ -4,7 +4,11 @@
     <div class="token-info-section">
         <div class="token-identity">
             <div class="token-avatar">
-                {{ token.symbol[0] if token.symbol else '?' }}
+                {% if token.image_url %}
+                    <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                {% else %}
+                    {{ token.symbol[0] if token.symbol else '?' }}
+                {% endif %}
             </div>
             <div class="token-details">
                 <div class="token-title-row">
