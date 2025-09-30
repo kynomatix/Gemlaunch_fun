@@ -704,7 +704,115 @@
         
         updateSpotlightDisplay: function(spotlight) {
             console.log('✨ Updating spotlight display:', spotlight);
-            // Implementation here
+            
+            const spotlightContainer = document.getElementById('spotlightMessages');
+            const listContainer = document.getElementById('spotlightMessagesList');
+            
+            // Show spotlight container if hidden
+            if (spotlightContainer) {
+                spotlightContainer.style.display = 'block';
+            }
+            
+            if (!listContainer) {
+                // Create spotlight container if it doesn't exist
+                const chatHeader = document.querySelector('.chat-header');
+                if (chatHeader) {
+                    const spotlightHTML = `
+                        <div id="spotlightMessages" style="display: block;">
+                            <div class="spotlight-header">
+                                <i class="fas fa-star"></i>
+                                <h4>Spotlight Messages</h4>
+                            </div>
+                            <div id="spotlightMessagesList"></div>
+                        </div>
+                    `;
+                    chatHeader.insertAdjacentHTML('afterend', spotlightHTML);
+                }
+                return;
+            }
+            
+            // Create spotlight message element
+            const spotlightDiv = document.createElement('div');
+            spotlightDiv.className = 'spotlight-message';
+            spotlightDiv.setAttribute('data-spotlight-id', spotlight.id);
+            
+            const timeRemaining = Math.max(0, Math.floor((spotlight.expiresAt - Date.now()) / 1000 / 60));
+            
+            spotlightDiv.innerHTML = `
+                <div class="spotlight-icon">✨</div>
+                <div class="spotlight-content">
+                    <div class="spotlight-user">${spotlight.user}</div>
+                    <div class="spotlight-text">${spotlight.message}</div>
+                    <div class="spotlight-time">${timeRemaining} minutes remaining</div>
+                </div>
+            `;
+            
+            // Add to the list
+            listContainer.appendChild(spotlightDiv);
+            
+            // Also add to chat as spotlight message
+            this.addMessageToChat(spotlight.user, spotlight.message, true);
+            
+            // Remove after expiration
+            setTimeout(() => {
+                const element = document.querySelector(`[data-spotlight-id="${spotlight.id}"]`);
+                if (element) {
+                    element.style.animation = 'fadeOut 0.5s ease';
+                    setTimeout(() => element.remove(), 500);
+                }
+            }, timeRemaining * 60 * 1000);
+        },
+        
+        // Create spotlight message
+        createSpotlight: async function() {
+            const requiredTokens = this.tokenSettings.minTokensForSpotlight || 500;
+            
+            // Check if user has enough tokens
+            if (this.chatState.userTokenBalance < requiredTokens) {
+                this.showNotification('❌ Insufficient Balance', `You need at least ${requiredTokens.toLocaleString()} $${this.tokenSymbol} to create a spotlight message`, 'error');
+                return;
+            }
+            
+            // Show prompt for message
+            const message = prompt(`Enter your spotlight message (Cost: ${requiredTokens} $${this.tokenSymbol}):`);
+            if (!message || message.trim() === '') {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/spotlight`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                    },
+                    body: JSON.stringify({ message })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Deduct tokens
+                    this.chatState.userTokenBalance -= requiredTokens;
+                    this.saveChatState();
+                    
+                    // Update display
+                    this.updateSpotlightDisplay({
+                        id: data.spotlight.id,
+                        user: data.spotlight.user,
+                        message: data.spotlight.message,
+                        expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
+                    });
+                    
+                    this.showNotification('✨ Spotlight Created!', `Your message is now in the spotlight! Cost: ${requiredTokens.toLocaleString()} $${this.tokenSymbol}`, 'success');
+                } else {
+                    const error = await response.json();
+                    this.showNotification('❌ Error', error.error || 'Failed to create spotlight', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to create spotlight:', error);
+                this.showNotification('❌ Error', 'Failed to create spotlight message', 'error');
+            }
         }
     };
     
@@ -763,6 +871,28 @@
     };
     window.resetChart = function() {
         TokenDetail.initChart();
+    };
+    window.createSpotlight = function() {
+        TokenDetail.createSpotlight();
+    };
+    
+    // Toggle functions for collapsible sections
+    window.toggleLeaderboard = function() {
+        const content = document.getElementById('leaderboardContent');
+        const toggle = document.querySelector('.leaderboard-toggle i');
+        if (content && toggle) {
+            content.classList.toggle('collapsed');
+            toggle.style.transform = content.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+    };
+    
+    window.toggleAchievements = function() {
+        const content = document.getElementById('achievementContent');
+        const toggle = document.querySelector('.achievement-toggle i');
+        if (content && toggle) {
+            content.classList.toggle('collapsed');
+            toggle.style.transform = content.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
     };
     
 })(window, document);
