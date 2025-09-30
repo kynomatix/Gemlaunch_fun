@@ -945,6 +945,57 @@ def react_to_message(contract_address, message_id):
         db.session.commit()
         return jsonify({'success': True, 'added': True, 'new_count': message.love_count})
 
+@app.route('/api/token/<contract_address>/settings/update', methods=['POST'])
+@require_wallet_connection
+def update_token_settings(contract_address):
+    """Update token settings - only accessible by token creator"""
+    user = get_current_user()
+    
+    # Get token
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Verify user is the token creator
+    if not token.creator or user.wallet_address.lower() != token.creator.wallet_address.lower():
+        return jsonify({'error': 'Only the token creator can update settings'}), 403
+    
+    # Get JSON data
+    data = request.get_json()
+    
+    # Get or create token settings
+    settings = TokenSettings.query.filter_by(token_id=token.id).first()
+    if not settings:
+        settings = TokenSettings(token_id=token.id)
+        db.session.add(settings)
+    
+    # Update settings from request data
+    if 'holders_only_chat' in data:
+        settings.holders_only_chat = bool(data['holders_only_chat'])
+    
+    if 'min_tokens_to_chat' in data:
+        settings.min_tokens_to_chat = int(data['min_tokens_to_chat'])
+    
+    if 'min_tokens_for_spotlight' in data:
+        settings.min_tokens_for_spotlight = int(data['min_tokens_for_spotlight'])
+    
+    if 'min_tokens_to_create_poll' in data:
+        settings.min_tokens_to_create_poll = int(data['min_tokens_to_create_poll'])
+    
+    # Commit changes
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'settings': {
+                'holders_only_chat': settings.holders_only_chat,
+                'min_tokens_to_chat': int(settings.min_tokens_to_chat or 0),
+                'min_tokens_for_spotlight': int(settings.min_tokens_for_spotlight or 0),
+                'min_tokens_to_create_poll': int(settings.min_tokens_to_create_poll or 0)
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to update settings: {str(e)}'}), 500
+
 # Leaderboard routes
 @app.route('/app/leaderboard')
 @wallet_optional

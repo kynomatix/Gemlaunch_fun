@@ -1031,9 +1031,60 @@
             }
         },
         
-        toggleTokenGate: function() {
+        toggleTokenGate: async function() {
             console.log('🔒 Toggle token gate');
-            // Implementation here
+            
+            if (!window.tokenContractAddress) {
+                this.showNotification('❌ Error', 'Unable to update settings. Token address not found.', 'error');
+                return;
+            }
+            
+            const toggleCheckbox = document.getElementById('tokenGateToggle');
+            if (!toggleCheckbox) return;
+            
+            const newState = toggleCheckbox.checked;
+            
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/settings/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                    },
+                    body: JSON.stringify({
+                        holders_only_chat: newState,
+                        min_tokens_to_chat: this.tokenSettings.minTokensToChat,
+                        min_tokens_for_spotlight: this.tokenSettings.minTokensForSpotlight,
+                        min_tokens_to_create_poll: this.tokenSettings.minTokensToCreatePoll
+                    })
+                });
+                
+                if (response.ok) {
+                    this.tokenSettings.holdersOnlyChat = newState;
+                    
+                    const settingsModal = document.getElementById('chatSettingsModal');
+                    if (settingsModal && settingsModal.style.display === 'flex') {
+                        const modalCheckbox = document.getElementById('holdersOnlyChat');
+                        if (modalCheckbox) {
+                            modalCheckbox.checked = newState;
+                        }
+                    }
+                    
+                    this.showNotification(
+                        '✅ Settings Updated',
+                        `Holders-only chat is now ${newState ? 'enabled' : 'disabled'}.`,
+                        'success'
+                    );
+                } else {
+                    const error = await response.json();
+                    toggleCheckbox.checked = !newState;
+                    this.showNotification('❌ Error', error.error || 'Failed to update settings', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to update token gate:', error);
+                toggleCheckbox.checked = !newState;
+                this.showNotification('❌ Error', 'Failed to update token gate settings', 'error');
+            }
         },
         
         openChatSettings: function() {
@@ -1178,24 +1229,59 @@
             console.log('🔧 Settings modal closed');
         },
         
-        saveChatSettings: function() {
+        saveChatSettings: async function() {
             // Save settings logic
             const holdersOnly = document.getElementById('holdersOnlyChat').checked;
             const minTokens = document.getElementById('minTokensToChat').value;
             const spotlightThreshold = document.getElementById('minTokensForSpotlight').value;
             const pollThreshold = document.getElementById('minTokensToCreatePoll').value;
             
-            this.tokenSettings.holdersOnlyChat = holdersOnly;
-            this.tokenSettings.minTokensToChat = parseInt(minTokens) || 0;
-            this.tokenSettings.minTokensForSpotlight = parseInt(spotlightThreshold) || 500;
-            this.tokenSettings.minTokensToCreatePoll = parseInt(pollThreshold) || 1000;
+            if (!window.tokenContractAddress) {
+                this.showNotification('❌ Error', 'Unable to save settings. Token address not found.', 'error');
+                return;
+            }
             
-            console.log('💾 Saving chat settings:', this.tokenSettings);
+            const settings = {
+                holdersOnlyChat: holdersOnly,
+                minTokensToChat: parseInt(minTokens) || 0,
+                minTokensForSpotlight: parseInt(spotlightThreshold) || 500,
+                minTokensToCreatePoll: parseInt(pollThreshold) || 1000
+            };
             
-            // TODO: Send settings to server via API
+            console.log('💾 Saving chat settings:', settings);
             
-            this.closeChatSettings();
-            this.showNotification('Settings Saved', 'Chat settings have been updated successfully.', 'success');
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/settings/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                    },
+                    body: JSON.stringify({
+                        holders_only_chat: settings.holdersOnlyChat,
+                        min_tokens_to_chat: settings.minTokensToChat,
+                        min_tokens_for_spotlight: settings.minTokensForSpotlight,
+                        min_tokens_to_create_poll: settings.minTokensToCreatePoll
+                    })
+                });
+                
+                if (response.ok) {
+                    this.tokenSettings.holdersOnlyChat = settings.holdersOnlyChat;
+                    this.tokenSettings.minTokensToChat = settings.minTokensToChat;
+                    this.tokenSettings.minTokensForSpotlight = settings.minTokensForSpotlight;
+                    this.tokenSettings.minTokensToCreatePoll = settings.minTokensToCreatePoll;
+                    
+                    this.closeChatSettings();
+                    this.checkTokenOwnership();
+                    this.showNotification('Settings Saved', 'Chat settings have been updated successfully.', 'success');
+                } else {
+                    const error = await response.json();
+                    this.showNotification('❌ Error', error.error || 'Failed to save settings', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to save chat settings:', error);
+                this.showNotification('❌ Error', 'Failed to save settings. Please try again.', 'error');
+            }
         },
         
         showNotification: function(title, message, type = 'info') {
