@@ -268,6 +268,71 @@
                     </div>
                     {% endif %}
                     
+                    <!-- Accolades Section - Different for Basic vs Pro Tokens -->
+                    {% if is_pro_token %}
+                    <!-- Pro Token: Treasury-based rewards -->
+                    <div class="accolades-section pro-token-accolades">
+                        <div class="accolades-header">
+                            <h4><i class="fas fa-crown"></i> How to Earn Token Rewards</h4>
+                            <span class="accolade-badge pro">Treasury Pool: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }}%</span>
+                        </div>
+                        <div class="accolade-items">
+                            <div class="accolade-item">
+                                <i class="fas fa-comment-dots"></i>
+                                <div>
+                                    <strong>Active Participation</strong>
+                                    <span>Earn ${{ token.symbol }} tokens from treasury for quality contributions</span>
+                                </div>
+                            </div>
+                            <div class="accolade-item">
+                                <i class="fas fa-fire"></i>
+                                <div>
+                                    <strong>Viral Content</strong>
+                                    <span>Get bonus token rewards when your messages get high engagement</span>
+                                </div>
+                            </div>
+                            <div class="accolade-item">
+                                <i class="fas fa-trophy"></i>
+                                <div>
+                                    <strong>Community Milestones</strong>
+                                    <span>Share in airdrop distributions at key market cap levels</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Basic Token: Platform points only -->
+                    <div class="accolades-section basic-token-accolades">
+                        <div class="accolades-header">
+                            <h4><i class="fas fa-star"></i> How to Earn Platform Points</h4>
+                            <span class="accolade-badge basic">Global Leaderboard</span>
+                        </div>
+                        <div class="accolade-items">
+                            <div class="accolade-item">
+                                <i class="fas fa-comment"></i>
+                                <div>
+                                    <strong>Chat Activity</strong>
+                                    <span>Earn platform points for active participation</span>
+                                </div>
+                            </div>
+                            <div class="accolade-item">
+                                <i class="fas fa-heart"></i>
+                                <div>
+                                    <strong>Community Support</strong>
+                                    <span>Get points for helpful and engaging messages</span>
+                                </div>
+                            </div>
+                            <div class="accolade-item">
+                                <i class="fas fa-chart-line"></i>
+                                <div>
+                                    <strong>Trading Volume</strong>
+                                    <span>Earn points based on your trading activity</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     <!-- Token gate status -->
                     <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
                         <div class="gate-info">
@@ -2031,6 +2096,122 @@
         }
         
         /* Link emoji removed as requested */
+        
+        /* Accolades Section Styling */
+        .accolades-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .accolades-section:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(32, 178, 170, 0.3);
+        }
+        
+        .pro-token-accolades {
+            border-color: rgba(255, 215, 0, 0.2);
+        }
+        
+        .pro-token-accolades:hover {
+            border-color: rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+        }
+        
+        .accolades-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .accolades-header h4 {
+            margin: 0;
+            color: #20B2AA;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .accolades-header i {
+            color: #FFD700;
+        }
+        
+        .basic-token-accolades .accolades-header i {
+            color: #20B2AA;
+        }
+        
+        .accolade-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .accolade-badge.pro {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2));
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #FFD700;
+        }
+        
+        .accolade-badge.basic {
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            color: #20B2AA;
+        }
+        
+        .accolade-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .accolade-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .accolade-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+        
+        .accolade-item > i {
+            font-size: 1.25rem;
+            color: #20B2AA;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        .pro-token-accolades .accolade-item > i {
+            color: #FFD700;
+        }
+        
+        .accolade-item div {
+            flex: 1;
+        }
+        
+        .accolade-item strong {
+            display: block;
+            color: #FFFFFF;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .accolade-item span {
+            color: #AAAAAA;
+            font-size: 0.75rem;
+            line-height: 1.3;
+        }
         
         /* Username encouragement banner */
         .username-banner {
