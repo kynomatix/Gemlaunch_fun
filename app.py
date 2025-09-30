@@ -90,6 +90,30 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Custom Jinja2 filter for formatting large numbers
+@app.template_filter('format_number')
+def format_number_filter(num, include_decimals=False):
+    """Format large numbers into human-readable format (1K, 1M, 1B, etc.)"""
+    if num is None:
+        return '0'
+    
+    try:
+        num = float(num)
+        abs_num = abs(num)
+        
+        if abs_num >= 1e12:
+            return f'{num/1e12:.{2 if include_decimals else 1}f}'.rstrip('0').rstrip('.') + 'T'
+        elif abs_num >= 1e9:
+            return f'{num/1e9:.{2 if include_decimals else 1}f}'.rstrip('0').rstrip('.') + 'B'
+        elif abs_num >= 1e6:
+            return f'{num/1e6:.{2 if include_decimals else 1}f}'.rstrip('0').rstrip('.') + 'M'
+        elif abs_num >= 1e3:
+            return f'{num/1e3:.{2 if include_decimals else 1}f}'.rstrip('0').rstrip('.') + 'K'
+        else:
+            return f'{num:,.0f}'
+    except (TypeError, ValueError):
+        return '0'
+
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {

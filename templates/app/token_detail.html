@@ -89,12 +89,12 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">MARKET CAP</div>
-                            <div class="stat-value" id="marketCapDisplay" data-raw="{{ token.current_market_cap or 0 }}">${{ "%.1f"|format(token.current_market_cap|float * 0.125 / 1000) }}K</div>
-                            <div class="stat-sub" id="marketCapKAS">{{ "%.1f"|format(token.current_market_cap/1000) }}K KAS</div>
+                            <div class="stat-value">${{ ((token.current_market_cap or 0) * 0.125)|format_number(True) }}</div>
+                            <div class="stat-sub">{{ (token.current_market_cap or 0)|format_number }} KAS</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">SUPPLY</div>
-                            <div class="stat-value" id="supplyDisplay" data-raw="{{ token.circulating_supply or 0 }}">{{ "%.0f"|format(token.circulating_supply or 0) }}</div>
+                            <div class="stat-value">{{ (token.circulating_supply or 0)|format_number }}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">HOLDERS</div>
@@ -3568,25 +3568,6 @@
         // Initialize token type badge on page load
         document.addEventListener('DOMContentLoaded', function() {
             updateTokenTypeBadge();
-            
-            // Format large numbers on page load
-            const supplyDisplay = document.getElementById('supplyDisplay');
-            if (supplyDisplay) {
-                const rawSupply = parseFloat(supplyDisplay.getAttribute('data-raw'));
-                supplyDisplay.textContent = formatNumber(rawSupply);
-            }
-            
-            const marketCapDisplay = document.getElementById('marketCapDisplay');
-            if (marketCapDisplay) {
-                const rawMarketCap = parseFloat(marketCapDisplay.getAttribute('data-raw'));
-                const usdValue = rawMarketCap * 0.125;
-                marketCapDisplay.textContent = '$' + formatNumber(usdValue, true);
-                
-                const kasDisplay = document.getElementById('marketCapKAS');
-                if (kasDisplay) {
-                    kasDisplay.textContent = formatNumber(rawMarketCap) + ' KAS';
-                }
-            }
         });
         
         function closePollModal() {

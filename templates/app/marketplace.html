@@ -365,7 +365,7 @@
                                     <div class="token-stat-label">Price</div>
                                 </div>
                                 <div class="token-stat">
-                                    <div class="token-stat-value market-cap-display" data-raw="{{ token.current_market_cap }}">${{ "%.1f"|format(token.current_market_cap/1000) }}K</div>
+                                    <div class="token-stat-value">${{ ((token.current_market_cap or 0) * 0.125)|format_number(True) }}</div>
                                     <div class="token-stat-label">Market Cap</div>
                                 </div>
                             </div>
