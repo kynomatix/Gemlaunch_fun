@@ -790,7 +790,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Wallet-Address': localStorage.getItem('connectedWallet')
-                    }
+                    },
+                    body: JSON.stringify({
+                        reaction_type: 'love'
+                    })
                 });
                 
                 if (response.ok) {
