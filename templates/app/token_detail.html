@@ -3420,70 +3420,29 @@
         }
         
         function getCurrentTokenData() {
-            // In a real app, this would come from the server
-            // For now, return sample data based on current token
-            const tokenSymbol = '{{ token.symbol }}';
-            
-            // Mock token data with different types
+            // Use real token data passed from server
             const tokenData = {
-                'PEPE': { 
-                    type: 'basic', 
-                    symbol: 'PEPE', 
-                    poll_gate_tokens: 1000,
-                    chat_gate_tokens: 100,
-                    superchat_gate_tokens: 500,
-                    description: 'Simple memecoin with basic token gating'
-                },
-                'DOGKAS': { 
-                    type: 'advanced', 
-                    symbol: 'DOGKAS', 
-                    treasury_allocation: 15,
-                    lp_allocation: 10,
-                    airdrop_pool: 5,
-                    description: 'Pro governance with treasury mechanics'
-                },
-                'LASER': { 
-                    type: 'advanced', 
-                    symbol: 'LASER', 
-                    treasury_allocation: 12,
-                    lp_allocation: 8,
-                    airdrop_pool: 6,
-                    description: 'Pro token with advanced governance features'
-                },
-                'KSHIB': { 
-                    type: 'basic', 
-                    symbol: 'KSHIB', 
-                    poll_gate_tokens: 2000,
-                    chat_gate_tokens: 200,
-                    superchat_gate_tokens: 1000,
-                    description: 'Community-driven with simple features'
-                },
-                'FLOKI': { 
-                    type: 'basic', 
-                    symbol: 'FLOKI', 
-                    poll_gate_tokens: 1500,
-                    chat_gate_tokens: 150,
-                    superchat_gate_tokens: 750,
-                    description: 'Viking meme token with basic features'
-                },
-                'MOON': { 
-                    type: 'basic', 
-                    symbol: 'MOON', 
-                    poll_gate_tokens: 1000,
-                    chat_gate_tokens: 100,
-                    superchat_gate_tokens: 500,
-                    description: 'Basic token with solid community features'
-                }
+                type: {{ 'advanced' if is_pro_token else 'basic'|tojson }},
+                symbol: '{{ token.symbol }}',
+                name: '{{ token.name }}',
+                // Token settings from database (use the tokenSettings object defined earlier)
+                poll_gate_tokens: tokenSettings.minTokensToCreatePoll,
+                chat_gate_tokens: tokenSettings.minTokensToChat,
+                superchat_gate_tokens: tokenSettings.minTokensForSpotlight,
+                // Pro token allocations (if applicable)
+                {% if is_pro_token %}
+                treasury_allocation: {{ (token.reserved_percentage * 0.6)|round(1) if token.reserved_percentage else 15 }},  // 60% of reserved goes to treasury
+                lp_allocation: {{ (token.reserved_percentage * 0.3)|round(1) if token.reserved_percentage else 7.5 }},  // 30% to LP
+                airdrop_pool: {{ (token.reserved_percentage * 0.1)|round(1) if token.reserved_percentage else 2.5 }},  // 10% to airdrops
+                {% else %}
+                treasury_allocation: 0,
+                lp_allocation: 0,
+                airdrop_pool: 0,
+                {% endif %}
+                description: {{ token.description|tojson if token.description else '"Community-driven token on Kaspa"' }}
             };
             
-            return tokenData[tokenSymbol] || { 
-                type: 'basic', 
-                symbol: tokenSymbol, 
-                poll_gate_tokens: 1000,
-                chat_gate_tokens: 100,
-                superchat_gate_tokens: 500,
-                description: 'Basic token with simple features'
-            };
+            return tokenData;
         }
         
         function updateTokenTypeBadge() {

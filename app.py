@@ -475,6 +475,9 @@ def token_detail(contract_address):
     if user and token.creator:
         is_owner = user.wallet_address.lower() == token.creator.wallet_address.lower()
     
+    # Determine if token is pro (has reserved tokens for treasury/LP/airdrops)
+    is_pro_token = token.reserved_percentage > 0 if token.reserved_percentage else False
+    
     # Ensure token has settings (create if missing)
     if not token.settings:
         token_settings = TokenSettings(token_id=token.id)
@@ -487,7 +490,8 @@ def token_detail(contract_address):
                          recent_trades=recent_trades,
                          user_holding=user_holding,
                          user=user,
-                         is_owner=is_owner)
+                         is_owner=is_owner,
+                         is_pro_token=is_pro_token)
 
 # Fallback route for legacy numeric IDs (backwards compatibility)
 @app.route('/app/token/<int:token_id>')
