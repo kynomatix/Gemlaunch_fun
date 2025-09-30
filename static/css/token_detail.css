@@ -49,6 +49,102 @@
     animation: modalSlideIn 0.3s ease;
 }
 
+/* Airdrop Modal Specific Styles */
+.airdrop-modal-content {
+    max-width: 600px;
+}
+
+.airdrop-icon-gold {
+    color: #FFD700;
+}
+
+.airdrop-header-banner {
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.airdrop-banner-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #FFD700;
+    font-weight: 600;
+}
+
+.airdrop-banner-subtitle {
+    color: #AAA;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.airdrop-type-label {
+    color: #20B2AA;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+.airdrop-radio-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.airdrop-radio-option {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(32, 178, 170, 0.05);
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.airdrop-radio-option:hover {
+    background: rgba(32, 178, 170, 0.1);
+    border-color: #20B2AA;
+}
+
+.airdrop-radio-option input[type="radio"] {
+    margin-right: 0.75rem;
+}
+
+.airdrop-radio-title {
+    color: #20B2AA;
+}
+
+.airdrop-radio-description {
+    color: #999;
+    font-size: 0.85rem;
+}
+
+.airdrop-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.airdrop-input-label {
+    color: #20B2AA;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.airdrop-input-field {
+    width: 100%;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(20, 20, 30, 0.3));
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 10px;
+    color: #FFF;
+}
+
 @keyframes modalSlideIn {
     from {
         transform: translateY(-50px);
