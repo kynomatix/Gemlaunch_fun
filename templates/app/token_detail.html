@@ -204,7 +204,32 @@
                 return;
             }
             
+            // Check if user has enough tokens to create poll
+            const requiredTokens = TokenDetail.tokenSettings.minTokensToCreatePoll || 1000;
+            
             try {
+                // Validate token holdings BEFORE creating the poll
+                const holdingsResponse = await fetch(`/api/token/${window.tokenContractAddress}/holdings`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                
+                if (!holdingsResponse.ok) {
+                    alert('Failed to verify token holdings. Please try again.');
+                    return;
+                }
+                
+                const holdingsData = await holdingsResponse.json();
+                const actualBalance = holdingsData.balance || 0;
+                
+                // TOKEN GATE CHECK - User must HOLD tokens to create polls
+                if (actualBalance < requiredTokens) {
+                    alert(`You need to hold at least ${requiredTokens.toLocaleString()} $${TokenDetail.tokenSymbol} tokens to create polls.\n\nYou currently hold: ${actualBalance.toLocaleString()} $${TokenDetail.tokenSymbol}`);
+                    return;
+                }
+                
+                // All validations passed, now create the poll
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/polls`, {
                     method: 'POST',
                     headers: {
