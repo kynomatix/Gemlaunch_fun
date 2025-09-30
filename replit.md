@@ -54,6 +54,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Implemented cache busting with timestamp query parameters for image updates
 - Fixed Kasplex testnet network configuration: corrected Chain ID from 0x28CC4 (167108) to 0x28C64 (167012)
 - Updated network name from "Kasplex Network Testnet" to "Kasplex Testnet" to match official specifications
+- Fixed pro token settings modal to display treasury management and airdrop distribution features instead of basic chat requirements
+- Corrected JavaScript type detection for pro tokens in getCurrentTokenData() function
+- Added crown icon for pro token holders-only toggle to distinguish from basic tokens
+- Updated settings modal to properly detect pro tokens using server-side is_pro_token flag
 
 # User Preferences
 

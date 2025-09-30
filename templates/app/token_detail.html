@@ -2736,7 +2736,12 @@
             }, 100);
         });
 
-        let currentTradeMode = 'buy';
+        // Check if variable already exists (fixes Turbo reload issue)
+        if (typeof currentTradeMode === 'undefined') {
+            var currentTradeMode = 'buy';
+        } else {
+            currentTradeMode = 'buy';
+        }
         const tokenPrice = {{ token.current_price }};
         const marketCap = {{ token.current_market_cap }};
         const kasToUsd = 0.125;
