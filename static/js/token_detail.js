@@ -741,7 +741,8 @@
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}/react`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
                     }
                 });
                 
