@@ -1174,43 +1174,13 @@
         updateSpotlightDisplay: function(spotlight) {
             console.log('✨ Updating spotlight display:', spotlight);
             
-            let spotlightContainer = document.getElementById('spotlightMessages');
-            
-            if (!spotlightContainer) {
-                // Create spotlight container AT THE TOP of chat (yellow pinned box)
-                const chatHeader = document.querySelector('.chat-header');
-                if (chatHeader) {
-                    const spotlightHTML = `
-                        <div id="spotlightMessages" class="spotlight-pinned-container" style="
-                            display: block;
-                            background: linear-gradient(135deg, #FFF3CD, #FFE4A1);
-                            border: 2px solid #FFC107;
-                            border-radius: 10px;
-                            padding: 1rem;
-                            margin: 0.5rem 0;
-                            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
-                        ">
-                            <div class="spotlight-header" style="
-                                display: flex;
-                                align-items: center;
-                                gap: 0.5rem;
-                                margin-bottom: 0.75rem;
-                                color: #856404;
-                                font-weight: 600;
-                            ">
-                                <i class="fas fa-star" style="color: #FFC107; font-size: 1.2rem;"></i>
-                                <h4 style="margin: 0; color: #856404;">📍 Pinned Spotlight Messages</h4>
-                            </div>
-                            <div id="spotlightMessagesList"></div>
-                        </div>
-                    `;
-                    chatHeader.insertAdjacentHTML('afterend', spotlightHTML);
-                    spotlightContainer = document.getElementById('spotlightMessages');
-                }
-            }
-            
+            // Use existing spotlight container from template (no need to create dynamically)
+            const spotlightContainer = document.getElementById('spotlightMessages');
             const listContainer = document.getElementById('spotlightMessagesList');
-            if (!listContainer) return;
+            if (!listContainer || !spotlightContainer) return;
+            
+            // Show the spotlight container when adding messages
+            spotlightContainer.style.display = 'block';
             
             // Create spotlight message element with yellow theme and countdown
             const spotlightDiv = document.createElement('div');
@@ -1274,8 +1244,7 @@
                 }
             }, 60000); // Update every minute
             
-            // Also add to chat as spotlight message
-            this.addMessageToChat(spotlight.user, spotlight.message, true);
+            // Spotlight messages stay ONLY in the spotlight panel, not in regular chat
             
             // Remove after expiration
             setTimeout(() => {
