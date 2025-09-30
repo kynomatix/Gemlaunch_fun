@@ -340,13 +340,13 @@
                     const spotlightContainer = document.getElementById('spotlightMessages');
                     const listContainer = document.getElementById('spotlightMessagesList');
                     
-                    // Clear and rebuild spotlight messages
+                    // Clear existing spotlight messages
                     if (listContainer) {
                         listContainer.innerHTML = '';
                     }
                     
-                    // Only show panel if there are active spotlights
-                    if (data.spotlights && data.spotlights.length > 0) {
+                    // Process and display spotlight messages
+                    if (data.spotlights && data.spotlights.length > 0 && spotlightContainer && listContainer) {
                         // Add each spotlight message
                         data.spotlights.forEach(spotlight => {
                             const spotlightEntry = {
@@ -355,19 +355,18 @@
                                 message: spotlight.message,
                                 expiresAt: new Date(spotlight.created_at).getTime() + (60 * 60 * 1000)
                             };
-                            // Call display function but DON'T let it control container visibility
+                            // Add the message content only (don't control visibility here)
                             this.addSpotlightMessage(spotlightEntry);
+                            console.log('✨ Added spotlight to display:', spotlightEntry);
                         });
                         
-                        // Show container after all messages are added
-                        if (spotlightContainer) {
-                            spotlightContainer.style.display = 'block';
-                        }
-                    } else {
-                        // Hide panel if no spotlights
-                        if (spotlightContainer) {
-                            spotlightContainer.style.display = 'none';
-                        }
+                        // Show the container after adding all messages
+                        spotlightContainer.style.display = 'block';
+                        console.log('✨ Spotlight container shown with messages');
+                    } else if (spotlightContainer) {
+                        // Hide container if no spotlights
+                        spotlightContainer.style.display = 'none';
+                        console.log('✨ No spotlight messages - container hidden');
                     }
                     
                     console.log(`✨ Loaded ${data.spotlights.length} spotlight messages from database`);
@@ -1190,6 +1189,15 @@
             const listContainer = document.getElementById('spotlightMessagesList');
             if (!listContainer) return;
             
+            // Calculate time remaining
+            const timeRemaining = Math.max(0, Math.floor((spotlight.expiresAt - Date.now()) / 1000 / 60));
+            
+            // Skip expired messages (don't display them at all)
+            if (timeRemaining <= 0) {
+                console.log('⏰ Skipping expired spotlight message:', spotlight.id);
+                return;
+            }
+            
             // Create spotlight message element with teal/blue theme
             const spotlightDiv = document.createElement('div');
             spotlightDiv.className = 'spotlight-message';
@@ -1203,11 +1211,11 @@
                 position: relative;
             `;
             
-            const timeRemaining = Math.max(0, Math.floor((spotlight.expiresAt - Date.now()) / 1000 / 60));
-            
             spotlightDiv.innerHTML = `
                 <div style="display: flex; align-items: start; gap: 0.75rem;">
-                    <div class="spotlight-icon" style="font-size: 1.5rem; color: #20B2AA;">📌</div>
+                    <div class="spotlight-icon" style="font-size: 0.9rem; color: #20B2AA; margin-top: 0.2rem;">
+                        <i class="fas fa-thumbtack"></i>
+                    </div>
                     <div class="spotlight-content" style="flex: 1;">
                         <div class="spotlight-user" style="
                             font-weight: 600;
@@ -1222,13 +1230,13 @@
                         <div class="spotlight-time" style="
                             display: flex;
                             align-items: center;
-                            gap: 0.5rem;
+                            gap: 0.25rem;
                             margin-top: 0.5rem;
                             color: #00CED1;
                             font-size: 0.85rem;
                         ">
-                            <i class="fas fa-clock" style="color: #00CED1;"></i>
-                            <span id="spotlight-timer-${spotlight.id}">${timeRemaining} minutes remaining</span>
+                            <i class="fas fa-clock" style="color: #00CED1; font-size: 0.8rem;"></i>
+                            <span id="spotlight-timer-${spotlight.id}">${timeRemaining}m</span>
                         </div>
                     </div>
                 </div>
@@ -1243,9 +1251,9 @@
                 const timerElement = document.getElementById(`spotlight-timer-${spotlight.id}`);
                 if (timerElement) {
                     if (remaining > 0) {
-                        timerElement.textContent = `${remaining} minutes remaining`;
+                        timerElement.textContent = `${remaining}m`;
                     } else {
-                        timerElement.innerHTML = '<span style="color: #dc3545;">Expiring...</span>';
+                        timerElement.innerHTML = '<span style="color: #dc3545;">0m</span>';
                         clearInterval(timerId);
                     }
                 }
