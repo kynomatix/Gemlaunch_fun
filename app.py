@@ -9,6 +9,7 @@ from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
+from services import TokenService
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -395,47 +396,26 @@ def create_token():
         return render_template('app/connect_wallet.html')
     
     if request.method == 'POST':
-        # Handle token creation form submission (UI mockup)
-        name = request.form.get('name')
-        symbol = request.form.get('symbol')
-        description = request.form.get('description', '')
-        website = request.form.get('website', '')
-        twitter = request.form.get('twitter', '')
-        telegram = request.form.get('telegram', '')
-        mode = request.form.get('mode', 'simple')
-        total_supply = request.form.get('total_supply', '1000000000')
-        reserved_percentage = request.form.get('reserved_percentage', '0')
+        # Handle token creation form submission
+        token_data = {
+            'name': request.form.get('name'),
+            'symbol': request.form.get('symbol'),
+            'description': request.form.get('description', ''),
+            'website': request.form.get('website', ''),
+            'twitter': request.form.get('twitter', ''),
+            'telegram': request.form.get('telegram', ''),
+            'total_supply': request.form.get('total_supply', '1000000000'),
+            'reserved_percentage': request.form.get('reserved_percentage', '0')
+        }
         
-        # Simulate token creation (this is just UI - no actual blockchain deployment)
-        try:
-            # Create mock token record
-            new_token = Token()
-            new_token.name = name
-            new_token.symbol = symbol.upper() if symbol else 'TOKEN'
-            new_token.description = description
-            new_token.website = website
-            new_token.twitter = twitter
-            new_token.telegram = telegram
-            new_token.creator_id = user.id
-            new_token.total_supply = int(total_supply)
-            new_token.circulating_supply = 0
-            new_token.deployment_status = 'pending'  # Mock status for UI
-            new_token.current_price = 0.001  # Mock starting price
-            new_token.current_market_cap = 1000  # Start at $1K market cap
-            new_token.reserved_percentage = float(reserved_percentage)
-            
-            # Generate mock contract address
-            import secrets
-            new_token.contract_address = f'0x{secrets.token_hex(20).lower()}'
-            
-            db.session.add(new_token)
-            db.session.commit()
-            
-            flash(f'🚀 Token "{name}" ({symbol}) created successfully! This is a UI demo - no actual blockchain deployment.', 'success')
+        # Use TokenService to create the token
+        new_token = TokenService.create_token(user, token_data)
+        
+        if new_token:
+            flash(f'🚀 Token "{new_token.name}" ({new_token.symbol}) created successfully! This is a UI demo - no actual blockchain deployment.', 'success')
             return redirect(url_for('token_marketplace'))
-            
-        except Exception as e:
-            flash(f'Error creating token: {str(e)}', 'error')
+        else:
+            flash('Error creating token. Please try again.', 'error')
             return redirect(url_for('create_token'))
     
     return render_template('app/create_token.html', user=user)
@@ -478,15 +458,11 @@ def token_detail(contract_address):
     if user and token.creator:
         is_owner = user.wallet_address.lower() == token.creator.wallet_address.lower()
     
-    # Determine if token is pro (has reserved tokens for treasury/LP/airdrops)
-    is_pro_token = token.reserved_percentage > 0 if token.reserved_percentage else False
+    # Use TokenService to determine if token is pro
+    is_pro_token = TokenService.is_pro_token(token)
     
-    # Ensure token has settings (create if missing)
-    if not token.settings:
-        token_settings = TokenSettings(token_id=token.id)
-        db.session.add(token_settings)
-        db.session.commit()
-        token.settings = token_settings
+    # Ensure token has settings using service
+    token.settings = TokenService.ensure_token_settings(token)
     
     return render_template('app/token_detail.html', 
                          token=token, 
