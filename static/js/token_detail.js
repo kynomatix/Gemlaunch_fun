@@ -1457,7 +1457,8 @@
             chatInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    TokenDetail.sendMessage();
+                    // Use the same global function as the send button to ensure consistency
+                    window.sendMessage();
                 }
             });
         }
