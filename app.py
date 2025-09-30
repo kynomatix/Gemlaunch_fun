@@ -833,13 +833,16 @@ def token_spotlight(contract_address):
     user = get_current_user()
     
     if request.method == 'GET':
-        # Get active spotlight messages with user profile
+        # Get active spotlight messages (only those less than 1 hour old)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        
         spotlights = ChatMessage.query.options(
             joinedload(ChatMessage.user).joinedload(User.profile)
-        ).filter_by(
-            token_id=token.id,
-            is_pinned=True,
-            is_deleted=False
+        ).filter(
+            ChatMessage.token_id == token.id,
+            ChatMessage.is_pinned == True,
+            ChatMessage.is_deleted == False,
+            ChatMessage.created_at >= one_hour_ago  # Only show spotlights less than 1 hour old
         ).order_by(ChatMessage.created_at.desc()).limit(5).all()
         
         spotlight_list = []

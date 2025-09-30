@@ -1,22 +1,24 @@
 /* Token Detail Page Styles */
 
-/* Spotlight Animation for Yellow Pinned Messages */
+/* Spotlight Animation for Teal/Blue Pinned Messages */
 @keyframes pulseGlow {
     0% {
-        box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+        box-shadow: 0 0 8px rgba(32, 178, 170, 0.3);
     }
     50% {
-        box-shadow: 0 0 20px rgba(255, 193, 7, 0.6), 0 0 30px rgba(255, 193, 7, 0.2);
+        box-shadow: 0 0 20px rgba(32, 178, 170, 0.5), 0 0 30px rgba(32, 178, 170, 0.2);
     }
     100% {
-        box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+        box-shadow: 0 0 8px rgba(32, 178, 170, 0.3);
     }
 }
 
-/* Spotlight Pinned Container - Yellow theme */
+/* Spotlight Pinned Container - Teal/Blue theme */
 .spotlight-pinned-container {
-    background: linear-gradient(135deg, #FFF3CD, #FFE4A1) !important;
-    border: 2px solid #FFC107 !important;
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.1)) !important;
+    border: 2px solid #20B2AA !important;
+    border-radius: 10px;
+    padding: 1rem;
     animation: pulseGlow 3s ease-in-out infinite;
 }
 
@@ -26,7 +28,7 @@
 
 .spotlight-message-item:hover {
     transform: translateX(5px);
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+    box-shadow: 0 4px 12px rgba(32, 178, 170, 0.3);
 }
 
 /* Modal Base Styles - Fixed positioning */

@@ -337,11 +337,11 @@
                 if (response.ok) {
                     const data = await response.json();
                     
+                    const spotlightContainer = document.getElementById('spotlightMessages');
+                    const listContainer = document.getElementById('spotlightMessagesList');
+                    
+                    // Only show panel if there are active spotlights
                     if (data.spotlights && data.spotlights.length > 0) {
-                        const spotlightContainer = document.getElementById('spotlightMessages');
-                        const listContainer = document.getElementById('spotlightMessagesList');
-                        
-                        spotlightContainer.style.display = 'block';
                         listContainer.innerHTML = '';
                         
                         data.spotlights.forEach(spotlight => {
@@ -353,6 +353,12 @@
                             };
                             this.updateSpotlightDisplay(spotlightEntry);
                         });
+                        
+                        // Show container AFTER adding messages
+                        spotlightContainer.style.display = 'block';
+                    } else {
+                        // Hide panel if no spotlights
+                        spotlightContainer.style.display = 'none';
                     }
                     
                     console.log(`✨ Loaded ${data.spotlights.length} spotlight messages from database`);
@@ -1174,41 +1180,36 @@
         updateSpotlightDisplay: function(spotlight) {
             console.log('✨ Updating spotlight display:', spotlight);
             
-            // Use existing spotlight container from template (no need to create dynamically)
-            const spotlightContainer = document.getElementById('spotlightMessages');
+            // Use existing spotlight container from template
             const listContainer = document.getElementById('spotlightMessagesList');
-            if (!listContainer || !spotlightContainer) return;
+            if (!listContainer) return;
             
-            // Show the spotlight container when adding messages
-            spotlightContainer.style.display = 'block';
-            
-            // Create spotlight message element with yellow theme and countdown
+            // Create spotlight message element with teal/blue theme
             const spotlightDiv = document.createElement('div');
             spotlightDiv.className = 'spotlight-message-item';
             spotlightDiv.setAttribute('data-spotlight-id', spotlight.id);
             spotlightDiv.style.cssText = `
-                background: rgba(255, 255, 255, 0.8);
-                border: 1px solid #FFC107;
+                background: rgba(32, 178, 170, 0.1);
+                border: 1px solid #20B2AA;
                 border-radius: 8px;
                 padding: 0.75rem;
                 margin-bottom: 0.5rem;
                 position: relative;
-                animation: pulseGlow 2s ease-in-out infinite;
             `;
             
             const timeRemaining = Math.max(0, Math.floor((spotlight.expiresAt - Date.now()) / 1000 / 60));
             
             spotlightDiv.innerHTML = `
                 <div style="display: flex; align-items: start; gap: 0.75rem;">
-                    <div class="spotlight-icon" style="font-size: 1.5rem;">✨</div>
+                    <div class="spotlight-icon" style="font-size: 1.5rem; color: #20B2AA;">📌</div>
                     <div class="spotlight-content" style="flex: 1;">
                         <div class="spotlight-user" style="
                             font-weight: 600;
-                            color: #856404;
+                            color: #20B2AA;
                             margin-bottom: 0.25rem;
                         ">${spotlight.user}</div>
                         <div class="spotlight-text" style="
-                            color: #333;
+                            color: #E0E0E0;
                             font-size: 1rem;
                             line-height: 1.4;
                         ">${spotlight.message}</div>
@@ -1217,10 +1218,10 @@
                             align-items: center;
                             gap: 0.5rem;
                             margin-top: 0.5rem;
-                            color: #856404;
+                            color: #00CED1;
                             font-size: 0.85rem;
                         ">
-                            <i class="fas fa-clock" style="color: #FFC107;"></i>
+                            <i class="fas fa-clock" style="color: #00CED1;"></i>
                             <span id="spotlight-timer-${spotlight.id}">${timeRemaining} minutes remaining</span>
                         </div>
                     </div>
