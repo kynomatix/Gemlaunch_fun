@@ -75,6 +75,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Created @wallet_optional decorator for routes that allow anonymous users while maintaining wallet-gated features
 - Added wallet-connect banners on marketplace and leaderboard for anonymous users to encourage connection
 - Updated templates to safely handle user=None and provide clear messaging about wallet benefits
+- Fixed Enter key sending duplicate messages by adding preventDefault() to keypress event handler
+- Restored spotlight messages to dedicated pinned panel above chat (no longer mixed in regular chat)
+- Spotlight panel now stays visible at top of chat, messages don't scroll away
+- Removed duplicate spotlight display in regular chat flow - spotlight messages only appear in dedicated panel
 
 # User Preferences
 
