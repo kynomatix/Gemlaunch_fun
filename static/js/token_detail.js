@@ -340,10 +340,14 @@
                     const spotlightContainer = document.getElementById('spotlightMessages');
                     const listContainer = document.getElementById('spotlightMessagesList');
                     
+                    // Clear and rebuild spotlight messages
+                    if (listContainer) {
+                        listContainer.innerHTML = '';
+                    }
+                    
                     // Only show panel if there are active spotlights
                     if (data.spotlights && data.spotlights.length > 0) {
-                        listContainer.innerHTML = '';
-                        
+                        // Add each spotlight message
                         data.spotlights.forEach(spotlight => {
                             const spotlightEntry = {
                                 id: spotlight.id,
@@ -351,14 +355,19 @@
                                 message: spotlight.message,
                                 expiresAt: new Date(spotlight.created_at).getTime() + (60 * 60 * 1000)
                             };
-                            this.updateSpotlightDisplay(spotlightEntry);
+                            // Call display function but DON'T let it control container visibility
+                            this.addSpotlightMessage(spotlightEntry);
                         });
                         
-                        // Show container AFTER adding messages
-                        spotlightContainer.style.display = 'block';
+                        // Show container after all messages are added
+                        if (spotlightContainer) {
+                            spotlightContainer.style.display = 'block';
+                        }
                     } else {
                         // Hide panel if no spotlights
-                        spotlightContainer.style.display = 'none';
+                        if (spotlightContainer) {
+                            spotlightContainer.style.display = 'none';
+                        }
                     }
                     
                     console.log(`✨ Loaded ${data.spotlights.length} spotlight messages from database`);
@@ -1176,16 +1185,10 @@
             // Implementation here
         },
         
-        updateSpotlightDisplay: function(spotlight) {
-            console.log('✨ Updating spotlight display:', spotlight);
-            
-            // Use existing spotlight container from template
-            const spotlightContainer = document.getElementById('spotlightMessages');
+        // Add spotlight message WITHOUT controlling container visibility
+        addSpotlightMessage: function(spotlight) {
             const listContainer = document.getElementById('spotlightMessagesList');
-            if (!listContainer || !spotlightContainer) return;
-            
-            // Show container when adding spotlight
-            spotlightContainer.style.display = 'block';
+            if (!listContainer) return;
             
             // Create spotlight message element with teal/blue theme
             const spotlightDiv = document.createElement('div');
@@ -1255,9 +1258,31 @@
                 const element = document.querySelector(`[data-spotlight-id="${spotlight.id}"]`);
                 if (element) {
                     element.style.animation = 'fadeOut 0.5s ease';
-                    setTimeout(() => element.remove(), 500);
+                    setTimeout(() => {
+                        element.remove();
+                        // Hide container if no spotlights remain
+                        const listContainer = document.getElementById('spotlightMessagesList');
+                        const spotlightContainer = document.getElementById('spotlightMessages');
+                        if (listContainer && spotlightContainer && listContainer.children.length === 0) {
+                            spotlightContainer.style.display = 'none';
+                        }
+                    }, 500);
                 }
             }, timeRemaining * 60 * 1000);
+        },
+        
+        // Update spotlight display for newly created spotlights
+        updateSpotlightDisplay: function(spotlight) {
+            console.log('✨ Updating spotlight display:', spotlight);
+            
+            // Show the container when adding a new spotlight
+            const spotlightContainer = document.getElementById('spotlightMessages');
+            if (spotlightContainer) {
+                spotlightContainer.style.display = 'block';
+            }
+            
+            // Add the message
+            this.addSpotlightMessage(spotlight);
         },
         
         // Create spotlight message
