@@ -90,6 +90,8 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Removed duplicate Holdings section from dashboard for cleaner layout
 - Replaced all oval/pill-shaped buttons (25-50px border-radius) with sleek rectangular buttons (10px border-radius) across entire site
 - Applied consistent button design: 21 instances updated across templates and CSS files for modern rectangular appearance
+- Added animated glowing border effect to all secondary buttons with pulsing teal/cyan glow animation
+- Border glow animates between #20B2AA and #00CED1 colors with box-shadow effects for depth
 
 # User Preferences
 
