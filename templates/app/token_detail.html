@@ -68,7 +68,7 @@
                             {% endif %}
                             {% if token.twitter %}
                             <a href="{{ token.twitter }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="X (Twitter)">
-                                <i class="fab fa-x-twitter"></i>
+                                <i class="fab fa-twitter"></i>
                             </a>
                             {% endif %}
                             {% if token.telegram %}
@@ -760,6 +760,28 @@
             color: #CCC;
             font-size: 0.95rem;
             line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            white-space: pre-line;
+        }
+        
+        .token-description::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .token-description::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .token-description::-webkit-scrollbar-thumb {
+            background: rgba(32, 178, 170, 0.5);
+            border-radius: 3px;
+        }
+        
+        .token-description::-webkit-scrollbar-thumb:hover {
+            background: rgba(32, 178, 170, 0.7);
         }
         
         /* Social Links Styling */
