@@ -65,6 +65,10 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Added delete button (trash icon) visible only to token owner with confirmation modal
 - Created secure DELETE API endpoint that validates token ownership before deletion
 - Message deletion includes smooth UI animation and proper state cleanup
+- Fixed message reactions (hearts) persistence - reactions now properly stored in database and persist across page refreshes
+- Backend API returns love_count and is_loved_by_user for each message from MessageReaction table
+- Frontend loads reaction data from database instead of localStorage, ensuring accurate counts after refresh
+- Heart icons properly show as active (red) when user has already loved a message
 
 # User Preferences
 
