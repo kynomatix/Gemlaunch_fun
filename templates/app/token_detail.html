@@ -130,8 +130,15 @@
         window.isProToken = {{ 'true' if is_pro_token else 'false' }};
         
         // This inline script re-executes on every page load (including Turbo navigation)
-        // So we can initialize TokenDetail directly when Turbo finishes loading
+        // Wait for TokenDetail to be available before initializing
         function initTokenDetailOnce() {
+            // Check if TokenDetail is loaded
+            if (typeof TokenDetail === 'undefined') {
+                // Script not loaded yet, wait for it
+                setTimeout(initTokenDetailOnce, 50);
+                return;
+            }
+            
             // DEBUG: Check what's being passed from backend
             console.log('TEMPLATE DEBUG - is_pro_token from backend:', {{ is_pro_token|tojson }});
             console.log('TEMPLATE DEBUG - token.reserved_percentage:', {{ token.reserved_percentage }});
@@ -151,8 +158,7 @@
             });
         }
         
-        // Call immediately - this script runs after Turbo has loaded the page
-        // or on initial DOMContentLoaded
+        // Call immediately - will wait for TokenDetail if needed
         initTokenDetailOnce();
         
         // Modal functions that remain global for simplicity
