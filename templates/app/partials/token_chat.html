@@ -29,11 +29,34 @@
     </div>
     {% endif %}
     
-    <!-- Token Rewards Section - PRO TOKENS ONLY (Collapsible) -->
+    
+    <!-- Token gate status -->
+    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
+        <div class="gate-info">
+            <i class="fas fa-shield-alt"></i>
+            <span>Only ${{ token.symbol }} holders can chat</span>
+            <span class="minimum-balance">Min: 1,000 tokens</span>
+        </div>
+    </div>
+
+    
+    <!-- Spotlight Messages (Pinned for 1 hour) - ONLY VISIBLE WHEN THERE ARE MESSAGES -->
+    <div id="spotlightMessages" class="spotlight-pinned-container" style="display: none; margin-bottom: 1rem;">
+        <div id="spotlightMessagesList">
+            <!-- Dynamically populated spotlight messages -->
+        </div>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div class="chat-messages" id="chatMessages">
+        <!-- Messages will be loaded from database -->
+    </div>
+    
+    <!-- Token Rewards Section - PRO TOKENS ONLY (Collapsible) - At Bottom -->
     {% if is_pro_token %}
     <div class="achievement-guide">
         <div class="achievement-header">
-            <h4><i class="fas fa-crown"></i> How to Earn {{ token.symbol }} Rewards <span class="accolade-badge pro" style="margin-left: 0.5rem;">Treasury: {{ token.reserved_percentage|round(1) if token.reserved_percentage else 0 }}%</span></h4>
+            <h4><i class="fas fa-crown"></i> How to Earn {{ token.symbol }} Rewards</h4>
             <button class="achievement-toggle" onclick="toggleTokenRewards()">
                 <i class="fas fa-chevron-down"></i>
             </button>
@@ -75,18 +98,8 @@
         </div>
     </div>
     {% endif %}
-    <!-- BASIC TOKENS: NO ACCOLADES AT ALL -->
-    
-    <!-- Token gate status -->
-    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
-        <div class="gate-info">
-            <i class="fas fa-shield-alt"></i>
-            <span>Only ${{ token.symbol }} holders can chat</span>
-            <span class="minimum-balance">Min: 1,000 tokens</span>
-        </div>
-    </div>
 
-    <!-- Gamified Leaderboard -->
+    <!-- Gamified Leaderboard - At Bottom -->
     <div class="chat-leaderboard">
         <div class="leaderboard-header">
             <h4><i class="fas fa-trophy"></i> Top Contributors</h4>
@@ -114,18 +127,6 @@
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Spotlight Messages (Pinned for 1 hour) - ONLY VISIBLE WHEN THERE ARE MESSAGES -->
-    <div id="spotlightMessages" class="spotlight-pinned-container" style="display: none; margin-bottom: 1rem;">
-        <div id="spotlightMessagesList">
-            <!-- Dynamically populated spotlight messages -->
-        </div>
-    </div>
-    
-    <!-- Chat Messages -->
-    <div class="chat-messages" id="chatMessages">
-        <!-- Messages will be loaded from database -->
     </div>
     
     <!-- Chat Action Buttons - Above Input -->
