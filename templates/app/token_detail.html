@@ -171,7 +171,7 @@
             const optionCount = container.querySelectorAll('.poll-option').length;
             
             if (optionCount >= 5) {
-                alert('Maximum 5 options allowed');
+                TokenDetail.modals.alert('Poll Options', 'Maximum 5 options allowed', 'error');
                 return;
             }
             
@@ -194,13 +194,13 @@
             const voteCost = document.getElementById('voteCost').value;
             
             if (!question || options.length < 2) {
-                alert('Please enter a question and at least 2 options');
+                TokenDetail.modals.alert('Missing Information', 'Please enter a question and at least 2 options', 'error');
                 return;
             }
             
             const userWallet = localStorage.getItem('connectedWallet');
             if (!userWallet) {
-                alert('Please connect your wallet first');
+                TokenDetail.modals.alert('Wallet Required', 'Please connect your wallet first', 'error');
                 return;
             }
             
@@ -216,7 +216,7 @@
                 });
                 
                 if (!holdingsResponse.ok) {
-                    alert('Failed to verify token holdings. Please try again.');
+                    TokenDetail.modals.alert('Verification Failed', 'Failed to verify token holdings. Please try again.', 'error');
                     return;
                 }
                 
@@ -225,7 +225,7 @@
                 
                 // TOKEN GATE CHECK - User must HOLD tokens to create polls
                 if (actualBalance < requiredTokens) {
-                    alert(`You need to hold at least ${requiredTokens.toLocaleString()} $${TokenDetail.tokenSymbol} tokens to create polls.\n\nYou currently hold: ${actualBalance.toLocaleString()} $${TokenDetail.tokenSymbol}`);
+                    TokenDetail.modals.alert('Insufficient Tokens', `You need to hold at least ${requiredTokens.toLocaleString()} $${TokenDetail.tokenSymbol} tokens to create polls.\n\nYou currently hold: ${actualBalance.toLocaleString()} $${TokenDetail.tokenSymbol}`, 'error');
                     return;
                 }
                 
@@ -247,7 +247,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('Poll created successfully!');
+                    TokenDetail.modals.alert('Success', 'Poll created successfully!', 'success');
                     closePollModal();
                     // Clear form
                     document.getElementById('pollQuestion').value = '';
@@ -261,11 +261,11 @@
                     // Reload polls
                     TokenDetail.loadMessages();
                 } else {
-                    alert(data.error || 'Failed to create poll');
+                    TokenDetail.modals.alert('Error', data.error || 'Failed to create poll', 'error');
                 }
             } catch (error) {
                 console.error('Error creating poll:', error);
-                alert('Failed to create poll. Please try again.');
+                TokenDetail.modals.alert('Error', 'Failed to create poll. Please try again.', 'error');
             }
         }
         
