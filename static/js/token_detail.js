@@ -1456,7 +1456,7 @@
                         expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
                     });
                     
-                    this.showNotification('✨ Spotlight Created!', `Your message is now pinned for 1 hour! (Token gated: ${requiredTokens.toLocaleString()} $${this.tokenSymbol} holding required)`, 'success');
+                    // Success notification removed per user request
                 } else {
                     const error = await response.json();
                     this.showNotification('❌ Error', error.error || 'Failed to create spotlight', 'error');
