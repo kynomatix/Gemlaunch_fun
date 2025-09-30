@@ -817,8 +817,11 @@
             const isLoved = this.chatState.userLoves.includes(messageId);
             
             try {
+                const apiUrl = `/api/token/${window.tokenContractAddress}/message/${messageId}/react`;
+                console.log('Calling love API:', apiUrl);
+                
                 // Make API call
-                const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}/react`, {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1478,6 +1481,7 @@
         if (chatInput) {
             chatInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
+                    e.preventDefault();
                     TokenDetail.sendMessage();
                 }
             });
