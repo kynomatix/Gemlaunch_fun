@@ -1648,7 +1648,9 @@
                                             {% endif %}
                                         </span>
                                         <span class="dot">•</span>
+                                        <span class="activity-description">{{ activity.description or 'Activity recorded' }}</span>
                                         {% if activity.points_earned and activity.points_earned > 0 %}
+                                            <span class="dot">•</span>
                                             <span class="activity-points">+{{ activity.points_earned }}</span>
                                         {% endif %}
                                     </div>
@@ -2777,12 +2779,21 @@
             white-space: nowrap;
         }
         
+        .activity-description {
+            color: #fff;
+            font-size: 0.82rem;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
         .activity-points {
             color: #20B2AA;
             font-weight: 400;
             font-size: 0.82rem;
             white-space: nowrap;
-            margin-left: auto;
+            flex-shrink: 0;
         }
 
         .activity-details {
