@@ -1479,7 +1479,7 @@
                                                         </div>
                                                         
                                                         <div class="accolade-reward {{ 'reward-completed' if item.is_completed else '' }}">
-                                                            <span class="points">+{{ item['reward']|int }}</span>
+                                                            <span class="points">+{{ item.reward|default(0)|int }}</span>
                                                             <span class="label">Points</span>
                                                         </div>
                                                     </div>
