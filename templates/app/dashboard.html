@@ -1477,7 +1477,19 @@
 
                             <!-- Category Indicator Dots -->
                             <div class="carousel-indicators">
-                                {% for i in range(5) %}
+                                {# Count actual slides with achievements to generate correct number of dots #}
+                                {% set slide_count = namespace(value=0) %}
+                                {% for category_id, category_name, category_icon in categories %}
+                                    {% set temp_achievements = [] %}
+                                    {% for ach_id, ach_data in achievement_progress.items() if ach_data.category == category_id %}
+                                        {% set _ = temp_achievements.append(ach_id) %}
+                                    {% endfor %}
+                                    {% if temp_achievements %}
+                                        {% set slide_count.value = slide_count.value + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% for i in range(slide_count.value if slide_count.value > 0 else 5) %}
                                 <button class="carousel-dot {{ 'active' if i == 0 else '' }}" 
                                         onclick="window.goToCategory({{ i }})" 
                                         aria-label="Go to category {{ i + 1 }}">
@@ -1488,7 +1500,7 @@
 
                             <!-- Category Quick Jump -->
                             <div class="category-quick-jump">
-                                <span class="quick-jump-hint">Press 1-5 to jump to category</span>
+                                <span class="quick-jump-hint">Press 1-{{ slide_count.value if slide_count.value > 0 else 5 }} to jump to category</span>
                             </div>
                         </div>
                     </div>
@@ -1792,7 +1804,8 @@
             window.currentCategoryIndex = 0;
         }
         if (typeof window.totalCategories === 'undefined') {
-            window.totalCategories = 5;
+            // Dynamic: count actual rendered slides instead of hardcoding
+            window.totalCategories = document.querySelectorAll('.carousel-slide').length || 5;
         }
         if (typeof window.isTransitioning === 'undefined') {
             window.isTransitioning = false;
