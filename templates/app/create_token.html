@@ -673,7 +673,8 @@
             
             // Only initialize if Quill is available
             if (typeof Quill === 'undefined') {
-                console.error('Quill library not loaded');
+                // Retry after a short delay if Quill is not loaded yet
+                setTimeout(initQuill, 100);
                 return;
             }
             
@@ -703,8 +704,13 @@
             window.quillInstance = quill;
         }
         
-        // Initialize on DOMContentLoaded for first load
-        document.addEventListener('DOMContentLoaded', initQuill);
+        // Wait for both DOM and Quill to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initQuill);
+        } else {
+            // DOM is already loaded, initialize now
+            initQuill();
+        }
         
         // Reinitialize on Turbo navigation
         document.addEventListener('turbo:load', initQuill);
