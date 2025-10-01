@@ -1783,6 +1783,13 @@
             // Add active class to selected tab and button
             document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
             document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // If switching to achievements tab, update the carousel header
+            if (tabName === 'achievements' && window.updateCategoryHeader) {
+                setTimeout(() => {
+                    window.updateCategoryHeader(window.currentCategoryIndex || 0);
+                }, 10);
+            }
         }
 
         // Activities filtering functionality
@@ -2012,11 +2019,11 @@
                     updateCategoryHeader(0);
                 }, 50);
                 
-                // Add keyboard navigation - works globally when carousel exists
+                // Add keyboard navigation - works when achievements tab is active
                 document.addEventListener('keydown', function(e) {
-                    // Only work if carousel is visible
-                    const carousel = document.querySelector('.accolades-carousel');
-                    if (!carousel || carousel.offsetParent === null) return;
+                    // Only work if achievements tab is active
+                    const achievementsTab = document.getElementById('achievements-tab');
+                    if (!achievementsTab || !achievementsTab.classList.contains('active')) return;
                     
                     // Arrow keys
                     if (e.key === 'ArrowLeft') {
