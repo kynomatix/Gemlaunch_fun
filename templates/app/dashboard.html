@@ -1628,6 +1628,7 @@
                                     <div class="activity-summary">
                                         <span class="activity-datetime">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</span>
                                         <span class="activity-separator">•</span>
+                                        {% if activity.action_type == 'token_created' or activity.action_type == 'trade_executed' or activity.action_type == 'achievement_unlocked' or activity.action_type == 'referral_earned' %}
                                         <span class="activity-category">
                                             {% if activity.action_type == 'token_created' %}
                                                 Token
@@ -1637,11 +1638,10 @@
                                                 Achievement
                                             {% elif activity.action_type == 'referral_earned' %}
                                                 Referral
-                                            {% else %}
-                                                Activity
                                             {% endif %}
                                         </span>
                                         <span class="activity-separator">•</span>
+                                        {% endif %}
                                         <span class="activity-brief">{{ activity.description or 'Activity recorded' }}</span>
                                         {% if activity.points_earned and activity.points_earned > 0 %}
                                             <span class="activity-separator">•</span>
@@ -2718,8 +2718,8 @@
 
         .activity-item-compact {
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
             cursor: pointer;
@@ -2738,45 +2738,53 @@
         .activity-summary {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            font-size: 0.9rem;
-            line-height: 1.4;
+            gap: 0.4rem;
+            flex-wrap: nowrap;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            overflow: hidden;
         }
         
         .activity-datetime {
             color: #888888;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
         }
         
         .activity-separator {
             color: #555555;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
         }
         
         .activity-category {
             color: #20B2AA;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            white-space: nowrap;
         }
         
         .activity-brief {
             color: #FFFFFF;
             flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         .activity-points {
-            color: #FFD700;
+            color: #20B2AA;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
         }
         
         .activity-expand-icon {
             color: #888888;
-            font-size: 0.8rem;
-            margin-left: auto;
+            font-size: 0.7rem;
+            margin-left: 0.3rem;
             transition: transform 0.3s ease;
+            flex-shrink: 0;
         }
         
         .activity-item-compact.expanded .activity-expand-icon {
