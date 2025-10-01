@@ -1624,6 +1624,7 @@
                         {% if activities and activities|length > 0 %}
                             <div class="activities-timeline">
                                 {% for activity in activities %}
+                                {% if activity.activity_type not in ['trade_buy', 'trade_sell'] %}
                                 {% set is_accolade = activity.activity_type == 'achievement_earned' %}
                                 <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{{ activity.activity_type }}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
                                     <div class="activity-summary">
@@ -1633,8 +1634,6 @@
                                             <span class="activity-category">
                                                 {% if activity.activity_type == 'token_created' %}
                                                     Token launch
-                                                {% elif activity.activity_type in ['trade_buy', 'trade_sell'] %}
-                                                    Trade
                                                 {% elif activity.activity_type == 'achievement_earned' %}
                                                     Earned accolade
                                                 {% elif activity.activity_type == 'referral_earned' %}
@@ -1657,6 +1656,7 @@
                                     </div>
                                     {% endif %}
                                 </div>
+                                {% endif %}
                                 {% endfor %}
                             </div>
                         {% else %}
