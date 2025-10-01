@@ -618,6 +618,10 @@ def token_messages(contract_address):
         db.session.add(message)
         db.session.commit()
         
+        # Increment achievement counter
+        user.total_messages_sent = (user.total_messages_sent or 0) + 1
+        db.session.commit()
+        
         # If this is a reply, load the reply_to information
         response_msg = {
             'id': message.id,
