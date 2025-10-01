@@ -252,7 +252,8 @@ def evaluate_user_achievements(user_id):
             'requirement': float(requirement_value),
             'progress_pct': progress_pct,
             'is_completed': is_completed,
-            'earned_at': earned_at
+            'earned_at': earned_at,
+            'reward': achievement.gem_points_reward or 0
         }
     
     return results
