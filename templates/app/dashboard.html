@@ -2023,21 +2023,29 @@
                 document.addEventListener('keydown', function(e) {
                     // Only work if achievements tab is active
                     const achievementsTab = document.getElementById('achievements-tab');
-                    if (!achievementsTab || !achievementsTab.classList.contains('active')) return;
+                    if (!achievementsTab || !achievementsTab.classList.contains('active')) {
+                        return;
+                    }
                     
                     // Arrow keys
                     if (e.key === 'ArrowLeft') {
                         e.preventDefault();
-                        window.navigateCarousel(-1);
+                        if (window.navigateCarousel) {
+                            window.navigateCarousel(-1);
+                        }
                     } else if (e.key === 'ArrowRight') {
                         e.preventDefault();
-                        window.navigateCarousel(1);
+                        if (window.navigateCarousel) {
+                            window.navigateCarousel(1);
+                        }
                     }
                     // Number keys 1-5
                     else if (e.key >= '1' && e.key <= '5') {
                         e.preventDefault();
                         const index = parseInt(e.key) - 1;
-                        window.goToCategory(index);
+                        if (window.goToCategory) {
+                            window.goToCategory(index);
+                        }
                     }
                 });
                 
