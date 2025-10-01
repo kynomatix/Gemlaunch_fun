@@ -399,18 +399,11 @@
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
             border: 2px solid rgba(32, 178, 170, 0.3);
             border-radius: 16px;
-            padding: 16px 20px;  /* Removed extra bottom padding */
+            padding: 16px 20px;
             margin-bottom: 12px;
             position: relative;
-            overflow: hidden;  /* Required for shine animation */
+            overflow: visible;  /* Changed from hidden to prevent clipping */
             z-index: 1;
-            isolation: isolate;  /* Prevent compositor issues at fractional zoom */
-            display: grid;
-            grid-template-areas: 
-                "info"
-                "progress";
-            grid-template-rows: auto auto;
-            gap: 20px;
         }
 
         .carousel-header::before {
@@ -424,6 +417,7 @@
             animation: headerShimmer 8s infinite ease-in-out;
             pointer-events: none;
             z-index: 0;  /* Behind content */
+            border-radius: 14px;  /* Match parent border-radius minus border */
         }
 
         @keyframes headerShimmer {
@@ -432,14 +426,14 @@
         }
 
         .current-category-info {
-            grid-area: info;
             display: flex;
             align-items: center;
-            gap: 12px;  /* Fixed pixels for stability */
+            gap: 12px;
             flex-wrap: nowrap;
-            min-width: 0;  /* Allow text truncation */
+            min-width: 0;
             position: relative;
-            z-index: 1;  /* Above shine animation */
+            z-index: 1;
+            margin-bottom: 16px;  /* Space before progress bar */
         }
 
         .category-main-icon {
@@ -482,18 +476,15 @@
         }
 
         .category-progress-bar {
-            grid-area: progress;
             position: relative;
             width: 100%;
-            height: 18px;
-            min-height: 16px;
+            height: 20px;
             background: rgba(0, 0, 0, 0.5);
             border-radius: 12px;
             overflow: hidden;
             border: 2px solid rgba(32, 178, 170, 0.4);
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-            z-index: 2;  /* Above shine animation */
-            contain: paint;  /* Prevent compositor culling at fractional zoom */
+            z-index: 1;
         }
 
         .category-progress-fill {
@@ -507,10 +498,6 @@
             align-items: center;
             justify-content: flex-end;
             padding-right: 8px;
-            overflow: hidden;
-            position: relative;
-            z-index: 2;
-            will-change: width;  /* Only animate width */
         }
 
         @keyframes progressShimmer {
