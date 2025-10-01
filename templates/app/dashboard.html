@@ -1426,12 +1426,13 @@
                                                 <div class="category-accolades-grid">
                                                     {% for item in sorted_achievements %}
                                                     <div class="accolade-item {{ 'completed' if item.is_completed else 'locked' }}" data-progress="{{ item.progress_pct }}">
-                                                        {% if item.is_completed %}
-                                                        <div class="completed-badge">COMPLETED</div>
-                                                        {% endif %}
-                                                        
                                                         <div class="accolade-icon {{ 'icon-glow' if item.is_completed else '' }}">
                                                             <i class="fas {{ item.icon }}"></i>
+                                                            {% if item.is_completed %}
+                                                            <div class="completion-checkmark">
+                                                                <i class="fas fa-check"></i>
+                                                            </div>
+                                                            {% endif %}
                                                         </div>
                                                         
                                                         <div class="accolade-details">
@@ -2408,23 +2409,29 @@
             box-shadow: 0 6px 20px rgba(32, 178, 170, 0.2);
         }
         
-        .completed-badge {
+        .completion-checkmark {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: -4px;
+            right: -4px;
+            width: 20px;
+            height: 20px;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(32, 178, 170, 0.5);
+            z-index: 3;
+        }
+        
+        .completion-checkmark i {
             color: #000;
-            padding: 0.2rem 0.6rem;
-            border-radius: 20px;
             font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            box-shadow: 0 2px 8px rgba(32, 178, 170, 0.3);
-            z-index: 2;
+            font-weight: 900;
         }
 
         .accolade-icon {
+            position: relative;
             width: 45px;  /* Fix: Reduced from 65px */
             height: 45px;  /* Fix: Reduced from 65px */
             border-radius: 50%;

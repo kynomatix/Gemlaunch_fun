@@ -33,10 +33,48 @@ def calculate_user_progress(user, requirement_type):
     elif requirement_type == 'total_trades':
         return user.total_trades_count or 0
     
-    elif requirement_type == 'chat_messages_sent':
+    elif requirement_type in ['chat_messages_sent', 'messages_sent']:
         if CHAT_MESSAGES_AVAILABLE:
             return user.total_messages_sent or 0
         return 0
+    
+    elif requirement_type == 'likes_received':
+        try:
+            from models_extended import MessageReaction
+            total_likes = db.session.query(func.count(MessageReaction.id)).join(
+                ChatMessage, MessageReaction.message_id == ChatMessage.id
+            ).filter(
+                ChatMessage.user_id == user.id,
+                MessageReaction.reaction_type == 'love'
+            ).scalar() or 0
+            return int(total_likes)
+        except Exception as e:
+            print(f"Error calculating likes_received: {e}")
+            return 0
+    
+    elif requirement_type in ['referrals', 'referrals_made']:
+        try:
+            referral_count = Referral.query.filter(
+                Referral.referrer_id == user.id,
+                Referral.status == 'completed'
+            ).count()
+            return referral_count
+        except Exception as e:
+            print(f"Error calculating referrals: {e}")
+            return 0
+    
+    elif requirement_type == 'top_contributor':
+        try:
+            from models_extended import Poll
+            total_activity_score = (
+                (user.total_messages_sent or 0) + 
+                (Poll.query.filter_by(creator_id=user.id).count() * 2) +
+                (user.total_tokens_created or 0) * 5
+            )
+            return total_activity_score >= 100
+        except Exception as e:
+            print(f"Error calculating top_contributor: {e}")
+            return 0
     
     elif requirement_type == 'holding_days':
         try:
@@ -59,17 +97,6 @@ def calculate_user_progress(user, requirement_type):
             return max_days
         except Exception as e:
             print(f"Error calculating holding_days: {e}")
-            return 0
-    
-    elif requirement_type == 'referrals_made':
-        try:
-            referral_count = Referral.query.filter(
-                Referral.referrer_id == user.id,
-                Referral.status == 'completed'
-            ).count()
-            return referral_count
-        except Exception as e:
-            print(f"Error calculating referrals_made: {e}")
             return 0
     
     elif requirement_type == 'user_number':
