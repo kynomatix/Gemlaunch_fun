@@ -408,15 +408,14 @@
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
             border: 2px solid rgba(32, 178, 170, 0.3);
             border-radius: 15px;
-            padding: 1.2rem 1.5rem;  /* Fix: Consistent padding that's taller */
+            padding: 1.2rem 1.5rem 1.5rem 1.5rem;  /* Fix: Extra bottom padding for progress bar */
             margin-bottom: 0.8rem;
             position: relative;
-            overflow: hidden;  /* Fix: Clip shine animation to border-radius */
-            z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
-            min-height: 100px;  /* Fix: Ensure enough height for progress bar */
+            overflow: hidden;  /* Keep: Clip shine animation to border-radius */
+            z-index: 1;
             display: flex;
             flex-direction: column;
-            gap: 0.8rem;  /* Fix: Space between info and progress bar */
+            gap: 1rem;  /* Fix: Consistent gap for all zoom levels */
         }
 
         .carousel-header::before {
@@ -440,8 +439,8 @@
         .current-category-info {
             display: flex;
             align-items: center;
-            gap: clamp(0.8rem, 2vw, 1.5rem);  /* Fix: Responsive gap */
-            margin-bottom: clamp(0.6rem, 1.5vw, 1rem);  /* Fix: Responsive margin */
+            gap: clamp(0.8rem, 2vw, 1.5rem);
+            flex-shrink: 0;  /* Fix: Prevent shrinking at small sizes */
         }
 
         .category-main-icon {
@@ -479,14 +478,16 @@
         }
 
         .category-progress-bar {
-            height: 22px;  /* Fix: Even larger for better visibility */
-            background: rgba(0, 0, 0, 0.5);  /* Fix: Darker background for contrast */
+            height: 22px;
+            background: rgba(0, 0, 0, 0.5);
             border-radius: 20px;
             overflow: hidden;
             position: relative;
-            border: 2px solid rgba(32, 178, 170, 0.4);  /* Fix: Thicker border */
+            border: 2px solid rgba(32, 178, 170, 0.4);
             width: 100%;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);  /* Fix: Inner shadow for depth */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;  /* Fix: Never shrink below 22px height */
+            margin-top: auto;  /* Fix: Push to bottom of flex container */
         }
 
         .category-progress-fill {
@@ -1131,8 +1132,8 @@
                 border-radius: 10px;
                 width: 100%;
                 max-width: 100%;
-                padding: 1rem 1.2rem;  /* Fix: Consistent mobile padding */
-                min-height: 90px;  /* Fix: Slightly smaller for mobile */
+                padding: 1rem 1.2rem 1.3rem 1.2rem;  /* Fix: Extra bottom padding for progress bar on mobile */
+                gap: 0.8rem;
             }
             
             .accolade-item {
