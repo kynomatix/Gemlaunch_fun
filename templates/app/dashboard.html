@@ -1661,10 +1661,10 @@
                                         <div class="detail-row">{{ activity.description or activity.title }}</div>
                                         {% elif is_token_launch %}
                                             {% if activity.token %}
-                                            <div class="detail-row">{{ activity.token.name }} ({{ activity.token.symbol }})</div>
+                                            <div class="detail-row">{{ activity.token.name }}</div>
                                             <div class="detail-row">Supply: {{ "{:,}".format(activity.token.total_supply) }}</div>
                                             {% else %}
-                                            <div class="detail-row">{{ activity.description or activity.title }}</div>
+                                            <div class="detail-row">Token details not available</div>
                                             {% endif %}
                                         {% endif %}
                                     </div>
