@@ -407,12 +407,16 @@
         .carousel-header {
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
             border: 2px solid rgba(32, 178, 170, 0.3);
-            border-radius: 15px;  /* Fix: Slightly smaller radius */
-            padding: clamp(0.9rem, 1.8vw, 1.4rem);  /* Fix: Increased padding for text */
-            margin-bottom: 0.8rem;  /* Fix: Reduced margin */
+            border-radius: 15px;
+            padding: 1.2rem 1.5rem;  /* Fix: Consistent padding that's taller */
+            margin-bottom: 0.8rem;
             position: relative;
             overflow: hidden;  /* Fix: Clip shine animation to border-radius */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
+            min-height: 100px;  /* Fix: Ensure enough height for progress bar */
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;  /* Fix: Space between info and progress bar */
         }
 
         .carousel-header::before {
@@ -475,12 +479,13 @@
         }
 
         .category-progress-bar {
-            height: clamp(10px, 1.5vw, 14px);  /* Fix: Responsive height */
+            height: 18px;  /* Fix: Larger fixed height for visibility */
             background: rgba(0, 0, 0, 0.3);
             border-radius: 20px;
             overflow: hidden;
             position: relative;
             border: 1px solid rgba(32, 178, 170, 0.3);
+            width: 100%;
         }
 
         .category-progress-fill {
@@ -1124,6 +1129,8 @@
                 border-radius: 10px;
                 width: 100%;
                 max-width: 100%;
+                padding: 1rem 1.2rem;  /* Fix: Consistent mobile padding */
+                min-height: 90px;  /* Fix: Slightly smaller for mobile */
             }
             
             .accolade-item {
