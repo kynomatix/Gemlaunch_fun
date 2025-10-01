@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
+from services.achievement_service import evaluate_user_achievements
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -354,6 +355,31 @@ def app_dashboard():
     if not user:
         return render_template('app/connect_wallet.html')
     
+    # Backfill cached stats if needed
+    if not user.total_trades_count or user.total_trades_count == 0:
+        user.total_trades_count = Trade.query.filter_by(user_id=user.id, tx_status='confirmed').count()
+    if not user.total_graduated_tokens or user.total_graduated_tokens == 0:
+        user.total_graduated_tokens = Token.query.filter_by(creator_id=user.id, is_graduated=True).count()
+    if not user.total_tokens_created or user.total_tokens_created == 0:
+        user.total_tokens_created = Token.query.filter_by(creator_id=user.id).count()
+    if not user.total_trading_volume or user.total_trading_volume == 0:
+        total_volume = db.session.query(db.func.sum(Trade.kas_amount)).filter(
+            Trade.user_id == user.id,
+            Trade.tx_status == 'confirmed'
+        ).scalar()
+        user.total_trading_volume = total_volume or 0
+    if not user.total_messages_sent or user.total_messages_sent == 0:
+        try:
+            user.total_messages_sent = ChatMessage.query.filter_by(user_id=user.id).count()
+        except Exception as e:
+            logging.warning(f"Could not backfill total_messages_sent: {e}")
+            user.total_messages_sent = 0
+    # Save the backfill
+    db.session.commit()
+    
+    # Evaluate and award achievements
+    achievement_progress = evaluate_user_achievements(user.id)
+    
     # Get user's created tokens and holdings with eager loading
     created_tokens = Token.query.filter_by(creator_id=user.id).all()
     holdings = Holding.query.options(
@@ -386,7 +412,8 @@ def app_dashboard():
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
     return render_template('app/dashboard.html', 
-                         user=user, 
+                         user=user,
+                         achievement_progress=achievement_progress,
                          created_tokens=created_tokens, 
                          holdings=holdings,
                          activities=activities,
