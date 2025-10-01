@@ -1626,15 +1626,20 @@
                                 {% for activity in activities %}
                                 {% if activity.activity_type not in ['trade_buy', 'trade_sell'] %}
                                 {% set is_accolade = activity.activity_type == 'achievement_earned' %}
-                                <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{{ activity.activity_type }}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
+                                {% set is_token_launch = activity.activity_type == 'token_created' %}
+                                {% set is_expandable = is_accolade or is_token_launch %}
+                                <div class="activity-item {% if is_expandable %}expandable{% endif %}" data-type="{{ activity.activity_type }}" {% if is_expandable %}onclick="toggleActivityItem(this)"{% endif %}>
                                     <div class="activity-summary">
                                         <div class="activity-left">
                                             <time class="activity-time">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</time>
                                             <span class="dot">•</span>
                                             <span class="activity-category">
-                                                {% if activity.activity_type == 'token_created' %}
+                                                {% if is_token_launch %}
                                                     Token launch
-                                                {% elif activity.activity_type == 'achievement_earned' %}
+                                                    {% if activity.token %}
+                                                        <span class="activity-token-name">{{ activity.token.symbol }}</span>
+                                                    {% endif %}
+                                                {% elif is_accolade %}
                                                     Earned accolade
                                                 {% elif activity.activity_type == 'referral_earned' %}
                                                     Referral
@@ -1642,7 +1647,7 @@
                                                     {{ activity.title }}
                                                 {% endif %}
                                             </span>
-                                            {% if is_accolade %}
+                                            {% if is_expandable %}
                                             <span class="chevron">▸</span>
                                             {% endif %}
                                         </div>
@@ -1650,9 +1655,18 @@
                                         <span class="activity-points">+{{ activity.points_earned }}</span>
                                         {% endif %}
                                     </div>
-                                    {% if is_accolade %}
+                                    {% if is_expandable %}
                                     <div class="activity-details">
+                                        {% if is_accolade %}
                                         <div class="detail-row">{{ activity.description or activity.title }}</div>
+                                        {% elif is_token_launch %}
+                                            {% if activity.token %}
+                                            <div class="detail-row">{{ activity.token.name }} ({{ activity.token.symbol }})</div>
+                                            <div class="detail-row">Supply: {{ "{:,}".format(activity.token.total_supply) }}</div>
+                                            {% else %}
+                                            <div class="detail-row">{{ activity.description or activity.title }}</div>
+                                            {% endif %}
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                 </div>
@@ -2769,6 +2783,12 @@
             color: #ddd;
             font-size: 0.82rem;
             white-space: nowrap;
+        }
+
+        .activity-token-name {
+            color: #20B2AA;
+            font-weight: 500;
+            margin-left: 4px;
         }
         
         .activity-description {
