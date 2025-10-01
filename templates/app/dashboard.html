@@ -1926,8 +1926,6 @@
             const slide = slides[index];
             const categoryName = slide.dataset.categoryName || 'Accolades';
             const categoryIcon = slide.dataset.categoryIcon || 'fa-star';
-            const completed = parseInt(slide.dataset.completed) || 0;
-            const total = parseInt(slide.dataset.total) || 0;
             
             // Update header elements
             const nameElement = document.querySelector('.current-category-name');
@@ -1950,19 +1948,25 @@
                 iconElement.className = `fas ${categoryIcon} category-main-icon`;
             }
             
-            if (completedElement) completedElement.textContent = completed;
-            if (totalElement) totalElement.textContent = total;
-            
-            // Calculate actual progress based on individual accolade progress
+            // RECOMPUTE from actual DOM elements (works with mock data)
             const accoladeItems = slide.querySelectorAll('.accolade-item');
+            let completedCount = 0;
             let totalProgress = 0;
-            let accoladeCount = 0;
+            let accoladeCount = accoladeItems.length;
             
             accoladeItems.forEach(item => {
+                // Check if completed
+                if (item.classList.contains('completed')) {
+                    completedCount++;
+                }
+                // Get progress percentage
                 const progress = parseInt(item.dataset.progress) || 0;
                 totalProgress += progress;
-                accoladeCount++;
             });
+            
+            // Update counts
+            if (completedElement) completedElement.textContent = completedCount;
+            if (totalElement) totalElement.textContent = accoladeCount;
             
             // Average progress across all accolades in category
             const percentage = accoladeCount > 0 ? Math.round(totalProgress / accoladeCount) : 0;
@@ -1974,6 +1978,8 @@
             if (progressText) {
                 progressText.textContent = `${percentage}%`;
             }
+            
+            console.log(`Updated category header: ${completedCount}/${accoladeCount} completed, ${percentage}% average progress`);
         }
 
         // Animation on load for activities
