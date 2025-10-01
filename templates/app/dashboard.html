@@ -2023,18 +2023,27 @@
                 document.addEventListener('keydown', function(e) {
                     // Only work if achievements tab is active
                     const achievementsTab = document.getElementById('achievements-tab');
-                    if (!achievementsTab || !achievementsTab.classList.contains('active')) {
+                    const isActive = achievementsTab && achievementsTab.classList.contains('active');
+                    
+                    // Debug: log key press when on achievements tab
+                    if (isActive && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || (e.key >= '1' && e.key <= '5'))) {
+                        console.log('Keyboard shortcut pressed:', e.key);
+                    }
+                    
+                    if (!isActive) {
                         return;
                     }
                     
                     // Arrow keys
                     if (e.key === 'ArrowLeft') {
                         e.preventDefault();
+                        console.log('Navigating left');
                         if (window.navigateCarousel) {
                             window.navigateCarousel(-1);
                         }
                     } else if (e.key === 'ArrowRight') {
                         e.preventDefault();
+                        console.log('Navigating right');
                         if (window.navigateCarousel) {
                             window.navigateCarousel(1);
                         }
@@ -2043,6 +2052,7 @@
                     else if (e.key >= '1' && e.key <= '5') {
                         e.preventDefault();
                         const index = parseInt(e.key) - 1;
+                        console.log('Jumping to category:', index);
                         if (window.goToCategory) {
                             window.goToCategory(index);
                         }
