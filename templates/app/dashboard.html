@@ -1625,9 +1625,9 @@
                             <div class="activities-timeline">
                                 {% for activity in activities %}
                                 {% set is_accolade = activity.action_type == 'achievement_unlocked' %}
-                                <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{% if is_accolade %}accolade{% else %}{{ activity.action_type }}{% endif %}">
+                                <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{% if is_accolade %}accolade{% else %}{{ activity.action_type }}{% endif %}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
                                     {% if is_accolade %}
-                                    <button class="activity-toggle" onclick="toggleActivity(this)" aria-label="Toggle details">
+                                    <button class="activity-toggle" onclick="event.stopPropagation();" aria-label="Toggle details">
                                         <span class="chevron">▸</span>
                                     </button>
                                     {% endif %}
@@ -1641,7 +1641,7 @@
                                             {% elif activity.action_type == 'trade_executed' %}
                                                 Trade
                                             {% elif activity.action_type == 'achievement_unlocked' %}
-                                                Accolade earned
+                                                Earned accolade
                                             {% elif activity.action_type == 'referral_earned' %}
                                                 Referral
                                             {% endif %}
@@ -1799,6 +1799,11 @@
             if (activityItem) {
                 activityItem.classList.toggle('expanded');
             }
+        }
+        
+        // Toggle activity item when clicking anywhere on the row (for accolades)
+        function toggleActivityItem(item) {
+            item.classList.toggle('expanded');
         }
 
         // Activities filtering functionality
@@ -2709,6 +2714,10 @@
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.06);
             transition: all 0.2s ease;
+        }
+        
+        .activity-item.expandable {
+            cursor: pointer;
         }
 
         .activity-item:hover {
