@@ -1782,12 +1782,19 @@
             
             activityItems.forEach(item => {
                 const itemType = item.getAttribute('data-type');
+                let shouldShow = false;
                 
-                if (type === 'all' || itemType === type) {
-                    item.style.display = 'grid';
-                } else {
-                    item.style.display = 'none';
+                if (type === 'all') {
+                    shouldShow = true;
+                } else if (type === 'achievements' && (itemType === 'achievement_earned' || itemType === 'achievement_unlocked')) {
+                    shouldShow = true;
+                } else if (type === 'trades' && (itemType === 'trade_buy' || itemType === 'trade_sell' || itemType === 'trade_executed')) {
+                    shouldShow = true;
+                } else if (type === 'referrals' && (itemType === 'referral_earned' || itemType === 'referral_qualified')) {
+                    shouldShow = true;
                 }
+                
+                item.style.display = shouldShow ? 'grid' : 'none';
             });
         }
 
