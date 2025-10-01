@@ -411,9 +411,9 @@
             padding: 1.2rem 1.5rem;  /* Fix: Consistent padding that's taller */
             margin-bottom: 0.8rem;
             position: relative;
-            overflow: visible;  /* Fix: Don't clip the progress bar */
+            overflow: hidden;  /* Fix: Clip shine animation to border-radius */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
-            min-height: 120px;  /* Fix: Taller to show both info and progress bar */
+            min-height: 100px;  /* Fix: Ensure enough height for progress bar */
             display: flex;
             flex-direction: column;
             gap: 0.8rem;  /* Fix: Space between info and progress bar */
@@ -820,10 +820,8 @@
             .carousel-header {
                 width: 100% !important;
                 max-width: 100% !important;
-                padding: 1rem 1.2rem !important;  /* Fix: Taller padding */
+                padding: 0.6rem !important;
                 margin: 0 0 0.5rem 0 !important;
-                min-height: 110px !important;  /* Fix: Ensure progress bar shows */
-                overflow: visible !important;  /* Fix: Don't clip content */
             }
             
             .carousel-categories-container {
@@ -1026,11 +1024,9 @@
             }
             
             .carousel-header {
-                padding: 1rem 1.2rem;  /* Fix: Consistent padding */
+                padding: clamp(0.6rem, 1.2vw, 1rem);
                 width: 100%;
                 max-width: 100%;
-                min-height: 115px;  /* Fix: Ensure progress bar shows */
-                overflow: visible;  /* Fix: Don't clip content */
             }
             
             .current-category-info {
