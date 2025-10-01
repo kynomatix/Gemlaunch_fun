@@ -479,20 +479,21 @@
         }
 
         .category-progress-bar {
-            height: 18px;  /* Fix: Larger fixed height for visibility */
-            background: rgba(0, 0, 0, 0.3);
+            height: 22px;  /* Fix: Even larger for better visibility */
+            background: rgba(0, 0, 0, 0.5);  /* Fix: Darker background for contrast */
             border-radius: 20px;
             overflow: hidden;
             position: relative;
-            border: 1px solid rgba(32, 178, 170, 0.3);
+            border: 2px solid rgba(32, 178, 170, 0.4);  /* Fix: Thicker border */
             width: 100%;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);  /* Fix: Inner shadow for depth */
         }
 
         .category-progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #20B2AA, #00CED1, #20B2AA);
             background-size: 200% 100%;
-            border-radius: 0;
+            border-radius: 18px;  /* Fix: Slightly rounded for smooth look */
             transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             animation: progressShimmer 6s linear infinite;
             display: flex;
@@ -500,6 +501,7 @@
             justify-content: flex-end;
             padding-right: 10px;
             overflow: hidden;
+            box-shadow: 0 2px 8px rgba(32, 178, 170, 0.4);  /* Fix: Glow effect */
         }
 
         @keyframes progressShimmer {
