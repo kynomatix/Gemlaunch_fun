@@ -97,8 +97,14 @@ def calculate_user_progress(user, requirement_type):
     
     elif requirement_type == 'polls_voted':
         try:
-            from models_extended import PollVote
-            return float(PollVote.query.filter_by(user_id=user.id).count())
+            from models_extended import PollVote, Poll
+            vote_count = db.session.query(PollVote).join(
+                Poll, PollVote.poll_id == Poll.id
+            ).filter(
+                PollVote.user_id == user.id,
+                Poll.creator_id != user.id
+            ).count()
+            return float(vote_count)
         except:
             return 0.0
     
