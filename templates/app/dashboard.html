@@ -1402,6 +1402,7 @@
                                                     'name': ach_data.name,
                                                     'description': ach_data.description,
                                                     'icon': ach_data.icon,
+                                                    'requirement_type': ach_data.requirement_type,
                                                     'is_completed': ach_data.is_completed,
                                                     'progress_pct': ach_data.progress_pct,
                                                     'progress': ach_data.progress,
@@ -1436,7 +1437,7 @@
                                                         <div class="accolade-details">
                                                             <h4>{{ item.name }}</h4>
                                                             <p>{{ item.description }}</p>
-                                                            {% if item.progress_text and not item.is_completed %}
+                                                            {% if not item.is_completed and item.requirement_type != 'user_number' and item.requirement > 0 %}
                                                             <div class="accolade-progress">
                                                                 <div class="progress-bar-wrapper">
                                                                     <div class="progress-bar">

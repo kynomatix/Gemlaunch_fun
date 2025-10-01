@@ -200,6 +200,7 @@ def evaluate_user_achievements(user_id):
             'description': achievement.description,
             'icon': achievement.icon,
             'category': achievement.category,
+            'requirement_type': achievement.requirement_type,
             'progress': float(current_progress) if isinstance(current_progress, (int, float)) else current_progress,
             'requirement': float(requirement_value),
             'progress_pct': progress_pct,
