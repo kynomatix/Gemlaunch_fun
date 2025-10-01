@@ -9,26 +9,16 @@
             box-sizing: border-box;
         }
         
-        /* GPU Acceleration for all animated elements */
-        .stat-card,
-        .token-card,
-        .action-btn,
-        .carousel-item,
-        .carousel-wrapper,
-        .carousel-dot,
-        .accolade-item,
-        .category-progress-fill,
-        .accolade-item-content,
-        .category-main-icon,
+        /* GPU Acceleration only for actually animated elements */
         .carousel-header::before,
-        .carousel-header::after,
-        .accolades-carousel,
-        .activities-grid > *,
-        .shimmer::after,
-        .progress-pulse::after {
+        .category-progress-fill {
             will-change: transform;
             transform: translateZ(0);
             backface-visibility: hidden;
+        }
+        
+        /* Smooth rendering for static content */
+        * {
             -webkit-font-smoothing: antialiased;
         }
         
@@ -403,32 +393,29 @@
             transform: none;  /* Fix: Remove any transforms */
         }
 
-        /* Category Header */
+        /* Category Header - Stable across all zoom levels */
         .carousel-header {
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
             border: 2px solid rgba(32, 178, 170, 0.3);
-            border-radius: 15px;
-            padding: 1.2rem 1.5rem 1.5rem 1.5rem;  /* Fix: Extra bottom padding for progress bar */
-            margin-bottom: 0.8rem;
+            border-radius: 16px;
+            padding: 16px 20px 44px 20px;  /* Fixed pixels: extra bottom for absolute progress bar */
+            margin-bottom: 12px;
             position: relative;
-            overflow: hidden;  /* Keep: Clip shine animation to border-radius */
+            overflow: hidden;  /* Required for shine animation */
             z-index: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;  /* Fix: Consistent gap for all zoom levels */
         }
 
         .carousel-header::before {
             content: '';
             position: absolute;
-            inset: 0;  /* Fix: Use inset for proper positioning */
+            inset: 0;
             left: -100%;
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, transparent, rgba(32, 178, 170, 0.3), transparent);
             animation: headerShimmer 8s infinite ease-in-out;
-            pointer-events: none;  /* Fix: Don't block clicks */
-            z-index: -1;  /* Fix: Place behind content */
+            pointer-events: none;
+            z-index: 0;  /* Behind content but still visible */
         }
 
         @keyframes headerShimmer {
@@ -439,18 +426,19 @@
         .current-category-info {
             display: flex;
             align-items: center;
-            gap: clamp(0.8rem, 2vw, 1.5rem);
-            flex-shrink: 0;  /* Fix: Prevent shrinking at small sizes */
+            gap: 12px;  /* Fixed pixels for stability */
+            flex-wrap: nowrap;
+            flex: 0 0 auto;
+            position: relative;
+            z-index: 1;  /* Above shine animation */
         }
 
         .category-main-icon {
-            font-size: clamp(1.4rem, 2.5vw, 2rem);  /* Fix: Responsive icon size with clamp */
+            font-size: 20px;  /* Fixed size for consistency */
             color: #20B2AA;
             text-shadow: 0 0 20px rgba(32, 178, 170, 0.5);
             animation: iconPulse 4s ease-in-out infinite;
-            display: flex;  /* Fix: Added flex display for better alignment */
-            align-items: center;  /* Fix: Center icon vertically */
-            justify-content: center;  /* Fix: Center icon horizontally */
+            flex: 0 0 auto;
         }
 
         @keyframes iconPulse {
@@ -460,49 +448,57 @@
 
         .category-title-block {
             flex: 1;
+            min-width: 0;  /* Allow text truncation */
         }
 
         .current-category-name {
-            font-size: clamp(1rem, 1.8vw, 1.3rem);  /* Fix: Reduced max size to prevent overflow */
+            font-size: 18px;  /* Fixed size */
             color: #FFFFFF;
-            margin: 0 0 0.2rem 0;  /* Fix: Reduced margin */
+            margin: 0 0 4px 0;
             text-shadow: 0 2px 10px rgba(32, 178, 170, 0.3);
-            line-height: 1.2;  /* Fix: Tighter line height */
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .category-overall-progress {
             color: #20B2AA;
-            font-size: clamp(0.8rem, 1.3vw, 0.95rem);  /* Fix: Reduced to prevent overflow */
+            font-size: 14px;  /* Fixed size */
             font-weight: 600;
-            line-height: 1.2;  /* Fix: Tighter line height */
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .category-progress-bar {
-            height: 22px;
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            height: 18px;
             background: rgba(0, 0, 0, 0.5);
-            border-radius: 20px;
+            border-radius: 12px;
             overflow: hidden;
-            position: relative;
             border: 2px solid rgba(32, 178, 170, 0.4);
-            width: 100%;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-            flex-shrink: 0;  /* Fix: Never shrink below 22px height */
-            margin-top: auto;  /* Fix: Push to bottom of flex container */
+            z-index: 1;  /* Above shine animation */
         }
 
         .category-progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #20B2AA, #00CED1, #20B2AA);
             background-size: 200% 100%;
-            border-radius: 18px;  /* Fix: Slightly rounded for smooth look */
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 9px;
+            transition: width 0.4s ease;
             animation: progressShimmer 6s linear infinite;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            padding-right: 10px;
+            padding-right: 8px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(32, 178, 170, 0.4);  /* Fix: Glow effect */
+            will-change: width;  /* Only animate width */
         }
 
         @keyframes progressShimmer {
@@ -512,7 +508,7 @@
 
         .category-progress-text {
             color: #FFFFFF;
-            font-size: clamp(0.6rem, 1vw, 0.8rem);  /* Fix: Responsive font size */
+            font-size: 12px;  /* Fixed size for stability */
             font-weight: 700;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
@@ -1132,8 +1128,22 @@
                 border-radius: 10px;
                 width: 100%;
                 max-width: 100%;
-                padding: 1rem 1.2rem 1.3rem 1.2rem;  /* Fix: Extra bottom padding for progress bar on mobile */
-                gap: 0.8rem;
+                padding: 12px 12px 40px 12px;  /* Fixed pixels for mobile */
+            }
+            
+            .category-progress-bar {
+                left: 12px;
+                right: 12px;
+                bottom: 12px;
+                height: 16px;
+            }
+            
+            .current-category-name {
+                font-size: 16px;
+            }
+            
+            .category-overall-progress {
+                font-size: 13px;
             }
             
             .accolade-item {
