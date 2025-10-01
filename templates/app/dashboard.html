@@ -1619,47 +1619,57 @@
                                 <i class="fas fa-clock"></i>
                                 Recent Activities
                             </h3>
-                            <div class="filter-options">
-                                <select class="activity-filter" onchange="filterActivities(this.value)">
-                                    <option value="all">All Activities</option>
-                                    <option value="achievements">Achievements</option>
-                                    <option value="trades">Trading</option>
-                                    <option value="referrals">Referrals</option>
-                                </select>
-                            </div>
                         </div>
                         
                         {% if activities and activities|length > 0 %}
                             <div class="activities-timeline">
                                 {% for activity in activities %}
-                                <div class="activity-item" data-type="{{ activity.action_type or 'general' }}">
-                                    <div class="activity-time">
-                                        <span class="time-value">{{ activity.created_at.strftime('%H:%M') if activity.created_at else '' }}</span>
-                                        <span class="date-value">{{ activity.created_at.strftime('%b %d') if activity.created_at else 'Recently' }}</span>
-                                    </div>
-                                    
-                                    <div class="activity-icon">
-                                        {% if activity.action_type == 'token_created' %}
-                                            <i class="fas fa-rocket"></i>
-                                        {% elif activity.action_type == 'trade_executed' %}
-                                            <i class="fas fa-exchange-alt"></i>
-                                        {% elif activity.action_type == 'achievement_unlocked' %}
-                                            <i class="fas fa-star"></i>
-                                        {% elif activity.action_type == 'referral_earned' %}
-                                            <i class="fas fa-users"></i>
-                                        {% else %}
-                                            <i class="fas fa-dot-circle"></i>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <div class="activity-content">
-                                        <h4>{{ activity.description or 'Activity recorded' }}</h4>
-                                        {% if activity.details %}
-                                            <p>{{ activity.details }}</p>
-                                        {% endif %}
+                                <div class="activity-item-compact" data-type="{{ activity.action_type or 'general' }}" onclick="toggleActivityDetails(this)">
+                                    <div class="activity-summary">
+                                        <span class="activity-datetime">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</span>
+                                        <span class="activity-separator">•</span>
+                                        <span class="activity-category">
+                                            {% if activity.action_type == 'token_created' %}
+                                                Token
+                                            {% elif activity.action_type == 'trade_executed' %}
+                                                Trade
+                                            {% elif activity.action_type == 'achievement_unlocked' %}
+                                                Achievement
+                                            {% elif activity.action_type == 'referral_earned' %}
+                                                Referral
+                                            {% else %}
+                                                Activity
+                                            {% endif %}
+                                        </span>
+                                        <span class="activity-separator">•</span>
+                                        <span class="activity-brief">{{ activity.description or 'Activity recorded' }}</span>
                                         {% if activity.points_earned and activity.points_earned > 0 %}
-                                            <span class="points-earned">+{{ activity.points_earned }} Points</span>
+                                            <span class="activity-separator">•</span>
+                                            <span class="activity-points">+{{ activity.points_earned }} pts</span>
                                         {% endif %}
+                                        <i class="fas fa-chevron-down activity-expand-icon"></i>
+                                    </div>
+                                    
+                                    <div class="activity-details-expanded" style="display: none;">
+                                        <div class="activity-icon-expanded">
+                                            {% if activity.action_type == 'token_created' %}
+                                                <i class="fas fa-rocket"></i>
+                                            {% elif activity.action_type == 'trade_executed' %}
+                                                <i class="fas fa-exchange-alt"></i>
+                                            {% elif activity.action_type == 'achievement_unlocked' %}
+                                                <i class="fas fa-star"></i>
+                                            {% elif activity.action_type == 'referral_earned' %}
+                                                <i class="fas fa-users"></i>
+                                            {% else %}
+                                                <i class="fas fa-dot-circle"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div class="activity-full-content">
+                                            <h4>{{ activity.description or 'Activity recorded' }}</h4>
+                                            {% if activity.details %}
+                                                <p>{{ activity.details }}</p>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -1789,6 +1799,20 @@
                 setTimeout(() => {
                     window.updateCategoryHeader(window.currentCategoryIndex || 0);
                 }, 10);
+            }
+        }
+
+        // Toggle activity details
+        function toggleActivityDetails(element) {
+            const detailsDiv = element.querySelector('.activity-details-expanded');
+            const isExpanded = element.classList.contains('expanded');
+            
+            if (isExpanded) {
+                element.classList.remove('expanded');
+                detailsDiv.style.display = 'none';
+            } else {
+                element.classList.add('expanded');
+                detailsDiv.style.display = 'flex';
             }
         }
 
@@ -2687,26 +2711,110 @@
         .activities-timeline {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.5rem;
             max-height: 400px;
             overflow-y: auto;
         }
 
-        .activity-item {
-            display: grid;
-            grid-template-columns: auto auto 1fr;
-            gap: 1rem;
-            align-items: center;
+        .activity-item-compact {
             background: rgba(255, 255, 255, 0.03);
             border-radius: 8px;
-            padding: 1rem;
+            padding: 0.6rem 1rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .activity-item:hover {
+        .activity-item-compact:hover {
             background: rgba(255, 255, 255, 0.08);
             border-color: rgba(32, 178, 170, 0.3);
+        }
+        
+        .activity-item-compact.expanded {
+            background: rgba(32, 178, 170, 0.1);
+            border-color: rgba(32, 178, 170, 0.5);
+        }
+
+        .activity-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .activity-datetime {
+            color: #888888;
+            font-size: 0.85rem;
+        }
+        
+        .activity-separator {
+            color: #555555;
+            font-size: 0.8rem;
+        }
+        
+        .activity-category {
+            color: #20B2AA;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+        
+        .activity-brief {
+            color: #FFFFFF;
+            flex: 1;
+        }
+        
+        .activity-points {
+            color: #FFD700;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .activity-expand-icon {
+            color: #888888;
+            font-size: 0.8rem;
+            margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .activity-item-compact.expanded .activity-expand-icon {
+            transform: rotate(180deg);
+        }
+        
+        .activity-details-expanded {
+            margin-top: 0.8rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 1rem;
+            align-items: start;
+        }
+        
+        .activity-icon-expanded {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(32, 178, 170, 0.2);
+            border-radius: 8px;
+            color: #20B2AA;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .activity-full-content h4 {
+            color: #FFFFFF;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .activity-full-content p {
+            color: #CCCCCC;
+            font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .activity-time {
@@ -3127,7 +3235,7 @@
 
         /* Dashboard pane height alignment - ensures accolades and activities align at bottom across zoom levels */
         :root {
-            --dash-pane-h: clamp(900px, 85vh, 1200px);
+            --dash-pane-h: clamp(1000px, 90vh, 1400px);
         }
 
         @media (min-width: 1201px) {
