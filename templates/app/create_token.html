@@ -38,16 +38,30 @@
             position: relative;
             min-width: 250px;
             text-align: left;
-            opacity: 1;
-            transition: opacity 0.3s ease-in-out;
-            background: linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0);
+            background: linear-gradient(90deg, #20B2AA, #00CED1, #40E0D0, #00CED1, #20B2AA);
+            background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            animation: shimmer 2s linear infinite;
+            transform: translateY(0) scale(1);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 0 20px rgba(32, 178, 170, 0.3));
         }
 
-        .word-cycle.fade-out {
+        .word-cycle.slide-up {
+            transform: translateY(-20px) scale(0.95);
             opacity: 0;
+        }
+
+        .word-cycle.slide-down {
+            transform: translateY(20px) scale(1.05);
+            opacity: 0;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
         }
         
         .mode-selector {
@@ -1015,7 +1029,7 @@
             e.target.value = e.target.value.toUpperCase();
         });
 
-        // Word cycling animation - memory efficient
+        // Word cycling animation - futuristic slide effect
         (function() {
             const words = ['Memecoin', 'Token', 'Coin'];
             let index = 0;
@@ -1024,17 +1038,21 @@
             if (!element) return;
             
             function cycleWord() {
-                // Fade out
-                element.classList.add('fade-out');
+                // Slide up and fade out
+                element.classList.add('slide-up');
                 
-                // Change word after fade out
+                // Change word and slide in from bottom
                 setTimeout(function() {
                     index = (index + 1) % words.length;
                     element.textContent = words[index];
+                    element.classList.remove('slide-up');
+                    element.classList.add('slide-down');
                     
-                    // Fade in
-                    element.classList.remove('fade-out');
-                }, 300);
+                    // Complete the slide-in animation
+                    setTimeout(function() {
+                        element.classList.remove('slide-down');
+                    }, 50);
+                }, 400);
             }
             
             // Cycle every 3 seconds
