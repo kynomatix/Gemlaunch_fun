@@ -396,33 +396,24 @@
 
         /* Category Header - Stable across all zoom levels */
         .carousel-header {
-            --header-radius: 16px;
-            --header-border: 2px;
             background: linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1));
-            border: var(--header-border) solid rgba(32, 178, 170, 0.3);
-            border-radius: var(--header-radius);
+            border: 2px solid rgba(32, 178, 170, 0.3);
+            border-radius: 16px;
             padding: 16px 20px;
             margin-bottom: 12px;
             position: relative;
-            overflow: visible;  /* Don't clip progress bar */
+            overflow: visible;
             z-index: 1;
+            animation: headerPulse 4s ease-in-out infinite;
         }
 
-        .carousel-header::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg, transparent, rgba(32, 178, 170, 0.3), transparent);
-            transform: translateX(-100%);
-            animation: headerShimmerX 8s ease-in-out infinite;
-            pointer-events: none;
-            z-index: 0;
-            clip-path: inset(0 round calc(var(--header-radius) - var(--header-border)));
-        }
-
-        @keyframes headerShimmerX {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+        @keyframes headerPulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(32, 178, 170, 0.1);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(32, 178, 170, 0.25);
+            }
         }
 
         .current-category-info {
