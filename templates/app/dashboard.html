@@ -411,9 +411,9 @@
             padding: 1.2rem 1.5rem;  /* Fix: Consistent padding that's taller */
             margin-bottom: 0.8rem;
             position: relative;
-            overflow: hidden;  /* Fix: Clip shine animation to border-radius */
+            overflow: visible;  /* Fix: Don't clip the progress bar */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
-            min-height: 100px;  /* Fix: Ensure enough height for progress bar */
+            min-height: 120px;  /* Fix: Taller to show both info and progress bar */
             display: flex;
             flex-direction: column;
             gap: 0.8rem;  /* Fix: Space between info and progress bar */
