@@ -1636,9 +1636,6 @@
                                             <span class="activity-category">
                                                 {% if is_token_launch %}
                                                     Token launch
-                                                    {% if activity.token %}
-                                                        <span class="activity-token-name">{{ activity.token.symbol }}</span>
-                                                    {% endif %}
                                                 {% elif is_accolade %}
                                                     Earned accolade
                                                 {% elif activity.activity_type == 'referral_earned' %}
@@ -1661,8 +1658,7 @@
                                         <div class="detail-row">{{ activity.description or activity.title }}</div>
                                         {% elif is_token_launch %}
                                             {% if activity.token %}
-                                            <div class="detail-row">{{ activity.token.name }}</div>
-                                            <div class="detail-row">Supply: {{ "{:,}".format(activity.token.total_supply) }}</div>
+                                            <div class="detail-row">Token created: {{ activity.token.name }}</div>
                                             {% else %}
                                             <div class="detail-row">Token details not available</div>
                                             {% endif %}
