@@ -1321,14 +1321,14 @@ def init_database():
                 achievement9.gem_points_reward = 300
                 achievements.append(achievement9)
                 
-                # Social Influencer - Share and promote
+                # Chat Champion - Active community member
                 achievement10 = Achievement()
-                achievement10.name = "Social Influencer"
-                achievement10.description = "Share 5+ tokens on social media"
-                achievement10.icon = "📱"
+                achievement10.name = "Chat Champion"
+                achievement10.description = "Send 50+ messages in token chats"
+                achievement10.icon = "💬"
                 achievement10.category = "social"
-                achievement10.requirement_type = "social_shares"
-                achievement10.requirement_value = 5
+                achievement10.requirement_type = "chat_messages_sent"
+                achievement10.requirement_value = 50
                 achievement10.gem_points_reward = 100
                 achievements.append(achievement10)
                 
