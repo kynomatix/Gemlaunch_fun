@@ -93,6 +93,8 @@ gemlaunch.fun is a web platform designed to enable the creation and launch of me
 - Added animated glowing border effect to all secondary buttons with pulsing teal/cyan glow animation
 - Border glow animates between #20B2AA and #00CED1 colors with box-shadow effects for depth
 - Unified button sizing across dashboard: all "View Token" and "View Details" buttons now have consistent 0.75rem padding with animated glow effects
+- Fixed accolades progress bar calculation: now shows average progress of all accolades in category (not just counting completed ones)
+- Fixed progress bar shine animation overflow by removing border-radius from fill element and adding overflow:hidden constraint
 
 # User Preferences
 
