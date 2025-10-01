@@ -1626,11 +1626,6 @@
                                 {% for activity in activities %}
                                 {% set is_accolade = activity.action_type == 'achievement_unlocked' %}
                                 <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{% if is_accolade %}accolade{% else %}{{ activity.action_type }}{% endif %}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
-                                    {% if is_accolade %}
-                                    <button class="activity-toggle" onclick="event.stopPropagation();" aria-label="Toggle details">
-                                        <span class="chevron">▸</span>
-                                    </button>
-                                    {% endif %}
                                     <div class="activity-summary">
                                         <time class="activity-time">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</time>
                                         <span class="dot">•</span>
@@ -1647,11 +1642,21 @@
                                             {% endif %}
                                         </span>
                                         <span class="dot">•</span>
+                                        {% if activity.points_earned and activity.points_earned > 0 %}
+                                            <span class="activity-points">+{{ activity.points_earned }}</span>
                                         {% endif %}
+                                        {% endif %}
+                                        {% if not is_accolade %}
                                         <span class="activity-description">{{ activity.description or 'Activity recorded' }}</span>
                                         {% if activity.points_earned and activity.points_earned > 0 %}
                                             <span class="dot">•</span>
                                             <span class="activity-points">+{{ activity.points_earned }}</span>
+                                        {% endif %}
+                                        {% endif %}
+                                        {% if is_accolade %}
+                                        <span class="activity-toggle">
+                                            <span class="chevron">▸</span>
+                                        </span>
                                         {% endif %}
                                     </div>
                                     {% if is_accolade %}
@@ -2708,7 +2713,7 @@
 
         .activity-item {
             display: flex;
-            align-items: flex-start;
+            flex-direction: column;
             padding: 4px 8px;
             border-radius: 6px;
             background: rgba(255, 255, 255, 0.03);
@@ -2733,24 +2738,13 @@
         .activity-toggle {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            width: 18px;
-            height: 18px;
-            margin-right: 6px;
-            background: none;
-            border: 0;
+            margin-left: auto;
             color: #aaa;
-            cursor: pointer;
-            padding: 0;
             flex-shrink: 0;
         }
 
-        .activity-toggle:hover {
-            color: #20B2AA;
-        }
-
         .chevron {
-            font-size: 10px;
+            font-size: 11px;
             transition: transform 0.2s ease;
         }
 
