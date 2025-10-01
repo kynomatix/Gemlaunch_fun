@@ -411,7 +411,7 @@
             padding: clamp(0.75rem, 1.5vw, 1.2rem);  /* Fix: Responsive padding with clamp */
             margin-bottom: 0.8rem;  /* Fix: Reduced margin */
             position: relative;
-            overflow: visible;  /* Fix: Changed to visible to prevent clipping */
+            overflow: hidden;  /* Fix: Clip shine animation to border-radius */
             z-index: 1;  /* Fix: Stay below sidebar (999) and topbar (1000) */
         }
 
