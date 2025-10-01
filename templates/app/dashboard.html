@@ -3127,7 +3127,7 @@
 
         /* Dashboard pane height alignment - ensures accolades and activities align at bottom across zoom levels */
         :root {
-            --dash-pane-h: clamp(700px, 75vh, 900px);
+            --dash-pane-h: clamp(900px, 85vh, 1200px);
         }
 
         @media (min-width: 1201px) {
@@ -3155,9 +3155,9 @@
                 min-height: 0;
             }
             
-            /* SHORTER recent activities box with its own scroll */
+            /* Recent activities box with its own scroll */
             .recent-activities-section {
-                max-height: clamp(220px, 28vh, 360px);
+                max-height: clamp(400px, 50vh, 600px);
                 overflow-y: auto;
             }
             
