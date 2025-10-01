@@ -88,6 +88,20 @@ def calculate_user_progress(user, requirement_type):
             print(f"Error calculating token_holders: {e}")
             return 0
     
+    elif requirement_type == 'polls_created':
+        try:
+            from models_extended import Poll
+            return float(Poll.query.filter_by(creator_id=user.id).count())
+        except:
+            return 0.0
+    
+    elif requirement_type == 'polls_voted':
+        try:
+            from models_extended import PollVote
+            return float(PollVote.query.filter_by(user_id=user.id).count())
+        except:
+            return 0.0
+    
     return 0
 
 
