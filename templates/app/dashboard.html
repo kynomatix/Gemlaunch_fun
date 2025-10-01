@@ -1634,6 +1634,7 @@
                                     <div class="activity-summary">
                                         <time class="activity-time">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</time>
                                         <span class="dot">•</span>
+                                        {% if activity.action_type in ['token_created', 'trade_executed', 'achievement_unlocked', 'referral_earned'] %}
                                         <span class="activity-category">
                                             {% if activity.action_type == 'token_created' %}
                                                 Token launch
@@ -1643,11 +1644,10 @@
                                                 Accolade earned
                                             {% elif activity.action_type == 'referral_earned' %}
                                                 Referral
-                                            {% else %}
-                                                Activity
                                             {% endif %}
                                         </span>
                                         <span class="dot">•</span>
+                                        {% endif %}
                                         <span class="activity-description">{{ activity.description or 'Activity recorded' }}</span>
                                         {% if activity.points_earned and activity.points_earned > 0 %}
                                             <span class="dot">•</span>
