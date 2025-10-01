@@ -32,68 +32,6 @@
             background-clip: text;
             margin-bottom: 1rem;
         }
-
-        .cycling-text {
-            position: relative;
-            display: inline-block;
-            background: linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0, #20B2AA);
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: shimmer 3s ease-in-out infinite;
-            text-shadow: 0 0 30px rgba(32, 178, 170, 0.5);
-        }
-
-        .cycling-text::before {
-            content: attr(data-text);
-            position: absolute;
-            left: 0;
-            top: 0;
-            z-index: -1;
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: blur(10px);
-            opacity: 0.6;
-        }
-
-        .cycling-text.glitch {
-            animation: glitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-        }
-
-        @keyframes shimmer {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        @keyframes glitch {
-            0% {
-                transform: translate(0);
-                opacity: 1;
-            }
-            20% {
-                transform: translate(-2px, 2px);
-                opacity: 0.8;
-            }
-            40% {
-                transform: translate(2px, -2px);
-                opacity: 0.6;
-            }
-            60% {
-                transform: translate(-2px, -2px);
-                opacity: 0.4;
-            }
-            80% {
-                transform: translate(2px, 2px);
-                opacity: 0.6;
-            }
-            100% {
-                transform: translate(0);
-                opacity: 1;
-            }
-        }
         
         .mode-selector {
             display: flex;
@@ -526,7 +464,7 @@
 {% block content %}
             <div class="create-container">
                 <div class="create-header">
-                    <h1>Create Your <span class="cycling-text" id="cyclingText">Memecoin</span></h1>
+                    <h1>Create Your Memecoin</h1>
                     <p>Launch a community-driven token on Kaspa with fair bonding curve mechanics</p>
                 </div>
 
@@ -1053,33 +991,5 @@
         document.getElementById('symbol').addEventListener('input', function(e) {
             e.target.value = e.target.value.toUpperCase();
         });
-
-        // Cycling text animation
-        (function() {
-            const words = ['Memecoin', 'Token', 'Coin'];
-            let currentIndex = 0;
-            const cyclingText = document.getElementById('cyclingText');
-            
-            function cycleText() {
-                // Add glitch effect
-                cyclingText.classList.add('glitch');
-                
-                setTimeout(() => {
-                    // Change text
-                    currentIndex = (currentIndex + 1) % words.length;
-                    cyclingText.textContent = words[currentIndex];
-                    cyclingText.setAttribute('data-text', words[currentIndex]);
-                    
-                    // Remove glitch effect
-                    cyclingText.classList.remove('glitch');
-                }, 150);
-            }
-            
-            // Initialize data-text attribute
-            cyclingText.setAttribute('data-text', words[0]);
-            
-            // Start cycling every 3 seconds
-            setInterval(cycleText, 3000);
-        })();
 </script>
 {% endblock %}
