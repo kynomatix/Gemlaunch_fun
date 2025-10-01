@@ -2005,14 +2005,18 @@
                 
                 // Initialize carousel position and header
                 window.currentCategoryIndex = 0;
-                updateCategoryHeader(0);
                 updateCarouselPosition();
                 
-                // Add keyboard navigation
+                // Update header after a brief delay to ensure DOM is ready
+                setTimeout(() => {
+                    updateCategoryHeader(0);
+                }, 50);
+                
+                // Add keyboard navigation - works globally when carousel exists
                 document.addEventListener('keydown', function(e) {
-                    // Only work if achievements tab is active
-                    const achievementsTab = document.getElementById('achievements-tab');
-                    if (!achievementsTab || !achievementsTab.classList.contains('active')) return;
+                    // Only work if carousel is visible
+                    const carousel = document.querySelector('.accolades-carousel');
+                    if (!carousel || carousel.offsetParent === null) return;
                     
                     // Arrow keys
                     if (e.key === 'ArrowLeft') {
