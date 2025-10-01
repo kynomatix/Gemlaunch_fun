@@ -2314,10 +2314,6 @@
             display: flex;
             flex-direction: column;
         }
-        
-        .recent-activities-section {
-            min-height: 700px;
-        }
 
         .progress-summary {
             display: flex;
@@ -3126,6 +3122,79 @@
             .btn-action {
                 width: 200px;
                 justify-content: center;
+            }
+        }
+
+        /* Dashboard pane height alignment - ensures accolades and activities align at bottom across zoom levels */
+        :root {
+            --dash-pane-h: clamp(700px, 75vh, 900px);
+        }
+
+        @media (min-width: 1201px) {
+            .activities-grid {
+                align-items: stretch;
+            }
+            
+            /* Equalize column heights for perfect alignment */
+            .accolades-progress-section,
+            .accolades-sidebar {
+                height: var(--dash-pane-h) !important;
+                min-height: 0 !important;
+            }
+            
+            .accolades-progress-section {
+                max-height: var(--dash-pane-h) !important;
+            }
+            
+            /* Ensure inner accolades content fits/scrolls */
+            .accolades-progress-section .carousel-viewport,
+            .accolades-progress-section .carousel-categories-container,
+            .accolades-progress-section .category-accolades-grid {
+                height: 100%;
+                max-height: 100%;
+                min-height: 0;
+            }
+            
+            /* SHORTER recent activities box with its own scroll */
+            .recent-activities-section {
+                max-height: clamp(220px, 28vh, 360px);
+                overflow-y: auto;
+            }
+            
+            /* Compact activity rows */
+            .recent-activities-section .activity-item {
+                padding: 6px 10px;
+                margin: 6px 0;
+                gap: 8px;
+                min-height: unset;
+            }
+            
+            .recent-activities-section .activity-icon {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .recent-activities-section .activity-details h4 {
+                font-size: 0.95rem;
+                line-height: 1.2;
+            }
+            
+            .recent-activities-section .activity-details p,
+            .recent-activities-section .activity-time {
+                font-size: 0.8rem;
+                opacity: 0.8;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            /* Revert to auto on stacked layout */
+            .accolades-progress-section,
+            .accolades-sidebar {
+                height: auto !important;
+            }
+            
+            .recent-activities-section {
+                max-height: none;
             }
         }
 {% endblock %}
