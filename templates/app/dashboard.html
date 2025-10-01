@@ -1627,33 +1627,28 @@
                                 {% set is_accolade = activity.activity_type == 'achievement_earned' %}
                                 <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{{ activity.activity_type }}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
                                     <div class="activity-summary">
-                                        <time class="activity-time">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</time>
-                                        <span class="dot">•</span>
-                                        <span class="activity-category">
-                                            {% if activity.activity_type == 'token_created' %}
-                                                Token launch
-                                            {% elif activity.activity_type in ['trade_buy', 'trade_sell'] %}
-                                                Trade
-                                            {% elif activity.activity_type == 'achievement_earned' %}
-                                                Earned accolade
-                                            {% elif activity.activity_type == 'referral_earned' %}
-                                                Referral
-                                            {% else %}
-                                                {{ activity.title }}
-                                            {% endif %}
-                                        </span>
-                                        <span class="dot">•</span>
-                                        {% if activity.points_earned and activity.points_earned > 0 %}
-                                            <span class="activity-points">+{{ activity.points_earned }}</span>
-                                        {% endif %}
-                                        {% if not is_accolade %}
-                                        <span class="dot">•</span>
-                                        <span class="activity-description">{{ activity.title }}</span>
-                                        {% endif %}
-                                        {% if is_accolade %}
-                                        <span class="activity-toggle">
+                                        <div class="activity-left">
+                                            <time class="activity-time">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</time>
+                                            <span class="dot">•</span>
+                                            <span class="activity-category">
+                                                {% if activity.activity_type == 'token_created' %}
+                                                    Token launch
+                                                {% elif activity.activity_type in ['trade_buy', 'trade_sell'] %}
+                                                    Trade
+                                                {% elif activity.activity_type == 'achievement_earned' %}
+                                                    Earned accolade
+                                                {% elif activity.activity_type == 'referral_earned' %}
+                                                    Referral
+                                                {% else %}
+                                                    {{ activity.title }}
+                                                {% endif %}
+                                            </span>
+                                            {% if is_accolade %}
                                             <span class="chevron">▸</span>
-                                        </span>
+                                            {% endif %}
+                                        </div>
+                                        {% if activity.points_earned and activity.points_earned > 0 %}
+                                        <span class="activity-points">+{{ activity.points_earned }}</span>
                                         {% endif %}
                                     </div>
                                     {% if is_accolade %}
@@ -2729,34 +2724,34 @@
             border-color: rgba(32, 178, 170, 0.3);
         }
 
-        .activity-toggle {
-            display: inline-flex;
-            align-items: center;
-            margin-left: auto;
-            color: #aaa;
-            flex-shrink: 0;
-        }
-
-        .chevron {
-            font-size: 11px;
-            transition: transform 0.2s ease;
-        }
-
-        .activity-item.expanded .chevron {
-            transform: rotate(90deg);
-        }
-
         .activity-summary {
             display: flex;
             align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             font-weight: 400;
             font-size: 0.82rem;
             line-height: 1.2;
             flex: 1;
+        }
+
+        .activity-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .chevron {
+            font-size: 10px;
+            color: #aaa;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+            margin-left: 2px;
+        }
+
+        .activity-item.expanded .chevron {
+            transform: rotate(90deg);
         }
         
         .activity-time {
@@ -2791,6 +2786,7 @@
             font-size: 0.82rem;
             white-space: nowrap;
             flex-shrink: 0;
+            margin-left: auto;
         }
 
         .activity-details {
