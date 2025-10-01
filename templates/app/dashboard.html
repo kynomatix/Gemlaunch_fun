@@ -1624,34 +1624,31 @@
                         {% if activities and activities|length > 0 %}
                             <div class="activities-timeline">
                                 {% for activity in activities %}
-                                {% set is_accolade = activity.action_type == 'achievement_unlocked' %}
-                                <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{% if is_accolade %}accolade{% else %}{{ activity.action_type }}{% endif %}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
+                                {% set is_accolade = activity.activity_type == 'achievement_earned' %}
+                                <div class="activity-item {% if is_accolade %}expandable{% endif %}" data-type="{{ activity.activity_type }}" {% if is_accolade %}onclick="toggleActivityItem(this)"{% endif %}>
                                     <div class="activity-summary">
                                         <time class="activity-time">{{ activity.created_at.strftime('%b %d, %H:%M') if activity.created_at else 'Recently' }}</time>
                                         <span class="dot">•</span>
-                                        {% if activity.action_type in ['token_created', 'trade_executed', 'achievement_unlocked', 'referral_earned'] %}
                                         <span class="activity-category">
-                                            {% if activity.action_type == 'token_created' %}
+                                            {% if activity.activity_type == 'token_created' %}
                                                 Token launch
-                                            {% elif activity.action_type == 'trade_executed' %}
+                                            {% elif activity.activity_type in ['trade_buy', 'trade_sell'] %}
                                                 Trade
-                                            {% elif activity.action_type == 'achievement_unlocked' %}
+                                            {% elif activity.activity_type == 'achievement_earned' %}
                                                 Earned accolade
-                                            {% elif activity.action_type == 'referral_earned' %}
+                                            {% elif activity.activity_type == 'referral_earned' %}
                                                 Referral
+                                            {% else %}
+                                                {{ activity.title }}
                                             {% endif %}
                                         </span>
                                         <span class="dot">•</span>
                                         {% if activity.points_earned and activity.points_earned > 0 %}
                                             <span class="activity-points">+{{ activity.points_earned }}</span>
                                         {% endif %}
-                                        {% endif %}
                                         {% if not is_accolade %}
-                                        <span class="activity-description">{{ activity.description or 'Activity recorded' }}</span>
-                                        {% if activity.points_earned and activity.points_earned > 0 %}
-                                            <span class="dot">•</span>
-                                            <span class="activity-points">+{{ activity.points_earned }}</span>
-                                        {% endif %}
+                                        <span class="dot">•</span>
+                                        <span class="activity-description">{{ activity.title }}</span>
                                         {% endif %}
                                         {% if is_accolade %}
                                         <span class="activity-toggle">
@@ -1661,10 +1658,7 @@
                                     </div>
                                     {% if is_accolade %}
                                     <div class="activity-details">
-                                        <div class="detail-row">{{ activity.description or 'Accolade earned' }}</div>
-                                        {% if activity.details %}
-                                            <div class="detail-row">{{ activity.details }}</div>
-                                        {% endif %}
+                                        <div class="detail-row">{{ activity.description or activity.title }}</div>
                                     </div>
                                     {% endif %}
                                 </div>
