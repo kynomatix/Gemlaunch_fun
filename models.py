@@ -31,6 +31,12 @@ class User(db.Model):
     total_tokens_created = db.Column(db.Integer, default=0)
     total_trading_volume = db.Column(db.Numeric(precision=20, scale=8), default=0)
     
+    # Cached tracking fields for achievement progress
+    total_graduated_tokens = db.Column(db.Integer, default=0)
+    total_trades_count = db.Column(db.Integer, default=0)
+    total_messages_sent = db.Column(db.Integer, default=0)
+    longest_holding_days = db.Column(db.Integer, default=0)
+    
     # Relationships
     tokens_created = db.relationship('Token', backref='creator', lazy='dynamic')
     trades = db.relationship('Trade', backref='user', lazy='dynamic')
