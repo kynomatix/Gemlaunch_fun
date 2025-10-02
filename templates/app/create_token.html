@@ -26,12 +26,16 @@
         .create-header h1 {
             font-size: 3rem;
             font-weight: 900;
+            color: #FFFFFF;
+            margin-bottom: 1rem;
+            perspective: 1000px;
+        }
+        
+        .create-header h1 .static-text {
             background: linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 1rem;
-            perspective: 1000px;
         }
 
         .cube-wrapper {
@@ -537,7 +541,7 @@
 {% block content %}
             <div class="create-container">
                 <div class="create-header">
-                    <h1>Create Your <span class="cube-wrapper"><span class="cube-container" id="cubeContainer"><span class="cube-face face-1">Memecoin</span><span class="cube-face face-2">Token</span><span class="cube-face face-3">Coin</span><span class="cube-face face-4">Memecoin</span></span></span></h1>
+                    <h1><span class="static-text">Create Your</span> <span class="cube-wrapper"><span class="cube-container" id="cubeContainer"><span class="cube-face face-1">Memecoin</span><span class="cube-face face-2">Token</span><span class="cube-face face-3">Coin</span><span class="cube-face face-4">Memecoin</span></span></span></h1>
                     <p>Launch a community-driven token on Kaspa with fair bonding curve mechanics</p>
                 </div>
 
