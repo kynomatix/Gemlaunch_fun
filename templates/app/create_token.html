@@ -645,27 +645,32 @@
                             </div>
                         </div>
                         
-                        <!-- Anti-Bot Protection -->
+                        <!-- Anti-Bot Protection (Collapsible) -->
                         <div class="form-group full-width" style="margin-top: 1.5rem;">
-                            <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 1rem; background: rgba(32, 178, 170, 0.05); border: 1px solid rgba(32, 178, 170, 0.2); border-radius: 10px; transition: all 0.3s ease;">
-                                <input type="checkbox" id="anti_bot_enabled" name="anti_bot_enabled" style="width: 20px; height: 20px; cursor: pointer; accent-color: #20B2AA;">
-                                <span style="font-size: 1.05rem; font-weight: 600; color: #20B2AA;">
-                                    <i class="fas fa-shield-alt" style="margin-right: 0.5rem;"></i>
-                                    Enable Anti-Bot Protection (GEM System)
-                                </span>
-                            </label>
-                            <div class="supply-info" style="margin-top: 1rem;">
-                                <h4>🛡️ How It Works</h4>
-                                <p>Protects your launch with time-based KAS fee decay over 60 seconds. Bots pay up to 95% fees at launch, while genuine community members who wait just 1 minute trade at normal 1% fees. All anti-bot fees go to the Airdrop Treasury to fund community rewards.</p>
-                                <p style="margin-top: 0.75rem;">
-                                    <strong>Fee Schedule:</strong> 95% (t=0s) → 80% (t=10s) → 50% (t=30s) → 1% (t=60s+)
-                                </p>
-                                <p style="margin-top: 0.75rem;">
-                                    <a href="/docs#antibot" target="_blank" style="color: #20B2AA; text-decoration: none; font-weight: 600;">
-                                        <i class="fas fa-book" style="margin-right: 0.25rem;"></i>
-                                        Learn more in Documentation →
-                                    </a>
-                                </p>
+                            <div class="social-links-header" onclick="toggleAntiBot()">
+                                <label style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="anti_bot_enabled" name="anti_bot_enabled" onclick="event.stopPropagation()" style="width: 20px; height: 20px; cursor: pointer; accent-color: #20B2AA;">
+                                    <span style="font-size: 1rem; font-weight: 600; color: #20B2AA;">
+                                        <i class="fas fa-shield-alt" style="margin-right: 0.5rem;"></i>
+                                        Enable Anti-Bot Protection (GEM System)
+                                    </span>
+                                    <i class="fas fa-chevron-down" id="antibot-chevron" style="transition: transform 0.3s ease; font-size: 0.8rem; margin-left: auto;"></i>
+                                </label>
+                            </div>
+                            <div id="antibot-content" style="display: none; margin-top: 1rem;">
+                                <div class="supply-info">
+                                    <h4>🛡️ How It Works</h4>
+                                    <p>Protects your launch with time-based KAS fee decay over 60 seconds. Bots pay up to 95% fees at launch, while genuine community members who wait just 1 minute trade at normal 1% fees. All anti-bot fees go to the Airdrop Treasury to fund community rewards.</p>
+                                    <p style="margin-top: 0.75rem;">
+                                        <strong>Fee Schedule:</strong> 95% (t=0s) → 80% (t=10s) → 50% (t=30s) → 1% (t=60s+)
+                                    </p>
+                                    <p style="margin-top: 0.75rem;">
+                                        <a href="/docs#antibot" target="_blank" style="color: #20B2AA; text-decoration: none; font-weight: 600;">
+                                            <i class="fas fa-book" style="margin-right: 0.25rem;"></i>
+                                            Learn more in Documentation →
+                                        </a>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -943,6 +948,20 @@
         function toggleSocialLinks() {
             const content = document.getElementById('social-links-content');
             const chevron = document.getElementById('social-chevron');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.display = 'none';
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Anti-bot protection toggle functionality
+        function toggleAntiBot() {
+            const content = document.getElementById('antibot-content');
+            const chevron = document.getElementById('antibot-chevron');
             
             if (content.style.display === 'none') {
                 content.style.display = 'block';
