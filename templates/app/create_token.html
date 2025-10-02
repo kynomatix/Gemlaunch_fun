@@ -7,10 +7,6 @@
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 
-<!-- Splitting.js and Anime.js for word cycling animation -->
-<link href="https://unpkg.com/splitting@1.0.6/dist/splitting.css" rel="stylesheet">
-<script src="https://unpkg.com/splitting@1.0.6/dist/splitting.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 
 <style>
         .create-main {
@@ -54,9 +50,41 @@
             filter: drop-shadow(0 0 20px rgba(32, 178, 170, 0.3));
         }
 
-        .word-cycle .char {
+        .word-cycle span {
             display: inline-block;
-            transform-origin: center;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            animation: none;
+        }
+
+        .word-cycle.fade-out span {
+            animation: scatterOut 0.6s ease-in forwards;
+        }
+
+        .word-cycle.fade-in span {
+            animation: scatterIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        @keyframes scatterOut {
+            0% {
+                opacity: 1;
+                transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(var(--scatter-y)) translateX(var(--scatter-x)) rotate(var(--scatter-rotate)) scale(0.3);
+            }
+        }
+
+        @keyframes scatterIn {
+            0% {
+                opacity: 0;
+                transform: translateY(var(--scatter-y)) translateX(var(--scatter-x)) rotate(var(--scatter-rotate)) scale(0.3);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+            }
         }
 
         @keyframes shimmer {
@@ -495,7 +523,7 @@
 {% block content %}
             <div class="create-container">
                 <div class="create-header">
-                    <h1>Create Your <span class="word-cycle" id="cycleWord" data-splitting>Memecoin</span></h1>
+                    <h1>Create Your <span class="word-cycle" id="cycleWord">Memecoin</span></h1>
                     <p>Launch a community-driven token on Kaspa with fair bonding curve mechanics</p>
                 </div>
 
@@ -1029,7 +1057,7 @@
             e.target.value = e.target.value.toUpperCase();
         });
 
-        // Word cycling animation - Character scatter effect with Splitting.js + Anime.js
+        // Pure vanilla JavaScript word cycling animation
         let wordCycleInterval = null;
         
         function initWordCycleAnimation() {
@@ -1037,88 +1065,44 @@
             let index = 0;
             const element = document.getElementById('cycleWord');
             
-            // Check if element exists
-            if (!element) {
-                return;
-            }
+            if (!element) return;
+            if (element.dataset.wordCycleInitialized === 'true') return;
             
-            // Check if already initialized to prevent duplicates
-            if (element.dataset.wordCycleInitialized === 'true') {
-                return;
-            }
-            
-            // Check if libraries are loaded, retry if not
-            if (typeof Splitting === 'undefined' || typeof anime === 'undefined') {
-                setTimeout(initWordCycleAnimation, 100);
-                return;
-            }
-            
-            // Mark as initialized
             element.dataset.wordCycleInitialized = 'true';
             
-            // Clear any existing interval
             if (wordCycleInterval) {
                 clearInterval(wordCycleInterval);
             }
             
-            // Initialize Splitting on the element
-            Splitting({ target: element, by: 'chars' });
+            // Helper to split text into character spans with random scatter values
+            function wrapChars(text) {
+                return text.split('').map(char => {
+                    const scatterX = (Math.random() - 0.5) * 400; // -200 to 200
+                    const scatterY = (Math.random() - 0.5) * 400; // -200 to 200
+                    const scatterRotate = (Math.random() - 0.5) * 720; // -360 to 360
+                    return `<span style="--scatter-x: ${scatterX}px; --scatter-y: ${scatterY}px; --scatter-rotate: ${scatterRotate}deg;">${char === ' ' ? '&nbsp;' : char}</span>`;
+                }).join('');
+            }
+            
+            // Initialize first word
+            element.innerHTML = wrapChars(words[0]);
             
             function cycleWord() {
-                const chars = element.querySelectorAll('.char');
+                // Add fade-out class
+                element.classList.add('fade-out');
                 
-                // Animate current word's characters scattering outward
-                anime({
-                    targets: chars,
-                    translateX: function() {
-                        return anime.random(-200, 200);
-                    },
-                    translateY: function() {
-                        return anime.random(-200, 200);
-                    },
-                    rotate: function() {
-                        return anime.random(-360, 360);
-                    },
-                    opacity: [1, 0],
-                    duration: 600,
-                    easing: 'easeInCubic',
-                    complete: function() {
-                        // Change text
-                        index = (index + 1) % words.length;
-                        element.textContent = words[index];
-                        
-                        // Re-initialize Splitting for the new word
-                        Splitting({ target: element, by: 'chars' });
-                        
-                        const newChars = element.querySelectorAll('.char');
-                        
-                        // Set initial scattered positions for new characters
-                        anime.set(newChars, {
-                            translateX: function() {
-                                return anime.random(-200, 200);
-                            },
-                            translateY: function() {
-                                return anime.random(-200, 200);
-                            },
-                            rotate: function() {
-                                return anime.random(-360, 360);
-                            },
-                            opacity: 0
-                        });
-                        
-                        // Animate new word's characters flying inward
-                        anime({
-                            targets: newChars,
-                            translateX: 0,
-                            translateY: 0,
-                            rotate: 0,
-                            opacity: [0, 1],
-                            duration: 800,
-                            delay: anime.stagger(50),
-                            easing: 'easeOutElastic(1, .6)'
-                        });
-                    }
-                });
+                // After animation, change word and fade in
+                setTimeout(() => {
+                    element.classList.remove('fade-out');
+                    index = (index + 1) % words.length;
+                    element.innerHTML = wrapChars(words[index]);
+                    element.classList.add('fade-in');
+                    
+                    // Remove fade-in class after animation
+                    setTimeout(() => {
+                        element.classList.remove('fade-in');
+                    }, 800);
+                }, 600);
             }
             
             // Cycle every 3 seconds
