@@ -7,6 +7,11 @@
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 
+<!-- Splitting.js and Anime.js for word cycling animation -->
+<link href="https://unpkg.com/splitting@1.0.6/dist/splitting.css" rel="stylesheet">
+<script src="https://unpkg.com/splitting@1.0.6/dist/splitting.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
 <style>
         .create-main {
             padding-top: 100px;
@@ -49,34 +54,9 @@
             filter: drop-shadow(0 0 20px rgba(32, 178, 170, 0.3));
         }
 
-        .word-cycle.flip-out {
-            animation: flipOut 0.4s cubic-bezier(0.4, 0.0, 0.6, 1) forwards;
-        }
-
-        .word-cycle.flip-in {
-            animation: flipIn 0.4s cubic-bezier(0.4, 0.0, 0.6, 1) forwards;
-        }
-
-        @keyframes flipOut {
-            0% {
-                transform: rotateX(0deg);
-                opacity: 1;
-            }
-            100% {
-                transform: rotateX(90deg);
-                opacity: 0;
-            }
-        }
-
-        @keyframes flipIn {
-            0% {
-                transform: rotateX(-90deg);
-                opacity: 0;
-            }
-            100% {
-                transform: rotateX(0deg);
-                opacity: 1;
-            }
+        .word-cycle .char {
+            display: inline-block;
+            transform-origin: center;
         }
 
         @keyframes shimmer {
@@ -515,7 +495,7 @@
 {% block content %}
             <div class="create-container">
                 <div class="create-header">
-                    <h1>Create Your <span class="word-cycle" id="cycleWord">Memecoin</span></h1>
+                    <h1>Create Your <span class="word-cycle" id="cycleWord" data-splitting>Memecoin</span></h1>
                     <p>Launch a community-driven token on Kaspa with fair bonding curve mechanics</p>
                 </div>
 
@@ -1049,33 +1029,72 @@
             e.target.value = e.target.value.toUpperCase();
         });
 
-        // Word cycling animation - 3D flip effect
+        // Word cycling animation - Character scatter effect with Splitting.js + Anime.js
         (function() {
             const words = ['Memecoin', 'Token', 'Coin'];
             let index = 0;
             const element = document.getElementById('cycleWord');
             
-            if (!element) return;
+            if (!element || typeof Splitting === 'undefined' || typeof anime === 'undefined') return;
+            
+            // Initialize Splitting on the element
+            Splitting({ target: element, by: 'chars' });
             
             function cycleWord() {
-                // Trigger flip-out animation
-                element.classList.add('flip-out');
+                const chars = element.querySelectorAll('.char');
                 
-                // At halfway point (when perpendicular), change text and trigger flip-in
-                setTimeout(function() {
-                    // Update text content while element is perpendicular
-                    index = (index + 1) % words.length;
-                    element.textContent = words[index];
-                    
-                    // Remove flip-out and add flip-in
-                    element.classList.remove('flip-out');
-                    element.classList.add('flip-in');
-                    
-                    // Clean up flip-in class after animation completes
-                    setTimeout(function() {
-                        element.classList.remove('flip-in');
-                    }, 400);
-                }, 200);
+                // Animate current word's characters scattering outward
+                anime({
+                    targets: chars,
+                    translateX: function() {
+                        return anime.random(-200, 200);
+                    },
+                    translateY: function() {
+                        return anime.random(-200, 200);
+                    },
+                    rotate: function() {
+                        return anime.random(-360, 360);
+                    },
+                    opacity: [1, 0],
+                    duration: 600,
+                    easing: 'easeInCubic',
+                    complete: function() {
+                        // Change text
+                        index = (index + 1) % words.length;
+                        element.textContent = words[index];
+                        
+                        // Re-initialize Splitting for the new word
+                        Splitting({ target: element, by: 'chars' });
+                        
+                        const newChars = element.querySelectorAll('.char');
+                        
+                        // Set initial scattered positions for new characters
+                        anime.set(newChars, {
+                            translateX: function() {
+                                return anime.random(-200, 200);
+                            },
+                            translateY: function() {
+                                return anime.random(-200, 200);
+                            },
+                            rotate: function() {
+                                return anime.random(-360, 360);
+                            },
+                            opacity: 0
+                        });
+                        
+                        // Animate new word's characters flying inward
+                        anime({
+                            targets: newChars,
+                            translateX: 0,
+                            translateY: 0,
+                            rotate: 0,
+                            opacity: [0, 1],
+                            duration: 800,
+                            delay: anime.stagger(50),
+                            easing: 'easeOutElastic(1, .6)'
+                        });
+                    }
+                });
             }
             
             // Cycle every 3 seconds
