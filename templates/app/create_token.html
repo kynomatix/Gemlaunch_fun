@@ -1030,12 +1030,36 @@
         });
 
         // Word cycling animation - Character scatter effect with Splitting.js + Anime.js
-        (function() {
+        let wordCycleInterval = null;
+        
+        function initWordCycleAnimation() {
             const words = ['Memecoin', 'Token', 'Coin'];
             let index = 0;
             const element = document.getElementById('cycleWord');
             
-            if (!element || typeof Splitting === 'undefined' || typeof anime === 'undefined') return;
+            // Check if element exists
+            if (!element) {
+                return;
+            }
+            
+            // Check if already initialized to prevent duplicates
+            if (element.dataset.wordCycleInitialized === 'true') {
+                return;
+            }
+            
+            // Check if libraries are loaded, retry if not
+            if (typeof Splitting === 'undefined' || typeof anime === 'undefined') {
+                setTimeout(initWordCycleAnimation, 100);
+                return;
+            }
+            
+            // Mark as initialized
+            element.dataset.wordCycleInitialized = 'true';
+            
+            // Clear any existing interval
+            if (wordCycleInterval) {
+                clearInterval(wordCycleInterval);
+            }
             
             // Initialize Splitting on the element
             Splitting({ target: element, by: 'chars' });
@@ -1098,7 +1122,29 @@
             }
             
             // Cycle every 3 seconds
-            setInterval(cycleWord, 3000);
-        })();
+            wordCycleInterval = setInterval(cycleWord, 3000);
+        }
+        
+        // Initialize animation when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initWordCycleAnimation);
+        } else {
+            initWordCycleAnimation();
+        }
+        
+        // Reinitialize on Turbo navigation
+        document.addEventListener('turbo:load', initWordCycleAnimation);
+        
+        // Cleanup before Turbo caches the page
+        document.addEventListener('turbo:before-cache', function() {
+            const element = document.getElementById('cycleWord');
+            if (element) {
+                element.dataset.wordCycleInitialized = 'false';
+            }
+            if (wordCycleInterval) {
+                clearInterval(wordCycleInterval);
+                wordCycleInterval = null;
+            }
+        });
 </script>
 {% endblock %}
