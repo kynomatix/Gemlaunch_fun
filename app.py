@@ -441,7 +441,8 @@ def create_token():
             'twitter': request.form.get('twitter', ''),
             'telegram': request.form.get('telegram', ''),
             'total_supply': request.form.get('total_supply', '1000000000'),
-            'reserved_percentage': request.form.get('reserved_percentage', '0')
+            'reserved_percentage': request.form.get('reserved_percentage', '0'),
+            'anti_bot_enabled': request.form.get('anti_bot_enabled') == 'on'
         }
         
         # Use TokenService to create the token

@@ -88,6 +88,7 @@ class Token(db.Model):
     total_supply = db.Column(db.Numeric(precision=30, scale=0), default=1000000000)  # 1B default
     reserved_tokens = db.Column(db.Numeric(precision=30, scale=0), default=0)
     reserved_percentage = db.Column(db.Float, default=0.0)  # 0-25%
+    anti_bot_enabled = db.Column(db.Boolean, default=False)  # Anti-bot protection (GEM system)
     
     # Blockchain info
     contract_address = db.Column(db.String(128), unique=True, nullable=True, index=True)

@@ -306,6 +306,10 @@
                         <i class="fas fa-code"></i>
                         <span>Technical</span>
                     </button>
+                    <button class="docs-tab" data-tab="antibot">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Anti-Bot</span>
+                    </button>
 
                 </div>
                 
@@ -462,6 +466,86 @@
                         </ul>
                     </div>
                     
+                    <!-- Anti-Bot Protection Tab -->
+                    <div class="tab-panel" id="antibot">
+                        <h2>🛡️ Anti-Bot Protection (GEM System)</h2>
+                        
+                        <div class="highlight-box">
+                            <h4>🎯 Optional Feature for Token Creators</h4>
+                            <p>When enabled, this smart contract-based system protects your community from bot frontrunning while funding airdrops for genuine supporters. Creators can enable this during token creation as part of Advanced Options.</p>
+                        </div>
+                        
+                        <h3>How It Works</h3>
+                        <p>The GEM System implements time-based KAS fee decay that makes bot frontrunning unprofitable while rewarding patient, genuine community members. All anti-bot fees are collected and distributed back to the community through our Airdrop Treasury.</p>
+                        
+                        <h3>📊 Fee Schedule (Linear Decay)</h3>
+                        <p><strong>Formula:</strong> fee(t) = 95 - (94 × t / 60) where t = seconds since token launch</p>
+                        
+                        <ul>
+                            <li><strong>t = 0 seconds:</strong> 95% fee - Bots pay maximum penalty</li>
+                            <li><strong>t = 10 seconds:</strong> 80% fee - Still very high cost</li>
+                            <li><strong>t = 20 seconds:</strong> 65% fee - Rapidly decreasing</li>
+                            <li><strong>t = 30 seconds:</strong> 50% fee - Halfway point</li>
+                            <li><strong>t = 40 seconds:</strong> 35% fee - Approaching normal</li>
+                            <li><strong>t = 50 seconds:</strong> 20% fee - Nearly complete</li>
+                            <li><strong>t = 60+ seconds:</strong> 1% fee - Permanent normal trading (standard platform fee)</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>💡 The Math Works</h4>
+                            <p>The fee decay is perfectly linear over 60 seconds. Bots racing to be first pay the highest price, while genuine community members who wait just one minute trade at normal fees forever.</p>
+                        </div>
+                        
+                        <h3>🎁 Airdrop Treasury Distribution</h3>
+                        <p>All KAS collected from anti-bot fees goes into the Airdrop Treasury and is distributed to the community:</p>
+                        
+                        <ul>
+                            <li><strong>70% Leaderboard Rewards:</strong> Top traders, creators, and community contributors earn the majority</li>
+                            <li><strong>20% Lottery System:</strong> Random drawings for active community members - everyone has a chance</li>
+                            <li><strong>10% Team/Dev:</strong> Platform development, security audits, and infrastructure costs</li>
+                        </ul>
+                        
+                        <h3>⚡ Why This Works on Kaspa</h3>
+                        <p>Kaspa's unique BlockDAG architecture with ~100ms block times makes time-based protection highly effective:</p>
+                        
+                        <ul>
+                            <li><strong>100ms blocks:</strong> Kaspa produces blocks 10x per second, enabling precise time-based enforcement</li>
+                            <li><strong>Time-based vs Block-based:</strong> Unlike Ethereum where blocks vary (12-15s), Kaspa's consistent speed allows accurate time tracking</li>
+                            <li><strong>No mempool sniping:</strong> Fast finality means bots can't easily frontrun transactions</li>
+                            <li><strong>Low fees:</strong> Even with anti-bot protection, base transaction costs remain minimal</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>🚀 Smart Contract Implementation</h4>
+                            <p>The anti-bot system is implemented at the smart contract level, not in the application. Once enabled, it runs automatically and trustlessly for the full 60-second launch window.</p>
+                        </div>
+                        
+                        <h3>💪 Community Benefits</h3>
+                        <p><strong>Marketing Angle:</strong> "Bots don't win - they fund the community"</p>
+                        
+                        <ul>
+                            <li><strong>Fair launches:</strong> Real community members have 60 seconds to participate before bots find it profitable</li>
+                            <li><strong>Bot-funded airdrops:</strong> Aggressive bots who ignore the fee schedule pay for community rewards</li>
+                            <li><strong>Reduced manipulation:</strong> High early fees deter automated sniping and instant dumps</li>
+                            <li><strong>Community confidence:</strong> Knowing bots are penalized heavily encourages genuine participation</li>
+                        </ul>
+                        
+                        <h3>🎮 For Token Creators</h3>
+                        <p>When creating your token, you can enable Anti-Bot Protection in the Advanced Options section:</p>
+                        
+                        <ul>
+                            <li>Simple checkbox to enable/disable</li>
+                            <li>No additional cost to enable</li>
+                            <li>Automatic smart contract integration</li>
+                            <li>60-second protection window starts at token launch</li>
+                            <li>Builds trust with your community from day one</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>📖 Best Practice</h4>
+                            <p>Enable Anti-Bot Protection if you're planning active marketing and want to give your community a fair chance to participate. The 60-second window is typically enough for announcements to reach genuine supporters while making bot sniping unprofitable.</p>
+                        </div>
+                    </div>
 
                 </div>
             </div>

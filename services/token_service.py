@@ -58,6 +58,7 @@ class TokenService:
             # Set token configuration
             new_token.total_supply = int(token_data.get('total_supply', 1000000000))
             new_token.reserved_percentage = float(token_data.get('reserved_percentage', 0))
+            new_token.anti_bot_enabled = bool(token_data.get('anti_bot_enabled', False))
             
             # Calculate reserved tokens based on percentage
             if new_token.reserved_percentage > 0:

@@ -1,0 +1,89 @@
+Gemlaunch Anti-Bot System - Final Summary
+Core Mechanism: Time-Based KAS Fee Decay
+60-Second Linear Decay Schedule:
+t=0s:   95% fee (instant snipe = lose 95% of KAS)
+t=10s:  80% fee
+t=20s:  65% fee
+t=30s:  50% fee (break-even zone)
+t=40s:  30% fee
+t=50s:  15% fee
+t=60s:  1% fee (normal trading begins)
+t=60s+: 1% fee (permanent normal rate)
+How It Works
+
+User wants to buy tokens
+
+Sends 100 KAS to bonding curve at t=5s
+
+
+Anti-bot fee calculated
+
+t=5s fee ≈ 88% (linear interpolation)
+88 KAS → Airdrop Treasury
+12 KAS → Bonding curve (buys tokens)
+
+
+User receives tokens
+
+Gets 12 KAS worth of tokens
+Paid 100 KAS total
+Not profitable for bots
+
+
+
+Why This Works on Kaspa (100ms blocks)
+
+⚡ Time-based, not block-based - 60 seconds = 600 blocks
+🎯 Eliminates speed advantage - bots can't profit by being fast
+🎲 Game theory optimal - everyone waits, leveling the playing field
+💰 Economic deterrent - real KAS cost, not just token loss
+⏱️ Short enough - maintains launch excitement
+⏱️ Long enough - humans can compete
+
+Airdrop Treasury Integration
+Revenue Source:
+
+All anti-bot fees collected in KAS
+Bots effectively "donate" KAS to community
+Failed snipes = community funding
+
+Distribution Strategy:
+
+70% → Points leaderboard (weighted by activity)
+20% → Random lottery for active participants
+10% → Team/development fund
+
+Leaderboard Categories:
+
+Trading volume
+Token launches
+Liquidity provision
+Community engagement
+Referrals
+(Bonus: "Anti-bot fees paid" 😂)
+
+Key Benefits
+✅ Fair launches - Speed doesn't matter, patience wins
+✅ Bot-proof - Unprofitable to snipe (95% loss)
+✅ Community funded - Bot attempts fund airdrops
+✅ Kaspa-optimized - Works with 100ms blocks
+✅ Simple UX - Users understand "wait = lower fee"
+✅ Treasury in KAS - Real value, not random tokens
+✅ Gamification - Creates leaderboard + airdrop incentives
+Marketing Angle
+"On Gemlaunch, bots don't win - they fund the community. Every snipe attempt fills our Airdrop Treasury. The faster you try to buy, the more you donate to real users."
+Technical Implementation
+javascript// Linear decay formula
+fee(t) = 95 - (94 × t / 60)  // where t = seconds since launch
+
+// Example at t=25s:
+fee = 95 - (94 × 25 / 60) = 95 - 39.17 = 55.83%
+
+This combines:
+
+Traditional anti-bot protection (fees)
+Novel tokenomics (bot taxes fund community)
+Kaspa-specific optimization (time-based, not block-based)
+Gamification (leaderboard + airdrops)
+
+Result: A fair launch mechanism that turns bot attacks into community benefits while being perfectly suited for Kaspa's high-speed architecture.
