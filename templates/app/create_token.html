@@ -7,7 +7,6 @@
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 
-
 <style>
         .create-main {
             padding-top: 100px;
@@ -50,40 +49,33 @@
             filter: drop-shadow(0 0 20px rgba(32, 178, 170, 0.3));
         }
 
-        .word-cycle span {
-            display: inline-block;
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            animation: none;
+        .word-cycle.flip-out {
+            animation: flipOut 0.4s cubic-bezier(0.4, 0.0, 0.6, 1) forwards;
         }
 
-        .word-cycle.fade-out span {
-            animation: scatterOut 0.6s ease-in forwards;
+        .word-cycle.flip-in {
+            animation: flipIn 0.4s cubic-bezier(0.4, 0.0, 0.6, 1) forwards;
         }
 
-        .word-cycle.fade-in span {
-            animation: scatterIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-        }
-
-        @keyframes scatterOut {
+        @keyframes flipOut {
             0% {
+                transform: rotateX(0deg);
                 opacity: 1;
-                transform: translateY(0) translateX(0) rotate(0deg) scale(1);
             }
             100% {
+                transform: rotateX(90deg);
                 opacity: 0;
-                transform: translateY(var(--scatter-y)) translateX(var(--scatter-x)) rotate(var(--scatter-rotate)) scale(0.3);
             }
         }
 
-        @keyframes scatterIn {
+        @keyframes flipIn {
             0% {
+                transform: rotateX(-90deg);
                 opacity: 0;
-                transform: translateY(var(--scatter-y)) translateX(var(--scatter-x)) rotate(var(--scatter-rotate)) scale(0.3);
             }
             100% {
+                transform: rotateX(0deg);
                 opacity: 1;
-                transform: translateY(0) translateX(0) rotate(0deg) scale(1);
             }
         }
 
@@ -1057,78 +1049,37 @@
             e.target.value = e.target.value.toUpperCase();
         });
 
-        // Pure vanilla JavaScript word cycling animation
-        let wordCycleInterval = null;
-        
-        function initWordCycleAnimation() {
+        // Word cycling animation - 3D flip effect
+        (function() {
             const words = ['Memecoin', 'Token', 'Coin'];
             let index = 0;
             const element = document.getElementById('cycleWord');
             
             if (!element) return;
-            if (element.dataset.wordCycleInitialized === 'true') return;
-            
-            element.dataset.wordCycleInitialized = 'true';
-            
-            if (wordCycleInterval) {
-                clearInterval(wordCycleInterval);
-            }
-            
-            // Helper to split text into character spans with random scatter values
-            function wrapChars(text) {
-                return text.split('').map(char => {
-                    const scatterX = (Math.random() - 0.5) * 400; // -200 to 200
-                    const scatterY = (Math.random() - 0.5) * 400; // -200 to 200
-                    const scatterRotate = (Math.random() - 0.5) * 720; // -360 to 360
-                    return `<span style="--scatter-x: ${scatterX}px; --scatter-y: ${scatterY}px; --scatter-rotate: ${scatterRotate}deg;">${char === ' ' ? '&nbsp;' : char}</span>`;
-                }).join('');
-            }
-            
-            // Initialize first word
-            element.innerHTML = wrapChars(words[0]);
             
             function cycleWord() {
-                // Add fade-out class
-                element.classList.add('fade-out');
+                // Trigger flip-out animation
+                element.classList.add('flip-out');
                 
-                // After animation, change word and fade in
-                setTimeout(() => {
-                    element.classList.remove('fade-out');
+                // At halfway point (when perpendicular), change text and trigger flip-in
+                setTimeout(function() {
+                    // Update text content while element is perpendicular
                     index = (index + 1) % words.length;
-                    element.innerHTML = wrapChars(words[index]);
-                    element.classList.add('fade-in');
+                    element.textContent = words[index];
                     
-                    // Remove fade-in class after animation
-                    setTimeout(() => {
-                        element.classList.remove('fade-in');
-                    }, 800);
-                }, 600);
+                    // Remove flip-out and add flip-in
+                    element.classList.remove('flip-out');
+                    element.classList.add('flip-in');
+                    
+                    // Clean up flip-in class after animation completes
+                    setTimeout(function() {
+                        element.classList.remove('flip-in');
+                    }, 400);
+                }, 200);
             }
             
             // Cycle every 3 seconds
-            wordCycleInterval = setInterval(cycleWord, 3000);
-        }
-        
-        // Initialize animation when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initWordCycleAnimation);
-        } else {
-            initWordCycleAnimation();
-        }
-        
-        // Reinitialize on Turbo navigation
-        document.addEventListener('turbo:load', initWordCycleAnimation);
-        
-        // Cleanup before Turbo caches the page
-        document.addEventListener('turbo:before-cache', function() {
-            const element = document.getElementById('cycleWord');
-            if (element) {
-                element.dataset.wordCycleInitialized = 'false';
-            }
-            if (wordCycleInterval) {
-                clearInterval(wordCycleInterval);
-                wordCycleInterval = null;
-            }
-        });
+            setInterval(cycleWord, 3000);
+        })();
 </script>
 {% endblock %}
