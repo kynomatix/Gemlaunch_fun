@@ -43,8 +43,9 @@
             position: relative;
             min-width: 250px;
             height: 60px;
-            perspective: 1000px;
+            perspective: 1500px;
             vertical-align: middle;
+            overflow: visible;
         }
 
         .cube-container {
@@ -53,7 +54,6 @@
             height: 100%;
             transform-style: preserve-3d;
             transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
-            filter: drop-shadow(0 0 20px rgba(32, 178, 170, 0.3));
         }
 
         .cube-face {
@@ -65,8 +65,10 @@
             justify-content: flex-start;
             backface-visibility: hidden;
             color: #00CED1;
+            text-shadow: 0 2px 8px rgba(0, 206, 209, 0.4);
             font-size: 3rem;
             font-weight: 900;
+            white-space: nowrap;
         }
 
         .cube-face.face-1 {
@@ -1089,8 +1091,11 @@
                 cubeContainer.style.transform = `rotateY(${currentRotation}deg)`;
             }
             
-            // Rotate cube every 3 seconds
-            setInterval(rotateCube, 3000);
+            // Start rotation after 2 seconds, then continue every 3 seconds
+            setTimeout(() => {
+                rotateCube();
+                setInterval(rotateCube, 3000);
+            }, 2000);
         })();
 </script>
 {% endblock %}
