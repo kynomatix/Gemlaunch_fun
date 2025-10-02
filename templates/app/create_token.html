@@ -29,6 +29,11 @@
             color: #FFFFFF;
             margin-bottom: 1rem;
             perspective: 1000px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
         
         .create-header h1 .static-text {
@@ -397,6 +402,7 @@
             
             .create-header h1 {
                 font-size: 2rem;
+                flex-wrap: wrap;
             }
             
             .cube-wrapper {
@@ -1078,17 +1084,22 @@
         });
 
         // 3D Cube rotation animation
-        (function() {
+        function initCubeRotation() {
             const cubeContainer = document.getElementById('cubeContainer');
             
-            if (!cubeContainer) return;
+            if (!cubeContainer) {
+                console.log('Cube container not found');
+                return;
+            }
             
+            console.log('Cube rotation initialized');
             let currentRotation = 0;
             const rotationStep = 90;
             
             function rotateCube() {
                 currentRotation -= rotationStep;
                 cubeContainer.style.transform = `rotateY(${currentRotation}deg)`;
+                console.log('Cube rotated to:', currentRotation);
             }
             
             // Start rotation after 2 seconds, then continue every 3 seconds
@@ -1096,6 +1107,16 @@
                 rotateCube();
                 setInterval(rotateCube, 3000);
             }, 2000);
-        })();
+        }
+        
+        // Initialize cube rotation on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCubeRotation);
+        } else {
+            initCubeRotation();
+        }
+        
+        // Reinitialize on Turbo navigation
+        document.addEventListener('turbo:load', initCubeRotation);
 </script>
 {% endblock %}
