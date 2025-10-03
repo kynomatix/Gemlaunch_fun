@@ -1185,8 +1185,8 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
-        // Create Token Notification Modal System
-        const CreateTokenNotification = {
+        // Create Token Notification Modal System (Turbo-safe)
+        window.CreateTokenNotification = window.CreateTokenNotification || {
             showAlert: function(title, message, type = 'info', callback) {
                 const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
                 const iconColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#FF5252' : '#20B2AA';
@@ -1332,8 +1332,8 @@
             document.getElementById('reserve-display').textContent = value + '%';
         }
         
-        // Global variable to track compressed file
-        let currentCompressedFile = null;
+        // Global variable to track compressed file (Turbo-safe)
+        window.currentCompressedFile = window.currentCompressedFile || null;
         
         // Initialize image upload handler
         function initImageUploadHandler() {
@@ -1396,7 +1396,7 @@
                     compressImage(file, function(compressedFile, originalSize, compressedSize, success) {
                     if (!success) {
                         // Compression failed - file too large
-                        currentCompressedFile = null; // Clear stale reference
+                        window.currentCompressedFile = null; // Clear stale reference
                         uploadArea.innerHTML = `
                             <input type="file" id="image" name="image" accept="image/*">
                             <i class="fas fa-exclamation-triangle upload-icon" style="color: #FF6B6B;"></i>
@@ -1421,7 +1421,7 @@
                         
                         // Re-attach event listener and store compressed file
                         initImageUploadHandler();
-                        currentCompressedFile = compressedFile;
+                        window.currentCompressedFile = compressedFile;
                         replaceFileInput(compressedFile);
                     };
                     reader.readAsDataURL(compressedFile);
@@ -1569,7 +1569,7 @@
         
         // Form submission validation
         document.querySelector('.create-form').addEventListener('submit', function(e) {
-            if (currentCompressedFile && currentCompressedFile.size > 500 * 1024) {
+            if (window.currentCompressedFile && window.currentCompressedFile.size > 500 * 1024) {
                 e.preventDefault();
                 CreateTokenNotification.showAlert('Image Too Large', 'Image file is still too large for blockchain storage. Please select a smaller image.', 'error');
                 return false;
@@ -1614,7 +1614,7 @@
             setInterval(cycleWord, 3000);
         })();
 
-        // Gemmy AI Chat Widget Functionality
+        // Gemmy AI Chat Widget Functionality (Turbo-safe)
         (function() {
             const floatBtn = document.getElementById('gemmyFloatBtn');
             const chatContainer = document.getElementById('gemmyChatContainer');
@@ -1625,11 +1625,15 @@
             const typingIndicator = document.getElementById('gemmyTyping');
             const quickActions = document.querySelectorAll('.gemmy-quick-btn');
             const modeButtons = document.querySelectorAll('.gemmy-mode-btn');
+
+            if (!floatBtn || !chatContainer) return;
+            
+            // Skip initialization if already initialized (Turbo navigation)
+            if (floatBtn.dataset.gemmyInitialized === 'true') return;
+            floatBtn.dataset.gemmyInitialized = 'true';
             
             let currentMode = 'creative';
             let conversationHistory = [];
-
-            if (!floatBtn || !chatContainer) return;
 
             function toggleChat() {
                 chatContainer.classList.toggle('active');
@@ -2007,5 +2011,13 @@
                 document.body.appendChild(gemmyWidget);
             }
         })();
+
+        // Turbo cleanup - reset initialization flags before caching
+        document.addEventListener('turbo:before-cache', function() {
+            const floatBtn = document.getElementById('gemmyFloatBtn');
+            if (floatBtn) {
+                floatBtn.dataset.gemmyInitialized = 'false';
+            }
+        });
 </script>
 {% endblock %}
