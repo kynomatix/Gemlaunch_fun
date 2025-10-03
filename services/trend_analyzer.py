@@ -148,6 +148,16 @@ def analyze_and_rank_trends(scraped_trends, top_n=5):
     
     return scored_trends[:top_n]
 
+def serialize_for_json(obj):
+    """Convert datetime objects to ISO format strings for JSON serialization"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: serialize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_for_json(item) for item in obj]
+    return obj
+
 def get_trending_memes():
     """
     Main function to get trending memes
@@ -171,10 +181,14 @@ def get_trending_memes():
     
     scored = analyze_and_rank_trends(all_trends, top_n=5)
     
+    # Serialize datetime objects to strings for JSON storage
+    trends_data_json = serialize_for_json(all_trends)
+    scored_trends_json = serialize_for_json(scored)
+    
     new_cache = TrendCache(
         cache_type='external_trends',
-        trends_data=all_trends,
-        scored_trends=scored,
+        trends_data=trends_data_json,
+        scored_trends=scored_trends_json,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=12)
     )
     db.session.add(new_cache)
