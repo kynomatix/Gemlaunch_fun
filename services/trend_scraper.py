@@ -68,6 +68,11 @@ def scrape_4chan_biz():
                 title = subject if subject else _extract_first_line(comment)
                 
                 full_text = f"{subject} {comment}"
+                
+                # Filter for meme-related content only
+                if not _is_meme_related(full_text):
+                    continue
+                
                 keywords = _extract_keywords(full_text)
                 
                 if keywords:
@@ -101,11 +106,15 @@ def _extract_keywords(text):
     
     text_clean = _clean_html(text)
     
+    # Look for ticker symbols
     ticker_pattern = r'\$[A-Z]{2,10}\b'
     tickers = re.findall(ticker_pattern, text_clean)
     keywords.extend(tickers)
     
-    meme_keywords = ['moon', 'gem', 'rocket', 'lambo', 'wen', 'hodl', 'diamond', 'hands', 'pump']
+    # Meme-specific keywords that indicate memecoin potential
+    meme_keywords = ['moon', 'gem', 'rocket', 'lambo', 'wen', 'hodl', 'diamond', 'hands', 'pump', 
+                     'meme', 'doge', 'pepe', 'wojak', 'chad', 'based', 'kek', 'cope', 'seethe',
+                     'ape', 'fomo', 'cope', 'bag', 'moon', 'ser', 'fren', 'wagmi', 'ngmi']
     text_lower = text_clean.lower()
     
     for keyword in meme_keywords:
@@ -113,6 +122,27 @@ def _extract_keywords(text):
             keywords.append(keyword)
     
     return list(set(keywords))
+
+def _is_meme_related(text):
+    """Check if thread is actually about memes/memecoins, not just generic crypto"""
+    if not text:
+        return False
+    
+    text_lower = text.lower()
+    
+    # Exclude non-meme topics
+    exclude_keywords = ['precious metals', 'gold', 'silver', 'pmg/', 'inflation', 'long on btc', 
+                       'short on', 'futures', 'options', 'forex', 'stock', 'etf']
+    
+    for exclude in exclude_keywords:
+        if exclude in text_lower:
+            return False
+    
+    # Require at least some meme-related content
+    meme_indicators = ['meme', 'coin', 'token', '$', 'moon', 'gem', 'pump', 'doge', 'pepe', 
+                      'shib', 'wojak', 'ape', 'fomo', 'based', 'chad']
+    
+    return any(indicator in text_lower for indicator in meme_indicators)
 
 
 def _clean_html(text):

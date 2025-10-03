@@ -2021,19 +2021,30 @@ def gemmy_suggest():
                 role = "User" if msg.get('role') == 'user' else "Gemmy"
                 conversation_context += f"{role}: {msg.get('content', '')}\n"
         
-        system_prompt = "You are Gemmy, a friendly AI assistant that helps creators launch memecoins on Kaspa. You have access to:"
-        system_prompt += "\n\n🔥 TRENDING MEMES (Zeroday Memification Engine):"
+        system_prompt = "You are Gemmy, a friendly AI assistant that helps creators launch memecoins on Kaspa."
         
         if mode == 'trends':
             from services.trend_analyzer import get_trending_memes
             trending = get_trending_memes()
             if trending:
-                system_prompt += "\n" + "\n".join([
-                    f"- {t['meme_data'].get('title', 'Unknown')} (Score: {t.get('overall_score', 0):.1f}/10, Source: {t['meme_data'].get('source', 'unknown')})"
-                    for t in trending[:3]
-                ])
+                system_prompt += "\n\n🔥 ZERODAY MEMIFICATION ENGINE - ACTIVE"
+                system_prompt += "\n\nI've detected these emerging trends from 4chan /biz/ and Reddit:"
+                for t in trending[:3]:
+                    title = t['meme_data'].get('title', 'Unknown')
+                    keywords = ', '.join(t['meme_data'].get('keywords', [])[:5])
+                    system_prompt += f"\n- '{title}' (Keywords: {keywords})"
+                
+                system_prompt += "\n\nYour job: Transform these raw trends into MEMECOIN IDEAS. For each trend, suggest:"
+                system_prompt += "\n1. A catchy token NAME that captures the meme"
+                system_prompt += "\n2. A 3-5 letter TICKER symbol"
+                system_prompt += "\n3. A one-line marketing HOOK"
+                system_prompt += "\n\nDon't just list the trends - turn them into actionable token concepts!"
             else:
-                system_prompt += "\n- No trending memes available right now"
+                system_prompt += "\n\n🔥 TRENDING MEMES: No trending data available right now. Suggest the user try Creative Mode or Kaspa Tech Mode instead."
+        else:
+            system_prompt += " You have access to:"
+            system_prompt += "\n\n🔥 TRENDING MEMES (Zeroday Memification Engine):"
+            system_prompt += "\n- Real-time data from 4chan /biz/ and Reddit CryptoMoonShots available in Trending Memes mode"
         
         system_prompt += "\n\n⚡ KASPA TECH MEMES:"
         if mode == 'kaspa_tech':
