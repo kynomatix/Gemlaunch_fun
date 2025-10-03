@@ -1816,6 +1816,9 @@
             }
 
             function makeContentClickable(container, content) {
+                // Debug: Log the content
+                console.log('Making content clickable:', content);
+                
                 // Split content into lines
                 const lines = content.split('\n');
                 let currentSuggestion = [];
@@ -1828,8 +1831,11 @@
                     const fullText = suggestionLines.join('\n');
                     const hasTokenFields = /\*\*(?:name|symbol|description):/i.test(fullText);
                     
+                    console.log('Suggestion lines:', suggestionLines, 'Has token fields:', hasTokenFields);
+                    
                     if (!hasTokenFields) {
                         // Not a token idea, just render as regular text
+                        console.log('Rendering as regular text (no token fields)');
                         suggestionLines.forEach(line => {
                             const textSpan = document.createElement('div');
                             textSpan.innerHTML = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -1838,6 +1844,8 @@
                         });
                         return;
                     }
+                    
+                    console.log('Rendering as clickable button');
                     
                     // This is a real token idea, make it clickable
                     const suggestionDiv = document.createElement('div');
