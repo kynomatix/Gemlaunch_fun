@@ -130,19 +130,42 @@ def _is_meme_related(text):
     
     text_lower = text.lower()
     
-    # Exclude non-meme topics
-    exclude_keywords = ['precious metals', 'gold', 'silver', 'pmg/', 'inflation', 'long on btc', 
-                       'short on', 'futures', 'options', 'forex', 'stock', 'etf']
+    # HARD EXCLUDE - if any of these are present, it's NOT a meme
+    hard_excludes = [
+        'precious metal', 'pmg/', '/pmg', 'gold', 'silver', 'platinum',
+        'opened a long', 'opened a short', 'long on btc', 'short on btc',
+        'futures', 'options contract', 'forex', 'stock market', 'etf',
+        'inflation rate', 'interest rate', 'fed meeting', 'treasury',
+        'real estate', 'commodities', 'bonds'
+    ]
     
-    for exclude in exclude_keywords:
+    for exclude in hard_excludes:
         if exclude in text_lower:
             return False
     
-    # Require at least some meme-related content
-    meme_indicators = ['meme', 'coin', 'token', '$', 'moon', 'gem', 'pump', 'doge', 'pepe', 
-                      'shib', 'wojak', 'ape', 'fomo', 'based', 'chad']
+    # REQUIRE at least TWO strong meme indicators (not just one generic term)
+    strong_meme_indicators = [
+        'memecoin', 'meme coin', 'shitcoin',
+        'doge', 'pepe', 'shib', 'floki', 'bonk',
+        'wojak', 'chad', 'cope', 'seethe', 'kek',
+        'wagmi', 'ngmi', 'ser', 'fren', 'wen moon',
+        'new launch', 'fair launch', 'stealth launch',
+        'ape into', 'to the moon', '100x gem',
+        'next doge', 'next pepe', 'pump fun'
+    ]
     
-    return any(indicator in text_lower for indicator in meme_indicators)
+    matches = sum(1 for indicator in strong_meme_indicators if indicator in text_lower)
+    
+    # Need at least 2 strong meme indicators, OR explicit ticker symbol + one meme term
+    if matches >= 2:
+        return True
+    
+    # Check for ticker symbol pattern with memecoin context
+    has_ticker = bool(re.search(r'\$[A-Z]{2,10}\b', text))
+    if has_ticker and matches >= 1:
+        return True
+    
+    return False
 
 
 def _clean_html(text):
