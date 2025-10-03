@@ -2105,7 +2105,7 @@ def gemmy_suggest():
                 'model': 'meta-llama/llama-3.1-70b-instruct',
                 'messages': messages,
                 'temperature': 0.8,
-                'max_tokens': 300,
+                'max_tokens': 1000,
                 'top_p': 0.9
             },
             timeout=30
