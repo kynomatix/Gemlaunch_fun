@@ -1989,6 +1989,60 @@ def admin_set_partner():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/gemmy/suggest', methods=['POST'])
+def gemmy_suggest():
+    """Gemmy AI Assistant endpoint for token creation suggestions"""
+    import replicate
+    
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        context = data.get('context', {})
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        replicate_token = os.environ.get("REPLICATE_API_TOKEN")
+        if not replicate_token:
+            return jsonify({'error': 'AI service not configured. Please contact support.'}), 503
+        
+        context_info = ""
+        if context.get('tokenName'):
+            context_info += f"\nCurrent token name: {context['tokenName']}"
+        if context.get('symbol'):
+            context_info += f"\nCurrent symbol: {context['symbol']}"
+        
+        full_prompt = user_message
+        if context_info:
+            full_prompt += f"\n\nContext:{context_info}"
+        
+        system_prompt = "You are Gemmy, a friendly AI assistant that helps creators launch memecoins on Kaspa. Provide creative, catchy suggestions for token names, symbols, and marketing copy. Keep responses concise and fun. Use emojis sparingly to add personality."
+        
+        output = replicate.run(
+            "meta/meta-llama-3.1-70b-instruct",
+            input={
+                "prompt": full_prompt,
+                "system_prompt": system_prompt,
+                "temperature": 0.8,
+                "max_tokens": 300,
+                "top_p": 0.9
+            }
+        )
+        
+        response_text = "".join(output) if isinstance(output, list) else str(output)
+        
+        return jsonify({
+            'success': True,
+            'response': response_text.strip()
+        })
+        
+    except Exception as e:
+        logging.error(f"Gemmy AI error: {str(e)}")
+        return jsonify({
+            'error': 'Sorry, I encountered an error. Please try again!',
+            'details': str(e) if app.debug else None
+        }), 500
+
 # Initialize database when app starts
 init_database()
 
