@@ -7,6 +7,7 @@ import os
 import json
 import requests
 from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def score_meme_with_ai(meme_data):
     """
@@ -195,7 +196,7 @@ def create_default_score(meme_data):
 def analyze_and_rank_trends(scraped_trends, top_n=5):
     """
     Analyze scraped trends and return top N ranked by score
-    Uses fallback scoring first to pre-filter, then AI scores top candidates
+    Uses fallback scoring first to pre-filter, then AI scores top candidates in PARALLEL
     """
     # First pass: Quick fallback scoring for all trends
     quick_scored = []
@@ -207,16 +208,33 @@ def analyze_and_rank_trends(scraped_trends, top_n=5):
     quick_scored.sort(key=lambda x: x.get('overall_score', 0), reverse=True)
     top_candidates = quick_scored[:20]  # AI-score top 20 candidates
     
-    # Second pass: AI scoring for top candidates only (if API available)
+    # Second pass: PARALLEL AI scoring for top candidates (if API available)
     final_scored = []
-    for trend in top_candidates:
+    
+    def score_with_fallback(candidate):
+        """Helper to score with AI or fall back to quick score"""
         try:
-            # Try AI scoring
-            ai_score = score_meme_with_ai(trend['meme_data'])
-            final_scored.append(ai_score)
+            return score_meme_with_ai(candidate['meme_data'])
         except:
-            # Fall back to the quick score we already have
-            final_scored.append(trend)
+            return candidate
+    
+    # Use ThreadPoolExecutor for parallel API calls
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all scoring tasks in parallel
+        future_to_candidate = {
+            executor.submit(score_with_fallback, candidate): candidate 
+            for candidate in top_candidates
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_candidate):
+            try:
+                result = future.result()
+                final_scored.append(result)
+            except Exception as e:
+                # If something goes wrong, use the fallback score
+                candidate = future_to_candidate[future]
+                final_scored.append(candidate)
     
     # Final sort and return top N
     final_scored.sort(key=lambda x: x.get('overall_score', 0), reverse=True)
