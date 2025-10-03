@@ -1689,59 +1689,94 @@
             function makeContentClickable(container, content) {
                 // Split content into lines
                 const lines = content.split('\n');
+                let currentSuggestion = [];
+                let isInSuggestion = false;
                 
-                lines.forEach(line => {
-                    const trimmedLine = line.trim();
+                function createClickableSuggestion(suggestionLines) {
+                    if (suggestionLines.length === 0) return;
                     
-                    // Check if this line looks like a token suggestion (numbered list or specific patterns)
-                    const hasTokenPattern = /^\d+[\.\)]\s+/.test(trimmedLine) ||  // Starts with 1. or 1)
-                                           /(?:name:|token:|option\s*\d+:)/i.test(trimmedLine) ||
-                                           /\$[A-Z]{2,6}/.test(trimmedLine) ||
-                                           (trimmedLine.length > 10 && trimmedLine.length < 120 && 
-                                            !trimmedLine.toLowerCase().startsWith('here') &&
-                                            !trimmedLine.toLowerCase().startsWith('sure') &&
-                                            !trimmedLine.includes('?'));
+                    const fullText = suggestionLines.join('\n');
+                    const suggestionDiv = document.createElement('div');
+                    suggestionDiv.className = 'clickable-suggestion';
                     
-                    if (hasTokenPattern && trimmedLine.length > 5) {
-                        // Create clickable suggestion element
-                        const suggestionDiv = document.createElement('div');
-                        suggestionDiv.className = 'clickable-suggestion';
-                        suggestionDiv.textContent = trimmedLine;
-                        suggestionDiv.style.cssText = `
-                            display: block; 
-                            padding: 4px 8px; 
-                            margin: 4px 0; 
-                            border-radius: 6px; 
-                            transition: all 0.2s; 
-                            cursor: pointer; 
-                            border-left: 3px solid rgba(32, 178, 170, 0.3);
-                        `;
+                    // Render with markdown formatting (convert ** to bold)
+                    const formattedText = suggestionLines.map(line => {
+                        // Replace **text** with <strong>text</strong>
+                        return line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    }).join('<br>');
+                    
+                    suggestionDiv.innerHTML = formattedText;
+                    suggestionDiv.style.cssText = `
+                        display: block; 
+                        padding: 8px 12px; 
+                        margin: 8px 0; 
+                        border-radius: 8px; 
+                        transition: all 0.2s; 
+                        cursor: pointer; 
+                        border-left: 4px solid rgba(32, 178, 170, 0.3);
+                        background: rgba(32, 178, 170, 0.05);
+                    `;
+                    
+                    // Add hover effects
+                    suggestionDiv.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = 'rgba(32, 178, 170, 0.15)';
+                        this.style.borderLeftColor = '#20B2AA';
+                    });
+                    suggestionDiv.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = 'rgba(32, 178, 170, 0.05)';
+                        this.style.borderLeftColor = 'rgba(32, 178, 170, 0.3)';
+                    });
+                    
+                    // Add click handler
+                    suggestionDiv.addEventListener('click', function() {
+                        fillFormFromContent(fullText);
+                    });
+                    
+                    container.appendChild(suggestionDiv);
+                }
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // Check if this line starts a new numbered suggestion
+                    if (/^\d+[\.\)]\s+/.test(line)) {
+                        // Save previous suggestion if exists
+                        if (currentSuggestion.length > 0) {
+                            createClickableSuggestion(currentSuggestion);
+                            currentSuggestion = [];
+                        }
                         
-                        // Add hover effects
-                        suggestionDiv.addEventListener('mouseenter', function() {
-                            this.style.backgroundColor = 'rgba(32, 178, 170, 0.2)';
-                            this.style.borderLeftColor = '#20B2AA';
-                        });
-                        suggestionDiv.addEventListener('mouseleave', function() {
-                            this.style.backgroundColor = 'transparent';
-                            this.style.borderLeftColor = 'rgba(32, 178, 170, 0.3)';
-                        });
-                        
-                        // Add click handler - capture trimmedLine in closure
-                        const lineToFill = trimmedLine;
-                        suggestionDiv.addEventListener('click', function() {
-                            fillFormFromContent(lineToFill);
-                        });
-                        
-                        container.appendChild(suggestionDiv);
-                    } else if (trimmedLine.length > 0) {
-                        // Regular text line
-                        const textSpan = document.createElement('span');
-                        textSpan.textContent = line;
-                        textSpan.style.display = 'block';
-                        container.appendChild(textSpan);
+                        // Start new suggestion
+                        currentSuggestion.push(line);
+                        isInSuggestion = true;
+                    } 
+                    // Check if line is part of current suggestion (has Name:, Symbol:, Description:)
+                    else if (isInSuggestion && (/\*\*(?:name|symbol|description):/i.test(line) || line.startsWith('**'))) {
+                        currentSuggestion.push(line);
                     }
-                });
+                    // Non-suggestion line
+                    else {
+                        // Save previous suggestion if exists
+                        if (currentSuggestion.length > 0) {
+                            createClickableSuggestion(currentSuggestion);
+                            currentSuggestion = [];
+                            isInSuggestion = false;
+                        }
+                        
+                        // Regular text
+                        if (line.length > 0) {
+                            const textSpan = document.createElement('div');
+                            textSpan.innerHTML = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                            textSpan.style.marginBottom = '4px';
+                            container.appendChild(textSpan);
+                        }
+                    }
+                }
+                
+                // Don't forget the last suggestion
+                if (currentSuggestion.length > 0) {
+                    createClickableSuggestion(currentSuggestion);
+                }
             }
 
             function fillFormFromContent(content) {
