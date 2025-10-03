@@ -20,10 +20,15 @@ The backend is built with Flask, following a minimal application structure. It u
 ### Gemmy Zeroday Memification Engine
 The platform features an advanced AI-powered trend discovery system with three operational modes:
 - **Creative Mode**: Traditional AI brainstorming for custom token ideas
-- **Trending Memes Mode**: Real-time scraping of 4chan /biz/ and Reddit CryptoMoonShots with AI-scored trend analysis using 7 crypto-adoptability criteria (viral potential, cultural timing, community signal, crypto-native elements, mascot strength, moggability, cringe factor)
+- **Trending Memes Mode**: Multi-source cultural trend detection that finds NEW memes BEFORE they become coins:
+  - **Know Your Meme**: Trending/new memes (pre-coin cultural moments)
+  - **4chan culture boards** (/pol/, /tv/, /b/): Emerging mascots, catchphrases, and viral moments
+  - **4chan /biz/** (legacy): Late-stage coin discussions
+  - **Reddit CryptoMoonShots** (legacy): Community validation
+  - AI-scored using 7 crypto-adoptability criteria: viral potential, cultural timing, community signal, crypto-native elements, mascot strength, moggability, cringe factor
 - **Kaspa Tech Mode**: Memification of Kaspa-native technical concepts (GHOSTDAG, DAGKnight, BlockDAG, 10 BPS, phantom blocks)
 
-Technical implementation uses Meta Llama 3.1 70B via OpenRouter API with auto-failover across multiple providers (Groq, Together.ai, Cerebras) for maximum reliability. A 12-hour rolling cache window stored in PostgreSQL optimizes costs (~$0.20/day maximum). On-demand scraping triggers when cache expires, with automatic cleanup of old entries after 24 hours. The system follows the proven meme path: 4chan → Reddit → Twitter → Crypto, providing early-mover advantage.
+Technical implementation uses Meta Llama 3.1 70B via OpenRouter API with auto-failover across multiple providers (Groq, Together.ai, Cerebras) for maximum reliability. Source-aware fallback scoring ensures KnowYourMeme and culture board entries rank properly even without AI. A 12-hour rolling cache window stored in PostgreSQL optimizes costs (~$0.20/day maximum). On-demand scraping triggers when cache expires, with automatic cleanup of old entries after 24 hours. The system captures memes at their source (culture boards) before they become mainstream coins, providing true zero-day advantage.
 
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
