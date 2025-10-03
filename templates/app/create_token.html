@@ -1061,54 +1061,54 @@
                     </button>
                 </form>
             </div>
+        </div>
 
-            <!-- Gemmy AI Chat Widget -->
-            <div class="gemmy-chat-widget">
-                <!-- Floating Button -->
-                <div class="gemmy-float-button" id="gemmyFloatBtn">
-                    <img src="{{ url_for('static', filename='images/gemmy_left.png') }}" alt="Gemmy">
+        <!-- Gemmy AI Chat Widget -->
+        <div class="gemmy-chat-widget">
+            <!-- Floating Button -->
+            <div class="gemmy-float-button" id="gemmyFloatBtn">
+                <img src="{{ url_for('static', filename='images/gemmy_left.png') }}" alt="Gemmy">
+            </div>
+
+            <!-- Chat Container -->
+            <div class="gemmy-chat-container" id="gemmyChatContainer">
+                <div class="gemmy-chat-header">
+                    <h3>
+                        <img src="{{ url_for('static', filename='images/gemmy_left.png') }}" alt="Gemmy">
+                        Gemmy AI Assistant
+                    </h3>
+                    <button class="gemmy-close-btn" id="gemmyCloseBtn">×</button>
                 </div>
 
-                <!-- Chat Container -->
-                <div class="gemmy-chat-container" id="gemmyChatContainer">
-                    <div class="gemmy-chat-header">
-                        <h3>
-                            <img src="{{ url_for('static', filename='images/gemmy_left.png') }}" alt="Gemmy">
-                            Gemmy AI Assistant
-                        </h3>
-                        <button class="gemmy-close-btn" id="gemmyCloseBtn">×</button>
-                    </div>
-
-                    <div class="gemmy-chat-messages" id="gemmyChatMessages">
-                        <div class="gemmy-message assistant">
-                            <div class="gemmy-message-avatar">
-                                <img src="{{ url_for('static', filename='images/gemmyhead.png') }}" alt="Gemmy">
-                            </div>
-                            <div class="gemmy-message-content">
-                                👋 Hi! I'm Gemmy, your AI assistant for creating awesome tokens on Kaspa! I can help you with creative names, catchy symbols, and compelling marketing copy. What can I help you with today?
-                            </div>
+                <div class="gemmy-chat-messages" id="gemmyChatMessages">
+                    <div class="gemmy-message assistant">
+                        <div class="gemmy-message-avatar">
+                            <img src="{{ url_for('static', filename='images/gemmyhead.png') }}" alt="Gemmy">
                         </div>
-                        <div class="gemmy-typing-indicator" id="gemmyTyping">
-                            <div class="gemmy-typing-dots">
-                                <div class="gemmy-typing-dot"></div>
-                                <div class="gemmy-typing-dot"></div>
-                                <div class="gemmy-typing-dot"></div>
-                            </div>
+                        <div class="gemmy-message-content">
+                            👋 Hi! I'm Gemmy, your AI assistant for creating awesome tokens on Kaspa! I can help you with creative names, catchy symbols, and compelling marketing copy. What can I help you with today?
                         </div>
                     </div>
-
-                    <div class="gemmy-quick-actions" id="gemmyQuickActions">
-                        <button class="gemmy-quick-btn" data-prompt="Suggest a creative and catchy name for my token">💡 Suggest Name</button>
-                        <button class="gemmy-quick-btn" data-prompt="Suggest a memorable symbol (3-5 letters) for my token">🎯 Suggest Symbol</button>
-                        <button class="gemmy-quick-btn" data-prompt="Write compelling marketing copy for my token">✍️ Marketing Copy</button>
+                    <div class="gemmy-typing-indicator" id="gemmyTyping">
+                        <div class="gemmy-typing-dots">
+                            <div class="gemmy-typing-dot"></div>
+                            <div class="gemmy-typing-dot"></div>
+                            <div class="gemmy-typing-dot"></div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="gemmy-chat-input-area">
-                        <textarea class="gemmy-chat-input" id="gemmyChatInput" placeholder="Ask Gemmy anything..." rows="1"></textarea>
-                        <button class="gemmy-send-btn" id="gemmySendBtn">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+                <div class="gemmy-quick-actions" id="gemmyQuickActions">
+                    <button class="gemmy-quick-btn" data-prompt="Suggest a creative and catchy name for my token">💡 Suggest Name</button>
+                    <button class="gemmy-quick-btn" data-prompt="Suggest a memorable symbol (3-5 letters) for my token">🎯 Suggest Symbol</button>
+                    <button class="gemmy-quick-btn" data-prompt="Write compelling marketing copy for my token">✍️ Marketing Copy</button>
+                </div>
+
+                <div class="gemmy-chat-input-area">
+                    <textarea class="gemmy-chat-input" id="gemmyChatInput" placeholder="Ask Gemmy anything..." rows="1"></textarea>
+                    <button class="gemmy-send-btn" id="gemmySendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
             </div>
         </div>
