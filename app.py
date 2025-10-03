@@ -2051,6 +2051,7 @@ def gemmy_suggest():
         system_prompt += "\n\nProvide creative, catchy suggestions for token names, symbols, and marketing copy."
         system_prompt += "\nFor Kaspa-native memes, only use K-prefix when it sounds natural (KDOGE works, KPEPE doesn't)."
         system_prompt += "\nKeep responses concise and fun. Use emojis sparingly to add personality."
+        system_prompt += "\nDo NOT use markdown formatting like ** or __ - write in plain text only."
         system_prompt += "\nRemember previous suggestions from the conversation and build upon them when users ask follow-up questions."
         
         # Build messages array for OpenRouter (OpenAI-compatible format)
