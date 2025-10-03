@@ -195,7 +195,7 @@ def create_default_score(meme_data):
 def analyze_and_rank_trends(scraped_trends, top_n=5):
     """
     Analyze scraped trends and return top N ranked by score
-    Uses fallback scoring first to pre-filter, then AI scores top candidates only
+    Uses fallback scoring first to pre-filter, then AI scores top candidates
     """
     # First pass: Quick fallback scoring for all trends
     quick_scored = []
@@ -203,9 +203,9 @@ def analyze_and_rank_trends(scraped_trends, top_n=5):
         fallback_score = create_default_score(trend)
         quick_scored.append(fallback_score)
     
-    # Sort by fallback scores and take top 10 candidates
+    # Sort by fallback scores and take top 20 candidates
     quick_scored.sort(key=lambda x: x.get('overall_score', 0), reverse=True)
-    top_candidates = quick_scored[:10]  # Only AI-score top 10 to avoid timeout
+    top_candidates = quick_scored[:20]  # AI-score top 20 candidates
     
     # Second pass: AI scoring for top candidates only (if API available)
     final_scored = []
