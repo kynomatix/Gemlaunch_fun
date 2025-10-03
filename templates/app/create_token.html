@@ -1937,6 +1937,90 @@
                 typingIndicator.classList.remove('active');
             }
 
+            async function handleMarketingCopyRequest() {
+                // Get current form values
+                const nameField = document.getElementById('name');
+                const symbolField = document.getElementById('symbol');
+                const tokenName = nameField?.value.trim() || '';
+                const tokenSymbol = symbolField?.value.trim() || '';
+                
+                // Get current description
+                let currentDescription = '';
+                if (window.quillInstance) {
+                    currentDescription = window.quillInstance.getText().trim();
+                } else {
+                    const descField = document.getElementById('description');
+                    currentDescription = descField?.value.trim() || '';
+                }
+                
+                // Validate we have at least a name or symbol
+                if (!tokenName && !tokenSymbol) {
+                    window.showGemmyNotification('⚠️ Please enter a token name or symbol first', 'error');
+                    return;
+                }
+                
+                // Build the request message
+                let message = 'Improve my token description:\n';
+                if (tokenName) message += `Token Name: ${tokenName}\n`;
+                if (tokenSymbol) message += `Symbol: $${tokenSymbol}\n`;
+                if (currentDescription) message += `Current Description: ${currentDescription}\n`;
+                message += '\nPlease suggest an improved, compelling description (2-3 sentences max). Only respond with the description text, nothing else.';
+                
+                addMessage(`Improve my description for ${tokenName || '$' + tokenSymbol}`, 'user');
+                conversationHistory.push({ role: 'user', content: message });
+                sendBtn.disabled = true;
+                showTyping();
+                
+                try {
+                    const response = await fetch('/api/gemmy/suggest', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            context: { tokenName, symbol: tokenSymbol },
+                            mode: 'creative',
+                            history: conversationHistory.slice(-10)
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    hideTyping();
+                    
+                    if (data.success && data.response) {
+                        const improvedDesc = data.response.trim();
+                        
+                        // Show the response in chat
+                        addMessage(improvedDesc, 'assistant');
+                        conversationHistory.push({ role: 'assistant', content: improvedDesc });
+                        
+                        // Fill the description field directly
+                        if (window.quillInstance) {
+                            window.quillInstance.setText(improvedDesc);
+                        } else {
+                            const descField = document.getElementById('description');
+                            if (descField) {
+                                descField.value = improvedDesc;
+                                descField.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                        
+                        window.showGemmyNotification('✨ Description updated!', 'success');
+                    } else {
+                        addMessage(data.error || 'Sorry, I encountered an error. Please try again!', 'assistant');
+                    }
+                } catch (error) {
+                    hideTyping();
+                    addMessage('Sorry, I encountered a connection error. Please try again!', 'assistant');
+                    console.error('Gemmy error:', error);
+                } finally {
+                    sendBtn.disabled = false;
+                    chatInput.focus();
+                }
+            }
+
             async function sendMessage(message) {
                 if (!message.trim()) return;
                 
@@ -2002,7 +2086,13 @@
                 quickActions.forEach(btn => {
                     btn.addEventListener('click', () => {
                         const prompt = btn.getAttribute('data-prompt');
-                        sendMessage(prompt);
+                        
+                        // Special handling for Marketing Copy button
+                        if (prompt.includes('marketing copy')) {
+                            handleMarketingCopyRequest();
+                        } else {
+                            sendMessage(prompt);
+                        }
                     });
                 });
 
