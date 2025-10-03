@@ -1824,7 +1824,22 @@
                 function createClickableSuggestion(suggestionLines) {
                     if (suggestionLines.length === 0) return;
                     
+                    // Check if this is a real token idea (has Name, Symbol, or Description)
                     const fullText = suggestionLines.join('\n');
+                    const hasTokenFields = /\*\*(?:name|symbol|description):/i.test(fullText);
+                    
+                    if (!hasTokenFields) {
+                        // Not a token idea, just render as regular text
+                        suggestionLines.forEach(line => {
+                            const textSpan = document.createElement('div');
+                            textSpan.innerHTML = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                            textSpan.style.marginBottom = '4px';
+                            container.appendChild(textSpan);
+                        });
+                        return;
+                    }
+                    
+                    // This is a real token idea, make it clickable
                     const suggestionDiv = document.createElement('div');
                     suggestionDiv.className = 'clickable-suggestion';
                     
