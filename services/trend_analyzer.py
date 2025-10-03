@@ -22,11 +22,15 @@ def score_meme_with_ai(meme_data):
     Returns: dict with scores and overall rating
     """
     
+    # Normalize engagement data from different sources
+    replies = meme_data.get('replies', meme_data.get('reply_count', meme_data.get('comments', 0)))
+    upvotes = meme_data.get('upvotes', 0)
+    
     prompt = f"""Analyze this meme for crypto memecoin potential. Score each criterion 0-10:
 
 Meme: {meme_data.get('title', '')}
 Source: {meme_data.get('source', 'unknown')}
-Engagement: {meme_data.get('replies', 0)} replies, {meme_data.get('upvotes', 0)} upvotes
+Engagement: {replies} replies/comments, {upvotes} upvotes
 Keywords: {', '.join(meme_data.get('keywords', []))}
 
 Score these 7 criteria (0-10 each):
@@ -56,56 +60,41 @@ Respond ONLY in JSON format:
 }}"""
     
     try:
-        api_token = os.environ.get('REPLICATE_API_TOKEN')
+        api_token = os.environ.get('OPENROUTER')
         if not api_token:
             return create_default_score(meme_data)
         
         response = requests.post(
-            'https://api.replicate.com/v1/predictions',
+            'https://openrouter.ai/api/v1/chat/completions',
             headers={
                 'Authorization': f'Bearer {api_token}',
                 'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://gemlaunch.fun',
+                'X-Title': 'Gemlaunch.fun'
             },
             json={
-                'version': '0883e21444dd2c2b1ce02e17d63bc0a84a4d57c3b1e68a29c69f3ef0fb59e60a',
-                'input': {
-                    'prompt': prompt,
-                    'max_tokens': 500,
-                    'temperature': 0.3,
-                }
+                'model': 'meta-llama/llama-3.1-70b-instruct',
+                'messages': [
+                    {'role': 'system', 'content': 'You are a crypto meme analyst. Respond ONLY in valid JSON format.'},
+                    {'role': 'user', 'content': prompt}
+                ],
+                'temperature': 0.3,
+                'max_tokens': 500
             },
             timeout=30
         )
         
-        if response.status_code == 201:
-            prediction = response.json()
-            prediction_id = prediction.get('id')
-            
-            for _ in range(10):
-                import time
-                time.sleep(1)
-                
-                status_response = requests.get(
-                    f'https://api.replicate.com/v1/predictions/{prediction_id}',
-                    headers={'Authorization': f'Bearer {api_token}'},
-                    timeout=10
-                )
-                
-                if status_response.status_code == 200:
-                    result = status_response.json()
-                    if result.get('status') == 'succeeded':
-                        output = ''.join(result.get('output', []))
-                        
-                        json_start = output.find('{')
-                        json_end = output.rfind('}') + 1
-                        if json_start != -1 and json_end > json_start:
-                            json_str = output[json_start:json_end]
-                            scores = json.loads(json_str)
-                            scores['meme_data'] = meme_data
-                            return scores
-                        break
-                    elif result.get('status') == 'failed':
-                        break
+        response.raise_for_status()
+        result = response.json()
+        output = result['choices'][0]['message']['content']
+        
+        json_start = output.find('{')
+        json_end = output.rfind('}') + 1
+        if json_start != -1 and json_end > json_start:
+            json_str = output[json_start:json_end]
+            scores = json.loads(json_str)
+            scores['meme_data'] = meme_data
+            return scores
         
         return create_default_score(meme_data)
         
@@ -115,7 +104,8 @@ Respond ONLY in JSON format:
 
 def create_default_score(meme_data):
     """Create a default score based on engagement metrics"""
-    replies = meme_data.get('replies', 0)
+    # Normalize engagement data from different sources
+    replies = meme_data.get('replies', meme_data.get('reply_count', meme_data.get('comments', 0)))
     upvotes = meme_data.get('upvotes', 0)
     keywords = meme_data.get('keywords', [])
     
