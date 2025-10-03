@@ -17,6 +17,9 @@ The application utilizes a server-side rendered approach with Flask and Jinja2 t
 ## Backend Architecture
 The backend is built with Flask, following a minimal application structure. It uses a simple route-based architecture, environment-based configuration for session management, and Python's built-in logging. A comprehensive achievement system is implemented with real database tracking, evaluating user activities (e.g., chat messages, poll participation, token creation, trades, holdings) and automatically awarding achievements and GEM points. Secure API endpoints are implemented for features like message deletion with proper ownership validation and XSS protection is applied across the chat system and UI.
 
+### Interactive Gemmy Chat
+Gemmy's AI responses are fully interactive - users can click any assistant message to automatically fill the token creation form. The system intelligently parses responses to extract token names, symbols, and descriptions, then populates the appropriate fields based on whether Simple or Advanced mode is active. Visual feedback confirms successful form filling.
+
 ### Gemmy Zeroday Memification Engine
 The platform features an advanced AI-powered trend discovery system with three operational modes:
 - **Creative Mode**: Traditional AI brainstorming for custom token ideas
