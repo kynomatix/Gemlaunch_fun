@@ -1686,6 +1686,12 @@
                     sendMessage(prompt);
                 });
             });
+
+            // Move Gemmy widget outside of .app-main to fix position: fixed
+            const gemmyWidget = document.querySelector('.gemmy-chat-widget');
+            if (gemmyWidget) {
+                document.body.appendChild(gemmyWidget);
+            }
         })();
 </script>
 {% endblock %}
