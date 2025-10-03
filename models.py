@@ -419,3 +419,53 @@ class Activity(db.Model):
     
     def __repr__(self):
         return f'<Activity {self.activity_type} by {self.user.display_name}>'
+
+class TrendCache(db.Model):
+    """Trend cache for Gemmy Zeroday Memification Engine"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Cache metadata
+    cache_type = db.Column(db.String(32), nullable=False)  # 'external_trends' or 'kaspa_tech'
+    
+    # Scraped data (JSON format)
+    trends_data = db.Column(db.JSON)  # Raw scraped memes from 4chan/Reddit
+    scored_trends = db.Column(db.JSON)  # AI-scored and ranked trends
+    
+    # Kaspa tech meme suggestions
+    kaspa_memes = db.Column(db.JSON)  # Tech-based meme suggestions
+    
+    # Cache control
+    scraped_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    expires_at = db.Column(db.DateTime, index=True)  # Auto-expires after 12 hours
+    is_valid = db.Column(db.Boolean, default=True)
+    
+    # Stats
+    usage_count = db.Column(db.Integer, default=0)  # Track how many times used
+    
+    @classmethod
+    def get_or_refresh(cls, cache_type='external_trends'):
+        """Get valid cache or return None if refresh needed"""
+        cache = cls.query.filter_by(
+            cache_type=cache_type,
+            is_valid=True
+        ).filter(
+            cls.expires_at > datetime.now(timezone.utc)
+        ).order_by(cls.scraped_at.desc()).first()
+        
+        if cache:
+            cache.usage_count += 1
+            db.session.commit()
+            return cache
+        return None
+    
+    @classmethod
+    def cleanup_old_entries(cls):
+        """Remove entries older than 24 hours (auto-cleanup)"""
+        from datetime import timedelta
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+        old_entries = cls.query.filter(cls.scraped_at < cutoff_time).delete()
+        db.session.commit()
+        return old_entries
+    
+    def __repr__(self):
+        return f'<TrendCache {self.cache_type} at {self.scraped_at}>'

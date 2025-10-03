@@ -1991,13 +1991,14 @@ def admin_set_partner():
 
 @app.route('/api/gemmy/suggest', methods=['POST'])
 def gemmy_suggest():
-    """Gemmy AI Assistant endpoint for token creation suggestions"""
+    """Gemmy AI Assistant endpoint for token creation suggestions with Zeroday Memification"""
     import replicate
     
     try:
         data = request.get_json()
         user_message = data.get('message', '')
         context = data.get('context', {})
+        mode = data.get('mode', 'creative')  # 'creative', 'trends', or 'kaspa_tech'
         
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
@@ -2012,11 +2013,40 @@ def gemmy_suggest():
         if context.get('symbol'):
             context_info += f"\nCurrent symbol: {context['symbol']}"
         
+        system_prompt = "You are Gemmy, a friendly AI assistant that helps creators launch memecoins on Kaspa. You have access to:"
+        system_prompt += "\n\n🔥 TRENDING MEMES (Zeroday Memification Engine):"
+        
+        if mode == 'trends':
+            from services.trend_analyzer import get_trending_memes
+            trending = get_trending_memes()
+            if trending:
+                system_prompt += "\n" + "\n".join([
+                    f"- {t['meme_data'].get('title', 'Unknown')} (Score: {t.get('overall_score', 0):.1f}/10, Source: {t['meme_data'].get('source', 'unknown')})"
+                    for t in trending[:3]
+                ])
+            else:
+                system_prompt += "\n- No trending memes available right now"
+        
+        system_prompt += "\n\n⚡ KASPA TECH MEMES:"
+        if mode == 'kaspa_tech':
+            from services.kaspa_knowledge import get_kaspa_meme_suggestions
+            kaspa_memes = get_kaspa_meme_suggestions()[:3]
+            system_prompt += "\n" + "\n".join([
+                f"- {m['concept']}: {m['meme_variation']} (Ticker: {m['ticker_suggestion']})"
+                for m in kaspa_memes
+            ])
+        else:
+            system_prompt += "\n- GHOSTDAG → SpookyCoin ($SPOOK)"
+            system_prompt += "\n- DAGKnight → KnightRider ($KNIGHT)"
+            system_prompt += "\n- 10 BPS → TenSpeed ($TENX)"
+        
+        system_prompt += "\n\nProvide creative, catchy suggestions for token names, symbols, and marketing copy."
+        system_prompt += "\nFor Kaspa-native memes, only use K-prefix when it sounds natural (KDOGE works, KPEPE doesn't)."
+        system_prompt += "\nKeep responses concise and fun. Use emojis sparingly to add personality."
+        
         full_prompt = user_message
         if context_info:
             full_prompt += f"\n\nContext:{context_info}"
-        
-        system_prompt = "You are Gemmy, a friendly AI assistant that helps creators launch memecoins on Kaspa. Provide creative, catchy suggestions for token names, symbols, and marketing copy. Keep responses concise and fun. Use emojis sparingly to add personality."
         
         output = replicate.run(
             "meta/meta-llama-3.1-70b-instruct",

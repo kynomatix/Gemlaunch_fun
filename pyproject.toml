@@ -17,4 +17,5 @@ dependencies = [
     "sqlalchemy>=2.0.42",
     "pillow>=11.3.0",
     "replicate>=1.0.7",
+    "requests>=2.32.5",
 ]

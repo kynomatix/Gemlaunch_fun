@@ -759,6 +759,42 @@
             transform: translateY(-2px);
         }
 
+        .gemmy-mode-selector {
+            padding: 1rem 1.5rem 0.5rem 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(32, 178, 170, 0.15);
+        }
+
+        .gemmy-mode-btn {
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            color: #20B2AA;
+            padding: 0.5rem 0.875rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            flex: 1;
+            text-align: center;
+        }
+
+        .gemmy-mode-btn:hover {
+            background: rgba(32, 178, 170, 0.2);
+            border-color: #20B2AA;
+            transform: translateY(-2px);
+        }
+
+        .gemmy-mode-btn.active {
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.3), rgba(0, 206, 209, 0.3));
+            border-color: #20B2AA;
+            color: #FFFFFF;
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(32, 178, 170, 0.3);
+        }
+
         .gemmy-chat-input-area {
             padding: 1rem 1.5rem;
             border-top: 1px solid rgba(32, 178, 170, 0.2);
@@ -1096,6 +1132,12 @@
                             <div class="gemmy-typing-dot"></div>
                         </div>
                     </div>
+                </div>
+
+                <div class="gemmy-mode-selector" id="gemmyModeSelector">
+                    <button class="gemmy-mode-btn active" data-mode="creative">💡 Creative</button>
+                    <button class="gemmy-mode-btn" data-mode="trends">🔥 Trending</button>
+                    <button class="gemmy-mode-btn" data-mode="kaspa_tech">⚡ Kaspa Tech</button>
                 </div>
 
                 <div class="gemmy-quick-actions" id="gemmyQuickActions">
@@ -1559,6 +1601,9 @@
             const sendBtn = document.getElementById('gemmySendBtn');
             const typingIndicator = document.getElementById('gemmyTyping');
             const quickActions = document.querySelectorAll('.gemmy-quick-btn');
+            const modeButtons = document.querySelectorAll('.gemmy-mode-btn');
+            
+            let currentMode = 'creative';
 
             if (!floatBtn || !chatContainer) return;
 
@@ -1641,7 +1686,8 @@
                         },
                         body: JSON.stringify({
                             message: message,
-                            context: context
+                            context: context,
+                            mode: currentMode
                         })
                     });
                     
@@ -1684,6 +1730,14 @@
                 btn.addEventListener('click', () => {
                     const prompt = btn.getAttribute('data-prompt');
                     sendMessage(prompt);
+                });
+            });
+
+            modeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modeButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentMode = btn.getAttribute('data-mode');
                 });
             });
 
