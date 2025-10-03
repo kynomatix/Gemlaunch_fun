@@ -1999,6 +1999,7 @@ def gemmy_suggest():
         user_message = data.get('message', '')
         context = data.get('context', {})
         mode = data.get('mode', 'creative')  # 'creative', 'trends', or 'kaspa_tech'
+        history = data.get('history', [])
         
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
@@ -2012,6 +2013,13 @@ def gemmy_suggest():
             context_info += f"\nCurrent token name: {context['tokenName']}"
         if context.get('symbol'):
             context_info += f"\nCurrent symbol: {context['symbol']}"
+        
+        conversation_context = ""
+        if history and len(history) > 1:
+            conversation_context = "\n\nPrevious conversation:\n"
+            for msg in history[:-1]:
+                role = "User" if msg.get('role') == 'user' else "Gemmy"
+                conversation_context += f"{role}: {msg.get('content', '')}\n"
         
         system_prompt = "You are Gemmy, a friendly AI assistant that helps creators launch memecoins on Kaspa. You have access to:"
         system_prompt += "\n\n🔥 TRENDING MEMES (Zeroday Memification Engine):"
@@ -2043,8 +2051,11 @@ def gemmy_suggest():
         system_prompt += "\n\nProvide creative, catchy suggestions for token names, symbols, and marketing copy."
         system_prompt += "\nFor Kaspa-native memes, only use K-prefix when it sounds natural (KDOGE works, KPEPE doesn't)."
         system_prompt += "\nKeep responses concise and fun. Use emojis sparingly to add personality."
+        system_prompt += "\nRemember previous suggestions from the conversation and build upon them when users ask follow-up questions."
         
         full_prompt = user_message
+        if conversation_context:
+            full_prompt = conversation_context + f"\nUser: {user_message}"
         if context_info:
             full_prompt += f"\n\nContext:{context_info}"
         

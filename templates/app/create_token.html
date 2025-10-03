@@ -1604,6 +1604,7 @@
             const modeButtons = document.querySelectorAll('.gemmy-mode-btn');
             
             let currentMode = 'creative';
+            let conversationHistory = [];
 
             if (!floatBtn || !chatContainer) return;
 
@@ -1673,6 +1674,7 @@
                 if (!message.trim()) return;
                 
                 addMessage(message, 'user');
+                conversationHistory.push({ role: 'user', content: message });
                 chatInput.value = '';
                 sendBtn.disabled = true;
                 showTyping();
@@ -1687,7 +1689,8 @@
                         body: JSON.stringify({
                             message: message,
                             context: context,
-                            mode: currentMode
+                            mode: currentMode,
+                            history: conversationHistory.slice(-10)
                         })
                     });
                     
@@ -1697,6 +1700,7 @@
                     
                     if (data.success && data.response) {
                         addMessage(data.response, 'assistant');
+                        conversationHistory.push({ role: 'assistant', content: data.response });
                     } else {
                         addMessage(data.error || 'Sorry, I encountered an error. Please try again!', 'assistant');
                     }
