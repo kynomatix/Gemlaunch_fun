@@ -195,16 +195,33 @@ def create_default_score(meme_data):
 def analyze_and_rank_trends(scraped_trends, top_n=5):
     """
     Analyze scraped trends and return top N ranked by score
+    Uses fallback scoring first to pre-filter, then AI scores top candidates only
     """
-    scored_trends = []
-    
+    # First pass: Quick fallback scoring for all trends
+    quick_scored = []
     for trend in scraped_trends:
-        score_result = score_meme_with_ai(trend)
-        scored_trends.append(score_result)
+        fallback_score = create_default_score(trend)
+        quick_scored.append(fallback_score)
     
-    scored_trends.sort(key=lambda x: x.get('overall_score', 0), reverse=True)
+    # Sort by fallback scores and take top 10 candidates
+    quick_scored.sort(key=lambda x: x.get('overall_score', 0), reverse=True)
+    top_candidates = quick_scored[:10]  # Only AI-score top 10 to avoid timeout
     
-    return scored_trends[:top_n]
+    # Second pass: AI scoring for top candidates only (if API available)
+    final_scored = []
+    for trend in top_candidates:
+        try:
+            # Try AI scoring
+            ai_score = score_meme_with_ai(trend['meme_data'])
+            final_scored.append(ai_score)
+        except:
+            # Fall back to the quick score we already have
+            final_scored.append(trend)
+    
+    # Final sort and return top N
+    final_scored.sort(key=lambda x: x.get('overall_score', 0), reverse=True)
+    
+    return final_scored[:top_n]
 
 def serialize_for_json(obj):
     """Convert datetime objects to ISO format strings for JSON serialization"""
