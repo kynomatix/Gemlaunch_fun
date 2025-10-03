@@ -1745,56 +1745,64 @@
             }
 
             function fillFormFromContent(content) {
-                // Detect current mode
-                const currentMode = document.getElementById('mode')?.value || 'simple';
+                // Remove number prefix if present (e.g., "1. " or "2) ")
+                content = content.replace(/^\d+[\.\)]\s*/, '');
                 
-                // Parse content for token details
+                // Parse markdown-formatted content
                 const lines = content.split('\n').map(l => l.trim()).filter(l => l);
                 let tokenName = '';
                 let symbol = '';
                 let description = '';
                 
-                // Smart parsing - look for common patterns
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const lowerLine = line.toLowerCase();
+                // Parse structured format with markdown
+                for (const line of lines) {
+                    // Remove markdown asterisks for matching
+                    const cleanLine = line.replace(/\*\*/g, '');
+                    const lowerLine = cleanLine.toLowerCase();
                     
-                    // Token Name detection
-                    if (!tokenName && (lowerLine.includes('name:') || lowerLine.includes('token:') || lowerLine.includes('title:'))) {
-                        tokenName = line.split(/[:]/)[1]?.trim().replace(/[*"]/g, '') || '';
+                    // Token Name detection (with markdown)
+                    if (lowerLine.includes('name:')) {
+                        tokenName = cleanLine.split(/name:\s*/i)[1]?.trim() || '';
                     }
-                    // Symbol/Ticker detection
-                    else if (!symbol && (lowerLine.includes('symbol:') || lowerLine.includes('ticker:') || lowerLine.includes('$'))) {
-                        let extracted = line.split(/[:]/)[1]?.trim().replace(/[*$"]/g, '') || '';
-                        if (!extracted && line.includes('$')) {
-                            extracted = line.match(/\$([A-Z]{2,6})/)?.[1] || '';
-                        }
-                        symbol = extracted;
+                    // Symbol/Ticker detection (with markdown)
+                    else if (lowerLine.includes('symbol:')) {
+                        symbol = cleanLine.split(/symbol:\s*/i)[1]?.trim().replace(/^\$/, '') || '';
                     }
-                    // Description detection
-                    else if (!description && (lowerLine.includes('description:') || lowerLine.includes('tagline:') || lowerLine.includes('about:'))) {
-                        description = line.split(/[:]/)[1]?.trim().replace(/[*"]/g, '') || '';
+                    // Description detection (with markdown)
+                    else if (lowerLine.includes('description:')) {
+                        description = cleanLine.split(/description:\s*/i)[1]?.trim() || '';
                     }
                 }
                 
-                // If no structured data found, try first meaningful line as name
-                if (!tokenName && lines.length > 0) {
-                    // Skip generic responses, find first content line
+                // Fallback parsing if structured format not found
+                if (!tokenName || !symbol) {
                     for (const line of lines) {
-                        if (line.length > 3 && !line.toLowerCase().startsWith('here') && 
-                            !line.toLowerCase().startsWith('sure') && !line.includes('?')) {
-                            tokenName = line.replace(/[*"]/g, '').substring(0, 50);
-                            break;
+                        const cleanLine = line.replace(/\*\*/g, '').trim();
+                        
+                        // Try to extract $TICKER
+                        if (!symbol && cleanLine.includes('$')) {
+                            const match = cleanLine.match(/\$([A-Z]{2,6})/);
+                            if (match) symbol = match[1];
+                        }
+                        
+                        // If still no name, use first meaningful line
+                        if (!tokenName && cleanLine.length > 5 && cleanLine.length < 60 &&
+                            !cleanLine.toLowerCase().startsWith('here') &&
+                            !cleanLine.toLowerCase().startsWith('sure')) {
+                            tokenName = cleanLine.substring(0, 50);
                         }
                     }
                 }
                 
                 // Fill the form fields
+                let filledCount = 0;
+                
                 if (tokenName) {
                     const nameField = document.getElementById('name');
                     if (nameField) {
                         nameField.value = tokenName;
                         nameField.dispatchEvent(new Event('input', { bubbles: true }));
+                        filledCount++;
                     }
                 }
                 
@@ -1803,6 +1811,7 @@
                     if (symbolField) {
                         symbolField.value = symbol.toUpperCase();
                         symbolField.dispatchEvent(new Event('input', { bubbles: true }));
+                        filledCount++;
                     }
                 }
                 
@@ -1817,10 +1826,15 @@
                             descField.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                     }
+                    filledCount++;
                 }
                 
                 // Visual feedback
-                showNotification('✨ Form filled with Gemmy\'s suggestion!', 'success');
+                if (filledCount > 0) {
+                    showNotification(`✨ Form filled with ${filledCount} field${filledCount > 1 ? 's' : ''}!`, 'success');
+                } else {
+                    showNotification('⚠️ Could not extract token details', 'error');
+                }
             }
 
             function showNotification(message, type = 'success') {
