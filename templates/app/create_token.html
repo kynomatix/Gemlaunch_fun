@@ -1082,7 +1082,7 @@
                     <div class="gemmy-chat-messages" id="gemmyChatMessages">
                         <div class="gemmy-message assistant">
                             <div class="gemmy-message-avatar">
-                                <img src="{{ url_for('static', filename='images/gemmy_left.png') }}" alt="Gemmy">
+                                <img src="{{ url_for('static', filename='images/gemmyhead.png') }}" alt="Gemmy">
                             </div>
                             <div class="gemmy-message-content">
                                 👋 Hi! I'm Gemmy, your AI assistant for creating awesome tokens on Kaspa! I can help you with creative names, catchy symbols, and compelling marketing copy. What can I help you with today?
@@ -1593,7 +1593,7 @@
                 
                 if (type === 'assistant') {
                     const img = document.createElement('img');
-                    img.src = "{{ url_for('static', filename='images/gemmy_left.png') }}";
+                    img.src = "{{ url_for('static', filename='images/gemmyhead.png') }}";
                     img.alt = 'Gemmy';
                     avatarDiv.appendChild(img);
                 } else {
