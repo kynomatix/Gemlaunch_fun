@@ -1628,12 +1628,14 @@
 
             if (!floatBtn || !chatContainer) return;
             
-            // Skip initialization if already initialized (Turbo navigation)
-            if (floatBtn.dataset.gemmyInitialized === 'true') return;
-            floatBtn.dataset.gemmyInitialized = 'true';
-            
             let currentMode = 'creative';
             let conversationHistory = [];
+            
+            // Check if event listeners already attached (Turbo navigation)
+            const skipEventListeners = floatBtn.dataset.gemmyInitialized === 'true';
+            if (!skipEventListeners) {
+                floatBtn.dataset.gemmyInitialized = 'true';
+            }
 
             function toggleChat() {
                 chatContainer.classList.toggle('active');
@@ -1645,8 +1647,11 @@
                 }
             }
 
-            floatBtn.addEventListener('click', toggleChat);
-            closeBtn.addEventListener('click', toggleChat);
+            // Only attach event listeners once
+            if (!skipEventListeners) {
+                floatBtn.addEventListener('click', toggleChat);
+                closeBtn.addEventListener('click', toggleChat);
+            }
 
             function getFormContext() {
                 const tokenName = document.getElementById('name')?.value || '';
@@ -1960,55 +1965,58 @@
                 }
             }
 
-            sendBtn.addEventListener('click', () => {
-                sendMessage(chatInput.value);
-            });
-
-            chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
+            // Only attach input/button event listeners once
+            if (!skipEventListeners) {
+                sendBtn.addEventListener('click', () => {
                     sendMessage(chatInput.value);
+                });
+
+                chatInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage(chatInput.value);
+                    }
+                });
+
+                chatInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+                });
+
+                quickActions.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const prompt = btn.getAttribute('data-prompt');
+                        sendMessage(prompt);
+                    });
+                });
+
+                modeButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        modeButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentMode = btn.getAttribute('data-mode');
+                        
+                        // Auto-send starter message for each mode
+                        let starterMessage = '';
+                        if (currentMode === 'creative') {
+                            starterMessage = 'Help me brainstorm creative token ideas';
+                        } else if (currentMode === 'trends') {
+                            starterMessage = 'What are the hottest meme trends right now? Turn them into token ideas for me!';
+                        } else if (currentMode === 'kaspa_tech') {
+                            starterMessage = 'Suggest Kaspa tech-based meme coins';
+                        }
+                        
+                        if (starterMessage) {
+                            sendMessage(starterMessage);
+                        }
+                    });
+                });
+
+                // Move Gemmy widget outside of .app-main to fix position: fixed
+                const gemmyWidget = document.querySelector('.gemmy-chat-widget');
+                if (gemmyWidget) {
+                    document.body.appendChild(gemmyWidget);
                 }
-            });
-
-            chatInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-            });
-
-            quickActions.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const prompt = btn.getAttribute('data-prompt');
-                    sendMessage(prompt);
-                });
-            });
-
-            modeButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    modeButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentMode = btn.getAttribute('data-mode');
-                    
-                    // Auto-send starter message for each mode
-                    let starterMessage = '';
-                    if (currentMode === 'creative') {
-                        starterMessage = 'Help me brainstorm creative token ideas';
-                    } else if (currentMode === 'trends') {
-                        starterMessage = 'What are the hottest meme trends right now? Turn them into token ideas for me!';
-                    } else if (currentMode === 'kaspa_tech') {
-                        starterMessage = 'Suggest Kaspa tech-based meme coins';
-                    }
-                    
-                    if (starterMessage) {
-                        sendMessage(starterMessage);
-                    }
-                });
-            });
-
-            // Move Gemmy widget outside of .app-main to fix position: fixed
-            const gemmyWidget = document.querySelector('.gemmy-chat-widget');
-            if (gemmyWidget) {
-                document.body.appendChild(gemmyWidget);
             }
         })();
 
