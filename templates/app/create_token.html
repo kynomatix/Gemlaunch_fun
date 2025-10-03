@@ -1894,8 +1894,8 @@
                         currentSuggestion.push(line);
                         isInSuggestion = true;
                     } 
-                    // Check if line is part of current suggestion (has Name:, Symbol:, Description:)
-                    else if (isInSuggestion && (/\*\*(?:name|symbol|description):/i.test(line) || line.startsWith('**'))) {
+                    // Check if line is part of current suggestion (ONLY if it has actual token fields)
+                    else if (isInSuggestion && /\*\*(?:name|symbol|description):/i.test(line)) {
                         currentSuggestion.push(line);
                     }
                     // Non-suggestion line
