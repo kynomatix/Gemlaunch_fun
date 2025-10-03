@@ -103,36 +103,94 @@ Respond ONLY in JSON format:
         return create_default_score(meme_data)
 
 def create_default_score(meme_data):
-    """Create a default score based on engagement metrics"""
-    # Normalize engagement data from different sources
-    replies = meme_data.get('replies', meme_data.get('reply_count', meme_data.get('comments', 0)))
-    upvotes = meme_data.get('upvotes', 0)
-    keywords = meme_data.get('keywords', [])
+    """Create a default score based on source type and available metrics"""
+    source = meme_data.get('source', 'unknown')
     
-    engagement_score = min((replies + upvotes) / 10, 10)
+    # Different scoring logic based on source type
+    if source == 'knowyourmeme':
+        # KnowYourMeme: High base score for NEW trending memes
+        status = meme_data.get('status', '')
+        is_new = 'new' in status.lower() or 'trending' in status.lower()
+        
+        base_score = 7.5 if is_new else 6.5  # High score for fresh memes
+        
+        return {
+            'viral_potential': 8.0,  # KYM entries are pre-validated as viral
+            'cultural_timing': 9.0 if is_new else 7.0,  # NEW = perfect timing
+            'community_signal': 7.0,
+            'crypto_native': 5.0,  # Neutral - not crypto-specific yet
+            'mascot_strength': 7.0,  # KYM memes usually have strong mascots
+            'moggability': base_score,
+            'cringe_factor': 8.0,
+            'kaspa_bonus': False,
+            'overall_score': base_score,
+            'reasoning': 'Fresh meme from KnowYourMeme - high viral potential (AI unavailable)',
+            'suggested_ticker': '',
+            'meme_data': meme_data
+        }
     
-    keyword_score = 0
-    if any(k.lower() in ['moon', 'gem', '100x'] for k in keywords):
-        keyword_score += 2
-    if any(k.startswith('$') for k in keywords):
-        keyword_score += 3
+    elif source.startswith('4chan_') and source != '4chan_biz':
+        # 4chan culture boards: Score based on cultural signal type
+        cultural_signal = meme_data.get('cultural_signal', 'unknown')
+        replies = meme_data.get('reply_count', 0)
+        
+        signal_scores = {
+            'mascot': 8.0,
+            'catchphrase': 7.5,
+            'viral_moment': 7.0,
+            'meme_format': 6.5,
+            'character': 7.5,
+            'unknown': 5.0
+        }
+        
+        base_score = signal_scores.get(cultural_signal, 5.0)
+        engagement_boost = min(replies / 100, 2.0)  # Up to +2 for high engagement
+        
+        return {
+            'viral_potential': base_score + engagement_boost,
+            'cultural_timing': 8.0,  # Culture boards = early timing
+            'community_signal': min(replies / 20, 10),
+            'crypto_native': 4.0,  # Pre-coin content
+            'mascot_strength': 8.0 if cultural_signal == 'mascot' else 6.0,
+            'moggability': base_score,
+            'cringe_factor': 7.0,
+            'kaspa_bonus': False,
+            'overall_score': base_score + engagement_boost,
+            'reasoning': f'Emerging {cultural_signal} from {source} (AI unavailable)',
+            'suggested_ticker': '',
+            'meme_data': meme_data
+        }
     
-    base_score = (engagement_score + keyword_score) / 2
-    
-    return {
-        'viral_potential': base_score,
-        'cultural_timing': base_score,
-        'community_signal': engagement_score,
-        'crypto_native': keyword_score,
-        'mascot_strength': 5,
-        'moggability': base_score,
-        'cringe_factor': 7,
-        'kaspa_bonus': False,
-        'overall_score': base_score,
-        'reasoning': 'Scored based on engagement metrics (AI unavailable)',
-        'suggested_ticker': '',
-        'meme_data': meme_data
-    }
+    else:
+        # /biz/ and Reddit: Traditional engagement-based scoring
+        replies = meme_data.get('replies', meme_data.get('reply_count', meme_data.get('comments', 0)))
+        upvotes = meme_data.get('upvotes', 0)
+        keywords = meme_data.get('keywords', [])
+        
+        engagement_score = min((replies + upvotes) / 10, 10)
+        
+        keyword_score = 0
+        if any(k.lower() in ['moon', 'gem', '100x'] for k in keywords):
+            keyword_score += 2
+        if any(k.startswith('$') for k in keywords):
+            keyword_score += 3
+        
+        base_score = (engagement_score + keyword_score) / 2
+        
+        return {
+            'viral_potential': base_score,
+            'cultural_timing': base_score,
+            'community_signal': engagement_score,
+            'crypto_native': keyword_score,
+            'mascot_strength': 5,
+            'moggability': base_score,
+            'cringe_factor': 7,
+            'kaspa_bonus': False,
+            'overall_score': base_score,
+            'reasoning': 'Scored based on engagement metrics (AI unavailable)',
+            'suggested_ticker': '',
+            'meme_data': meme_data
+        }
 
 def analyze_and_rank_trends(scraped_trends, top_n=5):
     """
@@ -162,9 +220,16 @@ def get_trending_memes():
     """
     Main function to get trending memes
     Checks cache first, then scrapes and scores if needed
+    
+    Sources (in priority order):
+    1. Know Your Meme - New/trending memes (pre-coin)
+    2. 4chan culture boards (/pol/, /tv/, /b/) - Emerging cultural trends
+    3. 4chan /biz/ - Coin discussions (late-stage)
+    4. Reddit CryptoMoonShots - Community validation (late-stage)
     """
-    from services.trend_scraper import scrape_4chan_biz
+    from services.trend_scraper import scrape_4chan_biz, scrape_4chan_culture_boards
     from services.reddit_scraper import scrape_reddit_moonshots
+    from services.knowyourmeme_scraper import scrape_knowyourmeme
     from models import TrendCache, db
     
     cache = TrendCache.get_or_refresh('external_trends')
@@ -173,6 +238,14 @@ def get_trending_memes():
         return cache.scored_trends
     
     all_trends = []
+    
+    # Priority 1: Know Your Meme (NEW memes before coins)
+    all_trends.extend(scrape_knowyourmeme())
+    
+    # Priority 2: 4chan culture boards (emerging cultural trends)
+    all_trends.extend(scrape_4chan_culture_boards())
+    
+    # Priority 3: Traditional sources (established coin discussions)
     all_trends.extend(scrape_4chan_biz())
     all_trends.extend(scrape_reddit_moonshots())
     
