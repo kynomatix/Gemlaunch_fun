@@ -23,7 +23,7 @@ The platform features an advanced AI-powered trend discovery system with three o
 - **Trending Memes Mode**: Real-time scraping of 4chan /biz/ and Reddit CryptoMoonShots with AI-scored trend analysis using 7 crypto-adoptability criteria (viral potential, cultural timing, community signal, crypto-native elements, mascot strength, moggability, cringe factor)
 - **Kaspa Tech Mode**: Memification of Kaspa-native technical concepts (GHOSTDAG, DAGKnight, BlockDAG, 10 BPS, phantom blocks)
 
-Technical implementation uses Meta Llama 3.1 70B via Replicate API, with a 12-hour rolling cache window stored in PostgreSQL to optimize costs (~$0.20/day maximum). On-demand scraping triggers when cache expires, with automatic cleanup of old entries after 24 hours. The system follows the proven meme path: 4chan → Reddit → Twitter → Crypto, providing early-mover advantage.
+Technical implementation uses Meta Llama 3.1 70B via OpenRouter API with auto-failover across multiple providers (Groq, Together.ai, Cerebras) for maximum reliability. A 12-hour rolling cache window stored in PostgreSQL optimizes costs (~$0.20/day maximum). On-demand scraping triggers when cache expires, with automatic cleanup of old entries after 24 hours. The system follows the proven meme path: 4chan → Reddit → Twitter → Crypto, providing early-mover advantage.
 
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
@@ -50,7 +50,7 @@ Hardware-accelerated CSS animations, efficient asset organization for caching, a
 - **Twitter/X**: Social media.
 - **Kaspa Finance**: Partnership for automatic DEX deployment.
 - **presale.gemlaunch.fun**: External presale portal.
-- **Replicate API**: Meta Llama 3.1 70B inference for Gemmy AI and trend analysis.
+- **OpenRouter API**: Meta Llama 3.1 70B inference with auto-failover for Gemmy AI and trend analysis.
 - **4chan /biz/**: Real-time meme trend scraping for Zeroday Memification Engine.
 - **Reddit CryptoMoonShots**: Community-validated meme trends and ticker mentions.
 

@@ -1992,7 +1992,7 @@ def admin_set_partner():
 @app.route('/api/gemmy/suggest', methods=['POST'])
 def gemmy_suggest():
     """Gemmy AI Assistant endpoint for token creation suggestions with Zeroday Memification"""
-    import replicate
+    import requests as req
     
     try:
         data = request.get_json()
@@ -2004,8 +2004,8 @@ def gemmy_suggest():
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
         
-        replicate_token = os.environ.get("REPLICATE_API_TOKEN")
-        if not replicate_token:
+        openrouter_key = os.environ.get("OPENROUTER")
+        if not openrouter_key:
             return jsonify({'error': 'AI service not configured. Please contact support.'}), 503
         
         context_info = ""
@@ -2053,26 +2053,47 @@ def gemmy_suggest():
         system_prompt += "\nKeep responses concise and fun. Use emojis sparingly to add personality."
         system_prompt += "\nRemember previous suggestions from the conversation and build upon them when users ask follow-up questions."
         
-        full_prompt = user_message
-        if conversation_context:
-            full_prompt = conversation_context + f"\nUser: {user_message}"
+        # Build messages array for OpenRouter (OpenAI-compatible format)
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history
+        if history and len(history) > 1:
+            for msg in history[:-1]:
+                messages.append({
+                    "role": msg.get('role', 'user'),
+                    "content": msg.get('content', '')
+                })
+        
+        # Add current user message with context
+        user_content = user_message
         if context_info:
-            full_prompt += f"\n\nContext:{context_info}"
+            user_content += f"\n\nContext:{context_info}"
+        messages.append({"role": "user", "content": user_content})
         
-        logging.debug(f"Calling Replicate with mode: {mode}, prompt length: {len(full_prompt)}, system prompt length: {len(system_prompt)}")
+        logging.debug(f"Calling OpenRouter with mode: {mode}, messages count: {len(messages)}")
         
-        output = replicate.run(
-            "meta/meta-llama-3.1-70b-instruct",
-            input={
-                "prompt": full_prompt,
-                "system_prompt": system_prompt,
-                "temperature": 0.8,
-                "max_tokens": 300,
-                "top_p": 0.9
-            }
+        # Call OpenRouter API
+        response = req.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {openrouter_key}',
+                'Content-Type': 'application/json',
+                'HTTP-Referer': request.headers.get('Referer', 'https://gemlaunch.fun'),
+                'X-Title': 'Gemlaunch.fun'
+            },
+            json={
+                'model': 'meta-llama/llama-3.1-70b-instruct',
+                'messages': messages,
+                'temperature': 0.8,
+                'max_tokens': 300,
+                'top_p': 0.9
+            },
+            timeout=30
         )
         
-        response_text = "".join(output) if isinstance(output, list) else str(output)
+        response.raise_for_status()
+        result = response.json()
+        response_text = result['choices'][0]['message']['content']
         
         return jsonify({
             'success': True,
