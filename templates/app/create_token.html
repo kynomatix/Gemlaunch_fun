@@ -1614,6 +1614,126 @@
             setInterval(cycleWord, 3000);
         })();
 
+        // Global form-filling function (accessible across Turbo navigations)
+        window.fillFormFromGemmy = function(content) {
+            // Remove number prefix if present (e.g., "1. " or "2) ")
+            content = content.replace(/^\d+[\.\)]\s*/, '');
+            
+            // Parse markdown-formatted content
+            const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+            let tokenName = '';
+            let symbol = '';
+            let description = '';
+            
+            // Parse structured format with markdown
+            for (const line of lines) {
+                // Remove markdown asterisks for matching
+                const cleanLine = line.replace(/\*\*/g, '');
+                const lowerLine = cleanLine.toLowerCase();
+                
+                // Token Name detection (with markdown)
+                if (lowerLine.includes('name:')) {
+                    tokenName = cleanLine.split(/name:\s*/i)[1]?.trim() || '';
+                }
+                // Symbol/Ticker detection (with markdown)
+                else if (lowerLine.includes('symbol:')) {
+                    symbol = cleanLine.split(/symbol:\s*/i)[1]?.trim().replace(/^\$/, '') || '';
+                }
+                // Description detection (with markdown)
+                else if (lowerLine.includes('description:')) {
+                    description = cleanLine.split(/description:\s*/i)[1]?.trim() || '';
+                }
+            }
+            
+            // Fallback parsing if structured format not found
+            if (!tokenName || !symbol) {
+                for (const line of lines) {
+                    const cleanLine = line.replace(/\*\*/g, '').trim();
+                    
+                    // Try to extract $TICKER
+                    if (!symbol && cleanLine.includes('$')) {
+                        const match = cleanLine.match(/\$([A-Z]{2,6})/);
+                        if (match) symbol = match[1];
+                    }
+                    
+                    // If still no name, use first meaningful line
+                    if (!tokenName && cleanLine.length > 5 && cleanLine.length < 60 &&
+                        !cleanLine.toLowerCase().startsWith('here') &&
+                        !cleanLine.toLowerCase().startsWith('sure')) {
+                        tokenName = cleanLine.substring(0, 50);
+                    }
+                }
+            }
+            
+            // Fill the form fields
+            let filledCount = 0;
+            
+            if (tokenName) {
+                const nameField = document.getElementById('name');
+                if (nameField) {
+                    nameField.value = tokenName;
+                    nameField.dispatchEvent(new Event('input', { bubbles: true }));
+                    filledCount++;
+                }
+            }
+            
+            if (symbol) {
+                const symbolField = document.getElementById('symbol');
+                if (symbolField) {
+                    symbolField.value = symbol.toUpperCase();
+                    symbolField.dispatchEvent(new Event('input', { bubbles: true }));
+                    filledCount++;
+                }
+            }
+            
+            if (description) {
+                // Try to fill description in Quill editor if available
+                if (window.quillInstance) {
+                    window.quillInstance.setText(description);
+                } else {
+                    const descField = document.getElementById('description');
+                    if (descField) {
+                        descField.value = description;
+                        descField.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+                filledCount++;
+            }
+            
+            // Visual feedback
+            if (filledCount > 0) {
+                window.showGemmyNotification(`✨ Form filled with ${filledCount} field${filledCount > 1 ? 's' : ''}!`, 'success');
+            } else {
+                window.showGemmyNotification('⚠️ Could not extract token details', 'error');
+            }
+        };
+
+        // Global notification function
+        window.showGemmyNotification = function(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                background: ${type === 'success' ? 'linear-gradient(135deg, #20B2AA 0%, #1a8f8a 100%)' : 'linear-gradient(135deg, #FF6B6B 0%, #ee5a5a 100%)'};
+                color: white;
+                padding: 16px 24px;
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+                z-index: 10000;
+                font-size: 15px;
+                font-weight: 500;
+                animation: slideInRight 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        };
+
         // Gemmy AI Chat Widget Functionality (Turbo-safe)
         (function() {
             const floatBtn = document.getElementById('gemmyFloatBtn');
@@ -1738,7 +1858,7 @@
                     
                     // Add click handler
                     suggestionDiv.addEventListener('click', function() {
-                        fillFormFromContent(fullText);
+                        window.fillFormFromGemmy(fullText);
                     });
                     
                     container.appendChild(suggestionDiv);
@@ -1786,126 +1906,6 @@
                 if (currentSuggestion.length > 0) {
                     createClickableSuggestion(currentSuggestion);
                 }
-            }
-
-            function fillFormFromContent(content) {
-                // Remove number prefix if present (e.g., "1. " or "2) ")
-                content = content.replace(/^\d+[\.\)]\s*/, '');
-                
-                // Parse markdown-formatted content
-                const lines = content.split('\n').map(l => l.trim()).filter(l => l);
-                let tokenName = '';
-                let symbol = '';
-                let description = '';
-                
-                // Parse structured format with markdown
-                for (const line of lines) {
-                    // Remove markdown asterisks for matching
-                    const cleanLine = line.replace(/\*\*/g, '');
-                    const lowerLine = cleanLine.toLowerCase();
-                    
-                    // Token Name detection (with markdown)
-                    if (lowerLine.includes('name:')) {
-                        tokenName = cleanLine.split(/name:\s*/i)[1]?.trim() || '';
-                    }
-                    // Symbol/Ticker detection (with markdown)
-                    else if (lowerLine.includes('symbol:')) {
-                        symbol = cleanLine.split(/symbol:\s*/i)[1]?.trim().replace(/^\$/, '') || '';
-                    }
-                    // Description detection (with markdown)
-                    else if (lowerLine.includes('description:')) {
-                        description = cleanLine.split(/description:\s*/i)[1]?.trim() || '';
-                    }
-                }
-                
-                // Fallback parsing if structured format not found
-                if (!tokenName || !symbol) {
-                    for (const line of lines) {
-                        const cleanLine = line.replace(/\*\*/g, '').trim();
-                        
-                        // Try to extract $TICKER
-                        if (!symbol && cleanLine.includes('$')) {
-                            const match = cleanLine.match(/\$([A-Z]{2,6})/);
-                            if (match) symbol = match[1];
-                        }
-                        
-                        // If still no name, use first meaningful line
-                        if (!tokenName && cleanLine.length > 5 && cleanLine.length < 60 &&
-                            !cleanLine.toLowerCase().startsWith('here') &&
-                            !cleanLine.toLowerCase().startsWith('sure')) {
-                            tokenName = cleanLine.substring(0, 50);
-                        }
-                    }
-                }
-                
-                // Fill the form fields
-                let filledCount = 0;
-                
-                if (tokenName) {
-                    const nameField = document.getElementById('name');
-                    if (nameField) {
-                        nameField.value = tokenName;
-                        nameField.dispatchEvent(new Event('input', { bubbles: true }));
-                        filledCount++;
-                    }
-                }
-                
-                if (symbol) {
-                    const symbolField = document.getElementById('symbol');
-                    if (symbolField) {
-                        symbolField.value = symbol.toUpperCase();
-                        symbolField.dispatchEvent(new Event('input', { bubbles: true }));
-                        filledCount++;
-                    }
-                }
-                
-                if (description) {
-                    // Try to fill description in Quill editor if available
-                    if (window.quillInstance) {
-                        window.quillInstance.setText(description);
-                    } else {
-                        const descField = document.getElementById('description');
-                        if (descField) {
-                            descField.value = description;
-                            descField.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                    filledCount++;
-                }
-                
-                // Visual feedback
-                if (filledCount > 0) {
-                    showNotification(`✨ Form filled with ${filledCount} field${filledCount > 1 ? 's' : ''}!`, 'success');
-                } else {
-                    showNotification('⚠️ Could not extract token details', 'error');
-                }
-            }
-
-            function showNotification(message, type = 'success') {
-                // Create notification element
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 100px;
-                    right: 30px;
-                    background: ${type === 'success' ? 'linear-gradient(135deg, #20B2AA, #00CED1)' : '#ff4444'};
-                    color: #000;
-                    padding: 1rem 1.5rem;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    z-index: 10002;
-                    animation: slideInRight 0.3s ease-out;
-                    box-shadow: 0 4px 20px rgba(32, 178, 170, 0.4);
-                `;
-                notification.textContent = message;
-                
-                document.body.appendChild(notification);
-                
-                // Remove after 3 seconds
-                setTimeout(() => {
-                    notification.style.animation = 'slideOutRight 0.3s ease-in';
-                    setTimeout(() => notification.remove(), 300);
-                }, 3000);
             }
 
             function scrollToBottom() {
