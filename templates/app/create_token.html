@@ -1742,6 +1742,20 @@
                     modeButtons.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     currentMode = btn.getAttribute('data-mode');
+                    
+                    // Auto-send starter message for each mode
+                    let starterMessage = '';
+                    if (currentMode === 'creative') {
+                        starterMessage = 'Help me brainstorm creative token ideas';
+                    } else if (currentMode === 'trends') {
+                        starterMessage = 'Show me trending memes right now';
+                    } else if (currentMode === 'kaspa_tech') {
+                        starterMessage = 'Suggest Kaspa tech-based meme coins';
+                    }
+                    
+                    if (starterMessage) {
+                        sendMessage(starterMessage);
+                    }
                 });
             });
 

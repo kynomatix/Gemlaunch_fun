@@ -2059,6 +2059,8 @@ def gemmy_suggest():
         if context_info:
             full_prompt += f"\n\nContext:{context_info}"
         
+        logging.debug(f"Calling Replicate with mode: {mode}, prompt length: {len(full_prompt)}, system prompt length: {len(system_prompt)}")
+        
         output = replicate.run(
             "meta/meta-llama-3.1-70b-instruct",
             input={
