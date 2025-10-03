@@ -1674,7 +1674,7 @@
                 
                 // Make assistant messages with individual clickable options
                 if (type === 'assistant') {
-                    contentDiv.innerHTML = makeContentClickable(content);
+                    makeContentClickable(contentDiv, content);
                 } else {
                     contentDiv.textContent = content;
                 }
@@ -1686,18 +1686,18 @@
                 scrollToBottom();
             }
 
-            function makeContentClickable(content) {
+            function makeContentClickable(container, content) {
                 // Split content into lines
                 const lines = content.split('\n');
-                const container = document.createElement('div');
                 
-                for (let line of lines) {
+                lines.forEach(line => {
                     const trimmedLine = line.trim();
                     
-                    // Check if this line looks like a token suggestion
-                    const hasTokenPattern = /(?:name:|token:|option\s*\d+:|^\d+[\.\)])/i.test(trimmedLine) ||
+                    // Check if this line looks like a token suggestion (numbered list or specific patterns)
+                    const hasTokenPattern = /^\d+[\.\)]\s+/.test(trimmedLine) ||  // Starts with 1. or 1)
+                                           /(?:name:|token:|option\s*\d+:)/i.test(trimmedLine) ||
                                            /\$[A-Z]{2,6}/.test(trimmedLine) ||
-                                           (trimmedLine.length > 10 && trimmedLine.length < 100 && 
+                                           (trimmedLine.length > 10 && trimmedLine.length < 120 && 
                                             !trimmedLine.toLowerCase().startsWith('here') &&
                                             !trimmedLine.toLowerCase().startsWith('sure') &&
                                             !trimmedLine.includes('?'));
@@ -1708,10 +1708,10 @@
                         suggestionDiv.className = 'clickable-suggestion';
                         suggestionDiv.textContent = trimmedLine;
                         suggestionDiv.style.cssText = `
-                            display: inline-block; 
-                            padding: 2px 6px; 
-                            margin: 2px 0; 
-                            border-radius: 4px; 
+                            display: block; 
+                            padding: 4px 8px; 
+                            margin: 4px 0; 
+                            border-radius: 6px; 
                             transition: all 0.2s; 
                             cursor: pointer; 
                             border-left: 3px solid rgba(32, 178, 170, 0.3);
@@ -1728,21 +1728,20 @@
                         });
                         
                         // Add click handler - capture trimmedLine in closure
-                        suggestionDiv.addEventListener('click', (function(lineContent) {
-                            return function() {
-                                fillFormFromContent(lineContent);
-                            };
-                        })(trimmedLine));
+                        const lineToFill = trimmedLine;
+                        suggestionDiv.addEventListener('click', function() {
+                            fillFormFromContent(lineToFill);
+                        });
                         
                         container.appendChild(suggestionDiv);
-                    } else {
+                    } else if (trimmedLine.length > 0) {
                         // Regular text line
-                        const textNode = document.createTextNode(line + '\n');
-                        container.appendChild(textNode);
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = line;
+                        textSpan.style.display = 'block';
+                        container.appendChild(textSpan);
                     }
-                }
-                
-                return container.innerHTML;
+                });
             }
 
             function fillFormFromContent(content) {
