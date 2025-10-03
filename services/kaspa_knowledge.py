@@ -127,23 +127,27 @@ def get_kaspa_meme_suggestions(include_technical=True, include_community=True, l
     if include_technical:
         for tech_name, tech_data in KASPA_TECH_CONCEPTS['technical_terms'].items():
             for variation in tech_data['memeable_variations']:
+                ticker = variation.upper()[:5] if len(variation) <= 5 else variation.upper()[:4]
                 suggestions.append({
                     'name': variation,
                     'concept': tech_data['description'],
                     'category': 'technical',
                     'meme_potential': tech_data['meme_potential'],
-                    'keywords': tech_data['keywords']
+                    'keywords': tech_data['keywords'],
+                    'ticker_suggestion': ticker
                 })
     
     if include_community:
         for meme_name, meme_data in KASPA_TECH_CONCEPTS['community_memes'].items():
             for variation in meme_data.get('variations', []):
+                ticker = variation.upper()[:5] if len(variation) <= 5 else variation.upper()[:4]
                 suggestions.append({
                     'name': variation,
                     'concept': meme_data['description'],
                     'category': 'community',
                     'meme_potential': 'medium',
-                    'keywords': [variation.lower()]
+                    'keywords': [variation.lower()],
+                    'ticker_suggestion': ticker
                 })
     
     suggestions.sort(key=lambda x: {

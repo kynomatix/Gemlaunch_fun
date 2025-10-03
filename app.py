@@ -2032,7 +2032,7 @@ def gemmy_suggest():
             from services.kaspa_knowledge import get_kaspa_meme_suggestions
             kaspa_memes = get_kaspa_meme_suggestions()[:3]
             system_prompt += "\n" + "\n".join([
-                f"- {m['concept']}: {m['meme_variation']} (Ticker: {m['ticker_suggestion']})"
+                f"- {m['concept']}: {m['name']} (Ticker: ${m['ticker_suggestion']})"
                 for m in kaspa_memes
             ])
         else:
