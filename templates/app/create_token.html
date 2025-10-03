@@ -1689,7 +1689,7 @@
             function makeContentClickable(content) {
                 // Split content into lines
                 const lines = content.split('\n');
-                let html = '';
+                const container = document.createElement('div');
                 
                 for (let line of lines) {
                     const trimmedLine = line.trim();
@@ -1703,28 +1703,46 @@
                                             !trimmedLine.includes('?'));
                     
                     if (hasTokenPattern && trimmedLine.length > 5) {
-                        // Make this line clickable
-                        html += `<div class="clickable-suggestion" data-content="${escapeHtml(trimmedLine)}" 
-                                 style="display: inline-block; padding: 2px 6px; margin: 2px 0; border-radius: 4px; 
-                                        transition: all 0.2s; cursor: pointer; border-left: 3px solid rgba(32, 178, 170, 0.3);"
-                                 onmouseover="this.style.backgroundColor='rgba(32, 178, 170, 0.2)'; this.style.borderLeftColor='#20B2AA';"
-                                 onmouseout="this.style.backgroundColor='transparent'; this.style.borderLeftColor='rgba(32, 178, 170, 0.3)';"
-                                 onclick="fillFormFromContent(this.getAttribute('data-content'))">
-                                ${escapeHtml(trimmedLine)}
-                                </div>`;
+                        // Create clickable suggestion element
+                        const suggestionDiv = document.createElement('div');
+                        suggestionDiv.className = 'clickable-suggestion';
+                        suggestionDiv.textContent = trimmedLine;
+                        suggestionDiv.style.cssText = `
+                            display: inline-block; 
+                            padding: 2px 6px; 
+                            margin: 2px 0; 
+                            border-radius: 4px; 
+                            transition: all 0.2s; 
+                            cursor: pointer; 
+                            border-left: 3px solid rgba(32, 178, 170, 0.3);
+                        `;
+                        
+                        // Add hover effects
+                        suggestionDiv.addEventListener('mouseenter', function() {
+                            this.style.backgroundColor = 'rgba(32, 178, 170, 0.2)';
+                            this.style.borderLeftColor = '#20B2AA';
+                        });
+                        suggestionDiv.addEventListener('mouseleave', function() {
+                            this.style.backgroundColor = 'transparent';
+                            this.style.borderLeftColor = 'rgba(32, 178, 170, 0.3)';
+                        });
+                        
+                        // Add click handler - capture trimmedLine in closure
+                        suggestionDiv.addEventListener('click', (function(lineContent) {
+                            return function() {
+                                fillFormFromContent(lineContent);
+                            };
+                        })(trimmedLine));
+                        
+                        container.appendChild(suggestionDiv);
                     } else {
-                        // Regular text
-                        html += escapeHtml(line) + '\n';
+                        // Regular text line
+                        const textNode = document.createTextNode(line + '\n');
+                        container.appendChild(textNode);
                     }
                 }
                 
-                return html;
-            }
-
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
+                return container.innerHTML;
             }
 
             function fillFormFromContent(content) {
