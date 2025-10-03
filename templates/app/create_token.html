@@ -1852,8 +1852,8 @@
                 
                 if (description) {
                     // Try to fill description in Quill editor if available
-                    if (window.descriptionEditor) {
-                        window.descriptionEditor.setText(description);
+                    if (window.quillInstance) {
+                        window.quillInstance.setText(description);
                     } else {
                         const descField = document.getElementById('description');
                         if (descField) {
