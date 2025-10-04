@@ -92,7 +92,7 @@ def generate_image_with_replicate(prompt):
         if not output_list or len(output_list) == 0:
             raise Exception("No image generated from Replicate")
         
-        image_url = output_list[0]
+        image_url = str(output_list[0])
         logging.info(f"Image generated successfully: {image_url}")
         return image_url
         

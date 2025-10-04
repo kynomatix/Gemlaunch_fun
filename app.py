@@ -2034,11 +2034,9 @@ def gemmy_suggest():
                     keywords = ', '.join(t['meme_data'].get('keywords', [])[:5])
                     system_prompt += f"\n- '{title}' (Keywords: {keywords})"
                 
-                system_prompt += "\n\nYour job: Transform these raw trends into MEMECOIN IDEAS. For each trend, suggest:"
-                system_prompt += "\n1. A catchy token NAME that captures the meme"
-                system_prompt += "\n2. A 3-5 letter TICKER symbol"
-                system_prompt += "\n3. A one-line marketing HOOK"
-                system_prompt += "\n\nDon't just list the trends - turn them into actionable token concepts!"
+                system_prompt += "\n\nYour job: Transform these raw trends into MEMECOIN IDEAS."
+                system_prompt += "\n\nFor EACH trend, create a token concept using the **Name:** **Symbol:** **Description:** format shown below."
+                system_prompt += "\nDon't just list the trends - turn them into actionable, clickable token concepts!"
             else:
                 system_prompt += "\n\n🔥 TRENDING MEMES: No trending data available right now. Suggest the user try Creative Mode or Kaspa Tech Mode instead."
         else:
@@ -2054,6 +2052,8 @@ def gemmy_suggest():
                 f"- {m['concept']}: {m['name']} (Ticker: ${m['ticker_suggestion']})"
                 for m in kaspa_memes
             ])
+            system_prompt += "\n\nYour job: Create memecoin ideas based on Kaspa's technical concepts."
+            system_prompt += "\nUse the **Name:** **Symbol:** **Description:** format shown below for each suggestion."
         else:
             system_prompt += "\n- GHOSTDAG → SpookyCoin ($SPOOK)"
             system_prompt += "\n- DAGKnight → KnightRider ($KNIGHT)"
