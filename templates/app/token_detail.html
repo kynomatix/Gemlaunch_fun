@@ -335,15 +335,16 @@
             let airdropData = null;
             try {
                 const response = await fetch(`/api/token/{{ token.contract_address }}/airdrop/available`, {
-                    headers: {
-                        'X-Wallet-Address': userWallet
-                    }
+                    credentials: 'same-origin'
                 });
                 if (response.ok) {
                     airdropData = await response.json();
+                    console.log('✅ Airdrop availability loaded:', airdropData);
+                } else {
+                    console.error('❌ Airdrop API error:', await response.text());
                 }
             } catch (error) {
-                console.error('Failed to fetch airdrop availability:', error);
+                console.error('❌ Failed to fetch airdrop availability:', error);
             }
             
             // Format numbers with commas
@@ -353,17 +354,26 @@
             let availabilityHTML = '';
             if (airdropData && airdropData.success) {
                 availabilityHTML = `
-                    <div style="padding: 0.75rem; background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(32, 178, 170, 0.05));
-                                border: 1px solid rgba(0, 217, 255, 0.3); border-radius: 8px; margin-bottom: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; color: #00D9FF; font-weight: 600; margin-bottom: 0.5rem;">
-                            <i class="fas fa-unlock-alt"></i>
-                            <span>Available to Airdrop</span>
+                    <div style="padding: 1rem; background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(32, 178, 170, 0.15));
+                                border: 2px solid rgba(0, 217, 255, 0.5); border-radius: 10px; margin-bottom: 1.5rem;
+                                box-shadow: 0 4px 15px rgba(0, 217, 255, 0.2);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: #00D9FF; font-weight: 600; margin-bottom: 0.75rem;">
+                            <i class="fas fa-unlock-alt" style="font-size: 1.2rem;"></i>
+                            <span style="font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px;">Current Tokens Available for Distribution</span>
                         </div>
-                        <div style="color: #FFF; font-size: 1.5rem; font-weight: 700;">
+                        <div style="color: #FFF; font-size: 2rem; font-weight: 700; text-shadow: 0 2px 8px rgba(0, 217, 255, 0.3);">
                             ${formatNum(airdropData.available_amount)} ${{ token.symbol }}
                         </div>
-                        <div style="color: #AAA; font-size: 0.85rem; margin-top: 0.5rem;">
-                            ${airdropData.unlocked_percentage}% unlocked • ${formatNum(airdropData.already_airdropped)} already distributed
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; 
+                                    padding-top: 1rem; border-top: 1px solid rgba(0, 217, 255, 0.3);">
+                            <div>
+                                <div style="color: #AAA; font-size: 0.8rem;">Vesting Progress</div>
+                                <div style="color: #00D9FF; font-size: 1rem; font-weight: 600;">${airdropData.unlocked_percentage}% Unlocked</div>
+                            </div>
+                            <div>
+                                <div style="color: #AAA; font-size: 0.8rem;">Already Distributed</div>
+                                <div style="color: #00D9FF; font-size: 1rem; font-weight: 600;">${formatNum(airdropData.already_airdropped)} ${{ token.symbol }}</div>
+                            </div>
                         </div>
                     </div>
                 `;
