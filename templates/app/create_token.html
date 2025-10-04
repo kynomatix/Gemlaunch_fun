@@ -1767,6 +1767,13 @@
             setInterval(cycleWord, 3000);
         })();
 
+        // Helper function to strip HTML tags
+        window.stripHtmlTags = function(text) {
+            const temp = document.createElement('div');
+            temp.innerHTML = text;
+            return temp.textContent || temp.innerText || '';
+        };
+
         // Global form-filling function (accessible across Turbo navigations)
         window.fillFormFromGemmy = function(content) {
             // Remove number prefix if present (e.g., "1. " or "2) ")
@@ -1780,21 +1787,21 @@
             
             // Parse structured format with markdown
             for (const line of lines) {
-                // Remove markdown asterisks for matching
+                // Remove markdown asterisks and HTML tags for matching
                 const cleanLine = line.replace(/\*\*/g, '');
                 const lowerLine = cleanLine.toLowerCase();
                 
                 // Token Name detection (with markdown)
                 if (lowerLine.includes('name:')) {
-                    tokenName = cleanLine.split(/name:\s*/i)[1]?.trim() || '';
+                    tokenName = window.stripHtmlTags(cleanLine.split(/name:\s*/i)[1]?.trim() || '');
                 }
                 // Symbol/Ticker detection (with markdown)
                 else if (lowerLine.includes('symbol:')) {
-                    symbol = cleanLine.split(/symbol:\s*/i)[1]?.trim().replace(/^\$/, '') || '';
+                    symbol = window.stripHtmlTags(cleanLine.split(/symbol:\s*/i)[1]?.trim().replace(/^\$/, '') || '');
                 }
-                // Description detection (with markdown)
+                // Description detection (with markdown and HTML tags)
                 else if (lowerLine.includes('description:')) {
-                    description = cleanLine.split(/description:\s*/i)[1]?.trim() || '';
+                    description = window.stripHtmlTags(cleanLine.split(/description:\s*/i)[1]?.trim() || '');
                 }
             }
             
