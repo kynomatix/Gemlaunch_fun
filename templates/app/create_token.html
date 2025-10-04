@@ -554,11 +554,11 @@
         }
         
         .allocation-segment.marketing {
-            background: linear-gradient(135deg, #FF6B6B, #EE5A6F);
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
         }
         
         .allocation-segment.team {
-            background: linear-gradient(135deg, #51CF66, #37B24D);
+            background: linear-gradient(135deg, #B19CD9, #9B7EBD);
         }
         
         .allocation-label {
@@ -1440,7 +1440,7 @@
                                     <div class="allocation-slider-group">
                                         <label>
                                             <i class="fas fa-gift" style="color: #00D9FF; margin-right: 0.5rem;"></i>
-                                            Airdrops & Rewards <span id="airdrops-percent" style="color: #00D9FF; font-weight: 700;">33%</span>
+                                            Airdrops & Rewards <span id="airdrops-percent" style="color: #00D9FF; font-weight: 700;">33%</span> <span id="airdrops-total-percent" style="color: #AAA; font-weight: 400; font-size: 0.85rem;">(0% of total)</span>
                                         </label>
                                         <input type="range" id="airdrops_allocation" name="airdrops_allocation" min="0" max="100" value="33" class="allocation-slider" oninput="updateAllocations()">
                                         <small style="color: #AAA; display: block; margin-top: 0.25rem;">Unlocks 5% daily for community rewards</small>
@@ -1448,8 +1448,8 @@
                                     
                                     <div class="allocation-slider-group">
                                         <label>
-                                            <i class="fas fa-bullhorn" style="color: #FF6B6B; margin-right: 0.5rem;"></i>
-                                            Marketing <span id="marketing-percent" style="color: #FF6B6B; font-weight: 700;">33%</span>
+                                            <i class="fas fa-bullhorn" style="color: #20B2AA; margin-right: 0.5rem;"></i>
+                                            Marketing <span id="marketing-percent" style="color: #20B2AA; font-weight: 700;">33%</span> <span id="marketing-total-percent" style="color: #AAA; font-weight: 400; font-size: 0.85rem;">(0% of total)</span>
                                         </label>
                                         <input type="range" id="marketing_allocation" name="marketing_allocation" min="0" max="100" value="33" class="allocation-slider" oninput="updateAllocations()">
                                         <small style="color: #AAA; display: block; margin-top: 0.25rem;">12-month linear vesting</small>
@@ -1457,8 +1457,8 @@
                                     
                                     <div class="allocation-slider-group">
                                         <label>
-                                            <i class="fas fa-users" style="color: #51CF66; margin-right: 0.5rem;"></i>
-                                            Team <span id="team-percent" style="color: #51CF66; font-weight: 700;">34%</span>
+                                            <i class="fas fa-users" style="color: #B19CD9; margin-right: 0.5rem;"></i>
+                                            Team <span id="team-percent" style="color: #B19CD9; font-weight: 700;">34%</span> <span id="team-total-percent" style="color: #AAA; font-weight: 400; font-size: 0.85rem;">(0% of total)</span>
                                         </label>
                                         <input type="range" id="team_allocation" name="team_allocation" min="0" max="100" value="34" class="allocation-slider" oninput="updateAllocations()">
                                         <small style="color: #AAA; display: block; margin-top: 0.25rem;">6-month cliff + 18-month vesting</small>
@@ -1742,6 +1742,8 @@
             if (reserveSection) {
                 if (value > 0) {
                     reserveSection.style.display = 'block';
+                    // Update allocation percentages when reserve changes
+                    updateAllocations();
                 } else {
                     reserveSection.style.display = 'none';
                 }
@@ -1768,12 +1770,25 @@
             const marketing = parseInt(document.getElementById('marketing_allocation').value);
             const team = parseInt(document.getElementById('team_allocation').value);
             
+            // Get reserve percentage
+            const reservePercentage = parseInt(document.getElementById('reserved_percentage').value) || 0;
+            
+            // Calculate total percentages out of 100%
+            const airdropsTotal = (airdrops * reservePercentage / 100).toFixed(2);
+            const marketingTotal = (marketing * reservePercentage / 100).toFixed(2);
+            const teamTotal = (team * reservePercentage / 100).toFixed(2);
+            
             const total = airdrops + marketing + team;
             
             // Update percentage displays
             document.getElementById('airdrops-percent').textContent = airdrops + '%';
             document.getElementById('marketing-percent').textContent = marketing + '%';
             document.getElementById('team-percent').textContent = team + '%';
+            
+            // Update total percentage displays
+            document.getElementById('airdrops-total-percent').textContent = `(${airdropsTotal}% of total)`;
+            document.getElementById('marketing-total-percent').textContent = `(${marketingTotal}% of total)`;
+            document.getElementById('team-total-percent').textContent = `(${teamTotal}% of total)`;
             
             // Update visual bar
             const airdropsSegment = document.getElementById('airdrops-segment');
