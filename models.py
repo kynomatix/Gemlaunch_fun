@@ -90,6 +90,11 @@ class Token(db.Model):
     reserved_percentage = db.Column(db.Float, default=0.0)  # 0-25%
     anti_bot_enabled = db.Column(db.Boolean, default=False)  # Anti-bot protection (GEM system)
     
+    # Reserve allocation breakdown (% of reserve, must total 100)
+    airdrops_allocation = db.Column(db.Float, default=33.0)  # % of reserve for airdrops
+    marketing_allocation = db.Column(db.Float, default=33.0)  # % of reserve for marketing
+    team_allocation = db.Column(db.Float, default=34.0)  # % of reserve for team
+    
     # Blockchain info
     contract_address = db.Column(db.String(128), unique=True, nullable=True, index=True)
     deployment_tx = db.Column(db.String(128))

@@ -60,6 +60,11 @@ class TokenService:
             new_token.reserved_percentage = float(token_data.get('reserved_percentage', 0))
             new_token.anti_bot_enabled = bool(token_data.get('anti_bot_enabled', False))
             
+            # Set reserve allocation breakdown
+            new_token.airdrops_allocation = float(token_data.get('airdrops_allocation', 33))
+            new_token.marketing_allocation = float(token_data.get('marketing_allocation', 33))
+            new_token.team_allocation = float(token_data.get('team_allocation', 34))
+            
             # Calculate reserved tokens based on percentage
             if new_token.reserved_percentage > 0:
                 new_token.reserved_tokens = int(new_token.total_supply * (new_token.reserved_percentage / 100))

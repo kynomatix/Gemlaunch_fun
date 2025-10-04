@@ -442,7 +442,10 @@ def create_token():
             'telegram': request.form.get('telegram', ''),
             'total_supply': request.form.get('total_supply', '1000000000'),
             'reserved_percentage': request.form.get('reserved_percentage', '0'),
-            'anti_bot_enabled': request.form.get('anti_bot_enabled') == 'on'
+            'anti_bot_enabled': request.form.get('anti_bot_enabled') == 'on',
+            'airdrops_allocation': request.form.get('airdrops_allocation', '33'),
+            'marketing_allocation': request.form.get('marketing_allocation', '33'),
+            'team_allocation': request.form.get('team_allocation', '34')
         }
         
         # Use TokenService to create the token
