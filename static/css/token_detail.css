@@ -151,6 +151,29 @@
     color: #FFF;
 }
 
+.airdrop-percentage-btn {
+    flex: 1;
+    padding: 0.5rem;
+    background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(32, 178, 170, 0.1));
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    border-radius: 8px;
+    color: #00D9FF;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.airdrop-percentage-btn:hover {
+    background: linear-gradient(135deg, rgba(0, 217, 255, 0.25), rgba(32, 178, 170, 0.2));
+    border-color: rgba(0, 217, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.airdrop-percentage-btn:active {
+    transform: translateY(0);
+}
+
 @keyframes modalSlideIn {
     from {
         transform: translateY(-50px);
