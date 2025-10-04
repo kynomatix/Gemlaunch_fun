@@ -94,6 +94,7 @@ class Token(db.Model):
     airdrops_allocation = db.Column(db.Float, default=33.0)  # % of reserve for airdrops
     marketing_allocation = db.Column(db.Float, default=33.0)  # % of reserve for marketing
     team_allocation = db.Column(db.Float, default=34.0)  # % of reserve for team
+    total_airdropped = db.Column(db.Numeric(precision=30, scale=0), default=0)  # Total tokens airdropped so far
     
     # Blockchain info
     contract_address = db.Column(db.String(128), unique=True, nullable=True, index=True)

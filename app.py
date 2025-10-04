@@ -1028,6 +1028,41 @@ def update_token_settings(contract_address):
         db.session.rollback()
         return jsonify({'error': f'Failed to update settings: {str(e)}'}), 500
 
+@app.route('/api/token/<contract_address>/airdrop/available', methods=['GET'])
+@require_wallet_connection
+def get_airdrop_available(contract_address):
+    """Get available airdrop amount based on vesting schedule"""
+    from datetime import datetime, timezone
+    
+    user = get_current_user()
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Verify user is the token creator
+    if not token.creator or user.wallet_address.lower() != token.creator.wallet_address.lower():
+        return jsonify({'error': 'Only the token creator can view airdrop availability'}), 403
+    
+    # Calculate airdrop allocation
+    total_airdrop_allocation = float(token.reserved_tokens or 0) * (float(token.airdrops_allocation) / 100.0)
+    
+    # Calculate unlocked amount based on vesting schedule (5% per day)
+    days_since_creation = (datetime.now(timezone.utc) - token.created_at).days
+    unlocked_percentage = min(days_since_creation * 5, 100)  # 5% per day, max 100%
+    unlocked_amount = total_airdrop_allocation * (unlocked_percentage / 100.0)
+    
+    # Calculate available amount (unlocked - already airdropped)
+    already_airdropped = float(token.total_airdropped or 0)
+    available_amount = max(unlocked_amount - already_airdropped, 0)
+    
+    return jsonify({
+        'success': True,
+        'total_allocation': int(total_airdrop_allocation),
+        'unlocked_amount': int(unlocked_amount),
+        'already_airdropped': int(already_airdropped),
+        'available_amount': int(available_amount),
+        'unlocked_percentage': unlocked_percentage,
+        'days_since_creation': days_since_creation
+    })
+
 # Leaderboard routes
 @app.route('/app/leaderboard')
 @wallet_optional

@@ -318,7 +318,7 @@
             TokenDetail.createSpotlight();
         }
         
-        function createAirdrop() {
+        async function createAirdrop() {
             const userWallet = localStorage.getItem('connectedWallet');
             const tokenCreator = '{{ token.creator.wallet_address }}'.toLowerCase();
             
@@ -331,6 +331,44 @@
                 return;
             }
             
+            // Fetch available airdrop amount
+            let airdropData = null;
+            try {
+                const response = await fetch(`/api/token/{{ token.contract_address }}/airdrop/available`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                if (response.ok) {
+                    airdropData = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to fetch airdrop availability:', error);
+            }
+            
+            // Format numbers with commas
+            const formatNum = (num) => num.toLocaleString();
+            
+            // Build availability display
+            let availabilityHTML = '';
+            if (airdropData && airdropData.success) {
+                availabilityHTML = `
+                    <div style="padding: 0.75rem; background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(32, 178, 170, 0.05));
+                                border: 1px solid rgba(0, 217, 255, 0.3); border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: #00D9FF; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fas fa-unlock-alt"></i>
+                            <span>Available to Airdrop</span>
+                        </div>
+                        <div style="color: #FFF; font-size: 1.5rem; font-weight: 700;">
+                            ${formatNum(airdropData.available_amount)} ${{ token.symbol }}
+                        </div>
+                        <div style="color: #AAA; font-size: 0.85rem; margin-top: 0.5rem;">
+                            ${airdropData.unlocked_percentage}% unlocked • ${formatNum(airdropData.already_airdropped)} already distributed
+                        </div>
+                    </div>
+                `;
+            }
+            
             // Show custom airdrop modal
             const modalHTML = `
                 <div id="airdropModal" class="modal" style="display: flex;">
@@ -340,6 +378,7 @@
                             <button class="modal-close" onclick="TokenDetail.modals.closeModal('airdropModal')">&times;</button>
                         </div>
                         <div class="modal-body">
+                            ${availabilityHTML}
                             <div class="airdrop-header-banner">
                                 <div class="airdrop-banner-title">
                                     <i class="fas fa-coins"></i>
