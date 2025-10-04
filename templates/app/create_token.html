@@ -1804,6 +1804,7 @@
                 // Make assistant messages with individual clickable options
                 if (type === 'assistant') {
                     makeContentClickable(contentDiv, content);
+                    makeSymbolsClickable(contentDiv);
                 } else {
                     contentDiv.textContent = content;
                 }
@@ -1813,6 +1814,84 @@
                 
                 messagesContainer.insertBefore(messageDiv, typingIndicator);
                 scrollToBottom();
+            }
+            
+            function makeSymbolsClickable(container) {
+                // Find all text nodes and make $SYMBOL patterns clickable
+                const walker = document.createTreeWalker(
+                    container,
+                    NodeFilter.SHOW_TEXT,
+                    null
+                );
+                
+                const textNodes = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    textNodes.push(node);
+                }
+                
+                textNodes.forEach(textNode => {
+                    const text = textNode.textContent;
+                    const symbolPattern = /\$([A-Z]{2,6})\b/g;
+                    
+                    if (symbolPattern.test(text)) {
+                        const span = document.createElement('span');
+                        let lastIndex = 0;
+                        let match;
+                        
+                        symbolPattern.lastIndex = 0; // Reset regex
+                        
+                        while ((match = symbolPattern.exec(text)) !== null) {
+                            // Add text before match
+                            if (match.index > lastIndex) {
+                                span.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+                            }
+                            
+                            // Create clickable symbol
+                            const symbolSpan = document.createElement('span');
+                            symbolSpan.textContent = match[0]; // $SYMBOL
+                            symbolSpan.style.cssText = `
+                                color: #20B2AA;
+                                font-weight: 600;
+                                cursor: pointer;
+                                text-decoration: underline;
+                                text-decoration-style: dotted;
+                                transition: all 0.2s;
+                            `;
+                            
+                            const symbolValue = match[1]; // Capture for closure
+                            
+                            symbolSpan.addEventListener('mouseenter', function() {
+                                this.style.color = '#00CED1';
+                                this.style.textDecoration = 'underline solid';
+                            });
+                            
+                            symbolSpan.addEventListener('mouseleave', function() {
+                                this.style.color = '#20B2AA';
+                                this.style.textDecoration = 'underline dotted';
+                            });
+                            
+                            symbolSpan.addEventListener('click', function() {
+                                const symbolField = document.getElementById('symbol');
+                                if (symbolField) {
+                                    symbolField.value = symbolValue;
+                                    symbolField.dispatchEvent(new Event('input', { bubbles: true }));
+                                    window.showGemmyNotification(`✨ Symbol set to $${symbolValue}!`, 'success');
+                                }
+                            });
+                            
+                            span.appendChild(symbolSpan);
+                            lastIndex = match.index + match[0].length;
+                        }
+                        
+                        // Add remaining text
+                        if (lastIndex < text.length) {
+                            span.appendChild(document.createTextNode(text.substring(lastIndex)));
+                        }
+                        
+                        textNode.parentNode.replaceChild(span, textNode);
+                    }
+                });
             }
 
             function makeContentClickable(container, content) {
