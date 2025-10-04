@@ -419,6 +419,9 @@
         </main>
     </div>
     
+    <!-- Modals - Outside main-content for proper viewport positioning -->
+    {% block modals %}{% endblock %}
+    
     <!-- Scripts with defer for non-critical JavaScript -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script defer src="{{ url_for('static', filename='js/particles.js') }}"></script>
