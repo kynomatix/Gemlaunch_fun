@@ -296,8 +296,10 @@
                 // Check current network and offer to switch to Kasplex (optional)
                 try {
                     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    console.log('Current chainId:', chainId, 'Expected:', KASPLEX_TESTNET.chainId);
                     
-                    if (chainId !== KASPLEX_TESTNET.chainId) {
+                    // Case-insensitive comparison since some wallets return lowercase hex
+                    if (chainId.toLowerCase() !== KASPLEX_TESTNET.chainId.toLowerCase()) {
                         // Ask user if they want to add/switch to Kasplex network
                         const switchNetwork = confirm('Would you like to switch to Kasplex Network Testnet for the best experience? (You can also continue with your current network)');
                         
@@ -308,11 +310,14 @@
                                     method: 'wallet_switchEthereumChain',
                                     params: [{ chainId: KASPLEX_TESTNET.chainId }],
                                 });
+                                console.log('Successfully switched to Kasplex network');
                             } catch (switchError) {
                                 console.warn('Failed to switch to Kasplex network:', switchError);
                                 // Continue with current network
                             }
                         }
+                    } else {
+                        console.log('Already on Kasplex testnet, no switch needed');
                     }
                 } catch (networkError) {
                     console.warn('Network check failed:', networkError);
