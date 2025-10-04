@@ -22,54 +22,11 @@
                         {% endif %}
                     </span>
                     {% if is_pro_token and token.reserved_percentage > 0 %}
-                    <button class="vesting-info-btn" onclick="toggleVestingInfo()" title="View vesting details">
+                    <button class="vesting-info-btn" onclick="toggleVestingModal()" title="View vesting details">
                         <i class="fas fa-lock"></i>
                     </button>
                     {% endif %}
                 </div>
-                
-                {% if is_pro_token and token.reserved_percentage > 0 %}
-                <!-- Vesting Info Popup (Hidden by default) -->
-                <div id="vesting-info-popup" class="vesting-popup" style="display: none;">
-                    <div class="vesting-popup-header">
-                        <h4><i class="fas fa-lock"></i> Reserve Allocation & Vesting</h4>
-                        <button onclick="toggleVestingInfo()" class="close-popup">&times;</button>
-                    </div>
-                    <div class="vesting-popup-body">
-                        <div class="vesting-bar">
-                            <div class="vesting-segment airdrops" style="width: {{ token.airdrops_allocation }}%;">
-                                <span class="vesting-label">{{ "%.0f"|format(token.airdrops_allocation) }}%</span>
-                            </div>
-                            <div class="vesting-segment marketing" style="width: {{ token.marketing_allocation }}%;">
-                                <span class="vesting-label">{{ "%.0f"|format(token.marketing_allocation) }}%</span>
-                            </div>
-                            <div class="vesting-segment team" style="width: {{ token.team_allocation }}%;">
-                                <span class="vesting-label">{{ "%.0f"|format(token.team_allocation) }}%</span>
-                            </div>
-                        </div>
-                        <div class="vesting-details">
-                            <div class="vesting-item">
-                                <i class="fas fa-gift" style="color: #00D9FF;"></i>
-                                <span class="vesting-category">Airdrops & Rewards</span>
-                                <span class="vesting-percent">{{ "%.2f"|format(token.airdrops_allocation * token.reserved_percentage / 100) }}% of total</span>
-                                <small>5% daily unlock</small>
-                            </div>
-                            <div class="vesting-item">
-                                <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
-                                <span class="vesting-category">Marketing</span>
-                                <span class="vesting-percent">{{ "%.2f"|format(token.marketing_allocation * token.reserved_percentage / 100) }}% of total</span>
-                                <small>12-month linear</small>
-                            </div>
-                            <div class="vesting-item">
-                                <i class="fas fa-users" style="color: #B19CD9;"></i>
-                                <span class="vesting-category">Team</span>
-                                <span class="vesting-percent">{{ "%.2f"|format(token.team_allocation * token.reserved_percentage / 100) }}% of total</span>
-                                <small>6mo cliff + 18mo vest</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
                 <div class="token-meta-info">
                     <span class="token-symbol">${{ token.symbol }}</span>
                     <span class="dot">•</span>
@@ -144,3 +101,48 @@
         </div>
     </div>
 </div>
+
+{% if is_pro_token and token.reserved_percentage > 0 %}
+<!-- Vesting Info Modal -->
+<div id="vesting-modal" class="modal" style="display: none;">
+    <div class="modal-content vesting-modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-lock"></i> Reserve Allocation & Vesting</h3>
+            <button onclick="toggleVestingModal()" class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="vesting-bar">
+                <div class="vesting-segment airdrops" style="width: {{ token.airdrops_allocation }}%;">
+                    <span class="vesting-label">{{ "%.0f"|format(token.airdrops_allocation) }}%</span>
+                </div>
+                <div class="vesting-segment marketing" style="width: {{ token.marketing_allocation }}%;">
+                    <span class="vesting-label">{{ "%.0f"|format(token.marketing_allocation) }}%</span>
+                </div>
+                <div class="vesting-segment team" style="width: {{ token.team_allocation }}%;">
+                    <span class="vesting-label">{{ "%.0f"|format(token.team_allocation) }}%</span>
+                </div>
+            </div>
+            <div class="vesting-details">
+                <div class="vesting-item">
+                    <i class="fas fa-gift" style="color: #00D9FF;"></i>
+                    <span class="vesting-category">Airdrops & Rewards</span>
+                    <span class="vesting-percent">{{ "%.2f"|format(token.airdrops_allocation * token.reserved_percentage / 100) }}% of total</span>
+                    <small>5% daily unlock</small>
+                </div>
+                <div class="vesting-item">
+                    <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
+                    <span class="vesting-category">Marketing</span>
+                    <span class="vesting-percent">{{ "%.2f"|format(token.marketing_allocation * token.reserved_percentage / 100) }}% of total</span>
+                    <small>12-month linear</small>
+                </div>
+                <div class="vesting-item">
+                    <i class="fas fa-users" style="color: #B19CD9;"></i>
+                    <span class="vesting-category">Team</span>
+                    <span class="vesting-percent">{{ "%.2f"|format(token.team_allocation * token.reserved_percentage / 100) }}% of total</span>
+                    <small>6mo cliff + 18mo vest</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

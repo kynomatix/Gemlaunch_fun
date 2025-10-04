@@ -1905,26 +1905,23 @@
     };
     
 })(window, document);
-// Toggle vesting info popup
-function toggleVestingInfo() {
-    const popup = document.getElementById('vesting-info-popup');
-    if (popup) {
-        if (popup.style.display === 'none') {
-            popup.style.display = 'block';
+
+// Toggle vesting info modal
+function toggleVestingModal() {
+    const modal = document.getElementById('vesting-modal');
+    if (modal) {
+        if (modal.style.display === 'none' || modal.style.display === '') {
+            modal.style.display = 'flex';
         } else {
-            popup.style.display = 'none';
+            modal.style.display = 'none';
         }
     }
 }
 
-// Close popup when clicking outside
-document.addEventListener('click', function(event) {
-    const popup = document.getElementById('vesting-info-popup');
-    const vestingBtn = document.querySelector('.vesting-info-btn');
-    
-    if (popup && vestingBtn) {
-        if (!popup.contains(event.target) && !vestingBtn.contains(event.target)) {
-            popup.style.display = 'none';
-        }
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('vesting-modal');
+    if (modal && event.target === modal) {
+        modal.style.display = 'none';
     }
 });
