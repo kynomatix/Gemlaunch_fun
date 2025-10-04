@@ -715,13 +715,47 @@
                     </div>
                     ${perUserText}
                 </div>`,
-                function() {
-                    console.log('Creating airdrop:', typeText, 'Amount:', amount, 'Data:', typeSpecificData);
-                    TokenDetail.modals.alert(
-                        'Airdrop Created!',
-                        `Your ${typeText} airdrop has been created successfully!`,
-                        'success'
-                    );
+                async function() {
+                    try {
+                        const response = await fetch(`/api/token/{{ token.contract_address }}/airdrop/create`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                type: selectedType.value,
+                                amount: parseInt(amount),
+                                parameters: typeSpecificData
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.ok && result.success) {
+                            TokenDetail.modals.alert(
+                                'Airdrop Created!',
+                                `Your ${typeText} airdrop has been created successfully! ${amount} ${{ token.symbol }} has been reserved for distribution. Status: ${result.status}`,
+                                'success'
+                            );
+                            
+                            // Reload the page to update available airdrop amount
+                            setTimeout(() => window.location.reload(), 2000);
+                        } else {
+                            TokenDetail.modals.alert(
+                                'Airdrop Failed',
+                                result.error || 'Failed to create airdrop. Please try again.',
+                                'error'
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Airdrop creation error:', error);
+                        TokenDetail.modals.alert(
+                            'Airdrop Error',
+                            'An unexpected error occurred while creating the airdrop.',
+                            'error'
+                        );
+                    }
                 },
                 function() {
                     console.log('Airdrop cancelled');

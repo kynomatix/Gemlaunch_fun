@@ -1068,6 +1068,79 @@ def get_airdrop_available(contract_address):
         'days_since_creation': days_since_creation
     })
 
+@app.route('/api/token/<contract_address>/airdrop/create', methods=['POST'])
+@require_wallet_connection
+def create_airdrop(contract_address):
+    """Create an airdrop campaign for a PRO token"""
+    from datetime import datetime, timezone
+    
+    user = get_current_user()
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Verify user is the token creator
+    if not token.creator or user.wallet_address.lower() != token.creator.wallet_address.lower():
+        return jsonify({'error': 'Only the token creator can create airdrops'}), 403
+    
+    # Get request data
+    data = request.get_json()
+    airdrop_type = data.get('type')
+    total_amount = int(data.get('amount', 0))
+    parameters = data.get('parameters', {})
+    
+    # Validate airdrop type
+    valid_types = ['random_raffle', 'top_contributors', 'active_chatters', 'token_holders', 'early_supporters']
+    if airdrop_type not in valid_types:
+        return jsonify({'error': 'Invalid airdrop type'}), 400
+    
+    # Validate amount
+    if total_amount <= 0:
+        return jsonify({'error': 'Invalid airdrop amount'}), 400
+    
+    # Calculate available airdrop amount
+    total_airdrop_allocation = float(token.reserved_tokens or 0) * (float(token.airdrops_allocation) / 100.0)
+    created_at = token.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    days_since_creation = (datetime.now(timezone.utc) - created_at).days
+    unlocked_percentage = min(days_since_creation * 5, 100)
+    unlocked_amount = total_airdrop_allocation * (unlocked_percentage / 100.0)
+    already_airdropped = float(token.total_airdropped or 0)
+    available_amount = max(unlocked_amount - already_airdropped, 0)
+    
+    # Check if amount is available
+    if total_amount > available_amount:
+        return jsonify({
+            'error': f'Insufficient airdrop allocation. Available: {int(available_amount)} {token.symbol}'
+        }), 400
+    
+    # Create airdrop record
+    airdrop = Airdrop(
+        token_id=token.id,
+        creator_id=user.id,
+        airdrop_type=airdrop_type,
+        total_amount=total_amount,
+        parameters=parameters,
+        status='pending'  # Will be processed by smart contract
+    )
+    
+    db.session.add(airdrop)
+    
+    # Update total_airdropped on token (reserve the amount)
+    token.total_airdropped = (token.total_airdropped or 0) + total_amount
+    
+    try:
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'airdrop_id': airdrop.id,
+            'message': f'Airdrop created successfully! {total_amount} {token.symbol} reserved for distribution.',
+            'status': 'pending'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to create airdrop: {str(e)}'}), 500
+
 # Leaderboard routes
 @app.route('/app/leaderboard')
 @wallet_optional
