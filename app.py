@@ -1203,6 +1203,19 @@ def get_user_profile(user_id):
         users_above = User.query.filter(User.gem_points > user.gem_points).count()
         rank = users_above + 1
         
+        # Build avatar URL
+        avatar_url = None
+        if profile:
+            if profile.avatar_path:
+                # Use new compressed avatar path
+                from flask import url_for
+                avatar_url = url_for('static', filename=profile.avatar_path, _external=True)
+                if profile.avatar_updated_at:
+                    avatar_url += f"?v={int(profile.avatar_updated_at.timestamp())}"
+            elif profile.profile_picture_url:
+                # Fall back to legacy base64 URL
+                avatar_url = profile.profile_picture_url
+        
         # Build response
         profile_data = {
             'user_id': user.id,
@@ -1219,7 +1232,7 @@ def get_user_profile(user_id):
             'profile': {
                 'bio': profile.bio if profile else None,
                 'username': profile.username if profile else None,
-                'avatar_url': profile.profile_picture_url if profile and profile.profile_picture_url else None,
+                'avatar_url': avatar_url,
                 'twitter_handle': profile.twitter_handle if profile and profile.is_twitter_verified else None,
                 'telegram_handle': profile.telegram_handle if profile and profile.is_telegram_verified else None,
                 'discord_handle': profile.discord_handle if profile else None,
