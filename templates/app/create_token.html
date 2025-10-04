@@ -2308,7 +2308,13 @@
                     hideTyping();
                     
                     if (data.success && data.response) {
-                        const improvedDesc = data.response.trim();
+                        let improvedDesc = data.response.trim();
+                        
+                        // Remove surrounding quotes if present
+                        if ((improvedDesc.startsWith('"') && improvedDesc.endsWith('"')) ||
+                            (improvedDesc.startsWith("'") && improvedDesc.endsWith("'"))) {
+                            improvedDesc = improvedDesc.slice(1, -1).trim();
+                        }
                         
                         // Show the response in chat
                         addMessage(improvedDesc, 'assistant');
