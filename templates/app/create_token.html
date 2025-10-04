@@ -441,101 +441,68 @@
         .range-input-wrapper {
             position: relative;
             width: 100%;
-            margin: 1.5rem 0;
-            padding-top: 2rem;
+            margin: 1rem 0;
         }
         
-        .range-input {
-            width: 100%;
-            height: 8px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: transparent;
-            outline: none;
-            border-radius: 10px;
+        /* Progress bar style container */
+        .range-progress-container {
             position: relative;
-        }
-        
-        /* Track */
-        .range-input::-webkit-slider-runnable-track {
             width: 100%;
-            height: 8px;
-            background: linear-gradient(90deg, rgba(32, 178, 170, 0.2) 0%, rgba(32, 178, 170, 0.6) 100%);
+            height: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(32, 178, 170, 0.3);
             border-radius: 10px;
-            border: 1px solid rgba(32, 178, 170, 0.3);
+            overflow: hidden;
+            cursor: pointer;
         }
         
-        .range-input::-moz-range-track {
+        /* Filled progress bar */
+        .range-progress-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #20B2AA, #00CED1);
+            transition: width 0.1s ease;
+            border-radius: 8px;
+        }
+        
+        /* Percentage text inside the bar */
+        .range-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            z-index: 2;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Hidden range input for accessibility */
+        .range-input {
+            position: absolute;
             width: 100%;
-            height: 8px;
-            background: linear-gradient(90deg, rgba(32, 178, 170, 0.2) 0%, rgba(32, 178, 170, 0.6) 100%);
-            border-radius: 10px;
-            border: 1px solid rgba(32, 178, 170, 0.3);
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 3;
         }
         
-        /* Thumb */
         .range-input::-webkit-slider-thumb {
             -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            border-radius: 50%;
+            width: 100%;
+            height: 50px;
             cursor: pointer;
-            border: 3px solid #0a0f1a;
-            box-shadow: 0 0 0 2px rgba(32, 178, 170, 0.3), 0 4px 12px rgba(32, 178, 170, 0.4);
-            transition: all 0.2s ease;
         }
         
         .range-input::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            border-radius: 50%;
+            width: 100%;
+            height: 50px;
             cursor: pointer;
-            border: 3px solid #0a0f1a;
-            box-shadow: 0 0 0 2px rgba(32, 178, 170, 0.3), 0 4px 12px rgba(32, 178, 170, 0.4);
-            transition: all 0.2s ease;
-        }
-        
-        .range-input::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.5), 0 6px 16px rgba(32, 178, 170, 0.6);
-        }
-        
-        .range-input::-moz-range-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.5), 0 6px 16px rgba(32, 178, 170, 0.6);
-        }
-        
-        /* Floating percentage bubble */
-        .range-value-bubble {
-            position: absolute;
-            top: -35px;
-            left: 0;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            color: #000;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 12px rgba(32, 178, 170, 0.4);
-            pointer-events: none;
-            transition: left 0.1s ease;
-            white-space: nowrap;
-        }
-        
-        .range-value-bubble::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 8px;
-            height: 8px;
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            transform: translateX(-50%) rotate(45deg);
+            opacity: 0;
         }
         
         .range-labels {
@@ -1314,8 +1281,11 @@
                             <div class="form-group">
                                 <label for="reserved_percentage">Reserved Tokens (%)</label>
                                 <div class="range-input-wrapper">
-                                    <div class="range-value-bubble" id="reserve-bubble">0%</div>
-                                    <input type="range" id="reserved_percentage" name="reserved_percentage" min="0" max="25" value="0" class="range-input" oninput="updateReserveDisplay(this.value)">
+                                    <div class="range-progress-container">
+                                        <div class="range-progress-fill" id="reserve-fill" style="width: 0%;"></div>
+                                        <div class="range-progress-text" id="reserve-text">0%</div>
+                                        <input type="range" id="reserved_percentage" name="reserved_percentage" min="0" max="25" value="0" class="range-input" oninput="updateReserveDisplay(this.value)">
+                                    </div>
                                     <div class="range-labels">
                                         <span>0%</span>
                                         <span>25%</span>
@@ -1579,23 +1549,17 @@
         }
         
         function updateReserveDisplay(value) {
-            const bubble = document.getElementById('reserve-bubble');
+            const fill = document.getElementById('reserve-fill');
+            const text = document.getElementById('reserve-text');
             const slider = document.getElementById('reserved_percentage');
             
-            if (bubble && slider) {
+            if (fill && text && slider) {
                 // Update text
-                bubble.textContent = value + '%';
+                text.textContent = value + '%';
                 
-                // Calculate position (percentage of slider width)
-                const percent = (value - slider.min) / (slider.max - slider.min);
-                const sliderWidth = slider.offsetWidth;
-                const bubbleWidth = bubble.offsetWidth;
-                
-                // Position bubble (accounting for thumb width and centering)
-                const thumbWidth = 24; // matches CSS thumb width
-                const offset = (sliderWidth - thumbWidth) * percent + (thumbWidth / 2);
-                
-                bubble.style.left = offset + 'px';
+                // Calculate fill percentage
+                const percent = ((value - slider.min) / (slider.max - slider.min)) * 100;
+                fill.style.width = percent + '%';
             }
         }
         
