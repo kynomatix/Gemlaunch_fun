@@ -229,15 +229,15 @@
             </div>
             
             <!-- Additional Connected Wallets -->
-            {% if connected_wallets %}
+            {% if linked_wallets %}
             <div class="additional-wallets">
                 <h4>Additional Wallets</h4>
-                {% for wallet in connected_wallets %}
+                {% for wallet in linked_wallets %}
                 <div class="additional-wallet">
                     <div class="wallet-info">
                         <span class="wallet-label">{{ wallet.wallet_label or 'Unnamed' }}</span>
                         <span class="wallet-address">{{ wallet.wallet_address[:6] }}...{{ wallet.wallet_address[-4:] }}</span>
-                        <span class="wallet-status connected">Connected {{ wallet.connected_at.strftime('%m/%d/%Y') if wallet.connected_at else '' }}</span>
+                        <span class="wallet-status connected">Verified {{ wallet.last_verified_at.strftime('%m/%d/%Y') if wallet.last_verified_at else '' }}</span>
                     </div>
                     <div class="wallet-actions">
                         <button class="btn-edit" onclick="editWallet('{{ wallet.id }}', '{{ wallet.wallet_label or 'Unnamed' }}')" title="Edit wallet label">
@@ -246,7 +246,7 @@
                         <button class="btn-copy" onclick="copyWalletAddress('{{ wallet.wallet_address }}')" title="Copy address">
                             <i class="fas fa-copy"></i>
                         </button>
-                        <button class="btn-remove" onclick="removeWallet('{{ wallet.id }}')" title="Remove wallet">
+                        <button class="btn-remove" onclick="unlinkWallet('{{ wallet.wallet_address }}')" title="Remove wallet">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -255,17 +255,23 @@
             </div>
             {% endif %}
             
-            <div class="add-wallet-section">
-                <h3>Add Additional Wallet</h3>
-                <div class="wallet-form">
-                    <input type="text" placeholder="Wallet label (e.g., Project Alpha)" class="wallet-label-input">
-                    <input type="text" placeholder="0x..." class="wallet-address-input">
-                    <button class="btn-add-wallet">
-                        <i class="fas fa-plus"></i>
-                        Add Wallet
-                    </button>
+            <div class="add-wallet-form">
+                <h4>Add Additional Wallet</h4>
+                <p class="help-text">Add wallets from different projects. All activities will be tracked under your main account.</p>
+                
+                <div class="form-group">
+                    <label>Wallet Label (e.g., Project Alpha)</label>
+                    <input type="text" id="walletLabel" placeholder="My Trading Wallet" class="form-input">
                 </div>
-                <p class="wallet-help">Add wallets for different projects. All activities will be tracked under your main account.</p>
+                
+                <div class="form-group">
+                    <label>Wallet Address (0x...)</label>
+                    <input type="text" id="walletAddress" placeholder="0x..." class="form-input">
+                </div>
+                
+                <button class="btn-primary" onclick="requestWalletLink()">
+                    <i class="fas fa-link"></i> Add Wallet
+                </button>
             </div>
         </div>
 
@@ -457,6 +463,34 @@
         <div class="modal-footer">
             <button class="btn-modal-cancel" onclick="closeEditWalletModal()">Cancel</button>
             <button class="btn-modal-save" onclick="saveWalletEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Wallet Verification Modal -->
+<div id="walletVerificationModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-shield-alt"></i> Verify Wallet Ownership</h3>
+            <button class="modal-close" onclick="closeVerificationModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="verification-step">
+                <p>To verify ownership, please:</p>
+                <ol>
+                    <li>Switch to wallet <strong id="targetWalletAddress"></strong> in your browser extension</li>
+                    <li>Sign the verification message</li>
+                </ol>
+                <div class="challenge-message">
+                    <label>Message to sign:</label>
+                    <textarea id="challengeMessage" readonly rows="4"></textarea>
+                </div>
+                <button class="btn-primary" onclick="signVerificationMessage()">
+                    <i class="fas fa-signature"></i> Sign Message
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -1357,43 +1391,135 @@
     transform: scale(1.05);
 }
 
-.add-wallet-section h3 {
-    color: #CCCCCC;
-    margin-bottom: 1rem;
+.add-wallet-form {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 15px;
+    border: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.add-wallet-form h4 {
+    color: #20B2AA;
+    margin-bottom: 0.5rem;
     font-size: 1.1rem;
+    font-weight: 600;
 }
 
-.wallet-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1rem;
+.add-wallet-form .help-text {
+    color: #999999;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
 }
 
-.wallet-label-input, .wallet-address-input {
+.add-wallet-form .form-group {
+    margin-bottom: 1.2rem;
+}
+
+.add-wallet-form .form-group label {
+    display: block;
+    color: #CCCCCC;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-input {
+    width: 100%;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #FFFFFF;
-    padding: 0.8rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    padding: 0.9rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
 }
 
-.wallet-label-input:focus, .wallet-address-input:focus {
+.form-input:focus {
     outline: none;
     border-color: #20B2AA;
-    box-shadow: 0 0 10px rgba(32, 178, 170, 0.2);
+    box-shadow: 0 0 15px rgba(32, 178, 170, 0.3);
+    background: rgba(255, 255, 255, 0.08);
 }
 
-.btn-add-wallet {
-    background: rgba(32, 178, 170, 0.1);
-    color: #20B2AA;
-    border: 1px solid #20B2AA;
-    padding: 0.8rem;
-    border-radius: 8px;
-    font-weight: 500;
+.form-input::placeholder {
+    color: #666666;
+}
+
+.add-wallet-form .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000000;
+    border: none;
+    padding: 0.9rem;
+    border-radius: 10px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.add-wallet-form .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(32, 178, 170, 0.4);
+}
+
+.verification-step {
+    padding: 1rem;
+}
+
+.verification-step p {
+    color: #CCCCCC;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.verification-step ol {
+    color: #FFFFFF;
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+}
+
+.verification-step ol li {
+    margin-bottom: 0.8rem;
+    line-height: 1.6;
+}
+
+.verification-step strong {
+    color: #20B2AA;
+    font-weight: 600;
+}
+
+.challenge-message {
+    margin-bottom: 1.5rem;
+}
+
+.challenge-message label {
+    display: block;
+    color: #CCCCCC;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.challenge-message textarea {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #FFFFFF;
+    padding: 0.9rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-family: monospace;
+    resize: none;
+}
+
+.challenge-message textarea:focus {
+    outline: none;
+    border-color: #20B2AA;
 }
 
 .btn-add-wallet:hover {
@@ -1810,6 +1936,144 @@ function copyReferralLink() {
         console.error('Failed to copy referral link: ', err);
         ProfileNotification.showAlert('Copy Failed', 'Failed to copy referral link', 'error');
     });
+}
+
+let walletLinkData = {};
+
+async function requestWalletLink() {
+    const labelInput = document.getElementById('walletLabel');
+    const addressInput = document.getElementById('walletAddress');
+    
+    const label = labelInput.value.trim();
+    const address = addressInput.value.trim();
+    
+    if (!label) {
+        ProfileNotification.showAlert('Missing Information', 'Please enter a wallet label', 'error');
+        labelInput.focus();
+        return;
+    }
+    
+    if (!address) {
+        ProfileNotification.showAlert('Missing Information', 'Please enter a wallet address', 'error');
+        addressInput.focus();
+        return;
+    }
+    
+    if (!address.match(/^0x[a-fA-F0-9]{40}$/)) {
+        ProfileNotification.showAlert('Invalid Address', 'Please enter a valid wallet address (0x...)', 'error');
+        addressInput.focus();
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/wallet/request-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet_address: address, wallet_label: label })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            walletLinkData = {
+                wallet_address: address,
+                wallet_label: label,
+                nonce: data.nonce,
+                challenge_message: data.challenge_message
+            };
+            
+            document.getElementById('targetWalletAddress').textContent = address;
+            document.getElementById('challengeMessage').value = data.challenge_message;
+            document.getElementById('walletVerificationModal').style.display = 'flex';
+        } else {
+            ProfileNotification.showAlert('Error', data.error || 'Failed to request wallet link', 'error');
+        }
+    } catch (error) {
+        console.error('Error requesting wallet link:', error);
+        ProfileNotification.showAlert('Error', 'Failed to request wallet link', 'error');
+    }
+}
+
+async function signVerificationMessage() {
+    if (!walletLinkData.wallet_address) {
+        ProfileNotification.showAlert('Error', 'No wallet link request found', 'error');
+        return;
+    }
+    
+    try {
+        if (typeof window.ethereum === 'undefined') {
+            ProfileNotification.showAlert('Wallet Not Found', 'Please install MetaMask or another Web3 wallet', 'error');
+            return;
+        }
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const currentAccount = accounts[0].toLowerCase();
+        
+        if (currentAccount !== walletLinkData.wallet_address.toLowerCase()) {
+            ProfileNotification.showAlert('Wrong Wallet', `Please switch to ${walletLinkData.wallet_address} in your wallet extension`, 'error');
+            return;
+        }
+        
+        const signature = await window.ethereum.request({
+            method: 'personal_sign',
+            params: [walletLinkData.challenge_message, currentAccount]
+        });
+        
+        const response = await fetch('/api/wallet/verify-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                wallet_address: walletLinkData.wallet_address,
+                wallet_label: walletLinkData.wallet_label,
+                nonce: walletLinkData.nonce,
+                signature: signature
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeVerificationModal();
+            ProfileNotification.showAlert('Success', 'Wallet linked successfully! Refreshing page...', 'success', () => {
+                location.reload();
+            });
+        } else {
+            ProfileNotification.showAlert('Error', data.error || 'Failed to verify wallet', 'error');
+        }
+    } catch (error) {
+        console.error('Error signing message:', error);
+        ProfileNotification.showAlert('Error', error.message || 'Failed to sign message', 'error');
+    }
+}
+
+function closeVerificationModal() {
+    document.getElementById('walletVerificationModal').style.display = 'none';
+    walletLinkData = {};
+}
+
+async function unlinkWallet(walletAddress) {
+    if (!confirm(`Are you sure you want to unlink wallet ${walletAddress}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/wallet/unlink/${walletAddress}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            ProfileNotification.showAlert('Success', 'Wallet unlinked successfully! Refreshing page...', 'success', () => {
+                location.reload();
+            });
+        } else {
+            ProfileNotification.showAlert('Error', data.error || 'Failed to unlink wallet', 'error');
+        }
+    } catch (error) {
+        console.error('Error unlinking wallet:', error);
+        ProfileNotification.showAlert('Error', 'Failed to unlink wallet', 'error');
+    }
 }
 </script>
 {% endblock %}

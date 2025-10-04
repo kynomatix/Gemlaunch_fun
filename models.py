@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timezone, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 
@@ -40,6 +41,7 @@ class User(db.Model):
     # Relationships
     tokens_created = db.relationship('Token', backref='creator', lazy='dynamic')
     trades = db.relationship('Trade', backref='user', lazy='dynamic')
+    linked_wallets = db.relationship('LinkedWallet', backref='owner', lazy='dynamic')
     
     def add_gem_points(self, points):
         """Add GEM points to user"""
@@ -587,3 +589,86 @@ class TokenEngagement(db.Model):
     
     def __repr__(self):
         return f'<TokenEngagement {self.user.wallet_address[:8]} with {self.token.symbol}>'
+
+class LinkedWallet(db.Model):
+    """Secondary wallet addresses linked to a user's primary account"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Primary wallet owner
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Linked wallet details
+    wallet_address = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    wallet_label = db.Column(db.String(128), nullable=True)
+    
+    # Security and verification
+    signature_payload = db.Column(db.Text, nullable=True)
+    last_verified_at = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(32), default='pending', nullable=False)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    @property
+    def is_verified(self):
+        """Check if wallet is verified"""
+        return self.status == 'verified'
+    
+    def __repr__(self):
+        return f'<LinkedWallet {self.wallet_address[:10]}... ({self.status})>'
+
+class WalletVerificationChallenge(db.Model):
+    """Temporary verification challenges for linking secondary wallets"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # User requesting verification
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Wallet being verified
+    wallet_address = db.Column(db.String(128), nullable=False, index=True)
+    
+    # Challenge details
+    nonce = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    challenge_message = db.Column(db.Text, nullable=False)
+    
+    # Security
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # Timestamp
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = db.relationship('User', backref='verification_challenges')
+    
+    @property
+    def is_expired(self):
+        """Check if challenge has expired"""
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    def mark_used(self):
+        """Mark challenge as used to prevent replay attacks"""
+        self.used = True
+        db.session.commit()
+    
+    @classmethod
+    def create_challenge(cls, user_id, wallet_address):
+        """Create a new verification challenge with 10-minute expiration"""
+        nonce = secrets.token_hex(32)
+        challenge_message = f"Sign this message to link wallet {wallet_address} to your account.\n\nNonce: {nonce}\nTimestamp: {int(datetime.now(timezone.utc).timestamp())}"
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        
+        challenge = cls(
+            user_id=user_id,
+            wallet_address=wallet_address.lower(),
+            nonce=nonce,
+            challenge_message=challenge_message,
+            expires_at=expires_at
+        )
+        db.session.add(challenge)
+        db.session.commit()
+        return challenge
+    
+    def __repr__(self):
+        return f'<WalletVerificationChallenge {self.wallet_address[:10]}... ({"expired" if self.is_expired else "active"})>'

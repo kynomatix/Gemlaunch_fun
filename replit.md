@@ -70,6 +70,31 @@ Each PRO token features its own community points system to reward and gamify use
 - **Database Method**: `TokenEngagement.get_or_create(user_id, token_id)` - automatic engagement record creation, `add_community_points(points, activity_type)` - award points for activities
 - **Future Integration**: Community points will gate access to exclusive features (priority airdrops, governance voting, special chat permissions, early access to token features)
 
+### Multi-Wallet Linking System
+Users can securely link multiple wallets to their primary account to aggregate points and achievements across different wallets while preventing unauthorized wallet claims:
+- **Security Model**: Challenge-response authentication with cryptographic signature verification to prove wallet ownership
+- **Workflow**: 
+  1. User enters wallet address and label on profile page
+  2. Backend generates unique nonce and challenge message with 10-minute expiration
+  3. User switches to target wallet in browser extension
+  4. User signs challenge message containing: wallet address, primary wallet, nonce, and expiration
+  5. Backend verifies signature, ensures nonce is fresh and unused, then links wallet
+- **Database Schema**:
+  - `LinkedWallet` table: user_id (FK), wallet_address (UNIQUE), wallet_label, signature_payload, last_verified_at, status, timestamps
+  - `WalletVerificationChallenge` table: user_id (FK), wallet_address, nonce (UNIQUE), challenge_message, expires_at, used (boolean), created_at
+- **API Endpoints**:
+  - `POST /api/wallet/request-link` - Generate verification challenge for new wallet
+  - `POST /api/wallet/verify-link` - Verify signature and link wallet to profile
+  - `GET /api/wallet/linked` - List all verified linked wallets
+  - `DELETE /api/wallet/unlink/<address>` - Revoke linked wallet (sets status='revoked')
+- **Security Features**:
+  - Prevents whale wallet theft (must own wallet to sign)
+  - Prevents replay attacks (single-use nonces with expiration)
+  - Prevents cross-profile hijacking (signature includes primary wallet address)
+  - Database-level unique constraint prevents same wallet being added to multiple profiles
+  - Audit trail via signature_payload storage for compliance
+- **User Experience**: Profile page displays primary wallet and all verified linked wallets with labels, verification dates, and management controls (edit label, copy address, unlink)
+
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
 

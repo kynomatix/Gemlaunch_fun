@@ -1,13 +1,13 @@
 import os
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -336,6 +336,222 @@ def user_info():
             'total_trading_volume': float(user.total_trading_volume or 0)
         }
     })
+
+# Multi-wallet linking API
+@app.route('/api/wallet/request-link', methods=['POST'])
+def request_wallet_link():
+    """Request to link a secondary wallet to user account"""
+    import re
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    wallet_label = data.get('wallet_label', '')
+    
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address required'}), 400
+    
+    wallet_address = wallet_address.strip()
+    
+    if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
+        return jsonify({'error': 'Invalid wallet address format. Must be 0x followed by 40 hexadecimal characters.'}), 400
+    
+    wallet_address_lower = wallet_address.lower()
+    
+    if wallet_address_lower == user.wallet_address.lower():
+        return jsonify({'error': 'Cannot link your primary wallet address'}), 400
+    
+    existing_linked = LinkedWallet.query.filter_by(wallet_address=wallet_address_lower).first()
+    if existing_linked:
+        return jsonify({'error': 'Wallet address already linked to a profile'}), 400
+    
+    existing_user = User.query.filter_by(wallet_address=wallet_address_lower).first()
+    if existing_user:
+        return jsonify({'error': 'Wallet address is already a primary wallet for another user'}), 400
+    
+    try:
+        nonce = secrets.token_urlsafe(32)
+        
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        expires_at_iso = expires_at.isoformat()
+        
+        challenge_message = f"Link wallet {wallet_address_lower} to primary {user.wallet_address}. Nonce: {nonce}. Expires: {expires_at_iso}"
+        
+        challenge = WalletVerificationChallenge(
+            user_id=user.id,
+            wallet_address=wallet_address_lower,
+            nonce=nonce,
+            challenge_message=challenge_message,
+            expires_at=expires_at,
+            used=False
+        )
+        
+        db.session.add(challenge)
+        db.session.commit()
+        
+        logging.info(f"Wallet link request created for user {user.id}, wallet {wallet_address_lower}")
+        
+        return jsonify({
+            'success': True,
+            'challenge_message': challenge_message,
+            'nonce': nonce
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error creating wallet link request: {str(e)}")
+        return jsonify({'error': f'Failed to create link request: {str(e)}'}), 500
+
+@app.route('/api/wallet/verify-link', methods=['POST'])
+def verify_wallet_link():
+    """Verify signature and link secondary wallet to user account"""
+    from eth_account.messages import encode_defunct
+    from eth_account import Account
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    nonce = data.get('nonce')
+    signature = data.get('signature')
+    
+    if not wallet_address or not nonce or not signature:
+        return jsonify({'error': 'Wallet address, nonce, and signature required'}), 400
+    
+    wallet_address_lower = wallet_address.lower()
+    
+    try:
+        challenge = WalletVerificationChallenge.query.filter_by(
+            user_id=user.id,
+            wallet_address=wallet_address_lower,
+            nonce=nonce
+        ).first()
+        
+        if not challenge:
+            logging.warning(f"Invalid nonce for wallet link verification: user {user.id}, wallet {wallet_address_lower}")
+            return jsonify({'error': 'Invalid or missing verification challenge'}), 400
+        
+        if challenge.used:
+            logging.warning(f"Attempt to reuse nonce for wallet link: user {user.id}, wallet {wallet_address_lower}")
+            return jsonify({'error': 'Verification challenge already used'}), 400
+        
+        if challenge.is_expired:
+            logging.warning(f"Expired nonce for wallet link: user {user.id}, wallet {wallet_address_lower}")
+            return jsonify({'error': 'Verification challenge expired. Please request a new one.'}), 400
+        
+        try:
+            encoded_message = encode_defunct(text=challenge.challenge_message)
+            recovered_address = Account.recover_message(encoded_message, signature=signature)
+            
+            if recovered_address.lower() != wallet_address_lower:
+                logging.warning(f"Signature verification failed for wallet link: user {user.id}, wallet {wallet_address_lower}, recovered {recovered_address}")
+                return jsonify({'error': 'Signature verification failed. The signature does not match the wallet address.'}), 401
+                
+        except Exception as sig_error:
+            logging.error(f"Signature verification error for wallet link: {str(sig_error)}")
+            return jsonify({'error': f'Signature verification error: {str(sig_error)}'}), 401
+        
+        existing_linked = LinkedWallet.query.filter_by(wallet_address=wallet_address_lower).first()
+        if existing_linked:
+            db.session.rollback()
+            return jsonify({'error': 'Wallet address already linked to a profile'}), 400
+        
+        wallet_label = data.get('wallet_label', f'Wallet {wallet_address_lower[:8]}...')
+        
+        linked_wallet = LinkedWallet(
+            user_id=user.id,
+            wallet_address=wallet_address_lower,
+            wallet_label=wallet_label,
+            signature_payload=signature,
+            last_verified_at=datetime.now(timezone.utc),
+            status='verified'
+        )
+        
+        challenge.mark_used()
+        
+        db.session.add(linked_wallet)
+        db.session.commit()
+        
+        logging.info(f"Wallet successfully linked: user {user.id}, wallet {wallet_address_lower}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Wallet linked successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error verifying wallet link: {str(e)}")
+        return jsonify({'error': f'Failed to verify and link wallet: {str(e)}'}), 500
+
+@app.route('/api/wallet/linked', methods=['GET'])
+def get_linked_wallets():
+    """Get all linked wallets for current user"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    try:
+        linked_wallets = LinkedWallet.query.filter_by(user_id=user.id).all()
+        
+        wallets_data = []
+        for wallet in linked_wallets:
+            wallets_data.append({
+                'address': wallet.wallet_address,
+                'label': wallet.wallet_label,
+                'verified_at': wallet.last_verified_at.isoformat() if wallet.last_verified_at else None,
+                'status': wallet.status,
+                'created_at': wallet.created_at.isoformat() if wallet.created_at else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'wallets': wallets_data
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching linked wallets: {str(e)}")
+        return jsonify({'error': f'Failed to fetch linked wallets: {str(e)}'}), 500
+
+@app.route('/api/wallet/unlink/<wallet_address>', methods=['DELETE'])
+def unlink_wallet(wallet_address):
+    """Unlink a secondary wallet from user account"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    wallet_address_lower = wallet_address.lower()
+    
+    try:
+        linked_wallet = LinkedWallet.query.filter_by(
+            user_id=user.id,
+            wallet_address=wallet_address_lower
+        ).first()
+        
+        if not linked_wallet:
+            return jsonify({'error': 'Wallet not found or does not belong to your account'}), 404
+        
+        linked_wallet.status = 'revoked'
+        linked_wallet.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        logging.info(f"Wallet unlinked: user {user.id}, wallet {wallet_address_lower}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Wallet unlinked successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error unlinking wallet: {str(e)}")
+        return jsonify({'error': f'Failed to unlink wallet: {str(e)}'}), 500
 
 # App routes
 @app.route('/app')
@@ -1264,6 +1480,9 @@ def profile():
     # Get connected wallets
     connected_wallets = ConnectedWallet.query.filter_by(user_id=user.id).all()
     
+    # Get linked wallets (verified secondary wallets)
+    linked_wallets = LinkedWallet.query.filter_by(user_id=user.id, status='verified').all()
+    
     # Get user's achievements with eager loading
     user_achievements = UserAchievement.query.options(
         joinedload(UserAchievement.achievement)
@@ -1392,6 +1611,7 @@ def profile():
                          user=user, 
                          user_profile=user_profile,
                          connected_wallets=connected_wallets,
+                         linked_wallets=linked_wallets,
                          user_achievements=user_achievements,
                          referral=referral,
                          referred_users=referred_users)
