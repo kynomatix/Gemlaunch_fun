@@ -1906,22 +1906,72 @@
     
 })(window, document);
 
-// Toggle vesting info modal
+// Toggle vesting info modal - creates modal dynamically like spotlight
 function toggleVestingModal() {
-    const modal = document.getElementById('vesting-modal');
-    if (modal) {
-        if (modal.style.display === 'none' || modal.style.display === '') {
-            modal.style.display = 'flex';
-        } else {
-            modal.style.display = 'none';
+    const existingModal = document.getElementById('vestingModal');
+    if (existingModal) {
+        existingModal.remove();
+        return;
+    }
+    
+    if (!window.vestingData) return;
+    
+    const vd = window.vestingData;
+    const airdropsTotal = (vd.airdropsAllocation * vd.reservedPercentage / 100).toFixed(2);
+    const marketingTotal = (vd.marketingAllocation * vd.reservedPercentage / 100).toFixed(2);
+    const teamTotal = (vd.teamAllocation * vd.reservedPercentage / 100).toFixed(2);
+    
+    const modalHTML = `
+        <div id="vestingModal" class="modal" style="display: flex;">
+            <div class="modal-content vesting-modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-lock"></i> Reserve Allocation & Vesting</h3>
+                    <button class="modal-close" onclick="toggleVestingModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="vesting-bar">
+                        <div class="vesting-segment airdrops" style="width: ${vd.airdropsAllocation}%;">
+                            <span class="vesting-label">${Math.round(vd.airdropsAllocation)}%</span>
+                        </div>
+                        <div class="vesting-segment marketing" style="width: ${vd.marketingAllocation}%;">
+                            <span class="vesting-label">${Math.round(vd.marketingAllocation)}%</span>
+                        </div>
+                        <div class="vesting-segment team" style="width: ${vd.teamAllocation}%;">
+                            <span class="vesting-label">${Math.round(vd.teamAllocation)}%</span>
+                        </div>
+                    </div>
+                    <div class="vesting-details">
+                        <div class="vesting-item">
+                            <i class="fas fa-gift" style="color: #00D9FF;"></i>
+                            <span class="vesting-category">Airdrops & Rewards</span>
+                            <span class="vesting-percent">${airdropsTotal}% of total</span>
+                            <small>5% daily unlock</small>
+                        </div>
+                        <div class="vesting-item">
+                            <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
+                            <span class="vesting-category">Marketing</span>
+                            <span class="vesting-percent">${marketingTotal}% of total</span>
+                            <small>12-month linear</small>
+                        </div>
+                        <div class="vesting-item">
+                            <i class="fas fa-users" style="color: #B19CD9;"></i>
+                            <span class="vesting-category">Team</span>
+                            <span class="vesting-percent">${teamTotal}% of total</span>
+                            <small>6mo cliff + 18mo vest</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Close on background click
+    const modal = document.getElementById('vestingModal');
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            toggleVestingModal();
         }
-    }
+    });
 }
-
-// Close modal when clicking outside
-window.addEventListener('click', function(event) {
-    const modal = document.getElementById('vesting-modal');
-    if (modal && event.target === modal) {
-        modal.style.display = 'none';
-    }
-});
