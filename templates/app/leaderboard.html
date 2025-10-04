@@ -973,10 +973,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% endblock %}
 
-<!-- User Profile Modal - Outside content block for proper viewport positioning -->
-<div id="userProfileModal" class="modal">
+<!-- User Profile Modal - Must be inside content block but viewport-fixed -->
+<div id="userProfileModal" class="modal" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.8); z-index: 10000 !important;">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h3><i class="fas fa-user-circle"></i> User Profile</h3>
@@ -990,3 +989,5 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+{% endblock %}
