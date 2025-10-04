@@ -2127,6 +2127,43 @@ def gemmy_suggest():
             'details': str(e) if app.debug else None
         }), 500
 
+@app.route('/api/generate-token-image', methods=['POST'])
+def generate_token_image_api():
+    """Generate token image using AI (OpenRouter Llama + Replicate FLUX)"""
+    try:
+        from services.image_generator import generate_token_image
+        
+        data = request.get_json(silent=True)
+        if not data or not isinstance(data, dict):
+            return jsonify({'error': 'Invalid JSON payload. Expected JSON object with tokenName, symbol, and description fields.'}), 400
+        
+        token_name = data.get('tokenName', '').strip()
+        symbol = data.get('symbol', '').strip()
+        description = data.get('description', '').strip()
+        
+        if not token_name:
+            return jsonify({'error': 'Token name is required'}), 400
+        if not symbol:
+            return jsonify({'error': 'Token symbol is required'}), 400
+        if not description:
+            return jsonify({'error': 'Token description is required'}), 400
+        
+        logging.info(f"Generating AI image for token: {token_name} ({symbol})")
+        
+        result = generate_token_image(token_name, symbol, description)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logging.error(f"Error in generate_token_image_api: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to generate image: {str(e)}'
+        }), 500
+
 # Initialize database when app starts
 init_database()
 

@@ -33,6 +33,13 @@ The platform features an advanced AI-powered trend discovery system with three o
 
 Technical implementation uses advanced AI via OpenRouter API with auto-failover across multiple providers (Groq, Together.ai, Cerebras) for maximum reliability. **Parallel processing** scores up to 20 trends simultaneously using ThreadPoolExecutor, reducing analysis time from 60-80 seconds to 6-8 seconds. Source-aware fallback scoring ensures KnowYourMeme and culture board entries rank properly even without AI. A 12-hour rolling cache window stored in PostgreSQL optimizes costs (~$0.20/day maximum). On-demand scraping triggers when cache expires, with automatic cleanup of old entries after 24 hours. The system captures memes at their source (culture boards) before they become mainstream coins, providing true zero-day advantage.
 
+### AI Token Image Generation
+The platform features AI-powered token image generation with a two-stage pipeline:
+- **Stage 1: Prompt Enhancement** - Uses OpenRouter Llama 3.1 70B to transform basic token information (name, symbol, description) into detailed image prompts with Kaspa-specific styling guidelines (teal/turquoise themes, simple illustrative art, minimalist design, thumbnail-optimized)
+- **Stage 2: Image Generation** - Uses Replicate FLUX.1 Schnell to generate 1024x1024 WebP images in ~1 second at $0.003 per image
+- **User Flow**: Users click "Generate with AI" button in token creation form, view generated image preview, and can regenerate or use the image for their token
+- **Technical Implementation**: Flask API endpoint at `/api/generate-token-image`, Python service module `services/image_generator.py`, JSON validation and comprehensive error handling, loading state with estimated 10-30 second generation time
+
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
 
@@ -58,7 +65,8 @@ Hardware-accelerated CSS animations, efficient asset organization for caching, a
 - **Twitter/X**: Social media.
 - **Kaspa Finance**: Partnership for automatic DEX deployment.
 - **presale.gemlaunch.fun**: External presale portal.
-- **OpenRouter API**: Meta Llama 3.1 70B inference with auto-failover for Gemmy AI and trend analysis.
+- **OpenRouter API**: Meta Llama 3.1 70B inference with auto-failover for Gemmy AI, trend analysis, and image prompt enhancement.
+- **Replicate API**: FLUX.1 Schnell model for AI-powered token image generation (1024x1024 WebP, $0.003/image).
 - **4chan /biz/**: Real-time meme trend scraping for Zeroday Memification Engine.
 - **Reddit CryptoMoonShots**: Community-validated meme trends and ticker mentions.
 
