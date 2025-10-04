@@ -1905,3 +1905,26 @@
     };
     
 })(window, document);
+// Toggle vesting info popup
+function toggleVestingInfo() {
+    const popup = document.getElementById('vesting-info-popup');
+    if (popup) {
+        if (popup.style.display === 'none') {
+            popup.style.display = 'block';
+        } else {
+            popup.style.display = 'none';
+        }
+    }
+}
+
+// Close popup when clicking outside
+document.addEventListener('click', function(event) {
+    const popup = document.getElementById('vesting-info-popup');
+    const vestingBtn = document.querySelector('.vesting-info-btn');
+    
+    if (popup && vestingBtn) {
+        if (!popup.contains(event.target) && !vestingBtn.contains(event.target)) {
+            popup.style.display = 'none';
+        }
+    }
+});
