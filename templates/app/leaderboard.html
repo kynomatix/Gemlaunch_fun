@@ -12,54 +12,41 @@
         <p class="leaderboard-subtitle">Compete for the top spots and earn seasonal airdrops</p>
     </div>
 
-    <div class="leaderboard-grid">
-        <!-- Your Rank Card or Connect Wallet Banner -->
-        <div class="rank-card user-rank-card">
-            {% if user %}
-            <div class="rank-header">
-                <h3>
-                    <i class="fas fa-user"></i>
-                    Your Rank
-                </h3>
-            </div>
-            <div class="rank-content">
-                <div class="rank-position">
-                    <span class="rank-number">#{{ user_rank or 'Unranked' }}</span>
-                    <span class="rank-label">Current Position</span>
-                </div>
-                <div class="user-stats">
-                    <div class="stat">
-                        <span class="stat-value">{{ "{:,}".format(user.gem_points or 0) }}</span>
-                        <span class="stat-label">GEM Points</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">{{ user.total_tokens_created or 0 }}</span>
-                        <span class="stat-label">Tokens Created</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">${{ "{:,.0f}".format(user.total_trading_volume or 0) }}</span>
-                        <span class="stat-label">Trading Volume</span>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="rank-header">
-                <h3>
-                    <i class="fas fa-wallet"></i>
-                    Connect Wallet
-                </h3>
-            </div>
-            <div class="rank-content" style="text-align: center; padding: 2rem;">
-                <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.7);">
-                    Connect your wallet to see your rank and compete for rewards
-                </p>
-                <button class="btn-primary" onclick="connectWallet()" style="width: 100%; max-width: 300px;">
-                    <i class="fas fa-wallet"></i> Connect Wallet
-                </button>
-            </div>
-            {% endif %}
+    <!-- Your Rank Card or Connect Wallet Banner - Compact Top Version -->
+    {% if user %}
+    <div class="user-rank-compact">
+        <div class="rank-position-compact">
+            <span class="rank-number-compact">#{{ user_rank or '?' }}</span>
+            <span class="rank-label-compact">Your Rank</span>
         </div>
+        <div class="user-stats-compact">
+            <div class="stat-compact">
+                <span class="stat-value-compact">{{ "{:,}".format(user.gem_points or 0) }}</span>
+                <span class="stat-label-compact">GEM Points</span>
+            </div>
+            <div class="stat-compact">
+                <span class="stat-value-compact">{{ user.total_tokens_created or 0 }}</span>
+                <span class="stat-label-compact">Tokens Created</span>
+            </div>
+            <div class="stat-compact">
+                <span class="stat-value-compact">${{ "{:,.0f}".format(user.total_trading_volume or 0) }}</span>
+                <span class="stat-label-compact">Trading Volume</span>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="connect-wallet-banner">
+        <div class="banner-content">
+            <i class="fas fa-wallet"></i>
+            <span>Connect your wallet to see your rank and compete for rewards</span>
+        </div>
+        <button class="btn-primary" onclick="connectWallet()">
+            <i class="fas fa-wallet"></i> Connect Wallet
+        </button>
+    </div>
+    {% endif %}
 
+    <div class="leaderboard-grid">
         <!-- Top Rankings -->
         <div class="rankings-section">
             <div class="section-header">
@@ -215,26 +202,103 @@
     font-size: 1.1rem;
 }
 
+.user-rank-compact {
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+}
+
+.rank-position-compact {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-right: 3rem;
+    border-right: 1px solid rgba(32, 178, 170, 0.3);
+}
+
+.rank-number-compact {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.rank-label-compact {
+    color: #888888;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.user-stats-compact {
+    display: flex;
+    gap: 3rem;
+    flex: 1;
+}
+
+.stat-compact {
+    text-align: center;
+}
+
+.stat-value-compact {
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: block;
+}
+
+.stat-label-compact {
+    color: #888888;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.connect-wallet-banner {
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: rgba(255,255,255,0.7);
+    font-size: 1rem;
+}
+
+.banner-content i {
+    color: #20B2AA;
+    font-size: 1.5rem;
+}
+
+.connect-wallet-banner .btn-primary {
+    white-space: nowrap;
+}
+
 .leaderboard-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 1fr;
     gap: 2rem;
-    grid-template-areas: 
-        "user-rank rankings"
-        "competition competition";
 }
 
-.user-rank-card {
-    grid-area: user-rank;
-}
-
-.rankings-section {
-    grid-area: rankings;
-}
-
-
+.rankings-section,
 .competition-section {
-    grid-area: competition;
+    width: 100%;
 }
 
 .rank-card, .rankings-section, .competition-section {
@@ -566,18 +630,49 @@
 
 /* Mobile responsiveness */
 @media (max-width: 1024px) {
-    .leaderboard-grid {
-        grid-template-columns: 1fr;
-        grid-template-areas: 
-            "user-rank"
-            "rankings"
-            "achievements"
-            "competition";
+    .user-rank-compact {
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 1.5rem;
     }
     
-    .user-stats {
+    .rank-position-compact {
+        padding-right: 0;
+        border-right: none;
+        border-bottom: 1px solid rgba(32, 178, 170, 0.3);
+        padding-bottom: 1rem;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .user-stats-compact {
         flex-direction: column;
         gap: 1rem;
+        width: 100%;
+    }
+    
+    .stat-compact {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+    }
+    
+    .stat-value-compact {
+        font-size: 1.2rem;
+    }
+    
+    .connect-wallet-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .banner-content {
+        flex-direction: column;
+    }
+    
+    .connect-wallet-banner .btn-primary {
+        width: 100%;
     }
     
     .rank-row {
@@ -622,7 +717,7 @@
     /* Simplify transitions on mobile */
     .rank-row,
     .reward-tier,
-    .rank-card {
+    .user-rank-compact {
         transition: opacity 0.2s ease, background-color 0.2s ease !important;
     }
     
@@ -640,7 +735,19 @@
         font-size: 2rem;
     }
     
-    .rank-card, .rankings-section, .competition-section {
+    .user-rank-compact {
+        padding: 1rem;
+    }
+    
+    .rank-number-compact {
+        font-size: 2rem;
+    }
+    
+    .stat-value-compact {
+        font-size: 1.1rem;
+    }
+    
+    .rankings-section, .competition-section {
         padding: 1.5rem;
     }
     
