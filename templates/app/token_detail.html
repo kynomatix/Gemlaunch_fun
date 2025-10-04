@@ -451,9 +451,31 @@
                                         <button type="button" class="airdrop-percentage-btn" onclick="setAirdropPercentage(100)">MAX</button>
                                     </div>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group" id="airdropField_winners" style="display: block;">
                                     <label class="airdrop-input-label">Number of Winners</label>
                                     <input type="number" id="airdropWinners" placeholder="How many winners?" class="airdrop-input-field">
+                                </div>
+                                <div class="form-group" id="airdropField_topCount" style="display: none;">
+                                    <label class="airdrop-input-label">Number of Top Users</label>
+                                    <input type="number" id="airdropTopCount" placeholder="Top X contributors" class="airdrop-input-field">
+                                </div>
+                                <div class="form-group" id="airdropField_chatters" style="display: none;">
+                                    <label class="airdrop-input-label">Active Chatters</label>
+                                    <input type="number" id="airdropChatters" placeholder="Number of chatters" class="airdrop-input-field">
+                                    <div style="margin-top: 0.5rem;">
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; color: #AAA; font-size: 0.9rem; cursor: pointer;">
+                                            <input type="checkbox" id="airdropAllChatters" style="cursor: pointer;">
+                                            <span>Distribute to all active chatters</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="airdropField_minBalance" style="display: none;">
+                                    <label class="airdrop-input-label">Minimum Token Balance</label>
+                                    <input type="number" id="airdropMinBalance" placeholder="Min balance required" class="airdrop-input-field">
+                                </div>
+                                <div class="form-group" id="airdropField_earlyCount" style="display: none;">
+                                    <label class="airdrop-input-label">Top Early Holders</label>
+                                    <input type="number" id="airdropEarlyCount" placeholder="Top X early holders" class="airdrop-input-field" value="100">
                                 </div>
                             </div>
                         </div>
@@ -478,6 +500,45 @@
             
             // Store available amount for percentage calculations
             window.airdropAvailableAmount = airdropData ? airdropData.available_amount : 0;
+            
+            // Add event listeners for airdrop type changes
+            const airdropTypeRadios = document.querySelectorAll('input[name="airdropType"]');
+            airdropTypeRadios.forEach(radio => {
+                radio.addEventListener('change', updateAirdropFields);
+            });
+            
+            // Initialize with default type (Random Raffle)
+            updateAirdropFields();
+        }
+        
+        function updateAirdropFields() {
+            const selectedType = document.querySelector('input[name="airdropType"]:checked').value;
+            
+            // Hide all dynamic fields first
+            document.getElementById('airdropField_winners').style.display = 'none';
+            document.getElementById('airdropField_topCount').style.display = 'none';
+            document.getElementById('airdropField_chatters').style.display = 'none';
+            document.getElementById('airdropField_minBalance').style.display = 'none';
+            document.getElementById('airdropField_earlyCount').style.display = 'none';
+            
+            // Show appropriate fields based on type
+            switch(selectedType) {
+                case '1': // Random Raffle
+                    document.getElementById('airdropField_winners').style.display = 'block';
+                    break;
+                case '2': // Top Contributors
+                    document.getElementById('airdropField_topCount').style.display = 'block';
+                    break;
+                case '3': // Active Chatters
+                    document.getElementById('airdropField_chatters').style.display = 'block';
+                    break;
+                case '4': // Token Holders
+                    document.getElementById('airdropField_minBalance').style.display = 'block';
+                    break;
+                case '5': // Early Supporters
+                    document.getElementById('airdropField_earlyCount').style.display = 'block';
+                    break;
+            }
         }
         
         function setAirdropPercentage(percentage) {
@@ -507,12 +568,12 @@
         function submitAirdrop() {
             const selectedType = document.querySelector('input[name="airdropType"]:checked');
             const amount = document.getElementById('airdropAmount').value;
-            const winners = document.getElementById('airdropWinners').value;
             
-            if (!amount || !winners || amount <= 0 || winners <= 0) {
+            // Validate amount (required for all types)
+            if (!amount || amount <= 0) {
                 TokenDetail.modals.alert(
                     'Invalid Input',
-                    'Please enter valid amounts for tokens and winners.',
+                    'Please enter a valid token amount.',
                     'error'
                 );
                 return;
@@ -527,10 +588,116 @@
             };
             
             const typeText = types[selectedType.value];
+            let typeSpecificData = {};
+            let confirmationDetails = '';
+            let recipientCount = 0;
+            
+            // Type-specific validation and data collection
+            switch(selectedType.value) {
+                case '1': // Random Raffle
+                    const winners = document.getElementById('airdropWinners').value;
+                    if (!winners || winners <= 0) {
+                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of winners.', 'error');
+                        return;
+                    }
+                    typeSpecificData.winners = winners;
+                    recipientCount = winners;
+                    confirmationDetails = `
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Winners</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${winners}</div>
+                        </div>
+                    `;
+                    break;
+                    
+                case '2': // Top Contributors
+                    const topCount = document.getElementById('airdropTopCount').value;
+                    if (!topCount || topCount <= 0) {
+                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of top contributors.', 'error');
+                        return;
+                    }
+                    typeSpecificData.topCount = topCount;
+                    recipientCount = topCount;
+                    confirmationDetails = `
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Top Contributors</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">Top ${topCount}</div>
+                        </div>
+                    `;
+                    break;
+                    
+                case '3': // Active Chatters
+                    const distributeToAll = document.getElementById('airdropAllChatters').checked;
+                    if (!distributeToAll) {
+                        const chatters = document.getElementById('airdropChatters').value;
+                        if (!chatters || chatters <= 0) {
+                            TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of active chatters or check "distribute to all".', 'error');
+                            return;
+                        }
+                        typeSpecificData.chatters = chatters;
+                        recipientCount = chatters;
+                        confirmationDetails = `
+                            <div>
+                                <div style="color: #999; font-size: 0.85rem;">Active Chatters</div>
+                                <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${chatters}</div>
+                            </div>
+                        `;
+                    } else {
+                        typeSpecificData.distributeToAll = true;
+                        recipientCount = 'All';
+                        confirmationDetails = `
+                            <div>
+                                <div style="color: #999; font-size: 0.85rem;">Recipients</div>
+                                <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">All Active Chatters</div>
+                            </div>
+                        `;
+                    }
+                    break;
+                    
+                case '4': // Token Holders
+                    const minBalance = document.getElementById('airdropMinBalance').value;
+                    if (!minBalance || minBalance <= 0) {
+                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid minimum token balance.', 'error');
+                        return;
+                    }
+                    typeSpecificData.minBalance = minBalance;
+                    recipientCount = 'Holders';
+                    confirmationDetails = `
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Min Balance Required</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${minBalance} ${{ token.symbol }}</div>
+                        </div>
+                    `;
+                    break;
+                    
+                case '5': // Early Supporters
+                    const earlyCount = document.getElementById('airdropEarlyCount').value;
+                    if (!earlyCount || earlyCount <= 0) {
+                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of early holders.', 'error');
+                        return;
+                    }
+                    typeSpecificData.earlyCount = earlyCount;
+                    recipientCount = earlyCount;
+                    confirmationDetails = `
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Early Holders</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">Top ${earlyCount}</div>
+                        </div>
+                    `;
+                    break;
+            }
             
             TokenDetail.modals.closeModal('airdropModal');
             
-            // Show success modal
+            // Calculate per-user amount if applicable
+            let perUserText = '';
+            if (recipientCount !== 'All' && recipientCount !== 'Holders') {
+                perUserText = `<div style="color: #AAA; font-size: 0.9rem; margin-top: 1rem;">
+                    Each recipient will receive <strong style="color: #FFD700;">${(amount/recipientCount).toFixed(2)} ${{ token.symbol }}</strong>
+                </div>`;
+            }
+            
+            // Show confirmation modal
             TokenDetail.modals.confirm(
                 '<i class="fas fa-gift" style="color: #FFD700;"></i> Confirm Airdrop',
                 `<div style="text-align: center; padding: 1rem;">
@@ -544,20 +711,15 @@
                             <div style="color: #999; font-size: 0.85rem;">Total Tokens</div>
                             <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${amount} ${{ token.symbol }}</div>
                         </div>
-                        <div>
-                            <div style="color: #999; font-size: 0.85rem;">Winners</div>
-                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${winners}</div>
-                        </div>
+                        ${confirmationDetails}
                     </div>
-                    <div style="color: #AAA; font-size: 0.9rem;">
-                        Each winner will receive <strong style="color: #FFD700;">${(amount/winners).toFixed(2)} ${{ token.symbol }}</strong>
-                    </div>
+                    ${perUserText}
                 </div>`,
                 function() {
-                    console.log('Creating airdrop:', typeText, 'Amount:', amount, 'Winners:', winners);
+                    console.log('Creating airdrop:', typeText, 'Amount:', amount, 'Data:', typeSpecificData);
                     TokenDetail.modals.alert(
                         'Airdrop Created!',
-                        `Your ${typeText} airdrop has been created successfully! ${winners} winners will receive ${(amount/winners).toFixed(2)} ${{ token.symbol }} each.`,
+                        `Your ${typeText} airdrop has been created successfully!`,
                         'success'
                     );
                 },
