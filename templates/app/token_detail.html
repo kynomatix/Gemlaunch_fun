@@ -334,22 +334,16 @@
             // Fetch available airdrop amount
             let airdropData = null;
             try {
-                console.log('📦 Fetching airdrop availability...');
                 const response = await fetch(`/api/token/{{ token.contract_address }}/airdrop/available`, {
                     headers: {
                         'X-Wallet-Address': userWallet
                     }
                 });
-                console.log('📦 Airdrop API response status:', response.status);
                 if (response.ok) {
                     airdropData = await response.json();
-                    console.log('📦 Airdrop data received:', airdropData);
-                } else {
-                    const errorText = await response.text();
-                    console.error('📦 Airdrop API error:', response.status, errorText);
                 }
             } catch (error) {
-                console.error('📦 Failed to fetch airdrop availability:', error);
+                console.error('Failed to fetch airdrop availability:', error);
             }
             
             // Format numbers with commas
