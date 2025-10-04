@@ -1871,7 +1871,8 @@
                                 this.style.textDecoration = 'underline dotted';
                             });
                             
-                            symbolSpan.addEventListener('click', function() {
+                            symbolSpan.addEventListener('click', function(e) {
+                                e.stopPropagation(); // Prevent suggestion click from firing
                                 const symbolField = document.getElementById('symbol');
                                 if (symbolField) {
                                     symbolField.value = symbolValue;
