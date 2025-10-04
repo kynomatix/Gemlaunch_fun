@@ -1172,6 +1172,67 @@ def leaderboard():
                          top_users=top_users, 
                          user_rank=user_rank)
 
+@app.route('/api/user/<int:user_id>/profile')
+def get_user_profile(user_id):
+    """API endpoint to get user profile data for modal display"""
+    try:
+        # Get user with profile and achievements
+        user = User.query.options(
+            joinedload(User.profile),
+            selectinload(User.earned_achievements).joinedload(UserAchievement.achievement)
+        ).get(user_id)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get profile data
+        profile = user.profile
+        
+        # Get achievements
+        achievements = []
+        for ua in user.earned_achievements:
+            achievements.append({
+                'name': ua.achievement.name,
+                'description': ua.achievement.description,
+                'icon': ua.achievement.icon,
+                'category': ua.achievement.category,
+                'earned_at': ua.earned_at.strftime('%Y-%m-%d') if ua.earned_at else None
+            })
+        
+        # Calculate user's rank
+        users_above = User.query.filter(User.gem_points > user.gem_points).count()
+        rank = users_above + 1
+        
+        # Build response
+        profile_data = {
+            'user_id': user.id,
+            'display_name': user.display_name or 'Anonymous Trader',
+            'wallet_address': user.wallet_address,
+            'created_at': user.created_at.strftime('%B %Y') if user.created_at else None,
+            'rank': rank,
+            'gem_points': user.gem_points or 0,
+            'total_tokens_created': user.total_tokens_created or 0,
+            'total_trading_volume': float(user.total_trading_volume or 0),
+            'total_trades_count': user.total_trades_count or 0,
+            'total_messages_sent': user.total_messages_sent or 0,
+            'achievements': achievements,
+            'profile': {
+                'bio': profile.bio if profile else None,
+                'username': profile.username if profile else None,
+                'avatar_url': profile.profile_picture_url if profile and profile.profile_picture_url else None,
+                'twitter_handle': profile.twitter_handle if profile and profile.is_twitter_verified else None,
+                'telegram_handle': profile.telegram_handle if profile and profile.is_telegram_verified else None,
+                'discord_handle': profile.discord_handle if profile else None,
+                'account_type': profile.account_type if profile else 'Standard',
+                'member_since': profile.member_since.strftime('%B %Y') if profile and profile.member_since else user.created_at.strftime('%B %Y') if user.created_at else None
+            }
+        }
+        
+        return jsonify({'success': True, 'profile': profile_data})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/app/profile', methods=['GET', 'POST'])
 def profile():
     """User profile page with wallet connections and stats"""

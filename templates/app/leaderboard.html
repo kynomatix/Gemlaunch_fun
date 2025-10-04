@@ -62,7 +62,10 @@
 
             <div class="rankings-table">
                 {% for ranked_user in top_users[:10] %}
-                <div class="rank-row {{ 'current-user' if user and ranked_user.id == user.id else '' }} {{ 'top-three' if loop.index <= 3 else '' }}">
+                <div class="rank-row {{ 'current-user' if user and ranked_user.id == user.id else '' }} {{ 'top-three' if loop.index <= 3 else '' }}" 
+                     data-user-id="{{ ranked_user.id }}" 
+                     onclick="openUserProfile({{ ranked_user.id }})"
+                     style="cursor: pointer;">
                     <div class="rank-position-display">
                         {% if loop.index == 1 %}
                             <i class="fas fa-crown gold"></i>
@@ -762,7 +765,194 @@
 }
 </style>
 
+<!-- User Profile Modal -->
+<div id="userProfileModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-circle"></i> User Profile</h3>
+            <button class="modal-close" onclick="closeUserProfileModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="userProfileContent">
+            <div style="text-align: center; padding: 2rem;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #20B2AA;"></i>
+                <p style="color: #999; margin-top: 1rem;">Loading profile...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// User Profile Modal Functions
+function openUserProfile(userId) {
+    const modal = document.getElementById('userProfileModal');
+    const modalContent = document.getElementById('userProfileContent');
+    
+    // Show modal with loading state
+    modal.style.display = 'flex';
+    modalContent.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #20B2AA;"></i>
+            <p style="color: #999; margin-top: 1rem;">Loading profile...</p>
+        </div>
+    `;
+    
+    // Fetch user profile data
+    fetch(`/api/user/${userId}/profile`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayUserProfile(data.profile);
+            } else {
+                modalContent.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: #FF6B6B;"></i>
+                        <p style="color: #999; margin-top: 1rem;">Failed to load profile</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching user profile:', error);
+            modalContent.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: #FF6B6B;"></i>
+                    <p style="color: #999; margin-top: 1rem;">Failed to load profile</p>
+                </div>
+            `;
+        });
+}
+
+function displayUserProfile(profile) {
+    const modalContent = document.getElementById('userProfileContent');
+    
+    // Build avatar HTML
+    const avatarHTML = profile.profile.avatar_url 
+        ? `<img src="${profile.profile.avatar_url}" alt="${profile.display_name}" style="width: 100%; height: 100%; object-fit: cover;">`
+        : `<i class="fas fa-user" style="font-size: 3rem; color: #20B2AA;"></i>`;
+    
+    // Build achievements HTML
+    let achievementsHTML = '';
+    if (profile.achievements && profile.achievements.length > 0) {
+        achievementsHTML = '<div style="margin-top: 1.5rem;"><h4 style="color: #20B2AA; margin-bottom: 1rem; font-size: 1rem;"><i class="fas fa-trophy"></i> Achievements</h4><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;">';
+        profile.achievements.forEach(achievement => {
+            achievementsHTML += `
+                <div style="background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; padding: 0.75rem; text-align: center;">
+                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">${achievement.icon || '🏆'}</div>
+                    <div style="color: #FFF; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">${achievement.name}</div>
+                    <div style="color: #888; font-size: 0.75rem;">${achievement.category}</div>
+                </div>
+            `;
+        });
+        achievementsHTML += '</div></div>';
+    }
+    
+    // Build social links HTML
+    let socialLinksHTML = '';
+    const hasSocial = profile.profile.twitter_handle || profile.profile.telegram_handle || profile.profile.discord_handle;
+    if (hasSocial) {
+        socialLinksHTML = '<div style="margin-top: 1.5rem;"><h4 style="color: #20B2AA; margin-bottom: 0.75rem; font-size: 1rem;"><i class="fas fa-link"></i> Social Links</h4><div style="display: flex; gap: 1rem; flex-wrap: wrap;">';
+        
+        if (profile.profile.twitter_handle) {
+            socialLinksHTML += `
+                <a href="https://twitter.com/${profile.profile.twitter_handle}" target="_blank" rel="noopener noreferrer"
+                   style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(29, 161, 242, 0.1); 
+                          border: 1px solid rgba(29, 161, 242, 0.3); border-radius: 8px; color: #1DA1F2; text-decoration: none; font-size: 0.9rem; transition: all 0.3s;">
+                    <i class="fab fa-twitter"></i> @${profile.profile.twitter_handle}
+                </a>
+            `;
+        }
+        
+        if (profile.profile.telegram_handle) {
+            socialLinksHTML += `
+                <a href="https://t.me/${profile.profile.telegram_handle}" target="_blank" rel="noopener noreferrer"
+                   style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(0, 136, 204, 0.1); 
+                          border: 1px solid rgba(0, 136, 204, 0.3); border-radius: 8px; color: #0088CC; text-decoration: none; font-size: 0.9rem; transition: all 0.3s;">
+                    <i class="fab fa-telegram"></i> @${profile.profile.telegram_handle}
+                </a>
+            `;
+        }
+        
+        if (profile.profile.discord_handle) {
+            socialLinksHTML += `
+                <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(114, 137, 218, 0.1); 
+                          border: 1px solid rgba(114, 137, 218, 0.3); border-radius: 8px; color: #7289DA; font-size: 0.9rem;">
+                    <i class="fab fa-discord"></i> ${profile.profile.discord_handle}
+                </div>
+            `;
+        }
+        
+        socialLinksHTML += '</div></div>';
+    }
+    
+    modalContent.innerHTML = `
+        <div style="text-align: center;">
+            <!-- Avatar and Name -->
+            <div style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; 
+                        border: 3px solid #20B2AA; background: rgba(32, 178, 170, 0.1); display: flex; align-items: center; justify-content: center;">
+                ${avatarHTML}
+            </div>
+            <h2 style="color: #FFF; margin-bottom: 0.5rem; font-size: 1.5rem;">${profile.display_name}</h2>
+            <div style="color: #888; font-family: 'Courier New', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                ${profile.wallet_address.substring(0, 6)}...${profile.wallet_address.substring(profile.wallet_address.length - 4)}
+            </div>
+            <div style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(32, 178, 170, 0.1); 
+                        border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 15px; color: #20B2AA; font-size: 0.85rem; margin-bottom: 0.5rem;">
+                <i class="fas fa-crown"></i> Rank #${profile.rank}
+            </div>
+            ${profile.profile.bio ? `<p style="color: #CCC; margin-top: 1rem; line-height: 1.5;">${profile.profile.bio}</p>` : ''}
+        </div>
+        
+        <!-- Stats Grid -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem; 
+                    padding: 1rem; background: rgba(255, 255, 255, 0.03); border-radius: 10px;">
+            <div style="text-align: center;">
+                <div style="color: #20B2AA; font-size: 1.3rem; font-weight: 600;">${profile.gem_points.toLocaleString()}</div>
+                <div style="color: #888; font-size: 0.8rem; text-transform: uppercase;">GEM Points</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="color: #20B2AA; font-size: 1.3rem; font-weight: 600;">${profile.total_tokens_created}</div>
+                <div style="color: #888; font-size: 0.8rem; text-transform: uppercase;">Tokens Created</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="color: #20B2AA; font-size: 1.3rem; font-weight: 600;">$${profile.total_trading_volume.toFixed(0)}</div>
+                <div style="color: #888; font-size: 0.8rem; text-transform: uppercase;">Trading Volume</div>
+            </div>
+        </div>
+        
+        <!-- Additional Stats -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem;">
+            <div style="text-align: center; padding: 0.75rem; background: rgba(255, 255, 255, 0.03); border-radius: 8px;">
+                <div style="color: #FFF; font-size: 1.1rem; font-weight: 600;">${profile.total_trades_count}</div>
+                <div style="color: #888; font-size: 0.8rem;">Total Trades</div>
+            </div>
+            <div style="text-align: center; padding: 0.75rem; background: rgba(255, 255, 255, 0.03); border-radius: 8px;">
+                <div style="color: #FFF; font-size: 1.1rem; font-weight: 600;">${profile.total_messages_sent}</div>
+                <div style="color: #888; font-size: 0.8rem;">Messages Sent</div>
+            </div>
+        </div>
+        
+        ${achievementsHTML}
+        ${socialLinksHTML}
+        
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: center; color: #888; font-size: 0.85rem;">
+            <i class="fas fa-calendar"></i> Member since ${profile.profile.member_since || profile.created_at}
+        </div>
+    `;
+}
+
+function closeUserProfileModal() {
+    const modal = document.getElementById('userProfileModal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('userProfileModal');
+    if (event.target === modal) {
+        closeUserProfileModal();
+    }
+});
+
 // Add some interactive features
 document.addEventListener('DOMContentLoaded', function() {
     // Animate rank cards on load
