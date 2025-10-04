@@ -83,8 +83,8 @@
         </div>
         <div class="stat-item">
             <div class="stat-label">MARKET CAP</div>
-            <div class="stat-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
-            <div class="stat-sub">{{ ((token.current_market_cap|float or 0) / 0.8)|format_number }} KAS</div>
+            <div class="stat-value">{{ (token.current_market_cap|float or 0)|format_number }} KAS</div>
+            <div class="stat-sub">${{ ((token.current_market_cap|float or 0) * 0.8)|format_number(True) }}</div>
         </div>
         <div class="stat-item">
             <div class="stat-label">SUPPLY</div>
