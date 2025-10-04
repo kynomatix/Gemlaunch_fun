@@ -471,6 +471,33 @@
             
             // Add modal to body
             document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Store available amount for percentage calculations
+            window.airdropAvailableAmount = airdropData ? airdropData.available_amount : 0;
+        }
+        
+        function setAirdropPercentage(percentage) {
+            const availableAmount = window.airdropAvailableAmount || 0;
+            if (availableAmount === 0) {
+                TokenDetail.modals.alert(
+                    'No Tokens Available',
+                    'There are no tokens available for airdrop yet. Tokens unlock at 5% per day.',
+                    'error'
+                );
+                return;
+            }
+            
+            const amount = Math.floor(availableAmount * (percentage / 100));
+            document.getElementById('airdropAmount').value = amount;
+            
+            // Add visual feedback
+            const input = document.getElementById('airdropAmount');
+            input.style.borderColor = 'rgba(0, 217, 255, 0.6)';
+            input.style.boxShadow = '0 0 10px rgba(0, 217, 255, 0.3)';
+            setTimeout(() => {
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+            }, 500);
         }
         
         function submitAirdrop() {
