@@ -40,6 +40,36 @@ The platform features AI-powered token image generation with a two-stage pipelin
 - **User Flow**: Users click "Generate with AI" button in token creation form, view generated image preview, and can regenerate or use the image for their token
 - **Technical Implementation**: Flask API endpoint at `/api/generate-token-image`, Python service module `services/image_generator.py`, JSON validation and comprehensive error handling, loading state with estimated 10-30 second generation time
 
+### PRO Token Airdrop System
+PRO tokens feature a comprehensive airdrop management system with vesting schedules and multiple distribution strategies:
+- **Vesting Schedule**: Airdrop allocations unlock at 5% per day (20-day full unlock period) to prevent token dumps and ensure gradual community distribution
+- **Availability Tracking**: Real-time calculation of available tokens based on days since token creation, unlocked percentage, and previously distributed amounts
+- **Distribution Types**:
+  - **Random Raffle**: Random selection from eligible participants with configurable winner count
+  - **Top Contributors**: Rewards based on leaderboard rankings and GEM points
+  - **Active Chatters**: Distribution to users active in token chat within specified timeframe
+  - **Token Holders**: Rewards for users holding minimum token balance
+  - **Early Supporters**: Recognition for first X token holders
+- **Database Schema**: `Airdrop` table tracks campaigns (type, amount, parameters, status, tx_hash), `AirdropRecipient` table tracks individual allocations with claim status
+- **API Endpoints**: 
+  - `/api/token/<contract_address>/airdrop/available` - GET availability based on vesting
+  - `/api/token/<contract_address>/airdrop/create` - POST to create new airdrop campaign
+- **Smart Modal UI**: Dynamic input fields based on selected airdrop type, percentage quick-select buttons (25%/50%/75%/MAX), prominent availability display showing unlocked tokens and distribution progress
+
+### Token-Specific Community Points System
+Each PRO token features its own community points system to reward and gamify user engagement:
+- **TokenEngagement Model**: Tracks per-user, per-token engagement metrics including community points, messages sent, trades count, trading volume, polls created/voted, spotlight messages, and current holdings
+- **Engagement Activities**:
+  - Chat participation (messages, reactions)
+  - Trading activity (buy/sell transactions, volume)
+  - Poll engagement (creating, voting)
+  - Spotlight messages (premium visibility)
+  - Token holding duration and balance
+- **Points Distribution**: Token creators can configure point rewards for different activities, creating unique incentive structures for their communities
+- **Leaderboard Integration**: Token-specific leaderboards rank users by community points within each token's ecosystem
+- **Database Method**: `TokenEngagement.get_or_create(user_id, token_id)` - automatic engagement record creation, `add_community_points(points, activity_type)` - award points for activities
+- **Future Integration**: Community points will gate access to exclusive features (priority airdrops, governance voting, special chat permissions, early access to token features)
+
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
 
