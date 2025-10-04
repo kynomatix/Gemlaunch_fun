@@ -178,17 +178,28 @@
     gap: 0.5rem;
 }
 
-.modal-close {
-    background: none;
-    border: none;
-    color: #999;
-    font-size: 1.5rem;
+.modal-close, .close-modal {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #AAA;
+    font-size: 1.25rem;
     cursor: pointer;
-    transition: color 0.3s;
+    transition: all 0.3s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
 }
 
-.modal-close:hover {
-    color: #FFF;
+.modal-close:hover, .close-modal:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #20B2AA;
+    color: #20B2AA;
+    transform: scale(1.05);
 }
 
 .modal-body {
