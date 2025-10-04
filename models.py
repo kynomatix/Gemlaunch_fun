@@ -475,3 +475,115 @@ class TrendCache(db.Model):
     
     def __repr__(self):
         return f'<TrendCache {self.cache_type} at {self.scraped_at}>'
+
+class Airdrop(db.Model):
+    """Airdrop campaigns for PRO tokens"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Airdrop details
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Airdrop configuration
+    airdrop_type = db.Column(db.String(32), nullable=False)  # random_raffle, top_contributors, active_chatters, token_holders, early_supporters
+    total_amount = db.Column(db.Numeric(precision=30, scale=0), nullable=False)
+    
+    # Type-specific parameters (stored as JSON for flexibility)
+    parameters = db.Column(db.JSON)  # {winners: 10, min_balance: 1000, etc.}
+    
+    # Status tracking
+    status = db.Column(db.String(32), default='pending')  # pending, processing, completed, failed
+    recipient_count = db.Column(db.Integer, default=0)
+    distributed_amount = db.Column(db.Numeric(precision=30, scale=0), default=0)
+    
+    # Transaction info
+    tx_hash = db.Column(db.String(128))
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = db.Column(db.DateTime)
+    
+    # Relationships
+    token = db.relationship('Token', backref='airdrops')
+    creator = db.relationship('User', backref='created_airdrops')
+    
+    def __repr__(self):
+        return f'<Airdrop {self.airdrop_type} for {self.token.symbol}>'
+
+class AirdropRecipient(db.Model):
+    """Track individual airdrop recipients"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    airdrop_id = db.Column(db.Integer, db.ForeignKey('airdrop.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Amount received
+    amount_received = db.Column(db.Numeric(precision=30, scale=0), nullable=False)
+    
+    # Claim status
+    is_claimed = db.Column(db.Boolean, default=False)
+    claimed_at = db.Column(db.DateTime)
+    claim_tx_hash = db.Column(db.String(128))
+    
+    # Metadata
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    airdrop = db.relationship('Airdrop', backref='recipients')
+    user = db.relationship('User', backref='received_airdrops')
+    
+    # Unique constraint: one airdrop entry per user per airdrop
+    __table_args__ = (db.UniqueConstraint('airdrop_id', 'user_id', name='unique_airdrop_recipient'),)
+    
+    def __repr__(self):
+        return f'<AirdropRecipient {self.user.wallet_address[:8]} from {self.airdrop.token.symbol}>'
+
+class TokenEngagement(db.Model):
+    """Track user engagement with specific tokens and token-specific community points"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False)
+    
+    # Engagement metrics
+    community_points = db.Column(db.Integer, default=0)  # Token-specific points
+    messages_sent = db.Column(db.Integer, default=0)
+    trades_count = db.Column(db.Integer, default=0)
+    total_traded_volume = db.Column(db.Numeric(precision=20, scale=8), default=0)
+    polls_created = db.Column(db.Integer, default=0)
+    polls_voted = db.Column(db.Integer, default=0)
+    spotlight_messages = db.Column(db.Integer, default=0)
+    
+    # Holding info
+    current_balance = db.Column(db.Numeric(precision=30, scale=0), default=0)
+    first_acquired_at = db.Column(db.DateTime)
+    last_activity_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = db.relationship('User', backref='token_engagements')
+    token = db.relationship('Token', backref='user_engagements')
+    
+    # Unique constraint: one engagement record per user per token
+    __table_args__ = (db.UniqueConstraint('user_id', 'token_id', name='unique_user_token_engagement'),)
+    
+    def add_community_points(self, points, activity_type='general'):
+        """Add community points for this token engagement"""
+        self.community_points = (self.community_points or 0) + points
+        self.last_activity_at = datetime.now(timezone.utc)
+        db.session.commit()
+    
+    @classmethod
+    def get_or_create(cls, user_id, token_id):
+        """Get existing engagement or create new one"""
+        engagement = cls.query.filter_by(user_id=user_id, token_id=token_id).first()
+        if not engagement:
+            engagement = cls(user_id=user_id, token_id=token_id)
+            db.session.add(engagement)
+            db.session.commit()
+        return engagement
+    
+    def __repr__(self):
+        return f'<TokenEngagement {self.user.wallet_address[:8]} with {self.token.symbol}>'
