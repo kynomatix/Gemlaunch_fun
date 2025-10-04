@@ -137,10 +137,6 @@
                 return;
             }
             
-            // DEBUG: Check what's being passed from backend
-            console.log('TEMPLATE DEBUG - is_pro_token from backend:', {{ is_pro_token|tojson }});
-            console.log('TEMPLATE DEBUG - token.reserved_percentage:', {{ token.reserved_percentage }});
-            
             TokenDetail.init({
                 tokenPrice: {{ token.current_price }},
                 marketCap: {{ token.current_market_cap }},
