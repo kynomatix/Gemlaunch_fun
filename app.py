@@ -1045,7 +1045,12 @@ def get_airdrop_available(contract_address):
     total_airdrop_allocation = float(token.reserved_tokens or 0) * (float(token.airdrops_allocation) / 100.0)
     
     # Calculate unlocked amount based on vesting schedule (5% per day)
-    days_since_creation = (datetime.now(timezone.utc) - token.created_at).days
+    # Make token.created_at timezone-aware if it's naive
+    created_at = token.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    
+    days_since_creation = (datetime.now(timezone.utc) - created_at).days
     unlocked_percentage = min(days_since_creation * 5, 100)  # 5% per day, max 100%
     unlocked_amount = total_airdrop_allocation * (unlocked_percentage / 100.0)
     
