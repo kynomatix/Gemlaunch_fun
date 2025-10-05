@@ -95,6 +95,21 @@ Users can securely link multiple wallets to their primary account to aggregate p
   - Audit trail via signature_payload storage for compliance
 - **User Experience**: Profile page displays primary wallet and all verified linked wallets with labels, verification dates, and management controls (edit label, copy address, unlink)
 
+### Wallet Connection System
+The platform features a modal-based wallet connection system supporting multiple wallet providers:
+- **Supported Wallets**: Kastle (native Kaspa), KasWare (Kaspa extension), MetaMask (EVM/Kasplex zkEVM)
+- **UI Architecture**: Top-left wallet button shows connection status, opens modal popup for wallet selection (no full-page redirects)
+- **Session Management**: Challenge-response authentication with cryptographic signature verification, session.clear() before new auth to prevent stale session bugs
+- **WalletManager Module** (`static/js/wallet_manager.js`): Provider abstraction layer with normalized {address, wallet_type} returns, session polling, and event hooks for connect/disconnect/switch
+- **Context Processor**: `current_user` injected into all templates via Flask context processor for conditional UI rendering
+- **Conditional Access**: Marketplace, token pages, and leaderboard accessible without wallet; Create Token, Dashboard, Profile require connection (sidebar links hidden when disconnected)
+- **API Endpoints**:
+  - `POST /api/auth/nonce` - Generate authentication challenge
+  - `POST /api/auth/verify` - Verify signature and create session
+  - `GET /api/auth/session` - Check session status
+  - `POST /api/disconnect-wallet` - Clear session and disconnect
+- **Modal Component**: `templates/app/partials/wallet_modal.html` with three wallet options, status messaging, and rectangular button design (border-radius: 10px)
+
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
 
