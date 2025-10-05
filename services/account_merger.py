@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -56,6 +56,8 @@ def merge_accounts(db, claimant_user_id, legacy_user_id):
                 'achievements_merged': 0,
                 'token_engagements_transferred': 0,
                 'linked_wallets_transferred': 0,
+                'skipped_linked_wallets': 0,
+                'skipped_wallet_addresses': [],
                 'activities_transferred': 0
             }
             
@@ -116,12 +118,18 @@ def merge_accounts(db, claimant_user_id, legacy_user_id):
                     legacy_engagement.user_id = claimant_user_id
                     merge_summary['token_engagements_transferred'] += 1
             
+            claimant_linked_addresses = {lw.wallet_address.lower() for lw in LinkedWallet.query.filter_by(user_id=claimant_user_id).all()}
+            
             legacy_linked_wallets = LinkedWallet.query.filter_by(user_id=legacy_user_id).all()
             for linked_wallet in legacy_linked_wallets:
-                existing = LinkedWallet.query.filter_by(wallet_address=linked_wallet.wallet_address).first()
-                if not existing or existing.user_id == legacy_user_id:
+                if linked_wallet.wallet_address.lower() not in claimant_linked_addresses:
                     linked_wallet.user_id = claimant_user_id
                     merge_summary['linked_wallets_transferred'] += 1
+                else:
+                    db.session.delete(linked_wallet)
+                    merge_summary['skipped_linked_wallets'] += 1
+                    merge_summary['skipped_wallet_addresses'].append(linked_wallet.wallet_address)
+                    logging.info(f"Skipped duplicate linked wallet: {linked_wallet.wallet_address}")
             
             legacy_activities = Activity.query.filter_by(user_id=legacy_user_id).all()
             for activity in legacy_activities:
@@ -141,11 +149,17 @@ def merge_accounts(db, claimant_user_id, legacy_user_id):
             
             return merge_summary
             
+    except IntegrityError as e:
+        db.session.rollback()
+        error_msg = f"Database integrity constraint violation during account merge: {str(e)}"
+        logging.error(error_msg)
+        raise ValueError(error_msg) from e
     except SQLAlchemyError as e:
         db.session.rollback()
-        logging.error(f"Database error during account merge: {str(e)}")
-        raise
+        error_msg = f"Database error during account merge: {str(e)}"
+        logging.error(error_msg)
+        raise ValueError(error_msg) from e
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error during account merge: {str(e)}")
+        logging.error(f"Unexpected error during account merge: {str(e)}")
         raise
