@@ -1,9 +1,7 @@
 # Overview
-
-gemlaunch.fun is a web platform designed to facilitate the creation and launch of memecoins on the Kaspa blockchain. The project aims to democratize memecoin creation through a no-code solution, emphasizing fair launch mechanisms and community-driven tokens. It leverages Kaspa's high-performance L1 capabilities for rapid transaction processing. The platform incorporates innovative features like an AI Assistant (Gemmy), a built-in social layer with $cashtags, and a gamified leaderboard. A key ambition is to support Kaspa's ecosystem by offering miner-friendly economics, where memecoin trading fees contribute to mining profitability, and integrating with Kaspa Finance for automatic DEX deployments. The project also includes a comprehensive achievement system to reward user engagement and activity.
+gemlaunch.fun is a web platform designed to facilitate the creation and launch of memecoins on the Kaspa blockchain. The project aims to democratize memecoin creation through a no-code solution, emphasizing fair launch mechanisms and community-driven tokens. It leverages Kaspa's high-performance L1 capabilities for rapid transaction processing. Key features include an AI Assistant (Gemmy), a social layer with $cashtags, and a gamified leaderboard. The platform supports Kaspa's ecosystem by integrating miner-friendly economics and Kaspa Finance for automatic DEX deployments. It also includes a comprehensive achievement system to reward user engagement.
 
 # User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## Design Preferences
@@ -12,114 +10,40 @@ Preferred communication style: Simple, everyday language.
 # System Architecture
 
 ## Frontend Architecture
-The application utilizes a server-side rendered approach with Flask and Jinja2 templating. It features a custom CSS framework using modern design patterns (CSS Grid, Flexbox, animations), vanilla JavaScript for interactivity, and a particles.js integration for visual enhancements. The documentation system is a GitBook-style tabbed interface. The design emphasizes responsiveness and mobile-first principles.
+The application uses a server-side rendered approach with Flask and Jinja2, featuring a custom CSS framework (CSS Grid, Flexbox, animations) and vanilla JavaScript for interactivity. It includes a particles.js integration and a GitBook-style tabbed documentation system. The design is responsive and mobile-first.
 
 ## Backend Architecture
-The backend is built with Flask, following a minimal application structure. It uses a simple route-based architecture, environment-based configuration for session management, and Python's built-in logging. A comprehensive achievement system is implemented with real database tracking, evaluating user activities (e.g., chat messages, poll participation, token creation, trades, holdings) and automatically awarding achievements and GEM points. Secure API endpoints are implemented for features like message deletion with proper ownership validation and XSS protection is applied across the chat system and UI.
+Built with Flask, the backend follows a minimal, route-based architecture with environment-based configuration and Python logging. It includes a comprehensive achievement system tracking user activities, secure API endpoints, and XSS protection.
 
 ### Interactive Gemmy Chat
-Gemmy's AI responses are fully interactive - when Gemmy provides token suggestions, each individual option becomes clickable with a visual indicator (left border that highlights on hover). Clicking a suggestion automatically fills the token creation form with the extracted name, symbol, and description. The system intelligently parses each option to extract these details and populates the appropriate fields based on whether Simple or Advanced mode is active. Visual feedback confirms successful form filling.
+Gemmy's AI token suggestions are interactive; clicking an option auto-fills the token creation form with extracted name, symbol, and description, adapting to Simple or Advanced mode.
 
 ### Gemmy Zeroday Memification Engine
-The platform features an advanced AI-powered trend discovery system with three operational modes:
-- **Creative Mode**: Traditional AI brainstorming for custom token ideas
-- **Trending Memes Mode**: Multi-source cultural trend detection that finds NEW memes BEFORE they become coins:
-  - **Know Your Meme**: Trending/new memes (pre-coin cultural moments)
-  - **4chan culture boards** (/pol/, /tv/, /b/): Emerging mascots, catchphrases, and viral moments
-  - **4chan /biz/** (legacy): Late-stage coin discussions
-  - **Reddit CryptoMoonShots** (legacy): Community validation
-  - AI-scored using 7 crypto-adoptability criteria: viral potential, cultural timing, community signal, crypto-native elements, mascot strength, moggability, cringe factor
-- **Kaspa Tech Mode**: Memification of Kaspa-native technical concepts (GHOSTDAG, DAGKnight, BlockDAG, 10 BPS, phantom blocks)
-
-Technical implementation uses advanced AI via OpenRouter API with auto-failover across multiple providers (Groq, Together.ai, Cerebras) for maximum reliability. **Parallel processing** scores up to 20 trends simultaneously using ThreadPoolExecutor, reducing analysis time from 60-80 seconds to 6-8 seconds. Source-aware fallback scoring ensures KnowYourMeme and culture board entries rank properly even without AI. A 12-hour rolling cache window stored in PostgreSQL optimizes costs (~$0.20/day maximum). On-demand scraping triggers when cache expires, with automatic cleanup of old entries after 24 hours. The system captures memes at their source (culture boards) before they become mainstream coins, providing true zero-day advantage.
+An AI-powered trend discovery system operates in three modes: Creative, Trending Memes (multi-source cultural trend detection from platforms like Know Your Meme, 4chan, Reddit CryptoMoonShots, scored by crypto-adoptability criteria), and Kaspa Tech (memification of Kaspa-native concepts). Technical implementation uses OpenRouter API with auto-failover, parallel processing for rapid analysis (6-8 seconds), source-aware fallback scoring, and a 12-hour rolling PostgreSQL cache.
 
 ### AI Token Image Generation
-The platform features AI-powered token image generation with a two-stage pipeline:
-- **Stage 1: Prompt Enhancement** - Uses OpenRouter Llama 3.1 70B to transform basic token information (name, symbol, description) into detailed image prompts with Kaspa-specific styling guidelines (teal/turquoise themes, simple illustrative art, minimalist design, thumbnail-optimized)
-- **Stage 2: Image Generation** - Uses Replicate FLUX.1 Schnell to generate 1024x1024 WebP images in ~1 second at $0.003 per image
-- **User Flow**: Users click "Generate with AI" button in token creation form, view generated image preview, and can regenerate or use the image for their token
-- **Technical Implementation**: Flask API endpoint at `/api/generate-token-image`, Python service module `services/image_generator.py`, JSON validation and comprehensive error handling, loading state with estimated 10-30 second generation time
+A two-stage AI pipeline generates token images. Stage 1 uses OpenRouter Llama 3.1 70B for prompt enhancement with Kaspa-specific styling. Stage 2 uses Replicate FLUX.1 Schnell to generate 1024x1024 WebP images. Users can generate, preview, and regenerate images within the token creation form via a Flask API endpoint.
 
 ### PRO Token Airdrop System
-PRO tokens feature a comprehensive airdrop management system with vesting schedules and multiple distribution strategies:
-- **Vesting Schedule**: Airdrop allocations unlock at 5% per day (20-day full unlock period) to prevent token dumps and ensure gradual community distribution
-- **Availability Tracking**: Real-time calculation of available tokens based on days since token creation, unlocked percentage, and previously distributed amounts
-- **Distribution Types**:
-  - **Random Raffle**: Random selection from eligible participants with configurable winner count
-  - **Top Contributors**: Rewards based on leaderboard rankings and GEM points
-  - **Active Chatters**: Distribution to users active in token chat within specified timeframe
-  - **Token Holders**: Rewards for users holding minimum token balance
-  - **Early Supporters**: Recognition for first X token holders
-- **Database Schema**: `Airdrop` table tracks campaigns (type, amount, parameters, status, tx_hash), `AirdropRecipient` table tracks individual allocations with claim status
-- **API Endpoints**: 
-  - `/api/token/<contract_address>/airdrop/available` - GET availability based on vesting
-  - `/api/token/<contract_address>/airdrop/create` - POST to create new airdrop campaign
-- **Smart Modal UI**: Dynamic input fields based on selected airdrop type, percentage quick-select buttons (25%/50%/75%/MAX), prominent availability display showing unlocked tokens and distribution progress
+Features a comprehensive airdrop management system with a 5% per day vesting schedule (20-day full unlock). Supports various distribution types: Random Raffle, Top Contributors, Active Chatters, Token Holders, and Early Supporters. It includes a database schema for campaigns and recipients, with API endpoints for availability and creation, and a dynamic modal UI.
 
 ### Token-Specific Community Points System
-Each PRO token features its own community points system to reward and gamify user engagement:
-- **TokenEngagement Model**: Tracks per-user, per-token engagement metrics including community points, messages sent, trades count, trading volume, polls created/voted, spotlight messages, and current holdings
-- **Engagement Activities**:
-  - Chat participation (messages, reactions)
-  - Trading activity (buy/sell transactions, volume)
-  - Poll engagement (creating, voting)
-  - Spotlight messages (premium visibility)
-  - Token holding duration and balance
-- **Points Distribution**: Token creators can configure point rewards for different activities, creating unique incentive structures for their communities
-- **Leaderboard Integration**: Token-specific leaderboards rank users by community points within each token's ecosystem
-- **Database Method**: `TokenEngagement.get_or_create(user_id, token_id)` - automatic engagement record creation, `add_community_points(points, activity_type)` - award points for activities
-- **Future Integration**: Community points will gate access to exclusive features (priority airdrops, governance voting, special chat permissions, early access to token features)
+Each PRO token has its own community points system to reward engagement. The `TokenEngagement` model tracks per-user, per-token metrics (points, messages, trades, polls, holdings). Points are distributed for chat, trading, poll, and spotlight activities, configurable by token creators. Integrates with token-specific leaderboards and will gate future features.
 
 ### Multi-Wallet Linking System
-Users can securely link multiple wallets to their primary account to aggregate points and achievements across different wallets while preventing unauthorized wallet claims:
-- **Security Model**: Challenge-response authentication with cryptographic signature verification to prove wallet ownership
-- **Workflow**: 
-  1. User enters wallet address and label on profile page
-  2. Backend generates unique nonce and challenge message with 10-minute expiration
-  3. User switches to target wallet in browser extension
-  4. User signs challenge message containing: wallet address, primary wallet, nonce, and expiration
-  5. Backend verifies signature, ensures nonce is fresh and unused, then links wallet
-- **Database Schema**:
-  - `LinkedWallet` table: user_id (FK), wallet_address (UNIQUE), wallet_label, signature_payload, last_verified_at, status, timestamps
-  - `WalletVerificationChallenge` table: user_id (FK), wallet_address, nonce (UNIQUE), challenge_message, expires_at, used (boolean), created_at
-- **API Endpoints**:
-  - `POST /api/wallet/request-link` - Generate verification challenge for new wallet
-  - `POST /api/wallet/verify-link` - Verify signature and link wallet to profile
-  - `GET /api/wallet/linked` - List all verified linked wallets
-  - `DELETE /api/wallet/unlink/<address>` - Revoke linked wallet (sets status='revoked')
-- **Security Features**:
-  - Prevents whale wallet theft (must own wallet to sign)
-  - Prevents replay attacks (single-use nonces with expiration)
-  - Prevents cross-profile hijacking (signature includes primary wallet address)
-  - Database-level unique constraint prevents same wallet being added to multiple profiles
-  - Audit trail via signature_payload storage for compliance
-- **User Experience**: Profile page displays primary wallet and all verified linked wallets with labels, verification dates, and management controls (edit label, copy address, unlink)
+Users can link multiple wallets to their primary account using a secure challenge-response authentication with cryptographic signature verification. The system prevents whale wallet theft, replay attacks, and cross-profile hijacking, and provides a clear user experience for managing linked wallets.
+
+### Claim Ownership System
+Allows users to prove ownership and merge accounts if they attempt to link a wallet already primary for another account. A merge strategy consolidates data into the claimant's account, archiving the legacy account. This process involves a challenge-response verification, an account merge service handling data transfer (achievements, engagements, linked wallets, activity records), and robust security features like rate limiting and audit logging.
 
 ### Wallet Connection System
-The platform features a modal-based wallet connection system supporting multiple wallet providers:
-- **Supported Wallets**: Kastle (native Kaspa), KasWare (Kaspa extension), MetaMask (EVM/Kasplex zkEVM)
-- **UI Architecture**: Top-left wallet button shows connection status, opens modal popup for wallet selection (no full-page redirects)
-- **Session Management**: Challenge-response authentication with cryptographic signature verification, session.clear() before new auth to prevent stale session bugs
-- **WalletManager Module** (`static/js/wallet_manager.js`): Provider abstraction layer with normalized {address, wallet_type} returns, session polling, and event hooks for connect/disconnect/switch
-- **MetaMask Account Switching**: 
-  - Uses `wallet_requestPermissions` to force MetaMask account selector, preventing cached account issues
-  - `accountsChanged` event listener detects when user switches accounts in MetaMask
-  - Auto-disconnect on account change with optional immediate reconnection via confirm dialog
-  - Comprehensive console logging with [WalletManager] prefix for debugging
-- **Context Processor**: `current_user` injected into all templates via Flask context processor for conditional UI rendering
-- **Conditional Access**: Marketplace, token pages, and leaderboard accessible without wallet; Create Token, Dashboard, Profile require connection (sidebar links hidden when disconnected)
-- **API Endpoints**:
-  - `POST /api/auth/nonce` - Generate authentication challenge
-  - `POST /api/auth/verify` - Verify signature and create session
-  - `GET /api/auth/session` - Check session status
-  - `POST /api/disconnect-wallet` - Clear session and disconnect
-- **Modal Component**: `templates/app/partials/wallet_modal.html` with three wallet options, disconnect button when connected, status messaging, and rectangular button design (border-radius: 10px)
+A modal-based system supports Kastle, KasWare, and MetaMask. It uses challenge-response authentication, `WalletManager` module for provider abstraction, and handles MetaMask account switching with auto-disconnect on change. API endpoints manage nonce generation, verification, session status, and disconnection. UI conditionally renders access based on wallet connection status.
 
 ## Design Patterns
-The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
+Adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and models. Utilizes efficient static asset organization and a component-based CSS approach.
 
 ## Performance Optimizations
-Hardware-accelerated CSS animations, efficient asset organization for caching, and JavaScript-enhanced smooth scrolling contribute to performance.
+Includes hardware-accelerated CSS animations, efficient asset caching, and JavaScript-enhanced smooth scrolling.
 
 # External Dependencies
 
@@ -128,23 +52,19 @@ Hardware-accelerated CSS animations, efficient asset organization for caching, a
 - **Jinja2**: Template engine.
 
 ## Frontend Libraries
-- **Font Awesome 6.0.0**: Icon library (via CDN).
-- **Google Fonts (Inter)**: Typography (via CDN).
+- **Font Awesome 6.0.0**: Icon library.
+- **Google Fonts (Inter)**: Typography.
 - **particles.js**: Particle animation library.
 
 ## Blockchain Integration
-- **Kaspa Blockchain**: Target L1 blockchain for memecoin deployment.
+- **Kaspa Blockchain**: Target L1 for memecoin deployment.
 
 ## External Services
 - **Telegram**: Community engagement.
 - **Twitter/X**: Social media.
-- **Kaspa Finance**: Partnership for automatic DEX deployment.
+- **Kaspa Finance**: Automatic DEX deployment.
 - **presale.gemlaunch.fun**: External presale portal.
-- **OpenRouter API**: Meta Llama 3.1 70B inference with auto-failover for Gemmy AI, trend analysis, and image prompt enhancement.
-- **Replicate API**: FLUX.1 Schnell model for AI-powered token image generation (1024x1024 WebP, $0.003/image).
-- **4chan /biz/**: Real-time meme trend scraping for Zeroday Memification Engine.
-- **Reddit CryptoMoonShots**: Community-validated meme trends and ticker mentions.
-
-## Development Environment
-- **Python Runtime**
-- **Pillow**: Image processing for profile picture compression.
+- **OpenRouter API**: For Gemmy AI, trend analysis, and image prompt enhancement (Meta Llama 3.1 70B, auto-failover).
+- **Replicate API**: For AI-powered token image generation (FLUX.1 Schnell).
+- **4chan /biz/**: Real-time meme trend scraping.
+- **Reddit CryptoMoonShots**: Community-validated meme trends.
