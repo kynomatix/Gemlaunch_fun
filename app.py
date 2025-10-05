@@ -158,6 +158,11 @@ def wallet_optional(f):
         return f(*args, **kwargs)
     return decorated_function
 
+@app.context_processor
+def inject_user():
+    """Inject current user into all templates"""
+    return dict(current_user=get_current_user())
+
 @app.route('/')
 def index():
     """Main landing page for Gemlaunch.fun"""
@@ -273,6 +278,9 @@ def verify_signature():
         if session_key:
             session.pop(session_key, None)
         
+        # Clear all existing session data before creating new session
+        session.clear()
+        
         # Create or get user with verified wallet address
         user = User.get_or_create_by_wallet(wallet_address, wallet_type)
         
@@ -336,6 +344,18 @@ def user_info():
             'total_trading_volume': float(user.total_trading_volume or 0)
         }
     })
+
+@app.route('/api/auth/session', methods=['GET'])
+def check_session():
+    """Check if user has active session"""
+    user = get_current_user()
+    if user:
+        return jsonify({
+            'authenticated': True,
+            'wallet_address': user.wallet_address,
+            'wallet_type': session.get('wallet_type', 'unknown')
+        })
+    return jsonify({'authenticated': False})
 
 # Multi-wallet linking API
 @app.route('/api/wallet/request-link', methods=['POST'])
