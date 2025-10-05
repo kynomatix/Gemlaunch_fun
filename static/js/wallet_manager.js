@@ -121,25 +121,10 @@ class WalletManager {
                 
             case 'metamask':
                 if (typeof window.ethereum !== 'undefined') {
-                    // Force MetaMask to show account selector by requesting permissions
-                    // This ensures we get the CURRENT account, not a cached one
-                    try {
-                        const permissions = await window.ethereum.request({
-                            method: 'wallet_requestPermissions',
-                            params: [{ eth_accounts: {} }]
-                        });
-                        
-                        // Now get the accounts
-                        accounts = await window.ethereum.request({
-                            method: 'eth_requestAccounts'
-                        });
-                    } catch (permError) {
-                        // If permissions request fails, fall back to regular request
-                        console.warn('Permission request failed, using fallback:', permError);
-                        accounts = await window.ethereum.request({
-                            method: 'eth_requestAccounts'
-                        });
-                    }
+                    // Get accounts - MetaMask will show account selector if not already connected
+                    accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
+                    });
                 } else {
                     throw new Error('MetaMask not found. Please install MetaMask.');
                 }
@@ -301,6 +286,25 @@ class WalletManager {
     
     async disconnectWallet() {
         try {
+            console.log('[WalletManager] Starting disconnect...');
+            
+            const previousWallet = this.connectedWallet;
+            
+            // If MetaMask, revoke permissions to clear cached account
+            if (previousWallet && previousWallet.wallet_type === 'metamask' && typeof window.ethereum !== 'undefined') {
+                try {
+                    console.log('[WalletManager] Revoking MetaMask permissions...');
+                    await window.ethereum.request({
+                        method: 'wallet_revokePermissions',
+                        params: [{ eth_accounts: {} }]
+                    });
+                    console.log('[WalletManager] MetaMask permissions revoked successfully');
+                } catch (revokeError) {
+                    // Permissions API might not be supported in all MetaMask versions
+                    console.warn('[WalletManager] Could not revoke MetaMask permissions:', revokeError);
+                }
+            }
+            
             const response = await fetch('/api/disconnect-wallet', {
                 method: 'POST',
                 headers: {
@@ -311,11 +315,11 @@ class WalletManager {
             const data = await response.json();
             
             if (data.success) {
-                const previousWallet = this.connectedWallet;
                 this.connectedWallet = null;
                 this.clearSavedWallet();
                 this.stopSessionPolling();
                 
+                console.log('[WalletManager] Disconnect successful');
                 this.updateUIState('disconnected');
                 this.trigger('disconnect', previousWallet);
                 
@@ -325,7 +329,7 @@ class WalletManager {
             }
             
         } catch (error) {
-            console.error('Disconnect error:', error);
+            console.error('[WalletManager] Disconnect error:', error);
             this.trigger('error', { type: 'disconnect', error: error.message });
             throw error;
         }
