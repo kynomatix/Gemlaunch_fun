@@ -585,7 +585,7 @@ def app_dashboard():
     """User dashboard with stats and portfolio - now includes activities and achievements"""
     user = get_current_user()
     if not user:
-        return render_template('app/connect_wallet.html')
+        return redirect(url_for('app_marketplace'))
     
     # Backfill cached stats if needed
     if not user.total_trades_count or user.total_trades_count == 0:
@@ -661,7 +661,7 @@ def create_token():
     """Token creation page and form handler"""
     user = get_current_user()
     if not user:
-        return render_template('app/connect_wallet.html')
+        return redirect(url_for('app_marketplace'))
     
     if request.method == 'POST':
         # Handle token creation form submission
@@ -1483,7 +1483,7 @@ def profile():
     """User profile page with wallet connections and stats"""
     user = get_current_user()
     if not user:
-        return render_template('app/connect_wallet.html')
+        return redirect(url_for('app_marketplace'))
     
     # Get or create user profile
     user_profile = UserProfile.query.filter_by(user_id=user.id).first()
@@ -1642,7 +1642,7 @@ def activities():
     """User activities and achievement progress page"""
     user = get_current_user()
     if not user:
-        return render_template('app/connect_wallet.html')
+        return redirect(url_for('app_marketplace'))
     
     # Get user's recent activities with eager loading
     user_activities = Activity.query.options(

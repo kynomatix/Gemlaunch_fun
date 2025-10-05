@@ -396,7 +396,7 @@ class WalletManager {
     }
     
     openWalletModal() {
-        const modal = document.getElementById('wallet-modal');
+        const modal = document.getElementById('walletModal');
         if (modal) {
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -404,7 +404,7 @@ class WalletManager {
     }
     
     closeWalletModal() {
-        const modal = document.getElementById('wallet-modal');
+        const modal = document.getElementById('walletModal');
         if (modal) {
             modal.style.display = 'none';
             document.body.style.overflow = '';
