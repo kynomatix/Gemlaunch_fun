@@ -37,26 +37,46 @@ class WalletManager {
     setupMetaMaskListeners() {
         if (typeof window.ethereum !== 'undefined') {
             window.ethereum.on('accountsChanged', async (accounts) => {
-                console.log('MetaMask account changed:', accounts);
+                console.log('[WalletManager] MetaMask accountsChanged event:', accounts);
+                console.log('[WalletManager] Current connected wallet:', this.connectedWallet);
                 
                 if (accounts.length === 0) {
-                    console.log('No accounts - disconnecting');
-                    await this.disconnectWallet();
+                    console.log('[WalletManager] No accounts available - user disconnected from MetaMask');
+                    if (this.connectedWallet) {
+                        await this.disconnectWallet();
+                    }
                 } else if (this.connectedWallet && this.connectedWallet.wallet_type === 'metamask') {
                     const newAddress = accounts[0].toLowerCase();
                     const currentAddress = this.connectedWallet.address.toLowerCase();
                     
+                    console.log('[WalletManager] Comparing addresses:', { current: currentAddress, new: newAddress });
+                    
                     if (newAddress !== currentAddress) {
-                        console.log('Account changed from', currentAddress, 'to', newAddress);
+                        console.log('[WalletManager] Account changed detected - disconnecting old wallet');
                         await this.disconnectWallet();
                         
-                        alert('Your MetaMask account has changed. Please reconnect with your new wallet.');
+                        // Show user-friendly notification
+                        const userChoice = confirm(
+                            `Your MetaMask account has changed to ${newAddress.slice(0, 8)}...${newAddress.slice(-6)}.\n\n` +
+                            'Would you like to connect with this new account now?'
+                        );
+                        
+                        if (userChoice) {
+                            console.log('[WalletManager] User chose to reconnect with new account');
+                            try {
+                                await this.connectWallet('metamask');
+                                window.location.reload();
+                            } catch (error) {
+                                console.error('[WalletManager] Failed to reconnect:', error);
+                                alert('Failed to connect with new account. Please try again manually.');
+                            }
+                        }
                     }
                 }
             });
             
             window.ethereum.on('chainChanged', (chainId) => {
-                console.log('MetaMask chain changed:', chainId);
+                console.log('[WalletManager] MetaMask chain changed:', chainId);
                 window.location.reload();
             });
         }
@@ -101,9 +121,25 @@ class WalletManager {
                 
             case 'metamask':
                 if (typeof window.ethereum !== 'undefined') {
-                    accounts = await window.ethereum.request({
-                        method: 'eth_requestAccounts'
-                    });
+                    // Force MetaMask to show account selector by requesting permissions
+                    // This ensures we get the CURRENT account, not a cached one
+                    try {
+                        const permissions = await window.ethereum.request({
+                            method: 'wallet_requestPermissions',
+                            params: [{ eth_accounts: {} }]
+                        });
+                        
+                        // Now get the accounts
+                        accounts = await window.ethereum.request({
+                            method: 'eth_requestAccounts'
+                        });
+                    } catch (permError) {
+                        // If permissions request fails, fall back to regular request
+                        console.warn('Permission request failed, using fallback:', permError);
+                        accounts = await window.ethereum.request({
+                            method: 'eth_requestAccounts'
+                        });
+                    }
                 } else {
                     throw new Error('MetaMask not found. Please install MetaMask.');
                 }
@@ -214,23 +250,31 @@ class WalletManager {
     
     async connectWallet(walletType) {
         try {
+            console.log(`[WalletManager] Starting connection flow for ${walletType}`);
             this.updateUIState('connecting', walletType);
             
             if (!this.detectWallet(walletType)) {
                 throw new Error(`${walletType} wallet not detected. Please install it first.`);
             }
             
+            console.log(`[WalletManager] Requesting accounts from ${walletType}...`);
             const walletAddress = await this.requestAccounts(walletType);
+            console.log(`[WalletManager] Got wallet address: ${walletAddress}`);
             
             if (walletType.toLowerCase() === 'metamask') {
+                console.log('[WalletManager] Handling MetaMask network...');
                 await this.handleMetaMaskNetwork();
             }
             
+            console.log('[WalletManager] Requesting nonce from backend...');
             const nonce = await this.requestNonce(walletAddress);
+            console.log('[WalletManager] Got nonce, requesting signature...');
             
             const signature = await this.signMessage(nonce, walletAddress, walletType);
+            console.log('[WalletManager] Got signature, verifying...');
             
             const verifyResult = await this.verifySignature(walletAddress, signature, walletType);
+            console.log('[WalletManager] Verification result:', verifyResult);
             
             const walletData = {
                 address: walletAddress,
@@ -241,13 +285,14 @@ class WalletManager {
             this.saveWallet(walletData);
             this.startSessionPolling();
             
+            console.log('[WalletManager] Connection successful!', walletData);
             this.updateUIState('connected', walletType, walletData);
             this.trigger('connect', walletData);
             
             return walletData;
             
         } catch (error) {
-            console.error('Wallet connection error:', error);
+            console.error('[WalletManager] Connection error:', error);
             this.updateUIState('error', walletType, null, error.message);
             this.trigger('error', { type: 'connect', error: error.message });
             throw error;
