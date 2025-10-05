@@ -359,13 +359,13 @@
                 </div>
                 <div class="collapsible-content" id="switchWalletSection">
                     <p style="color: #CCC; margin-bottom: 0.5rem;">
-                        Before clicking "Sign to Claim Ownership", you must:
+                        When you click "Sign to Claim Ownership":
                     </p>
                     <ol style="color: #CCC; margin-left: 1.5rem; margin-bottom: 0;">
-                        <li style="margin-bottom: 0.5rem;">Open MetaMask extension</li>
-                        <li style="margin-bottom: 0.5rem;">Click the account switcher at the top</li>
-                        <li style="margin-bottom: 0.5rem;">Select the wallet address shown above (<span style="font-family: monospace; color: #20B2AA;" id="claimWalletShort"></span>)</li>
-                        <li>Return here and click "Sign to Claim Ownership"</li>
+                        <li style="margin-bottom: 0.5rem;">MetaMask will ask for permission to connect</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Select the wallet shown above</strong> (<span style="font-family: monospace; color: #20B2AA;" id="claimWalletShort"></span>)</li>
+                        <li style="margin-bottom: 0.5rem;">Then approve the signature request</li>
+                        <li>Your accounts will be merged automatically</li>
                     </ol>
                 </div>
             </div>
@@ -519,11 +519,18 @@ async function initiateClaimOwnership() {
             throw new Error('Wallet manager not available');
         }
         
-        // First, ensure we have permission to use the current wallet in MetaMask
+        // Force MetaMask to reconnect with the currently-selected wallet
         if (claimWalletType === 'metamask' && window.ethereum) {
             try {
+                // Request new permissions to force MetaMask to use the currently selected account
+                await window.ethereum.request({
+                    method: 'wallet_requestPermissions',
+                    params: [{ eth_accounts: {} }]
+                });
+                
+                // Now get the current accounts (should be the switched wallet)
                 const currentAccounts = await window.ethereum.request({
-                    method: 'eth_requestAccounts'
+                    method: 'eth_accounts'
                 });
                 
                 console.log('Current MetaMask account:', currentAccounts[0]);
@@ -533,13 +540,17 @@ async function initiateClaimOwnership() {
                 // Verify the current account matches the disputed wallet
                 if (currentAccounts[0].toLowerCase() !== claimWalletAddress.toLowerCase()) {
                     throw new Error(
-                        `Wrong wallet selected in MetaMask. Please select ${claimWalletAddress.substring(0, 8)}...${claimWalletAddress.substring(38)} and try again.`
+                        `Wrong wallet selected. Please make sure you selected ${claimWalletAddress.substring(0, 8)}...${claimWalletAddress.substring(38)} when MetaMask asked for permission.`
                     );
                 }
             } catch (permError) {
                 console.error('Permission error:', permError);
                 if (permError.message && permError.message.includes('Wrong wallet')) {
                     throw permError;
+                }
+                // User cancelled the permission request
+                if (permError.code === 4001) {
+                    throw new Error('Permission request cancelled. Please try again and approve the wallet connection.');
                 }
                 throw new Error('Please allow access to your MetaMask wallet and try again.');
             }
