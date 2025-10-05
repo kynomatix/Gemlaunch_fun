@@ -101,6 +101,11 @@ The platform features a modal-based wallet connection system supporting multiple
 - **UI Architecture**: Top-left wallet button shows connection status, opens modal popup for wallet selection (no full-page redirects)
 - **Session Management**: Challenge-response authentication with cryptographic signature verification, session.clear() before new auth to prevent stale session bugs
 - **WalletManager Module** (`static/js/wallet_manager.js`): Provider abstraction layer with normalized {address, wallet_type} returns, session polling, and event hooks for connect/disconnect/switch
+- **MetaMask Account Switching**: 
+  - Uses `wallet_requestPermissions` to force MetaMask account selector, preventing cached account issues
+  - `accountsChanged` event listener detects when user switches accounts in MetaMask
+  - Auto-disconnect on account change with optional immediate reconnection via confirm dialog
+  - Comprehensive console logging with [WalletManager] prefix for debugging
 - **Context Processor**: `current_user` injected into all templates via Flask context processor for conditional UI rendering
 - **Conditional Access**: Marketplace, token pages, and leaderboard accessible without wallet; Create Token, Dashboard, Profile require connection (sidebar links hidden when disconnected)
 - **API Endpoints**:
@@ -108,7 +113,7 @@ The platform features a modal-based wallet connection system supporting multiple
   - `POST /api/auth/verify` - Verify signature and create session
   - `GET /api/auth/session` - Check session status
   - `POST /api/disconnect-wallet` - Clear session and disconnect
-- **Modal Component**: `templates/app/partials/wallet_modal.html` with three wallet options, status messaging, and rectangular button design (border-radius: 10px)
+- **Modal Component**: `templates/app/partials/wallet_modal.html` with three wallet options, disconnect button when connected, status messaging, and rectangular button design (border-radius: 10px)
 
 ## Design Patterns
 The architecture adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and future models. Static assets are organized for efficiency, and a component-based CSS approach ensures modularity and reusability.
