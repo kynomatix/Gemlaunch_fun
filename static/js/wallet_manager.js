@@ -558,4 +558,5 @@ if (typeof module !== 'undefined' && module.exports) {
 
 if (typeof window !== 'undefined') {
     window.WalletManager = WalletManager;
+    window.walletManager = new WalletManager();
 }
