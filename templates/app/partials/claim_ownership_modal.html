@@ -519,6 +519,27 @@ async function initiateClaimOwnership() {
             throw new Error('Wallet manager not available');
         }
         
+        // First, ensure we have permission to use the current wallet in MetaMask
+        if (claimWalletType === 'metamask' && window.ethereum) {
+            try {
+                const currentAccounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                // Verify the current account matches the disputed wallet
+                if (currentAccounts[0].toLowerCase() !== claimWalletAddress.toLowerCase()) {
+                    throw new Error(
+                        `Wrong wallet selected in MetaMask. Please select ${claimWalletAddress.substring(0, 8)}...${claimWalletAddress.substring(38)} and try again.`
+                    );
+                }
+            } catch (permError) {
+                if (permError.message.includes('Wrong wallet')) {
+                    throw permError;
+                }
+                throw new Error('Please allow access to your MetaMask wallet and try again.');
+            }
+        }
+        
         const signature = await window.walletManager.signMessage(requestData.challenge_message, claimWalletAddress, claimWalletType);
         
         if (!signature) {
