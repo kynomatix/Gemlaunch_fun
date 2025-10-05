@@ -728,3 +728,60 @@ class ClaimOwnershipChallenge(db.Model):
     
     def __repr__(self):
         return f'<ClaimOwnershipChallenge {self.disputed_wallet_address[:10]}... ({"expired" if self.is_expired else "active"})>'
+
+class TransferRequest(db.Model):
+    """Request to transfer/link a wallet from one user to another"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    requester_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    wallet_address = db.Column(db.String(128), nullable=False, index=True)
+    status = db.Column(db.String(32), default='pending', nullable=False, index=True)
+    nonce = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=False)
+    
+    requester = db.relationship('User', foreign_keys=[requester_id], backref='transfer_requests_made')
+    owner = db.relationship('User', foreign_keys=[owner_id], backref='transfer_requests_received')
+    
+    @property
+    def is_expired(self):
+        """Check if request has expired"""
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    def accept(self):
+        """Accept the transfer request"""
+        self.status = 'accepted'
+        db.session.commit()
+    
+    def decline(self):
+        """Decline the transfer request"""
+        self.status = 'declined'
+        db.session.commit()
+    
+    def expire(self):
+        """Mark request as expired"""
+        self.status = 'expired'
+        db.session.commit()
+    
+    @classmethod
+    def create_request(cls, requester_id, owner_id, wallet_address):
+        """Create a new transfer request with 24-hour expiration"""
+        nonce = secrets.token_hex(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        
+        request = cls(
+            requester_id=requester_id,
+            owner_id=owner_id,
+            wallet_address=wallet_address.lower(),
+            nonce=nonce,
+            expires_at=expires_at
+        )
+        db.session.add(request)
+        db.session.commit()
+        return request
+    
+    def __repr__(self):
+        return f'<TransferRequest {self.wallet_address[:10]}... ({self.status})>'

@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, ClaimOwnershipChallenge
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, ClaimOwnershipChallenge, TransferRequest
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -730,6 +730,245 @@ def verify_claim_ownership():
         db.session.rollback()
         logging.error(f"Error verifying claim ownership: {str(e)}")
         return jsonify({'error': f'Failed to verify and claim ownership: {str(e)}'}), 500
+
+# Transfer Request API (Give Ownership Flow)
+@app.route('/api/wallet/request-transfer', methods=['POST'])
+@require_wallet_connection
+def request_transfer():
+    """Request ownership transfer from another wallet's owner"""
+    from models import TransferRequest
+    import re
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address required'}), 400
+    
+    wallet_address = wallet_address.strip()
+    
+    if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
+        return jsonify({'error': 'Invalid wallet address format. Must be 0x followed by 40 hexadecimal characters.'}), 400
+    
+    wallet_address_lower = wallet_address.lower()
+    
+    if wallet_address_lower == user.wallet_address.lower():
+        return jsonify({'error': 'You already own this wallet'}), 400
+    
+    owner_user = User.query.filter_by(wallet_address=wallet_address_lower).first()
+    if not owner_user:
+        return jsonify({'error': 'This wallet address is not registered as a primary wallet'}), 404
+    
+    if owner_user.archived:
+        return jsonify({'error': 'This account has already been archived'}), 400
+    
+    try:
+        pending_count = TransferRequest.query.filter_by(
+            requester_id=user.id,
+            status='pending'
+        ).filter(
+            TransferRequest.expires_at > datetime.now(timezone.utc)
+        ).count()
+        
+        if pending_count >= 3:
+            return jsonify({'error': 'Too many pending transfer requests. Please wait for existing requests to be processed.'}), 429
+        
+        existing_request = TransferRequest.query.filter_by(
+            requester_id=user.id,
+            owner_id=owner_user.id,
+            wallet_address=wallet_address_lower,
+            status='pending'
+        ).filter(
+            TransferRequest.expires_at > datetime.now(timezone.utc)
+        ).first()
+        
+        if existing_request:
+            return jsonify({'error': 'You already have a pending transfer request for this wallet'}), 400
+        
+        transfer_request = TransferRequest.create_request(
+            requester_id=user.id,
+            owner_id=owner_user.id,
+            wallet_address=wallet_address_lower
+        )
+        db.session.commit()
+        
+        logging.info(f"Transfer request created: requester={user.id}, owner={owner_user.id}, wallet={wallet_address_lower}")
+        
+        return jsonify({
+            'success': True,
+            'request_id': transfer_request.id,
+            'owner_display_name': owner_user.display_name,
+            'expires_at': transfer_request.expires_at.isoformat()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error creating transfer request: {str(e)}")
+        return jsonify({'error': f'Failed to create transfer request: {str(e)}'}), 500
+
+@app.route('/api/wallet/pending-transfers', methods=['GET'])
+@require_wallet_connection
+def get_pending_transfers():
+    """Get all pending transfer requests where current user is the owner"""
+    from models import TransferRequest
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    try:
+        pending_requests = TransferRequest.query.filter_by(
+            owner_id=user.id,
+            status='pending'
+        ).filter(
+            TransferRequest.expires_at > datetime.now(timezone.utc)
+        ).order_by(
+            TransferRequest.created_at.desc()
+        ).all()
+        
+        requests_data = []
+        for req in pending_requests:
+            requests_data.append({
+                'id': req.id,
+                'requester_wallet': req.requester.wallet_address,
+                'requester_display': req.requester.display_name,
+                'wallet_address': req.wallet_address,
+                'created_at': req.created_at.isoformat(),
+                'expires_at': req.expires_at.isoformat()
+            })
+        
+        return jsonify(requests_data)
+        
+    except Exception as e:
+        logging.error(f"Error fetching pending transfers: {str(e)}")
+        return jsonify({'error': f'Failed to fetch pending transfers: {str(e)}'}), 500
+
+@app.route('/api/wallet/accept-transfer', methods=['POST'])
+@require_wallet_connection
+def accept_transfer():
+    """Accept a transfer request and merge accounts"""
+    from eth_account.messages import encode_defunct
+    from eth_account import Account
+    from services.account_merger import merge_accounts
+    from models import TransferRequest
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    data = request.get_json()
+    request_id = data.get('request_id')
+    signature = data.get('signature')
+    
+    if not request_id or not signature:
+        return jsonify({'error': 'Request ID and signature required'}), 400
+    
+    try:
+        transfer_request = TransferRequest.query.get(request_id)
+        
+        if not transfer_request:
+            return jsonify({'error': 'Transfer request not found'}), 404
+        
+        if transfer_request.owner_id != user.id:
+            logging.warning(f"User {user.id} attempted to accept transfer request {request_id} owned by {transfer_request.owner_id}")
+            return jsonify({'error': 'You do not have permission to accept this request'}), 403
+        
+        if transfer_request.status != 'pending':
+            return jsonify({'error': f'Transfer request is not pending (status: {transfer_request.status})'}), 400
+        
+        if transfer_request.is_expired:
+            transfer_request.expire()
+            db.session.commit()
+            return jsonify({'error': 'Transfer request has expired'}), 400
+        
+        transfer_message = f"Accept transfer request for wallet {transfer_request.wallet_address} and merge accounts.\n\nNonce: {transfer_request.nonce}\nTimestamp: {int(transfer_request.created_at.timestamp())}\n\nWarning: This will merge all data from your account into the requester's account."
+        
+        try:
+            encoded_message = encode_defunct(text=transfer_message)
+            recovered_address = Account.recover_message(encoded_message, signature=signature)
+            
+            if recovered_address.lower() != user.wallet_address.lower():
+                logging.warning(f"Signature verification failed for transfer: user {user.id}, wallet {user.wallet_address}, recovered {recovered_address}")
+                return jsonify({'error': 'Signature verification failed. You must sign with your wallet.'}), 401
+                
+        except Exception as sig_error:
+            logging.error(f"Signature verification error for transfer: {str(sig_error)}")
+            return jsonify({'error': f'Signature verification error: {str(sig_error)}'}), 401
+        
+        requester_user = User.query.get(transfer_request.requester_id)
+        if not requester_user:
+            return jsonify({'error': 'Requester user not found'}), 404
+        
+        if user.archived:
+            return jsonify({'error': 'Your account has already been archived'}), 400
+        
+        merge_summary = merge_accounts(db, requester_user.id, user.id)
+        
+        transfer_request.accept()
+        
+        logging.info(f"Transfer request accepted and accounts merged: {merge_summary}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Transfer request accepted. All data has been merged into the requester\'s account.',
+            'merge_summary': merge_summary
+        })
+        
+    except ValueError as ve:
+        db.session.rollback()
+        logging.error(f"Validation error during transfer acceptance: {str(ve)}")
+        return jsonify({'error': str(ve)}), 400
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error accepting transfer request: {str(e)}")
+        return jsonify({'error': f'Failed to accept transfer request: {str(e)}'}), 500
+
+@app.route('/api/wallet/decline-transfer', methods=['POST'])
+@require_wallet_connection
+def decline_transfer():
+    """Decline a transfer request"""
+    from models import TransferRequest
+    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User authentication required'}), 401
+    
+    data = request.get_json()
+    request_id = data.get('request_id')
+    
+    if not request_id:
+        return jsonify({'error': 'Request ID required'}), 400
+    
+    try:
+        transfer_request = TransferRequest.query.get(request_id)
+        
+        if not transfer_request:
+            return jsonify({'error': 'Transfer request not found'}), 404
+        
+        if transfer_request.owner_id != user.id:
+            logging.warning(f"User {user.id} attempted to decline transfer request {request_id} owned by {transfer_request.owner_id}")
+            return jsonify({'error': 'You do not have permission to decline this request'}), 403
+        
+        if transfer_request.status != 'pending':
+            return jsonify({'error': f'Transfer request is not pending (status: {transfer_request.status})'}), 400
+        
+        transfer_request.decline()
+        
+        logging.info(f"Transfer request declined: request_id={request_id}, owner={user.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Transfer request declined successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error declining transfer request: {str(e)}")
+        return jsonify({'error': f'Failed to decline transfer request: {str(e)}'}), 500
 
 # App routes
 @app.route('/app')
@@ -1781,6 +2020,18 @@ def profile():
         Referral.referrer_id == user.id
     ).all()
     
+    # Get pending transfer requests (where current user is the owner)
+    pending_requests = TransferRequest.query.options(
+        joinedload(TransferRequest.requester).joinedload(User.profile)
+    ).filter_by(
+        owner_id=user.id,
+        status='pending'
+    ).filter(
+        TransferRequest.expires_at > datetime.now(timezone.utc)
+    ).order_by(
+        TransferRequest.created_at.desc()
+    ).all()
+    
     return render_template('app/profile.html', 
                          user=user, 
                          user_profile=user_profile,
@@ -1788,7 +2039,8 @@ def profile():
                          linked_wallets=linked_wallets,
                          user_achievements=user_achievements,
                          referral=referral,
-                         referred_users=referred_users)
+                         referred_users=referred_users,
+                         pending_requests=pending_requests)
 
 @app.route('/app/referrals')
 def referrals():
