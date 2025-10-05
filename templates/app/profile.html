@@ -2007,10 +2007,14 @@ async function signVerificationMessage() {
         }
         
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const currentAccount = accounts[0].toLowerCase();
+        const currentAccount = accounts[0];
         
-        if (currentAccount !== walletLinkData.wallet_address.toLowerCase()) {
-            ProfileNotification.showAlert('Wrong Wallet', `Please switch to ${walletLinkData.wallet_address} in your wallet extension`, 'error');
+        console.log('Current MetaMask account:', currentAccount);
+        console.log('Target wallet address:', walletLinkData.wallet_address);
+        console.log('Match (case-insensitive):', currentAccount.toLowerCase() === walletLinkData.wallet_address.toLowerCase());
+        
+        if (currentAccount.toLowerCase() !== walletLinkData.wallet_address.toLowerCase()) {
+            ProfileNotification.showAlert('Wrong Wallet', `Please switch to ${walletLinkData.wallet_address} in your wallet extension. Currently connected: ${currentAccount}`, 'error');
             return;
         }
         
