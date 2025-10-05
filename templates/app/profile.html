@@ -480,9 +480,20 @@
             <div class="verification-step">
                 <p>To verify ownership, please:</p>
                 <ol>
-                    <li>Switch to wallet <strong id="targetWalletAddress"></strong> in your browser extension</li>
-                    <li>Sign the verification message</li>
+                    <li>Switch to wallet <strong id="targetWalletAddress"></strong> in your MetaMask extension</li>
+                    <li>Click "Detect Current Wallet" below to confirm MetaMask switched</li>
+                    <li>Once confirmed, sign the verification message</li>
                 </ol>
+                
+                <div style="background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 10px; padding: 1rem; margin: 1rem 0;">
+                    <label style="color: #888; font-size: 0.9rem;">Currently detected wallet:</label>
+                    <div id="detectedWallet" style="color: #20B2AA; font-family: monospace; margin-top: 0.5rem;">Click "Detect Current Wallet" to check</div>
+                </div>
+                
+                <button class="btn-secondary" onclick="detectCurrentWallet()" style="margin-bottom: 1rem;">
+                    <i class="fas fa-sync-alt"></i> Detect Current Wallet
+                </button>
+                
                 <div class="challenge-message">
                     <label>Message to sign:</label>
                     <textarea id="challengeMessage" readonly rows="4"></textarea>
@@ -1883,6 +1894,26 @@
     box-shadow: 0 5px 15px rgba(32, 178, 170, 0.4);
     background: linear-gradient(135deg, #00CED1, #20B2AA);
 }
+
+.btn-secondary {
+    padding: 0.6rem 1.5rem;
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 8px;
+    color: #20B2AA;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background: rgba(32, 178, 170, 0.2);
+    border-color: rgba(32, 178, 170, 0.5);
+    transform: translateY(-2px);
+}
 </style>
 
 <script>
@@ -2047,6 +2078,34 @@ async function signVerificationMessage() {
     } catch (error) {
         console.error('Error signing message:', error);
         ProfileNotification.showAlert('Error', error.message || 'Failed to sign message', 'error');
+    }
+}
+
+async function detectCurrentWallet() {
+    try {
+        if (typeof window.ethereum === 'undefined') {
+            ProfileNotification.showAlert('Wallet Not Found', 'Please install MetaMask or another Web3 wallet', 'error');
+            return;
+        }
+        
+        // Force MetaMask to refresh accounts
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const currentAccount = accounts[0];
+        
+        const detectedWalletEl = document.getElementById('detectedWallet');
+        detectedWalletEl.textContent = currentAccount;
+        
+        // Check if it matches
+        if (currentAccount.toLowerCase() === walletLinkData.wallet_address.toLowerCase()) {
+            detectedWalletEl.style.color = '#4CAF50'; // Green
+            ProfileNotification.showAlert('✓ Correct Wallet', 'You can now sign the message!', 'success');
+        } else {
+            detectedWalletEl.style.color = '#FF6B6B'; // Red
+            ProfileNotification.showAlert('Wrong Wallet', `Please switch to ${walletLinkData.wallet_address} in MetaMask, then click "Detect Current Wallet" again`, 'error');
+        }
+    } catch (error) {
+        console.error('Error detecting wallet:', error);
+        ProfileNotification.showAlert('Error', 'Failed to detect current wallet', 'error');
     }
 }
 
