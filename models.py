@@ -38,6 +38,11 @@ class User(db.Model):
     total_messages_sent = db.Column(db.Integer, default=0)
     longest_holding_days = db.Column(db.Integer, default=0)
     
+    # Account merge tracking
+    archived = db.Column(db.Boolean, default=False)
+    claimed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    archived_at = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     tokens_created = db.relationship('Token', backref='creator', lazy='dynamic')
     trades = db.relationship('Trade', backref='user', lazy='dynamic')
@@ -672,3 +677,54 @@ class WalletVerificationChallenge(db.Model):
     
     def __repr__(self):
         return f'<WalletVerificationChallenge {self.wallet_address[:10]}... ({"expired" if self.is_expired else "active"})>'
+
+class ClaimOwnershipChallenge(db.Model):
+    """Challenge for claiming ownership of a wallet that's already a primary wallet"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    claimant_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    disputed_wallet_address = db.Column(db.String(128), nullable=False, index=True)
+    legacy_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    nonce = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    challenge_message = db.Column(db.Text, nullable=False)
+    
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    claimant = db.relationship('User', foreign_keys=[claimant_user_id], backref='ownership_claims_initiated')
+    legacy_user = db.relationship('User', foreign_keys=[legacy_user_id], backref='ownership_claims_against')
+    
+    @property
+    def is_expired(self):
+        """Check if challenge has expired"""
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    def mark_used(self):
+        """Mark challenge as used to prevent replay attacks"""
+        self.used = True
+        db.session.commit()
+    
+    @classmethod
+    def create_challenge(cls, claimant_user_id, disputed_wallet_address, legacy_user_id):
+        """Create a new ownership claim challenge with 10-minute expiration"""
+        nonce = secrets.token_hex(32)
+        challenge_message = f"Claim ownership of wallet {disputed_wallet_address} and merge accounts.\n\nNonce: {nonce}\nTimestamp: {int(datetime.now(timezone.utc).timestamp())}\n\nWarning: This will merge all data from the legacy account into your current account."
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        
+        challenge = cls(
+            claimant_user_id=claimant_user_id,
+            disputed_wallet_address=disputed_wallet_address.lower(),
+            legacy_user_id=legacy_user_id,
+            nonce=nonce,
+            challenge_message=challenge_message,
+            expires_at=expires_at
+        )
+        db.session.add(challenge)
+        db.session.commit()
+        return challenge
+    
+    def __repr__(self):
+        return f'<ClaimOwnershipChallenge {self.disputed_wallet_address[:10]}... ({"expired" if self.is_expired else "active"})>'

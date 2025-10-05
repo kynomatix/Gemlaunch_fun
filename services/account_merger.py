@@ -1,0 +1,151 @@
+import logging
+from datetime import datetime, timezone
+from decimal import Decimal
+from sqlalchemy.exc import SQLAlchemyError
+
+logging.basicConfig(level=logging.DEBUG)
+
+def merge_accounts(db, claimant_user_id, legacy_user_id):
+    """
+    Merge legacy user account into claimant user account.
+    
+    Architecture:
+    - Claimant account survives
+    - Legacy account data gets transferred to claimant
+    - Sum additive fields (gem_points, totals)
+    - Keep max-progress achievements
+    - Mark legacy user as archived with claimed_by reference
+    
+    Args:
+        db: SQLAlchemy database instance
+        claimant_user_id: ID of user who is claiming ownership (survives)
+        legacy_user_id: ID of legacy user whose data will be merged (gets archived)
+    
+    Returns:
+        dict: Summary of merge operation
+    
+    Raises:
+        ValueError: If users don't exist or are invalid
+        SQLAlchemyError: If database operation fails
+    """
+    from models import User, UserAchievement, TokenEngagement, LinkedWallet, Activity
+    
+    try:
+        with db.session.begin_nested():
+            claimant = User.query.get(claimant_user_id)
+            legacy = User.query.get(legacy_user_id)
+            
+            if not claimant:
+                raise ValueError(f"Claimant user {claimant_user_id} not found")
+            if not legacy:
+                raise ValueError(f"Legacy user {legacy_user_id} not found")
+            if legacy.archived:
+                raise ValueError(f"Legacy user {legacy_user_id} is already archived")
+            if claimant.archived:
+                raise ValueError(f"Claimant user {claimant_user_id} is archived")
+            if claimant_user_id == legacy_user_id:
+                raise ValueError("Cannot merge user with themselves")
+            
+            merge_summary = {
+                'claimant_user_id': claimant_user_id,
+                'legacy_user_id': legacy_user_id,
+                'legacy_wallet': legacy.wallet_address,
+                'merged_at': datetime.now(timezone.utc).isoformat(),
+                'gem_points_added': 0,
+                'achievements_transferred': 0,
+                'achievements_merged': 0,
+                'token_engagements_transferred': 0,
+                'linked_wallets_transferred': 0,
+                'activities_transferred': 0
+            }
+            
+            logging.info(f"Starting account merge: claimant={claimant_user_id}, legacy={legacy_user_id}")
+            
+            claimant.gem_points = (claimant.gem_points or 0) + (legacy.gem_points or 0)
+            merge_summary['gem_points_added'] = legacy.gem_points or 0
+            
+            claimant.total_tokens_created = (claimant.total_tokens_created or 0) + (legacy.total_tokens_created or 0)
+            claimant.total_trading_volume = Decimal(claimant.total_trading_volume or 0) + Decimal(legacy.total_trading_volume or 0)
+            claimant.total_graduated_tokens = (claimant.total_graduated_tokens or 0) + (legacy.total_graduated_tokens or 0)
+            claimant.total_trades_count = (claimant.total_trades_count or 0) + (legacy.total_trades_count or 0)
+            claimant.total_messages_sent = (claimant.total_messages_sent or 0) + (legacy.total_messages_sent or 0)
+            claimant.longest_holding_days = max(claimant.longest_holding_days or 0, legacy.longest_holding_days or 0)
+            
+            legacy_achievements = UserAchievement.query.filter_by(user_id=legacy_user_id).all()
+            for legacy_achievement in legacy_achievements:
+                existing = UserAchievement.query.filter_by(
+                    user_id=claimant_user_id,
+                    achievement_id=legacy_achievement.achievement_id
+                ).first()
+                
+                if existing:
+                    if legacy_achievement.earned_at < existing.earned_at:
+                        existing.earned_at = legacy_achievement.earned_at
+                    merge_summary['achievements_merged'] += 1
+                    db.session.delete(legacy_achievement)
+                else:
+                    legacy_achievement.user_id = claimant_user_id
+                    merge_summary['achievements_transferred'] += 1
+            
+            legacy_engagements = TokenEngagement.query.filter_by(user_id=legacy_user_id).all()
+            for legacy_engagement in legacy_engagements:
+                existing = TokenEngagement.query.filter_by(
+                    user_id=claimant_user_id,
+                    token_id=legacy_engagement.token_id
+                ).first()
+                
+                if existing:
+                    existing.community_points = (existing.community_points or 0) + (legacy_engagement.community_points or 0)
+                    existing.messages_sent = (existing.messages_sent or 0) + (legacy_engagement.messages_sent or 0)
+                    existing.trades_count = (existing.trades_count or 0) + (legacy_engagement.trades_count or 0)
+                    existing.total_traded_volume = Decimal(existing.total_traded_volume or 0) + Decimal(legacy_engagement.total_traded_volume or 0)
+                    existing.polls_created = (existing.polls_created or 0) + (legacy_engagement.polls_created or 0)
+                    existing.polls_voted = (existing.polls_voted or 0) + (legacy_engagement.polls_voted or 0)
+                    existing.spotlight_messages = (existing.spotlight_messages or 0) + (legacy_engagement.spotlight_messages or 0)
+                    existing.current_balance = Decimal(existing.current_balance or 0) + Decimal(legacy_engagement.current_balance or 0)
+                    
+                    if legacy_engagement.first_acquired_at:
+                        if not existing.first_acquired_at or legacy_engagement.first_acquired_at < existing.first_acquired_at:
+                            existing.first_acquired_at = legacy_engagement.first_acquired_at
+                    
+                    if legacy_engagement.last_activity_at > existing.last_activity_at:
+                        existing.last_activity_at = legacy_engagement.last_activity_at
+                    
+                    db.session.delete(legacy_engagement)
+                else:
+                    legacy_engagement.user_id = claimant_user_id
+                    merge_summary['token_engagements_transferred'] += 1
+            
+            legacy_linked_wallets = LinkedWallet.query.filter_by(user_id=legacy_user_id).all()
+            for linked_wallet in legacy_linked_wallets:
+                existing = LinkedWallet.query.filter_by(wallet_address=linked_wallet.wallet_address).first()
+                if not existing or existing.user_id == legacy_user_id:
+                    linked_wallet.user_id = claimant_user_id
+                    merge_summary['linked_wallets_transferred'] += 1
+            
+            legacy_activities = Activity.query.filter_by(user_id=legacy_user_id).all()
+            for activity in legacy_activities:
+                activity.user_id = claimant_user_id
+                merge_summary['activities_transferred'] += 1
+            
+            legacy_wallet_address = legacy.wallet_address
+            legacy.wallet_address = None
+            legacy.archived = True
+            legacy.claimed_by = claimant_user_id
+            legacy.archived_at = datetime.now(timezone.utc)
+            legacy.is_active = False
+            
+            db.session.commit()
+            
+            logging.info(f"Account merge completed successfully: {merge_summary}")
+            
+            return merge_summary
+            
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logging.error(f"Database error during account merge: {str(e)}")
+        raise
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error during account merge: {str(e)}")
+        raise

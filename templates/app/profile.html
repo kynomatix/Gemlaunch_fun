@@ -2016,6 +2016,8 @@ async function requestWalletLink() {
             document.getElementById('targetWalletAddress').textContent = address;
             document.getElementById('challengeMessage').value = data.challenge_message;
             document.getElementById('walletVerificationModal').style.display = 'flex';
+        } else if (response.status === 409 && data.can_claim) {
+            openClaimModal(address, data.legacy_user);
         } else {
             ProfileNotification.showAlert('Error', data.error || 'Failed to request wallet link', 'error');
         }
@@ -2640,4 +2642,7 @@ document.getElementById('editWalletModal').addEventListener('click', function(ev
     }
 });
 </script>
+
+{% include 'app/partials/claim_ownership_modal.html' %}
+
 {% endblock %}
