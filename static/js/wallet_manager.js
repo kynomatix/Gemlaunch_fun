@@ -398,16 +398,14 @@ class WalletManager {
     openWalletModal() {
         const modal = document.getElementById('walletModal');
         if (modal) {
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+            modal.classList.add('active');
         }
     }
     
     closeWalletModal() {
         const modal = document.getElementById('walletModal');
         if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
+            modal.classList.remove('active');
         }
     }
     
