@@ -2021,7 +2021,7 @@ def profile():
     ).all()
     
     # Get pending transfer requests (where current user is the owner)
-    pending_requests = TransferRequest.query.options(
+    pending_requests_query = TransferRequest.query.options(
         joinedload(TransferRequest.requester).joinedload(User.profile)
     ).filter_by(
         owner_id=user.id,
@@ -2031,6 +2031,19 @@ def profile():
     ).order_by(
         TransferRequest.created_at.desc()
     ).all()
+    
+    # Convert to JSON-serializable dictionaries
+    pending_requests = []
+    for req in pending_requests_query:
+        pending_requests.append({
+            'id': req.id,
+            'requester_wallet': req.requester.wallet_address,
+            'requester_display': req.requester.display_name,
+            'wallet_address': req.wallet_address,
+            'created_at': req.created_at.isoformat(),
+            'expires_at': req.expires_at.isoformat(),
+            'nonce': req.nonce
+        })
     
     return render_template('app/profile.html', 
                          user=user, 
