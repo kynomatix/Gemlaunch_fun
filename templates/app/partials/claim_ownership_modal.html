@@ -526,6 +526,10 @@ async function initiateClaimOwnership() {
                     method: 'eth_requestAccounts'
                 });
                 
+                console.log('Current MetaMask account:', currentAccounts[0]);
+                console.log('Expected claim wallet:', claimWalletAddress);
+                console.log('Match:', currentAccounts[0].toLowerCase() === claimWalletAddress.toLowerCase());
+                
                 // Verify the current account matches the disputed wallet
                 if (currentAccounts[0].toLowerCase() !== claimWalletAddress.toLowerCase()) {
                     throw new Error(
@@ -533,7 +537,8 @@ async function initiateClaimOwnership() {
                     );
                 }
             } catch (permError) {
-                if (permError.message.includes('Wrong wallet')) {
+                console.error('Permission error:', permError);
+                if (permError.message && permError.message.includes('Wrong wallet')) {
                     throw permError;
                 }
                 throw new Error('Please allow access to your MetaMask wallet and try again.');
@@ -575,16 +580,18 @@ async function initiateClaimOwnership() {
         
     } catch (error) {
         console.error('Claim ownership error:', error);
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
         
         // Check if this is a wallet authorization error
-        if (error.code === 4100 || error.message.includes('not been authorized')) {
+        if (error.code === 4100 || (error.message && error.message.includes('not been authorized'))) {
             showClaimStatus(
                 `Please switch to the disputed wallet in MetaMask first (${claimWalletAddress.substring(0, 8)}...${claimWalletAddress.substring(38)}), then try again.`,
                 'error',
                 true
             );
         } else {
-            showClaimStatus(`Error: ${error.message}`, 'error', true);
+            showClaimStatus(`Error: ${error.message || 'Unknown error occurred'}`, 'error', true);
         }
         
         claimBtn.disabled = false;
