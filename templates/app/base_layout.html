@@ -452,7 +452,7 @@
                     </button>
                     <div id="walletDropdown" class="wallet-dropdown" style="display: none;">
                         <a href="/app/profile"><i class="fas fa-user-circle"></i> View Profile</a>
-                        <a href="#" onclick="window.walletManager.disconnectWallet(); return false;"><i class="fas fa-sign-out-alt"></i> Disconnect</a>
+                        <a href="#" onclick="handleDisconnect(); return false;"><i class="fas fa-sign-out-alt"></i> Disconnect</a>
                     </div>
                     {% else %}
                     <button onclick="window.walletManager.openWalletModal()" class="wallet-connect">
@@ -529,6 +529,18 @@
             const dropdown = document.getElementById('walletDropdown');
             if (dropdown) {
                 dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
+        // Handle disconnect from dropdown
+        window.handleDisconnect = async function() {
+            try {
+                await window.walletManager.disconnectWallet();
+                // Redirect to marketplace after successful disconnect
+                window.location.href = '/app/tokens';
+            } catch (error) {
+                console.error('Error disconnecting:', error);
+                alert('Failed to disconnect wallet. Please try again.');
             }
         }
         
