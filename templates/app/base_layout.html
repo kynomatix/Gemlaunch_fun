@@ -24,6 +24,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     
+    <!-- Wallet Manager -->
+    <script src="{{ url_for('static', filename='js/wallet_manager.js') }}"></script>
+    
     {% block extra_head %}{% endblock %}
     <style>
         /* Unified App Layout Styles */
@@ -143,6 +146,30 @@
         
         .logout-btn:hover {
             background: rgba(255, 107, 107, 0.1);
+        }
+        
+        /* Wallet Button Styles */
+        .wallet-btn button {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .wallet-btn button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.4);
+        }
+        
+        .wallet-address {
+            font-family: monospace;
         }
         
         /* Sidebar */
@@ -374,12 +401,19 @@
                 <a href="/docs" class="topbar-icon" title="Documentation">
                     <i class="fas fa-book"></i>
                 </a>
-                {% if user %}
-                <div class="user-menu">
-                    <span class="wallet-address">{{ user.wallet_address[:8] }}...{{ user.wallet_address[-6:] }}</span>
-                    <button onclick="disconnectWallet()" class="logout-btn">Logout</button>
+                <!-- Wallet Connection Button -->
+                <div id="walletButton" class="wallet-btn">
+                    {% if user %}
+                    <button onclick="window.walletManager.openWalletModal()" class="wallet-connected">
+                        <span class="wallet-address">{{ user.wallet_address[:8] }}...{{ user.wallet_address[-6:] }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    {% else %}
+                    <button onclick="window.walletManager.openWalletModal()" class="wallet-connect">
+                        <i class="fas fa-wallet"></i> Connect Wallet
+                    </button>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
         
@@ -390,18 +424,18 @@
                     <i class="fas fa-store"></i>
                     <span>Marketplace</span>
                 </a>
+                <a href="/app/leaderboard" class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}">
+                    <i class="fas fa-trophy"></i>
+                    <span>Leaderboard</span>
+                </a>
+                {% if user %}
                 <a href="/app/create" class="nav-item {% if request.endpoint == 'create_token' %}active{% endif %}">
                     <i class="fas fa-rocket"></i>
                     <span>Create Token</span>
                 </a>
-                {% if user %}
                 <a href="/app/dashboard" class="nav-item {% if request.endpoint == 'app_dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
-                </a>
-                <a href="/app/leaderboard" class="nav-item {% if request.endpoint == 'leaderboard' %}active{% endif %}">
-                    <i class="fas fa-trophy"></i>
-                    <span>Leaderboard</span>
                 </a>
                 <a href="/app/profile" class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
                     <i class="fas fa-user-circle"></i>
@@ -421,6 +455,9 @@
     
     <!-- Modals - Outside main-content for proper viewport positioning -->
     {% block modals %}{% endblock %}
+    
+    <!-- Wallet Connection Modal -->
+    {% include 'app/partials/wallet_modal.html' %}
     
     <!-- Scripts with defer for non-critical JavaScript -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
@@ -469,6 +506,9 @@
         
         // Run initialization after Turbo navigation
         document.addEventListener('turbo:load', initializePage);
+        
+        // Initialize WalletManager
+        window.walletManager = new WalletManager();
         
         // Preserve scroll position during Turbo navigation
         document.addEventListener('turbo:before-render', function(event) {

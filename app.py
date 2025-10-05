@@ -576,12 +576,8 @@ def unlink_wallet(wallet_address):
 # App routes
 @app.route('/app')
 def app_home():
-    """Main app - redirects to marketplace (pump.fun style)"""
-    user = get_current_user()
-    if not user:
-        return render_template('app/connect_wallet.html')
-    
-    # Redirect to marketplace as main home page
+    """Main app - redirects to marketplace (accessible without wallet)"""
+    # Always redirect to marketplace, wallet connection via modal
     return redirect(url_for('token_marketplace'))
 
 @app.route('/app/dashboard')
