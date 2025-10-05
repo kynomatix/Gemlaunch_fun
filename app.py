@@ -392,7 +392,7 @@ def request_wallet_link():
     if existing_user:
         return jsonify({
             'error': 'Wallet address is already a primary wallet for another user',
-            'can_claim': True,
+            'account_found': True,
             'legacy_user': {
                 'display_name': existing_user.display_name,
                 'gem_points': existing_user.gem_points,
