@@ -30,6 +30,36 @@ class WalletManager {
             this.connectedWallet = savedWallet;
             this.startSessionPolling();
         }
+        
+        this.setupMetaMaskListeners();
+    }
+    
+    setupMetaMaskListeners() {
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.on('accountsChanged', async (accounts) => {
+                console.log('MetaMask account changed:', accounts);
+                
+                if (accounts.length === 0) {
+                    console.log('No accounts - disconnecting');
+                    await this.disconnectWallet();
+                } else if (this.connectedWallet && this.connectedWallet.wallet_type === 'metamask') {
+                    const newAddress = accounts[0].toLowerCase();
+                    const currentAddress = this.connectedWallet.address.toLowerCase();
+                    
+                    if (newAddress !== currentAddress) {
+                        console.log('Account changed from', currentAddress, 'to', newAddress);
+                        await this.disconnectWallet();
+                        
+                        alert('Your MetaMask account has changed. Please reconnect with your new wallet.');
+                    }
+                }
+            });
+            
+            window.ethereum.on('chainChanged', (chainId) => {
+                console.log('MetaMask chain changed:', chainId);
+                window.location.reload();
+            });
+        }
     }
     
     detectWallet(walletType) {
