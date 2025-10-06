@@ -30,7 +30,8 @@
             border-radius: 15px;
             padding: 0.75rem;
             margin: 0 auto 2rem auto;
-            max-width: 800px;
+            width: 95%;
+            max-width: 1200px;
             backdrop-filter: blur(10px);
             display: flex;
             gap: 0.5rem;
@@ -50,6 +51,39 @@
             font-weight: 500;
             white-space: nowrap;
             position: relative;
+        }
+        
+        /* Responsive filters */
+        @media (max-width: 1200px) {
+            .filters {
+                max-width: 900px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .filters {
+                width: 100%;
+                padding: 0.5rem;
+                gap: 0.4rem;
+                border-radius: 10px;
+            }
+            
+            .filter-btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.85rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .filters {
+                padding: 0.4rem;
+                gap: 0.3rem;
+            }
+            
+            .filter-btn {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.8rem;
+            }
         }
         
         .filter-btn:hover {
