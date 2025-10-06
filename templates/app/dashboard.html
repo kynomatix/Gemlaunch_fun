@@ -26,8 +26,8 @@
         /* CRITICAL FIX: Ensure all dashboard content stays below sidebar and topbar */
         /* Sidebar has z-index: 999, Topbar has z-index: 1000 */
         
-        /* Global fix for all dashboard content */
-        .main-content > * {
+        /* Global fix for all dashboard content (exclude modals from this rule) */
+        .main-content > :not(.wallet-modal-overlay) {
             position: relative;
             z-index: 1 !important;  /* Force all dashboard content below sidebar */
         }
