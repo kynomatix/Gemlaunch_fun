@@ -53,6 +53,37 @@ class User(db.Model):
         self.gem_points = (self.gem_points or 0) + points
         db.session.commit()
     
+    @staticmethod
+    def resolve_wallet_to_user(wallet_address):
+        """Resolve a wallet address to a User account
+        
+        Resolution order:
+        1. Check LinkedWallet table first (for merged accounts)
+        2. Check User.wallet_address (primary wallet)
+        3. Return None if not found
+        
+        Args:
+            wallet_address: Wallet address to resolve (will be lowercased)
+            
+        Returns:
+            User object or None
+        """
+        from models import LinkedWallet
+        
+        wallet_lower = wallet_address.lower()
+        
+        # First, check if this wallet is linked to another account
+        linked_wallet = LinkedWallet.query.filter_by(
+            wallet_address=wallet_lower,
+            status='verified'
+        ).first()
+        
+        if linked_wallet:
+            return User.query.get(linked_wallet.user_id)
+        
+        # If not linked, check if it's a primary wallet
+        return User.query.filter_by(wallet_address=wallet_lower).first()
+    
     @classmethod
     def get_or_create_by_wallet(cls, wallet_address, wallet_type=None, display_name=None):
         """Get existing user or create new one by wallet address
@@ -62,27 +93,10 @@ class User(db.Model):
         2. Check if wallet is a primary wallet (User.wallet_address)
         3. Create new user if not found
         """
-        from models import LinkedWallet
-        
         wallet_lower = wallet_address.lower()
         
-        # First, check if this wallet is linked to another account (handles merged accounts)
-        linked_wallet = LinkedWallet.query.filter_by(
-            wallet_address=wallet_lower,
-            status='verified'
-        ).first()
-        
-        if linked_wallet:
-            # Use the account this wallet is linked to
-            user = cls.query.get(linked_wallet.user_id)
-            if user:
-                # Update last seen
-                user.last_seen = datetime.now(timezone.utc)
-                db.session.commit()
-                return user
-        
-        # If not linked, check if this is a primary wallet
-        user = cls.query.filter_by(wallet_address=wallet_lower).first()
+        # Use shared resolution utility
+        user = cls.resolve_wallet_to_user(wallet_address)
         
         if not user:
             # Wallet not found anywhere - create new user
@@ -94,7 +108,7 @@ class User(db.Model):
             db.session.add(user)
             db.session.commit()
         else:
-            # Update last seen for primary wallet
+            # Update last seen for existing user
             user.last_seen = datetime.now(timezone.utc)
             if wallet_type:
                 user.wallet_type = wallet_type

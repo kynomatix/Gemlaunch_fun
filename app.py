@@ -128,39 +128,17 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 db.init_app(app)
 
 def get_current_user():
-    """Get current user from session - only if wallet is verified
-    
-    Resolution order:
-    1. Check LinkedWallet table first (for merged accounts)
-    2. Check User.wallet_address (primary wallet)
-    3. Return None if not found
-    """
-    from models import LinkedWallet
-    
+    """Get current user from session - only if wallet is verified"""
     wallet_address = session.get('wallet_address')
     wallet_verified = session.get('wallet_verified', False)
     
-    # Only return user if wallet has been cryptographically verified
     if wallet_address and wallet_verified:
-        wallet_lower = wallet_address.lower()
-        
-        # First, check if this wallet is linked to another account
-        linked_wallet = LinkedWallet.query.filter_by(
-            wallet_address=wallet_lower,
-            status='verified'
-        ).first()
-        
-        if linked_wallet:
-            # Use the account this wallet is linked to
+        user = User.resolve_wallet_to_user(wallet_address)
+        if user:
+            # Load profile relationship if needed
             return User.query.options(
                 joinedload(User.profile)
-            ).get(linked_wallet.user_id)
-        
-        # If not linked, check if it's a primary wallet
-        return User.query.options(
-            joinedload(User.profile)
-        ).filter_by(wallet_address=wallet_lower).first()
-    
+            ).get(user.id)
     return None
 
 def require_wallet_connection(f):
