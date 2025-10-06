@@ -2164,13 +2164,14 @@
     </script>
     
     <style>
-        .wallet-info-nav {
+        /* Scope dashboard wallet info styles to not affect topbar */
+        .dashboard-section .wallet-info-nav {
             display: flex;
             align-items: center;
             gap: 1rem;
         }
         
-        .wallet-address {
+        .dashboard-section .wallet-address {
             color: #20B2AA;
             font-family: 'Courier New', monospace;
             font-size: 0.9rem;
@@ -2180,7 +2181,7 @@
             border-radius: 8px;
         }
         
-        .wallet-disconnect {
+        .dashboard-section .wallet-disconnect {
             background: rgba(255, 50, 50, 0.1) !important;
             color: #FF5252 !important;
             border: 1px solid rgba(255, 50, 50, 0.3) !important;
@@ -2191,14 +2192,14 @@
             text-decoration: none !important;
         }
         
-        .wallet-disconnect:hover {
+        .dashboard-section .wallet-disconnect:hover {
             background: rgba(255, 50, 50, 0.2) !important;
             border-color: rgba(255, 50, 50, 0.5) !important;
             transform: translateY(-1px);
         }
         
         @media (max-width: 768px) {
-            .wallet-info-nav {
+            .dashboard-section .wallet-info-nav {
                 flex-direction: column;
                 gap: 0.5rem;
                 align-items: stretch;
