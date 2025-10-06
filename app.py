@@ -1936,6 +1936,9 @@ def profile():
     # Convert to JSON-serializable dictionaries
     pending_requests = []
     for req in pending_requests_query:
+        # Generate canonical message (must match accept_transfer format exactly)
+        canonical_message = f"Accept transfer request for wallet {req.wallet_address} and merge accounts.\n\nNonce: {req.nonce}\nTimestamp: {int(req.created_at.timestamp())}\n\nWarning: This will merge all data from your account into the requester's account."
+        
         pending_requests.append({
             'id': req.id,
             'requester_wallet': req.requester.wallet_address,
@@ -1943,7 +1946,8 @@ def profile():
             'wallet_address': req.wallet_address,
             'created_at': req.created_at.isoformat(),
             'expires_at': req.expires_at.isoformat(),
-            'nonce': req.nonce
+            'nonce': req.nonce,
+            'message': canonical_message
         })
     
     return render_template('app/profile.html', 
