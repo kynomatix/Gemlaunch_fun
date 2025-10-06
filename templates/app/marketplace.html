@@ -72,84 +72,13 @@
             margin-bottom: 3rem;
         }
         
-        /* Marketplace Token Type Badges */
-        
-        .marketplace-token-badge {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            padding: 0.4rem;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            z-index: 10;
-            overflow: hidden;
-            white-space: nowrap;
-            max-width: 28px;
-        }
-        
-        .marketplace-token-badge:hover {
-            max-width: 200px;
-            padding: 0.4rem 0.7rem;
-        }
-        
-        .marketplace-token-badge .badge-text {
-            opacity: 0;
-            max-width: 0;
-            display: inline-block;
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-        
-        .marketplace-token-badge:hover .badge-text {
-            opacity: 1;
-            max-width: 100px;
-            margin-left: 0.3rem;
-        }
-        
-        .marketplace-token-badge.basic {
-            background: linear-gradient(135deg, rgba(0, 229, 204, 0.95), rgba(32, 178, 170, 0.9));
-            border: 1px solid rgba(0, 229, 204, 0.8);
-            color: #000;
-            animation: subtle-glow-teal 3s ease-in-out infinite alternate;
-        }
-        
-        .marketplace-token-badge.advanced {
-            background: linear-gradient(135deg, rgba(0, 191, 255, 0.95), rgba(30, 144, 255, 0.9));
-            border: 1px solid rgba(0, 191, 255, 0.8);
-            color: #000;
-            animation: subtle-glow-blue 3s ease-in-out infinite alternate;
-        }
-        
         /* GPU acceleration for marketplace animations */
         .token-card,
         .filter-btn,
-        .marketplace-token-badge.advanced,
-        .marketplace-token-badge.basic,
         .token-stat {
             will-change: transform;
             transform: translateZ(0);
             backface-visibility: hidden;
-        }
-        
-        @keyframes subtle-glow-teal {
-            /* GPU-accelerated glow for teal */
-            from { box-shadow: 0 0 5px rgba(0, 229, 204, 0.4); }
-            to { box-shadow: 0 0 12px rgba(0, 229, 204, 0.6); }
-        }
-        
-        @keyframes subtle-glow-blue {
-            /* GPU-accelerated glow for blue */
-            from { box-shadow: 0 0 5px rgba(0, 191, 255, 0.4); }
-            to { box-shadow: 0 0 12px rgba(0, 191, 255, 0.6); }
         }
         
         .contract-address-small {
@@ -279,12 +208,30 @@
         }
         
         .metric-pill {
-            padding: 0.3rem 0.6rem;
+            padding: 0.3rem 0.5rem;
             border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 600;
-            white-space: nowrap;
             backdrop-filter: blur(5px);
+            overflow: hidden;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .metric-pill .pill-text {
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-pill:hover .pill-text {
+            max-width: 100px;
+            opacity: 1;
+            margin-left: 0.2rem;
         }
         
         .age-pill {
@@ -303,6 +250,30 @@
             background: rgba(255, 99, 71, 0.2);
             color: #FF6347;
             border: 1px solid rgba(255, 99, 71, 0.4);
+        }
+        
+        .type-pill.basic {
+            background: linear-gradient(135deg, rgba(0, 229, 204, 0.95), rgba(32, 178, 170, 0.9));
+            border: 1px solid rgba(0, 229, 204, 0.8);
+            color: #000;
+            animation: subtle-glow-teal 3s ease-in-out infinite alternate;
+        }
+        
+        .type-pill.advanced {
+            background: linear-gradient(135deg, rgba(0, 191, 255, 0.95), rgba(30, 144, 255, 0.9));
+            border: 1px solid rgba(0, 191, 255, 0.8);
+            color: #000;
+            animation: subtle-glow-blue 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes subtle-glow-teal {
+            from { box-shadow: 0 0 5px rgba(0, 229, 204, 0.4); }
+            to { box-shadow: 0 0 12px rgba(0, 229, 204, 0.6); }
+        }
+        
+        @keyframes subtle-glow-blue {
+            from { box-shadow: 0 0 5px rgba(0, 191, 255, 0.4); }
+            to { box-shadow: 0 0 12px rgba(0, 191, 255, 0.6); }
         }
         
         /* Stats Row */
@@ -640,9 +611,20 @@
                                         </div>
                                     </div>
                                     <div class="token-pills">
-                                        <span class="metric-pill age-pill">{{ token_age }}</span>
-                                        <span class="metric-pill change-pill {{ 'positive' if price_change >= 0 else 'negative' }}">
-                                            {{ '+' if price_change >= 0 else '' }}{{ price_change }}%
+                                        <span class="metric-pill age-pill" title="Token age">
+                                            <i class="fas fa-clock"></i>
+                                            <span class="pill-text">{{ token_age }}</span>
+                                        </span>
+                                        <span class="metric-pill change-pill {{ 'positive' if price_change >= 0 else 'negative' }}" title="24h price change">
+                                            <i class="fas fa-chart-line"></i>
+                                            <span class="pill-text">{{ '+' if price_change >= 0 else '' }}{{ price_change }}%</span>
+                                        </span>
+                                        <span class="metric-pill type-pill {{ 'advanced' if token.is_pro else 'basic' }}" title="Token type">
+                                            {% if token.is_pro %}
+                                                <i class="fas fa-star"></i><span class="pill-text">PRO</span>
+                                            {% else %}
+                                                <i class="fas fa-cog"></i><span class="pill-text">BASIC</span>
+                                            {% endif %}
                                         </span>
                                     </div>
                                 </div>
@@ -672,15 +654,6 @@
                                     <span>{{ "%.0f"|format(token.progress_to_graduation) }}%</span>
                                 </div>
                             </div>
-                            
-                            <!-- Badge moved to bottom right corner -->
-                            <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
-                                {% if token.is_pro %}
-                                    <i class="fas fa-star"></i><span class="badge-text">Pro</span>
-                                {% else %}
-                                    <i class="fas fa-cog"></i><span class="badge-text">Basic</span>
-                                {% endif %}
-                            </span>
                         </a>
                     {% endfor %}
                 </div>
