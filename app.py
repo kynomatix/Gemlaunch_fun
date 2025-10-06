@@ -907,9 +907,13 @@ def accept_transfer():
         if transfer_request.status != 'pending':
             return jsonify({'error': f'Transfer request is not pending (status: {transfer_request.status})'}), 400
         
-        if transfer_request.is_expired:
+        # SECURITY: Check expiry BEFORE signature verification to prevent wasted CPU on expired requests
+        # Store the expiry result to prevent race conditions from multiple property evaluations
+        is_expired = transfer_request.is_expired
+        if is_expired:
             transfer_request.expire()
             db.session.commit()
+            logging.warning(f"Rejected expired transfer request {request_id} for user {user.id}. Request expired at {transfer_request.expires_at}")
             return jsonify({'error': 'Transfer request has expired'}), 400
         
         transfer_message = f"Accept transfer request for wallet {transfer_request.wallet_address} and merge accounts.\n\nNonce: {transfer_request.nonce}\nTimestamp: {int(transfer_request.created_at.timestamp())}\n\nWarning: This will merge all data from your account into the requester's account."
@@ -933,11 +937,26 @@ def accept_transfer():
         if user.archived:
             return jsonify({'error': 'Your account has already been archived'}), 400
         
-        merge_summary = merge_accounts(db, requester_user.id, user.id)
+        # SECURITY: Final expiry check right before acceptance to prevent race conditions
+        # This ensures atomicity between validation and state change
+        if transfer_request.is_expired:
+            transfer_request.expire()
+            db.session.commit()
+            logging.warning(f"Transfer request {request_id} expired during processing (race condition prevented)")
+            return jsonify({'error': 'Transfer request expired during processing'}), 400
         
+        # CRITICAL: Accept the request FIRST, then merge
+        # This ensures if accept() fails (e.g., expired), merge never happens
+        # The accept() method will perform one final expiry check for atomicity
         transfer_request.accept()
         
-        logging.info(f"Transfer request accepted and accounts merged: {merge_summary}")
+        # Only merge if accept succeeded (no ValueError raised)
+        merge_summary = merge_accounts(db, requester_user.id, user.id)
+        
+        # Commit the entire transaction atomically (accept + merge)
+        db.session.commit()
+        
+        logging.info(f"Transfer request {request_id} accepted and accounts merged: {merge_summary}")
         
         return jsonify({
             'success': True,

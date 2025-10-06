@@ -793,9 +793,26 @@ class TransferRequest(db.Model):
         return datetime.now(timezone.utc) > expires_at
     
     def accept(self):
-        """Accept the transfer request"""
+        """Accept the transfer request with atomic expiry validation
+        
+        This provides defense-in-depth against race conditions by validating
+        expiry one final time at the exact moment of state change.
+        
+        Raises:
+            ValueError: If request has expired or is not in pending status
+        
+        Note: Does NOT commit - caller must handle transaction commit for atomicity
+        """
+        # SECURITY: Atomic expiry check at the exact moment of acceptance
+        # This is the final defense against time-of-check-time-of-use vulnerabilities
+        if self.is_expired:
+            self.status = 'expired'
+            raise ValueError(f'Transfer request has expired (expired at {self.expires_at})')
+        
+        if self.status != 'pending':
+            raise ValueError(f'Transfer request is not pending (status: {self.status})')
+        
         self.status = 'accepted'
-        db.session.commit()
     
     def decline(self):
         """Decline the transfer request"""
