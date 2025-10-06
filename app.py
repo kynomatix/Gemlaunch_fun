@@ -785,7 +785,30 @@ def accept_transfer():
         # Only merge if accept succeeded (no ValueError raised)
         merge_summary = merge_accounts(db, requester_user.id, user.id)
         
-        # Commit the entire transaction atomically (accept + merge)
+        # SECURITY: Invalidate all other pending transfer requests for this wallet
+        from models import WalletVerificationChallenge
+        
+        other_pending_requests = TransferRequest.query.filter(
+            TransferRequest.wallet_address == transfer_request.wallet_address,
+            TransferRequest.id != transfer_request.id,
+            TransferRequest.status == 'pending'
+        ).all()
+        
+        for req in other_pending_requests:
+            req.status = 'cancelled'
+            logging.info(f"Cancelled pending transfer request {req.id} for wallet {req.wallet_address} due to accepted transfer")
+        
+        # Invalidate any outstanding wallet verification challenges for this wallet
+        pending_challenges = WalletVerificationChallenge.query.filter(
+            WalletVerificationChallenge.wallet_address == transfer_request.wallet_address,
+            WalletVerificationChallenge.used == False
+        ).all()
+        
+        for challenge in pending_challenges:
+            challenge.used = True
+            logging.info(f"Invalidated wallet verification challenge {challenge.id} for wallet {challenge.wallet_address} due to accepted transfer")
+        
+        # Commit the entire transaction atomically (accept + merge + invalidations)
         db.session.commit()
         
         logging.info(f"Transfer request {request_id} accepted and accounts merged: {merge_summary}")
