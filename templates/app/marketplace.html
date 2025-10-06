@@ -80,7 +80,12 @@
         }
         
         /* GPU acceleration for token cards */
-        .token-card,
+        .token-card {
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+        
         .token-stat {
             will-change: transform;
             transform: translateZ(0);
@@ -111,8 +116,8 @@
             cursor: pointer;
             position: relative;
             display: flex;
-            gap: 1rem;
-            min-height: 140px;
+            gap: 1.25rem;
+            min-height: 155px;
         }
         
         .token-card:hover {
@@ -128,14 +133,14 @@
         }
         
         .token-avatar {
-            width: 100px;
-            height: 100px;
+            width: 135px;
+            height: 135px;
             border-radius: 12px;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: bold;
             color: #000;
             position: relative;
@@ -542,7 +547,11 @@
             }
             
             /* Simplify transitions on mobile - Token cards */
-            .token-card,
+            .token-card {
+                transition: opacity 0.2s ease, background-color 0.2s ease !important;
+            }
+            
+            /* Simplify transitions on mobile - Token stats */
             .token-stat {
                 transition: opacity 0.2s ease, background-color 0.2s ease !important;
             }
@@ -553,7 +562,11 @@
             }
             
             /* Remove hover transforms on mobile - Token cards */
-            .token-card:hover,
+            .token-card:hover {
+                transform: none !important;
+            }
+            
+            /* Remove hover transforms on mobile - Token stats */
             .token-stat:hover {
                 transform: none !important;
             }
@@ -567,8 +580,8 @@
             }
             
             .token-avatar {
-                width: 80px;
-                height: 80px;
+                width: 100px;
+                height: 100px;
             }
             
             .token-info h3 {
