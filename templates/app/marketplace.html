@@ -584,7 +584,8 @@
                     {% for token in tokens %}
                         {% set token_age_hours = ((now.timestamp() - token.created_at.timestamp()) / 3600)|int %}
                         {% set token_age = (token_age_hours // 24)|string + 'd' if token_age_hours >= 24 else token_age_hours|string + 'h' %}
-                        {% set price_change = (loop.index0 % 40) - 20 %}
+                        {% set price_changes = [15.3, -3.2, 8.7, 22.5, -1.8, 45.2, 5.4, -7.1, 12.9, 31.6, 2.3, -4.5, 18.4, 9.2, -2.1, 27.8, 6.1, 14.3, -5.9, 11.7] %}
+                        {% set price_change = price_changes[loop.index0 % price_changes|length] %}
                         <a href="{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}" 
                            class="token-card" 
                            style="text-decoration: none; color: inherit;"
