@@ -76,8 +76,8 @@
         
         .marketplace-token-badge {
             position: absolute;
-            top: 6px;
-            right: 6px;
+            top: 12px;
+            right: 12px;
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
@@ -122,8 +122,8 @@
         }
         
         .marketplace-token-badge.advanced {
-            background: linear-gradient(135deg, rgba(74, 144, 184, 0.9), rgba(46, 139, 155, 0.85));
-            border: 1px solid rgba(74, 144, 184, 0.6);
+            background: linear-gradient(135deg, rgba(0, 191, 255, 0.95), rgba(30, 144, 255, 0.9));
+            border: 1px solid rgba(0, 191, 255, 0.8);
             color: #000;
             animation: subtle-glow 3s ease-in-out infinite alternate;
         }
@@ -140,8 +140,8 @@
         
         @keyframes subtle-glow {
             /* GPU-accelerated glow */
-            from { box-shadow: 0 0 3px rgba(74, 144, 184, 0.2); }
-            to { box-shadow: 0 0 8px rgba(74, 144, 184, 0.4); }
+            from { box-shadow: 0 0 5px rgba(0, 191, 255, 0.4); }
+            to { box-shadow: 0 0 12px rgba(0, 191, 255, 0.6); }
         }
         
         .contract-address-small {
@@ -166,6 +166,7 @@
             backdrop-filter: blur(20px);
             transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
         }
         
         .token-card:hover {
@@ -400,6 +401,13 @@
                            data-trades="{{ token.trade_count or 0 }}"
                            data-views="{{ token.view_count or 0 }}"
                            data-holders="{{ token.holder_count or 0 }}">
+                            <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
+                                {% if token.is_pro %}
+                                    <i class="fas fa-star"></i><span class="badge-text">Pro</span>
+                                {% else %}
+                                    <i class="fas fa-cog"></i><span class="badge-text">Basic</span>
+                                {% endif %}
+                            </span>
                             <div class="token-header">
                                 <div class="token-avatar">
                                     {% if token.image_url %}
@@ -407,13 +415,6 @@
                                     {% else %}
                                         {{ token.symbol[0] if token.symbol else '?' }}
                                     {% endif %}
-                                    <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
-                                        {% if token.is_pro %}
-                                            <i class="fas fa-star"></i><span class="badge-text">Pro</span>
-                                        {% else %}
-                                            <i class="fas fa-cog"></i><span class="badge-text">Basic</span>
-                                        {% endif %}
-                                    </span>
                                 </div>
                                 <div class="token-info">
                                     <h3>{{ token.name }}</h3>

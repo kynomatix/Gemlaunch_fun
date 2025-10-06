@@ -2,6 +2,13 @@
 <div class="token-header">
     <!-- Left Side - Token Info -->
     <div class="token-info-section">
+        <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
+            {% if is_pro_token %}
+                <i class="fas fa-star"></i><span class="badge-text" id="tokenTypeText">PRO</span>
+            {% else %}
+                <i class="fas fa-cog"></i><span class="badge-text" id="tokenTypeText">BASIC</span>
+            {% endif %}
+        </span>
         <div class="token-identity">
             <div class="token-avatar">
                 {% if token.image_url %}
@@ -9,13 +16,6 @@
                 {% else %}
                     {{ token.symbol[0] if token.symbol else '?' }}
                 {% endif %}
-                <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
-                    {% if is_pro_token %}
-                        <i class="fas fa-star"></i><span class="badge-text" id="tokenTypeText">PRO</span>
-                    {% else %}
-                        <i class="fas fa-cog"></i><span class="badge-text" id="tokenTypeText">BASIC</span>
-                    {% endif %}
-                </span>
             </div>
             <div class="token-details">
                 <div class="token-title-row">
