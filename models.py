@@ -650,7 +650,11 @@ class WalletVerificationChallenge(db.Model):
     @property
     def is_expired(self):
         """Check if challenge has expired"""
-        return datetime.now(timezone.utc) > self.expires_at
+        # Ensure expires_at is timezone-aware for comparison
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires_at
     
     def mark_used(self):
         """Mark challenge as used to prevent replay attacks"""
@@ -700,7 +704,11 @@ class ClaimOwnershipChallenge(db.Model):
     @property
     def is_expired(self):
         """Check if challenge has expired"""
-        return datetime.now(timezone.utc) > self.expires_at
+        # Ensure expires_at is timezone-aware for comparison
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires_at
     
     def mark_used(self):
         """Mark challenge as used to prevent replay attacks"""
@@ -749,7 +757,11 @@ class TransferRequest(db.Model):
     @property
     def is_expired(self):
         """Check if request has expired"""
-        return datetime.now(timezone.utc) > self.expires_at
+        # Ensure expires_at is timezone-aware for comparison
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires_at
     
     def accept(self):
         """Accept the transfer request"""
