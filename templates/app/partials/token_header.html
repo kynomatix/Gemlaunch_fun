@@ -5,22 +5,21 @@
         <div class="token-identity">
             <div class="token-avatar">
                 {% if token.image_url %}
-                    <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <img src="{{ token.image_url }}" alt="{{ token.name }}">
                 {% else %}
                     {{ token.symbol[0] if token.symbol else '?' }}
                 {% endif %}
+                <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
+                    {% if is_pro_token %}
+                        <i class="fas fa-star"></i><span class="badge-text" id="tokenTypeText">PRO</span>
+                    {% else %}
+                        <i class="fas fa-cog"></i><span class="badge-text" id="tokenTypeText">BASIC</span>
+                    {% endif %}
+                </span>
             </div>
             <div class="token-details">
                 <div class="token-title-row">
                     <h1 class="token-name">{{ token.name }}</h1>
-                    <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
-                        {% if is_pro_token %}
-                            <i class="fas fa-star"></i>
-                            <span id="tokenTypeText">PRO</span>
-                        {% else %}
-                            <span id="tokenTypeText">BASIC</span>
-                        {% endif %}
-                    </span>
                     {% if is_pro_token and token.reserved_percentage > 0 %}
                     <button class="vesting-info-btn" onclick="toggleVestingModal()" title="View vesting details">
                         <i class="fas fa-lock"></i>

@@ -73,37 +73,58 @@
         }
         
         /* Marketplace Token Type Badges */
-        .token-info-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.5rem;
-            margin-bottom: 0.25rem;
-        }
         
         .marketplace-token-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
-            padding: 0.25rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.65rem;
+            padding: 0.4rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             flex-shrink: 0;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            overflow: hidden;
+            white-space: nowrap;
+            max-width: 28px;
+        }
+        
+        .marketplace-token-badge:hover {
+            max-width: 200px;
+            padding: 0.4rem 0.7rem;
+        }
+        
+        .marketplace-token-badge .badge-text {
+            opacity: 0;
+            max-width: 0;
+            display: inline-block;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .marketplace-token-badge:hover .badge-text {
+            opacity: 1;
+            max-width: 100px;
+            margin-left: 0.3rem;
         }
         
         .marketplace-token-badge.basic {
-            background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.08));
-            border: 1px solid rgba(32, 178, 170, 0.3);
-            color: #20B2AA;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.9), rgba(0, 206, 209, 0.85));
+            border: 1px solid rgba(32, 178, 170, 0.5);
+            color: #000;
         }
         
         .marketplace-token-badge.advanced {
-            background: linear-gradient(135deg, rgba(74, 144, 184, 0.2), rgba(46, 139, 155, 0.1));
-            border: 1px solid rgba(74, 144, 184, 0.4);
-            color: #4A90B8;
+            background: linear-gradient(135deg, rgba(74, 144, 184, 0.9), rgba(46, 139, 155, 0.85));
+            border: 1px solid rgba(74, 144, 184, 0.6);
+            color: #000;
             animation: subtle-glow 3s ease-in-out infinite alternate;
         }
         
@@ -161,16 +182,25 @@
         }
         
         .token-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            border-radius: 12px;
             background: linear-gradient(135deg, #20B2AA, #00CED1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 2rem;
             font-weight: bold;
             color: #000;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .token-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
         }
         
         .token-info h3 {
@@ -291,6 +321,15 @@
                 padding: 0.6rem 1rem;
                 font-size: 0.85rem;
             }
+            
+            .token-avatar {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .token-info h3 {
+                font-size: 1.1rem;
+            }
         }
     </style>
 {% endblock %}
@@ -364,22 +403,20 @@
                             <div class="token-header">
                                 <div class="token-avatar">
                                     {% if token.image_url %}
-                                        <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                                        <img src="{{ token.image_url }}" alt="{{ token.name }}">
                                     {% else %}
                                         {{ token.symbol[0] if token.symbol else '?' }}
                                     {% endif %}
+                                    <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
+                                        {% if token.is_pro %}
+                                            <i class="fas fa-star"></i><span class="badge-text">Pro</span>
+                                        {% else %}
+                                            <i class="fas fa-cog"></i><span class="badge-text">Basic</span>
+                                        {% endif %}
+                                    </span>
                                 </div>
                                 <div class="token-info">
-                                    <div class="token-info-header">
-                                        <h3>{{ token.name }}</h3>
-                                        <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
-                                            {% if token.is_pro %}
-                                                <i class="fas fa-star"></i> Pro
-                                            {% else %}
-                                                <i class="fas fa-cog"></i> Basic
-                                            {% endif %}
-                                        </span>
-                                    </div>
+                                    <h3>{{ token.name }}</h3>
                                     <p>${{ token.symbol }}</p>
                                     <div class="token-creator" style="font-size: 0.85rem; color: #999; margin-top: 0.3rem;">
                                         by {% if token.creator.display_name %}
