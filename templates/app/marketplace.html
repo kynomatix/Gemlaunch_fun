@@ -219,7 +219,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.3rem;
+            gap: 0;
+            min-width: 28px;
+        }
+        
+        .metric-pill i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .metric-pill .pill-text {
@@ -227,19 +234,26 @@
             opacity: 0;
             overflow: hidden;
             transition: all 0.3s ease;
+            margin-left: 0;
+        }
+        
+        .metric-pill:hover {
+            gap: 0.3rem;
         }
         
         .metric-pill:hover .pill-text {
             max-width: 100px;
             opacity: 1;
-            margin-left: 0.2rem;
         }
         
         /* Price change pill always shows text */
+        .change-pill {
+            gap: 0.3rem;
+        }
+        
         .change-pill .pill-text {
             max-width: 100px;
             opacity: 1;
-            margin-left: 0.2rem;
         }
         
         .age-pill {
