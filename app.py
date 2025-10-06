@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, ClaimOwnershipChallenge, TransferRequest
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -584,154 +584,8 @@ def unlink_wallet(wallet_address):
         logging.error(f"Error unlinking wallet: {str(e)}")
         return jsonify({'error': f'Failed to unlink wallet: {str(e)}'}), 500
 
-@app.route('/api/wallet/request-claim', methods=['POST'])
-def request_claim_ownership():
-    """Request to claim ownership of a wallet that's already a primary wallet"""
-    import re
-    from services.account_merger import merge_accounts
-    
-    user = get_current_user()
-    if not user:
-        return jsonify({'error': 'User authentication required'}), 401
-    
-    data = request.get_json()
-    disputed_wallet_address = data.get('wallet_address')
-    
-    if not disputed_wallet_address:
-        return jsonify({'error': 'Wallet address required'}), 400
-    
-    disputed_wallet_address = disputed_wallet_address.strip()
-    
-    if not re.match(r'^0x[a-fA-F0-9]{40}$', disputed_wallet_address):
-        return jsonify({'error': 'Invalid wallet address format. Must be 0x followed by 40 hexadecimal characters.'}), 400
-    
-    disputed_wallet_lower = disputed_wallet_address.lower()
-    
-    if disputed_wallet_lower == user.wallet_address.lower():
-        return jsonify({'error': 'This is already your primary wallet address'}), 400
-    
-    legacy_user = User.query.filter_by(wallet_address=disputed_wallet_lower).first()
-    if not legacy_user:
-        return jsonify({'error': 'This wallet address is not a primary wallet for any account'}), 400
-    
-    if legacy_user.archived:
-        return jsonify({'error': 'This account has already been claimed and archived'}), 400
-    
-    try:
-        existing_active_challenges = ClaimOwnershipChallenge.query.filter_by(
-            claimant_user_id=user.id,
-            used=False
-        ).filter(
-            ClaimOwnershipChallenge.expires_at > datetime.now(timezone.utc)
-        ).count()
-        
-        if existing_active_challenges >= 3:
-            return jsonify({'error': 'Too many active claim attempts. Please wait before trying again.'}), 429
-        
-        challenge = ClaimOwnershipChallenge.create_challenge(
-            claimant_user_id=user.id,
-            disputed_wallet_address=disputed_wallet_lower,
-            legacy_user_id=legacy_user.id
-        )
-        
-        logging.info(f"Claim ownership challenge created: claimant={user.id}, legacy={legacy_user.id}, wallet={disputed_wallet_lower}")
-        
-        return jsonify({
-            'success': True,
-            'challenge_message': challenge.challenge_message,
-            'nonce': challenge.nonce,
-            'legacy_user': {
-                'display_name': legacy_user.display_name,
-                'gem_points': legacy_user.gem_points,
-                'total_tokens_created': legacy_user.total_tokens_created,
-                'wallet_address': legacy_user.wallet_address
-            }
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error creating claim ownership challenge: {str(e)}")
-        return jsonify({'error': f'Failed to create claim request: {str(e)}'}), 500
-
-@app.route('/api/wallet/verify-claim', methods=['POST'])
-def verify_claim_ownership():
-    """Verify signature and merge accounts - transfer all data from legacy to claimant"""
-    from eth_account.messages import encode_defunct
-    from eth_account import Account
-    from services.account_merger import merge_accounts
-    
-    user = get_current_user()
-    if not user:
-        return jsonify({'error': 'User authentication required'}), 401
-    
-    data = request.get_json()
-    disputed_wallet_address = data.get('wallet_address')
-    nonce = data.get('nonce')
-    signature = data.get('signature')
-    
-    if not disputed_wallet_address or not nonce or not signature:
-        return jsonify({'error': 'Wallet address, nonce, and signature required'}), 400
-    
-    disputed_wallet_lower = disputed_wallet_address.lower()
-    
-    try:
-        challenge = ClaimOwnershipChallenge.query.filter_by(
-            claimant_user_id=user.id,
-            disputed_wallet_address=disputed_wallet_lower,
-            nonce=nonce
-        ).first()
-        
-        if not challenge:
-            logging.warning(f"Invalid nonce for claim ownership: user {user.id}, wallet {disputed_wallet_lower}")
-            return jsonify({'error': 'Invalid or missing claim challenge'}), 400
-        
-        if challenge.used:
-            logging.warning(f"Attempt to reuse nonce for claim ownership: user {user.id}, wallet {disputed_wallet_lower}")
-            return jsonify({'error': 'Claim challenge already used'}), 400
-        
-        if challenge.is_expired:
-            logging.warning(f"Expired nonce for claim ownership: user {user.id}, wallet {disputed_wallet_lower}")
-            return jsonify({'error': 'Claim challenge expired. Please request a new one.'}), 400
-        
-        try:
-            encoded_message = encode_defunct(text=challenge.challenge_message)
-            recovered_address = Account.recover_message(encoded_message, signature=signature)
-            
-            if recovered_address.lower() != disputed_wallet_lower:
-                logging.warning(f"Signature verification failed for claim: user {user.id}, wallet {disputed_wallet_lower}, recovered {recovered_address}")
-                return jsonify({'error': 'Signature verification failed. You must sign with the disputed wallet.'}), 401
-                
-        except Exception as sig_error:
-            logging.error(f"Signature verification error for claim: {str(sig_error)}")
-            return jsonify({'error': f'Signature verification error: {str(sig_error)}'}), 401
-        
-        legacy_user = User.query.get(challenge.legacy_user_id)
-        if not legacy_user:
-            return jsonify({'error': 'Legacy user account not found'}), 404
-        
-        if legacy_user.archived:
-            return jsonify({'error': 'Legacy account has already been claimed'}), 400
-        
-        merge_summary = merge_accounts(db, user.id, legacy_user.id)
-        
-        challenge.mark_used()
-        
-        logging.info(f"Account claim successful: {merge_summary}")
-        
-        return jsonify({
-            'success': True,
-            'message': 'Account ownership claimed successfully. All data has been merged.',
-            'merge_summary': merge_summary
-        })
-        
-    except ValueError as ve:
-        db.session.rollback()
-        logging.error(f"Validation error during claim verification: {str(ve)}")
-        return jsonify({'error': str(ve)}), 400
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error verifying claim ownership: {str(e)}")
-        return jsonify({'error': f'Failed to verify and claim ownership: {str(e)}'}), 500
+# REMOVED: Legacy claim ownership endpoints (/api/wallet/request-claim and /api/wallet/verify-claim)
+# These endpoints have been replaced by the TransferRequest flow which provides cleaner approval process.
 
 # Transfer Request API (Give Ownership Flow)
 @app.route('/api/wallet/request-transfer', methods=['POST'])
