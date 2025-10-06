@@ -26,13 +26,7 @@
         /* CRITICAL FIX: Ensure all dashboard content stays below sidebar and topbar */
         /* Sidebar has z-index: 999, Topbar has z-index: 1000 */
         
-        /* Global fix for all dashboard content (exclude modals from this rule) */
-        .main-content > :not(.wallet-modal-overlay) {
-            position: relative;
-            z-index: 1 !important;  /* Force all dashboard content below sidebar */
-        }
-        
-        /* Ensure all carousel and accolades elements don't block sidebar */
+        /* Only target specific dashboard sections, not global elements */
         .dashboard-tabs,
         .tab-content,
         .tab-pane,
@@ -42,39 +36,22 @@
         .accolades-carousel,
         .carousel-wrapper {
             position: relative;
-            z-index: 1 !important;  /* Stay below sidebar */
+            z-index: 1;  /* Stay below sidebar */
         }
         
-        /* Fix ALL pseudo-elements that might block clicks */
+        /* Fix pseudo-elements that might block clicks */
         .carousel-header::after,
         .accolades-carousel::before,
         .accolades-carousel::after,
         .carousel-viewport::before,
-        .carousel-viewport::after,
-        [class*="carousel"]::before,
-        [class*="carousel"]::after,
-        [class*="accolades"]::before,
-        [class*="accolades"]::after {
+        .carousel-viewport::after {
             pointer-events: none !important;
-            z-index: 1 !important;
         }
         
-        /* Ensure interactive elements remain clickable but below sidebar */
-        .carousel-nav,
-        .carousel-dot,
-        button,
-        a,
-        input,
-        select,
-        textarea {
+        /* Ensure dashboard interactive elements remain clickable */
+        .dashboard-section .carousel-nav,
+        .dashboard-section .carousel-dot {
             pointer-events: auto;
-            position: relative;
-            z-index: auto;  /* Use natural stacking but below sidebar */
-        }
-        
-        /* Override any high z-index values in dashboard */
-        .dashboard-main * {
-            max-width: 100vw;  /* Prevent overflow */
         }
         
         /* Special rule to ensure sidebar toggle area is never blocked */
