@@ -2,13 +2,6 @@
 <div class="token-header">
     <!-- Left Side - Token Info -->
     <div class="token-info-section">
-        <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
-            {% if is_pro_token %}
-                <i class="fas fa-star"></i><span class="badge-text" id="tokenTypeText">PRO</span>
-            {% else %}
-                <i class="fas fa-cog"></i><span class="badge-text" id="tokenTypeText">BASIC</span>
-            {% endif %}
-        </span>
         <div class="token-identity">
             <div class="token-avatar">
                 {% if token.image_url %}
@@ -57,25 +50,32 @@
         {% endif %}
         
         <!-- Social Links -->
-        {% if token.website or token.twitter or token.telegram %}
         <div class="token-social-links">
-            {% if token.website %}
-            <a href="{{ token.website }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Website">
-                <i class="fas fa-globe"></i>
-            </a>
-            {% endif %}
-            {% if token.twitter %}
-            <a href="{{ token.twitter }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="X (Twitter)">
-                <i class="fab fa-twitter"></i>
-            </a>
-            {% endif %}
-            {% if token.telegram %}
-            <a href="{{ token.telegram }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Telegram">
-                <i class="fab fa-telegram"></i>
-            </a>
-            {% endif %}
+            <div style="display: flex; gap: 0.5rem;">
+                {% if token.website %}
+                <a href="{{ token.website }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Website">
+                    <i class="fas fa-globe"></i>
+                </a>
+                {% endif %}
+                {% if token.twitter %}
+                <a href="{{ token.twitter }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="X (Twitter)">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                {% endif %}
+                {% if token.telegram %}
+                <a href="{{ token.telegram }}" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Telegram">
+                    <i class="fab fa-telegram"></i>
+                </a>
+                {% endif %}
+            </div>
+            <span class="token-type-badge {{ 'advanced' if is_pro_token else 'basic' }}" id="tokenTypeBadge">
+                {% if is_pro_token %}
+                    <i class="fas fa-star"></i><span class="badge-text" id="tokenTypeText">PRO</span>
+                {% else %}
+                    <i class="fas fa-cog"></i><span class="badge-text" id="tokenTypeText">BASIC</span>
+                {% endif %}
+            </span>
         </div>
-        {% endif %}
     </div>
     
     <!-- Right Side - Stats -->
