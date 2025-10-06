@@ -582,8 +582,10 @@
         // Run initialization after Turbo navigation
         document.addEventListener('turbo:load', initializePage);
         
-        // Initialize WalletManager
-        window.walletManager = new WalletManager();
+        // Initialize WalletManager (singleton pattern - only create if not exists)
+        if (!window.walletManager) {
+            window.walletManager = new WalletManager();
+        }
         
         // Preserve scroll position during Turbo navigation
         document.addEventListener('turbo:before-render', function(event) {

@@ -407,9 +407,21 @@ class WalletManager {
                 }
             });
             
+            if (!response.ok) {
+                console.warn('[WalletManager] Session check failed with status:', response.status);
+                return false;
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.warn('[WalletManager] Session check returned non-JSON response, skipping check');
+                return true;
+            }
+            
             const data = await response.json();
             
             if (!data.authenticated) {
+                console.log('[WalletManager] Session expired, disconnecting wallet');
                 this.connectedWallet = null;
                 this.clearSavedWallet();
                 this.stopSessionPolling();
@@ -420,8 +432,8 @@ class WalletManager {
             return data.authenticated;
             
         } catch (error) {
-            console.error('Session check error:', error);
-            return false;
+            console.warn('[WalletManager] Session check error (non-critical):', error.message);
+            return true;
         }
     }
     
@@ -635,5 +647,4 @@ if (typeof module !== 'undefined' && module.exports) {
 
 if (typeof window !== 'undefined') {
     window.WalletManager = WalletManager;
-    window.walletManager = new WalletManager();
 }
