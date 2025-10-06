@@ -419,10 +419,21 @@ async function connectWalletFromModal(walletType) {
     }
 }
 
+// Click outside modal to close
 document.addEventListener('click', function(e) {
     const modal = document.getElementById('walletModal');
     if (e.target === modal) {
         closeWalletModal();
+    }
+});
+
+// Press Escape key to close modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        const modal = document.getElementById('walletModal');
+        if (modal && modal.classList.contains('active')) {
+            closeWalletModal();
+        }
     }
 });
 </script>
