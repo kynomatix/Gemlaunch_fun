@@ -2684,11 +2684,7 @@ async function updateReferralCode() {
         const data = await response.json();
         
         if (response.ok) {
-            let message = data.message;
-            if (data.points_earned > 0) {
-                message += ` (+${data.points_earned} points!)`;
-            }
-            showSuccessMessage(message);
+            showSuccessMessage(data.message);
             
             // Update the referral link display
             document.getElementById('referralLinkInput').value = data.new_link;

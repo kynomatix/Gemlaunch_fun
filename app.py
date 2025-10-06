@@ -2505,34 +2505,12 @@ def update_referral_code():
         referral.referral_code = new_code_lower
         referral.referral_link = f"https://gemlaunch.fun/?ref={new_code_lower}"
         
-        # Check if user has already been rewarded for customizing referral code
-        has_customized_before = Activity.query.filter_by(
-            user_id=user.id,
-            activity_type='referral_updated'
-        ).first() is not None
-        
-        # Award points only for first-time customization
-        points_earned = 0
-        if is_new_referral or not has_customized_before:
-            points_earned = 5
-            user.gem_points = (user.gem_points or 0) + points_earned
-        
-        # Add activity log
-        activity = Activity()
-        activity.user_id = user.id
-        activity.activity_type = 'referral_updated'
-        activity.title = 'Custom Referral Code Updated'
-        activity.description = f'Changed referral code to: {new_code_lower}'
-        activity.points_earned = points_earned
-        db.session.add(activity)
-        
         db.session.commit()
         
         return jsonify({
             'success': True,
             'message': 'Referral code updated successfully!',
-            'new_link': referral.referral_link,
-            'points_earned': 5
+            'new_link': referral.referral_link
         })
         
     except Exception as e:
