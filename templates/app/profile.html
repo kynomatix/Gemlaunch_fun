@@ -2691,7 +2691,7 @@ async function updateReferralCode() {
             showSuccessMessage(message);
             
             // Update the referral link display
-            document.getElementById('referralLink').value = data.new_link;
+            document.getElementById('referralLinkInput').value = data.new_link;
             
             // Update placeholder to show current code
             codeInput.placeholder = newCode.toLowerCase();
