@@ -2980,10 +2980,8 @@ async function acceptTransfer(requestId) {
             }
         }
         
-        // Create message to sign (must match backend format exactly)
-        const createdAt = new Date(currentTransferRequest.created_at);
-        const timestamp = Math.floor(createdAt.getTime() / 1000);
-        const message = `Accept transfer request for wallet ${currentTransferRequest.wallet_address} and merge accounts.\n\nNonce: ${currentTransferRequest.nonce}\nTimestamp: ${timestamp}\n\nWarning: This will merge all data from your account into the requester's account.`;
+        // Use the canonical message from backend (ensures exact format match)
+        const message = currentTransferRequest.message;
         
         console.log('Message to sign:', message);
         

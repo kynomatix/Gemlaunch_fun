@@ -856,6 +856,7 @@ def get_pending_transfers():
         
         requests_data = []
         for req in pending_requests:
+            canonical_message = f"Accept transfer request for wallet {req.wallet_address} and merge accounts.\n\nNonce: {req.nonce}\nTimestamp: {int(req.created_at.timestamp())}\n\nWarning: This will merge all data from your account into the requester's account."
             requests_data.append({
                 'id': req.id,
                 'requester_wallet': req.requester.wallet_address,
@@ -863,7 +864,8 @@ def get_pending_transfers():
                 'wallet_address': req.wallet_address,
                 'nonce': req.nonce,
                 'created_at': req.created_at.isoformat(),
-                'expires_at': req.expires_at.isoformat()
+                'expires_at': req.expires_at.isoformat(),
+                'message': canonical_message
             })
         
         return jsonify(requests_data)
