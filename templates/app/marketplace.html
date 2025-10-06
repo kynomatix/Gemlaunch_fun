@@ -116,30 +116,38 @@
         }
         
         .marketplace-token-badge.basic {
-            background: linear-gradient(135deg, rgba(32, 178, 170, 0.9), rgba(0, 206, 209, 0.85));
-            border: 1px solid rgba(32, 178, 170, 0.5);
+            background: linear-gradient(135deg, rgba(0, 229, 204, 0.95), rgba(32, 178, 170, 0.9));
+            border: 1px solid rgba(0, 229, 204, 0.8);
             color: #000;
+            animation: subtle-glow-teal 3s ease-in-out infinite alternate;
         }
         
         .marketplace-token-badge.advanced {
             background: linear-gradient(135deg, rgba(0, 191, 255, 0.95), rgba(30, 144, 255, 0.9));
             border: 1px solid rgba(0, 191, 255, 0.8);
             color: #000;
-            animation: subtle-glow 3s ease-in-out infinite alternate;
+            animation: subtle-glow-blue 3s ease-in-out infinite alternate;
         }
         
         /* GPU acceleration for marketplace animations */
         .token-card,
         .filter-btn,
         .marketplace-token-badge.advanced,
+        .marketplace-token-badge.basic,
         .token-stat {
             will-change: transform;
             transform: translateZ(0);
             backface-visibility: hidden;
         }
         
-        @keyframes subtle-glow {
-            /* GPU-accelerated glow */
+        @keyframes subtle-glow-teal {
+            /* GPU-accelerated glow for teal */
+            from { box-shadow: 0 0 5px rgba(0, 229, 204, 0.4); }
+            to { box-shadow: 0 0 12px rgba(0, 229, 204, 0.6); }
+        }
+        
+        @keyframes subtle-glow-blue {
+            /* GPU-accelerated glow for blue */
             from { box-shadow: 0 0 5px rgba(0, 191, 255, 0.4); }
             to { box-shadow: 0 0 12px rgba(0, 191, 255, 0.6); }
         }
