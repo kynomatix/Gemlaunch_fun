@@ -2912,7 +2912,7 @@ function openGiveOwnershipModal(request) {
     }
     
     if (requesterName) {
-        requesterName.textContent = request.requester_name || 'Unknown User';
+        requesterName.textContent = request.requester_display || 'Unknown User';
     }
     
     modal.classList.add('active');
@@ -2961,12 +2961,12 @@ async function acceptTransfer(requestId) {
         }
         
         // Create message to sign
-        const message = `Transfer ownership request\nNonce: ${currentTransferRequest.nonce}\nWallet: ${currentTransferRequest.target_wallet}`;
+        const message = `Transfer ownership request\nNonce: ${currentTransferRequest.nonce}\nWallet: ${currentTransferRequest.wallet_address}`;
         
         // Request signature
         const signature = await window.walletManager.signMessage(
             message,
-            currentTransferRequest.target_wallet,
+            currentTransferRequest.wallet_address,
             'metamask'
         );
         
