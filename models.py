@@ -55,22 +55,51 @@ class User(db.Model):
     
     @classmethod
     def get_or_create_by_wallet(cls, wallet_address, wallet_type=None, display_name=None):
-        """Get existing user or create new one by wallet address"""
-        user = cls.query.filter_by(wallet_address=wallet_address.lower()).first()
+        """Get existing user or create new one by wallet address
+        
+        Resolution order:
+        1. Check if wallet is a linked wallet (LinkedWallet table) - FIRST to handle merged accounts
+        2. Check if wallet is a primary wallet (User.wallet_address)
+        3. Create new user if not found
+        """
+        from models import LinkedWallet
+        
+        wallet_lower = wallet_address.lower()
+        
+        # First, check if this wallet is linked to another account (handles merged accounts)
+        linked_wallet = LinkedWallet.query.filter_by(
+            wallet_address=wallet_lower,
+            status='verified'
+        ).first()
+        
+        if linked_wallet:
+            # Use the account this wallet is linked to
+            user = cls.query.get(linked_wallet.user_id)
+            if user:
+                # Update last seen
+                user.last_seen = datetime.now(timezone.utc)
+                db.session.commit()
+                return user
+        
+        # If not linked, check if this is a primary wallet
+        user = cls.query.filter_by(wallet_address=wallet_lower).first()
+        
         if not user:
+            # Wallet not found anywhere - create new user
             user = cls(
-                wallet_address=wallet_address.lower(),
+                wallet_address=wallet_lower,
                 wallet_type=wallet_type,
                 display_name=display_name or f"User-{wallet_address[:8]}"
             )
             db.session.add(user)
             db.session.commit()
         else:
-            # Update last seen
+            # Update last seen for primary wallet
             user.last_seen = datetime.now(timezone.utc)
             if wallet_type:
                 user.wallet_type = wallet_type
             db.session.commit()
+        
         return user
     
     def __repr__(self):

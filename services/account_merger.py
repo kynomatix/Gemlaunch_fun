@@ -14,12 +14,13 @@ def merge_accounts(db, claimant_user_id, legacy_user_id):
     - Legacy account data gets transferred to claimant
     - Sum additive fields (gem_points, totals)
     - Keep max-progress achievements
-    - Mark legacy user as archived with claimed_by reference
+    - Legacy wallet address becomes a linked wallet for claimant
+    - Legacy user remains active (not archived) but with null wallet_address
     
     Args:
         db: SQLAlchemy database instance
         claimant_user_id: ID of user who is claiming ownership (survives)
-        legacy_user_id: ID of legacy user whose data will be merged (gets archived)
+        legacy_user_id: ID of legacy user whose data will be merged
     
     Returns:
         dict: Summary of merge operation
@@ -58,7 +59,8 @@ def merge_accounts(db, claimant_user_id, legacy_user_id):
                 'linked_wallets_transferred': 0,
                 'skipped_linked_wallets': 0,
                 'skipped_wallet_addresses': [],
-                'activities_transferred': 0
+                'activities_transferred': 0,
+                'legacy_wallet_linked': False
             }
             
             logging.info(f"Starting account merge: claimant={claimant_user_id}, legacy={legacy_user_id}")
@@ -137,11 +139,27 @@ def merge_accounts(db, claimant_user_id, legacy_user_id):
                 merge_summary['activities_transferred'] += 1
             
             legacy_wallet_address = legacy.wallet_address
-            legacy.wallet_address = None
-            legacy.archived = True
-            legacy.claimed_by = claimant_user_id
-            legacy.archived_at = datetime.now(timezone.utc)
-            legacy.is_active = False
+            # DO NOT set legacy.wallet_address = None - wallet_address is NOT NULL
+            # The LinkedWallet entry will handle the linking
+            
+            if legacy_wallet_address:
+                existing_linked_wallet = LinkedWallet.query.filter_by(
+                    user_id=claimant_user_id,
+                    wallet_address=legacy_wallet_address.lower()
+                ).first()
+                
+                if not existing_linked_wallet:
+                    new_linked_wallet = LinkedWallet(
+                        user_id=claimant_user_id,
+                        wallet_address=legacy_wallet_address.lower(),
+                        status='verified'
+                    )
+                    db.session.add(new_linked_wallet)
+                    merge_summary['legacy_wallet_linked'] = True
+                    logging.info(f"Created LinkedWallet for legacy wallet: {legacy_wallet_address}")
+                else:
+                    merge_summary['legacy_wallet_linked'] = True
+                    logging.info(f"Legacy wallet already linked to claimant: {legacy_wallet_address}")
             
             db.session.commit()
             

@@ -2966,8 +2966,19 @@ async function acceptTransfer(requestId) {
             throw new Error('No wallet connected. Please refresh and connect your wallet.');
         }
         
-        console.log('Current connected wallet:', connectedWallet.address);
-        console.log('Transfer request wallet:', currentTransferRequest.wallet_address);
+        // CRITICAL: Verify MetaMask is using the correct account
+        if (window.ethereum) {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            const activeAccount = accounts[0]?.toLowerCase();
+            const expectedAccount = connectedWallet.address.toLowerCase();
+            
+            console.log('Active MetaMask account:', activeAccount);
+            console.log('Expected account:', expectedAccount);
+            
+            if (activeAccount && activeAccount !== expectedAccount) {
+                throw new Error(`Please switch to the correct account in MetaMask. Expected: ${expectedAccount.substring(0, 10)}...${expectedAccount.substring(38)}, but MetaMask is using: ${activeAccount.substring(0, 10)}...${activeAccount.substring(38)}`);
+            }
+        }
         
         // Create message to sign (must match backend format exactly)
         const createdAt = new Date(currentTransferRequest.created_at);
@@ -2975,7 +2986,6 @@ async function acceptTransfer(requestId) {
         const message = `Accept transfer request for wallet ${currentTransferRequest.wallet_address} and merge accounts.\n\nNonce: ${currentTransferRequest.nonce}\nTimestamp: ${timestamp}\n\nWarning: This will merge all data from your account into the requester's account.`;
         
         console.log('Message to sign:', message);
-        console.log('Signing with wallet:', connectedWallet.address);
         
         // Request signature from the current user's wallet (the owner)
         const signature = await window.walletManager.signMessage(
@@ -3412,27 +3422,27 @@ document.addEventListener('DOMContentLoaded', function() {
             <h4>By giving ownership, you agree to:</h4>
             <ul>
                 <li>
-                    <i class="fas fa-code-branch"></i>
-                    Your account will be merged into their account
+                    <i class="fas fa-link"></i>
+                    This wallet will be linked to their account
                 </li>
                 <li>
                     <i class="fas fa-gem"></i>
-                    All your GEM points will be transferred
+                    All your GEM points will be added to their account
                 </li>
                 <li>
                     <i class="fas fa-trophy"></i>
                     All achievements will be transferred
                 </li>
                 <li>
-                    <i class="fas fa-archive"></i>
-                    Your old account will be archived
+                    <i class="fas fa-check-circle"></i>
+                    Both wallets will access the same account
                 </li>
             </ul>
         </div>
         
         <div class="transfer-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>This action cannot be undone</p>
+            <i class="fas fa-info-circle"></i>
+            <p>You can continue using this wallet after linking</p>
         </div>
         
         <div class="transfer-actions">
