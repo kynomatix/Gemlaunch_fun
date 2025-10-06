@@ -2960,13 +2960,16 @@ async function acceptTransfer(requestId) {
             throw new Error('Wallet manager not available. Please refresh the page.');
         }
         
-        // Create message to sign
-        const message = `Transfer ownership request\nNonce: ${currentTransferRequest.nonce}\nWallet: ${currentTransferRequest.wallet_address}`;
+        // Create message to sign (must match backend format exactly)
+        const createdAt = new Date(currentTransferRequest.created_at);
+        const timestamp = Math.floor(createdAt.getTime() / 1000);
+        const message = `Accept transfer request for wallet ${currentTransferRequest.wallet_address} and merge accounts.\n\nNonce: ${currentTransferRequest.nonce}\nTimestamp: ${timestamp}\n\nWarning: This will merge all data from your account into the requester's account.`;
         
-        // Request signature
+        // Request signature from the current user's wallet (the owner)
+        const currentWallet = '{{ user.wallet_address if user else "" }}';
         const signature = await window.walletManager.signMessage(
             message,
-            currentTransferRequest.wallet_address,
+            currentWallet,
             'metamask'
         );
         
