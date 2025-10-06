@@ -861,6 +861,7 @@ def get_pending_transfers():
                 'requester_wallet': req.requester.wallet_address,
                 'requester_display': req.requester.display_name,
                 'wallet_address': req.wallet_address,
+                'nonce': req.nonce,
                 'created_at': req.created_at.isoformat(),
                 'expires_at': req.expires_at.isoformat()
             })
