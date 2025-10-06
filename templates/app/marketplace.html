@@ -101,7 +101,7 @@
         
         .tokens-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 1.5rem;
             margin-bottom: 3rem;
         }
@@ -133,14 +133,11 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(32, 178, 170, 0.2);
             border-radius: 20px;
-            padding: 1rem;
+            padding: 1.5rem;
             backdrop-filter: blur(20px);
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
-            display: flex;
-            gap: 1rem;
-            min-height: 140px;
         }
         
         .token-card:hover {
@@ -149,10 +146,11 @@
             box-shadow: 0 10px 30px rgba(32, 178, 170, 0.2);
         }
         
-        /* Left Column - Image */
-        .token-image-column {
-            position: relative;
-            flex-shrink: 0;
+        .token-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
         
         .token-avatar {
@@ -177,60 +175,16 @@
             border-radius: 12px;
         }
         
-        /* Right Column - Info */
-        .token-content-column {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 0;
-        }
-        
-        /* Top Info Band */
-        .token-info-band {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.75rem;
-        }
-        
-        .token-main-info {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .token-main-info h3 {
+        .token-info h3 {
             margin: 0;
             color: #FFFFFF;
-            font-size: 1.1rem;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 1.2rem;
         }
         
-        .token-symbol-creator {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            color: #999;
-            margin-top: 0.25rem;
-            flex-wrap: wrap;
-        }
-        
-        .token-symbol {
-            color: #20B2AA;
-            font-weight: 500;
-        }
-        
-        .creator-name {
-            color: #999;
-            font-size: 0.8rem;
-        }
-        
-        .creator-name i {
-            color: #20B2AA;
+        .token-info p {
+            margin: 0.25rem 0 0 0;
+            color: #CCCCCC;
+            font-size: 0.9rem;
         }
         
         /* Metric Pills */
@@ -631,8 +585,7 @@
                            data-views="{{ token.view_count or 0 }}"
                            data-holders="{{ token.holder_count or 0 }}">
                             
-                            <!-- Left Column - Image -->
-                            <div class="token-image-column">
+                            <div class="token-header">
                                 <div class="token-avatar">
                                     {% if token.image_url %}
                                         <img src="{{ token.image_url }}" alt="{{ token.name }}">
@@ -640,34 +593,10 @@
                                         {{ token.symbol[0] if token.symbol else '?' }}
                                     {% endif %}
                                 </div>
-                                {% if token.description %}
-                                <div class="description-icon" onclick="event.preventDefault(); event.stopPropagation();">
-                                    <i class="fas fa-info"></i>
-                                    <div class="description-tooltip">{{ token.description }}</div>
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <!-- Right Column - Content -->
-                            <div class="token-content-column">
-                                <!-- Top Info Band -->
-                                <div class="token-info-band">
-                                    <div class="token-main-info">
-                                        <h3>{{ token.name }}</h3>
-                                        <div class="token-symbol-creator">
-                                            <span class="token-symbol">${{ token.symbol }}</span>
-                                            <span>•</span>
-                                            <span class="creator-name">
-                                                {% if token.creator.display_name %}
-                                                    <i class="fas fa-user-check"></i>
-                                                    {{ token.creator.display_name }}
-                                                {% else %}
-                                                    {{ token.creator.wallet_address[-6:] }}
-                                                {% endif %}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="token-pills">
+                                <div class="token-info">
+                                    <h3>{{ token.name }}</h3>
+                                    <p>${{ token.symbol }}</p>
+                                    <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem;">
                                         <span class="metric-pill age-pill" title="Token age">
                                             <i class="fas fa-clock"></i>
                                             <span class="pill-text">{{ token_age }}</span>
@@ -685,32 +614,29 @@
                                         </span>
                                     </div>
                                 </div>
-                                
-                                <!-- Stats Row -->
-                                <div class="token-stats-compact">
-                                    <div class="stat-pill">
-                                        <div class="stat-pill-label">Price</div>
-                                        <div class="stat-pill-value">${{ "%.6f"|format((token.current_price|float) * 0.8) }}</div>
-                                    </div>
-                                    <div class="stat-pill">
-                                        <div class="stat-pill-label">Market Cap</div>
-                                        <div class="stat-pill-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
-                                    </div>
-                                    <div class="stat-pill">
-                                        <div class="stat-pill-label">Holders</div>
-                                        <div class="stat-pill-value">{{ token.holder_count or 0 }}</div>
-                                    </div>
+                            </div>
+                            
+                            <div class="token-stats">
+                                <div class="token-stat">
+                                    <div class="token-stat-value">${{ "%.6f"|format((token.current_price|float) * 0.8) }}</div>
+                                    <div class="token-stat-label">Price</div>
                                 </div>
-                                
-                                <!-- Progress Bar -->
-                                <div class="progress-bar-compact">
-                                    <div class="progress-fill-compact" style="width: {{ token.progress_to_graduation }}%"></div>
+                                <div class="token-stat">
+                                    <div class="token-stat-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
+                                    <div class="token-stat-label">Market Cap</div>
                                 </div>
-                                <div class="progress-label-compact">
-                                    <span>DEX Graduation Progress</span>
-                                    <span>{{ "%.0f"|format(token.progress_to_graduation) }}%</span>
+                                <div class="token-stat">
+                                    <div class="token-stat-value">{{ token.holder_count or 0 }}</div>
+                                    <div class="token-stat-label">Holders</div>
                                 </div>
                             </div>
+                            
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+                            </div>
+                            <p style="text-align: center; color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0;">
+                                {{ "%.1f"|format(token.progress_to_graduation) }}% to DEX graduation
+                            </p>
                         </a>
                     {% endfor %}
                 </div>
