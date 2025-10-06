@@ -9,6 +9,25 @@
             box-sizing: border-box;
         }
         
+        /* CRITICAL: Force wallet modal to stay properly positioned */
+        .wallet-modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            z-index: 9999 !important;
+            display: none !important;
+            justify-content: center !important;
+            align-items: center !important;
+            margin: 0 !important;
+            transform: none !important;
+        }
+        
+        .wallet-modal-overlay.active {
+            display: flex !important;
+        }
+        
         /* Optimized animations without forced GPU compositing */
         .carousel-header::before {
             will-change: left;
