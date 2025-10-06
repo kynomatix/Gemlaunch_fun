@@ -30,7 +30,7 @@
             border-radius: clamp(10px, 2vw, 15px);
             padding: clamp(0.5rem, 1.5vw, 0.75rem);
             margin: 0 auto 2rem auto;
-            max-width: clamp(280px, 90vw, 800px);
+            max-width: 95vw;
             backdrop-filter: blur(10px);
             display: flex;
             gap: clamp(0.25rem, 1vw, 0.5rem);
@@ -490,7 +490,6 @@
         /* Tablet breakpoint - Filter bar adjustments */
         @media (max-width: 1024px) {
             .filters {
-                max-width: clamp(280px, 95vw, 700px);
                 padding: clamp(0.5rem, 1.8vw, 0.7rem);
             }
             
@@ -503,7 +502,6 @@
         /* Small tablet/large mobile breakpoint - Filter bar adjustments */
         @media (max-width: 768px) {
             .filters {
-                max-width: clamp(260px, 96vw, 600px);
                 padding: clamp(0.4rem, 2vw, 0.6rem);
                 gap: clamp(0.2rem, 1.2vw, 0.4rem);
             }
@@ -517,7 +515,6 @@
         /* Very small mobile breakpoint - Compact filter bar */
         @media (max-width: 480px) {
             .filters {
-                max-width: clamp(240px, 98vw, 480px);
                 padding: clamp(0.3rem, 2.5vw, 0.5rem);
                 gap: clamp(0.15rem, 1.5vw, 0.3rem);
                 border-radius: clamp(8px, 2.5vw, 12px);
