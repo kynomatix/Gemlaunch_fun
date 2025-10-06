@@ -2960,16 +2960,27 @@ async function acceptTransfer(requestId) {
             throw new Error('Wallet manager not available. Please refresh the page.');
         }
         
+        // Get current connected wallet from walletManager
+        const connectedWallet = window.walletManager.getConnectedWallet();
+        if (!connectedWallet || !connectedWallet.address) {
+            throw new Error('No wallet connected. Please refresh and connect your wallet.');
+        }
+        
+        console.log('Current connected wallet:', connectedWallet.address);
+        console.log('Transfer request wallet:', currentTransferRequest.wallet_address);
+        
         // Create message to sign (must match backend format exactly)
         const createdAt = new Date(currentTransferRequest.created_at);
         const timestamp = Math.floor(createdAt.getTime() / 1000);
         const message = `Accept transfer request for wallet ${currentTransferRequest.wallet_address} and merge accounts.\n\nNonce: ${currentTransferRequest.nonce}\nTimestamp: ${timestamp}\n\nWarning: This will merge all data from your account into the requester's account.`;
         
+        console.log('Message to sign:', message);
+        console.log('Signing with wallet:', connectedWallet.address);
+        
         // Request signature from the current user's wallet (the owner)
-        const currentWallet = '{{ user.wallet_address if user else "" }}';
         const signature = await window.walletManager.signMessage(
             message,
-            currentWallet,
+            connectedWallet.address,
             'metamask'
         );
         
