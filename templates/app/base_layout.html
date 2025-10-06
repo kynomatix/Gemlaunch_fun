@@ -447,7 +447,7 @@
                 <div id="walletButton" class="wallet-btn">
                     {% if user %}
                     <button onclick="toggleWalletMenu()" class="wallet-connected">
-                        <span class="wallet-address">{{ user.wallet_address[:8] }}...{{ user.wallet_address[-6:] }}</span>
+                        <span class="wallet-address">{{ session.wallet_address[:8] }}...{{ session.wallet_address[-6:] if session.wallet_address else user.wallet_address[-6:] }}</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div id="walletDropdown" class="wallet-dropdown" style="display: none;">
@@ -567,10 +567,10 @@
                 }
             }
             
-            // Store user wallet address for ownership checks
+            // Store connected wallet address (the one currently in use) for ownership checks
             {% if user %}
-            localStorage.setItem('connectedWallet', '{{ user.wallet_address }}');
-            console.log('User wallet stored:', '{{ user.wallet_address }}');
+            localStorage.setItem('connectedWallet', '{{ session.wallet_address if session.wallet_address else user.wallet_address }}');
+            console.log('Connected wallet:', '{{ session.wallet_address if session.wallet_address else user.wallet_address }}');
             {% else %}
             localStorage.removeItem('connectedWallet');
             {% endif %}
