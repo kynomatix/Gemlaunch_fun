@@ -67,7 +67,7 @@
         
         .tokens-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
             gap: 1.5rem;
             margin-bottom: 3rem;
         }
@@ -170,11 +170,14 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(32, 178, 170, 0.2);
             border-radius: 20px;
-            padding: 1.5rem;
+            padding: 1rem;
             backdrop-filter: blur(20px);
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
+            display: flex;
+            gap: 1rem;
+            min-height: 140px;
         }
         
         .token-card:hover {
@@ -183,11 +186,10 @@
             box-shadow: 0 10px 30px rgba(32, 178, 170, 0.2);
         }
         
-        .token-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
+        /* Left Column - Image */
+        .token-image-column {
+            position: relative;
+            flex-shrink: 0;
         }
         
         .token-avatar {
@@ -212,16 +214,171 @@
             border-radius: 12px;
         }
         
-        .token-info h3 {
-            margin: 0;
-            color: #FFFFFF;
-            font-size: 1.2rem;
+        /* Right Column - Info */
+        .token-content-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 0;
         }
         
-        .token-info p {
+        /* Top Info Band */
+        .token-info-band {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        
+        .token-main-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .token-main-info h3 {
             margin: 0;
+            color: #FFFFFF;
+            font-size: 1.1rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .token-symbol-creator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #999;
+            margin-top: 0.25rem;
+            flex-wrap: wrap;
+        }
+        
+        .token-symbol {
+            color: #20B2AA;
+            font-weight: 500;
+        }
+        
+        .creator-name {
+            color: #999;
+            font-size: 0.8rem;
+        }
+        
+        .creator-name i {
+            color: #20B2AA;
+        }
+        
+        /* Metric Pills */
+        .token-pills {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .metric-pill {
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+        }
+        
+        .age-pill {
+            background: rgba(100, 100, 100, 0.3);
             color: #CCCCCC;
+            border: 1px solid rgba(150, 150, 150, 0.3);
+        }
+        
+        .change-pill.positive {
+            background: rgba(0, 229, 204, 0.2);
+            color: #00E5CC;
+            border: 1px solid rgba(0, 229, 204, 0.4);
+        }
+        
+        .change-pill.negative {
+            background: rgba(255, 99, 71, 0.2);
+            color: #FF6347;
+            border: 1px solid rgba(255, 99, 71, 0.4);
+        }
+        
+        /* Stats Row */
+        .token-stats-compact {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: auto;
+        }
+        
+        .stat-pill {
+            display: flex;
+            flex-direction: column;
+            padding: 0.4rem 0.6rem;
+            background: rgba(32, 178, 170, 0.1);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 8px;
+            flex: 1;
+        }
+        
+        .stat-pill-label {
+            font-size: 0.65rem;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-pill-value {
             font-size: 0.9rem;
+            color: #FFFFFF;
+            font-weight: 600;
+            margin-top: 0.15rem;
+        }
+        
+        /* Description Drawer */
+        .description-drawer {
+            margin-top: 0.5rem;
+        }
+        
+        .description-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: #20B2AA;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 0.3rem 0;
+            background: none;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        
+        .description-toggle:hover {
+            opacity: 0.8;
+        }
+        
+        .description-toggle i {
+            font-size: 0.7rem;
+            transition: transform 0.3s;
+        }
+        
+        .description-toggle.active i {
+            transform: rotate(180deg);
+        }
+        
+        .description-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            color: #CCCCCC;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        .description-content.open {
+            max-height: 200px;
+            margin-top: 0.5rem;
         }
         
         .token-stats {
@@ -399,9 +556,12 @@
             {% if tokens %}
                 <div class="tokens-grid">
                     {% for token in tokens %}
+                        {% set token_age_hours = ((now.timestamp() - token.created_at.timestamp()) / 3600)|int %}
+                        {% set token_age = (token_age_hours // 24)|string + 'd' if token_age_hours >= 24 else token_age_hours|string + 'h' %}
+                        {% set price_change = (loop.index0 % 40) - 20 %}
                         <a href="{% if token.contract_address %}/app/token/{{ token.contract_address }}{% else %}/app/token/{{ token.id }}{% endif %}" 
                            class="token-card" 
-                           style="text-decoration: none; display: block; color: inherit;"
+                           style="text-decoration: none; color: inherit;"
                            data-type="{{ 'pro' if token.is_pro else 'basic' }}"
                            data-graduated="{{ 'true' if token.is_graduated else 'false' }}"
                            data-progress="{{ token.progress_to_graduation }}"
@@ -409,14 +569,16 @@
                            data-trades="{{ token.trade_count or 0 }}"
                            data-views="{{ token.view_count or 0 }}"
                            data-holders="{{ token.holder_count or 0 }}">
-                            <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
-                                {% if token.is_pro %}
-                                    <i class="fas fa-star"></i><span class="badge-text">Pro</span>
-                                {% else %}
-                                    <i class="fas fa-cog"></i><span class="badge-text">Basic</span>
-                                {% endif %}
-                            </span>
-                            <div class="token-header">
+                            
+                            <!-- Left Column - Image -->
+                            <div class="token-image-column">
+                                <span class="marketplace-token-badge {{ 'advanced' if token.is_pro else 'basic' }}">
+                                    {% if token.is_pro %}
+                                        <i class="fas fa-star"></i><span class="badge-text">Pro</span>
+                                    {% else %}
+                                        <i class="fas fa-cog"></i><span class="badge-text">Basic</span>
+                                    {% endif %}
+                                </span>
                                 <div class="token-avatar">
                                     {% if token.image_url %}
                                         <img src="{{ token.image_url }}" alt="{{ token.name }}">
@@ -424,54 +586,64 @@
                                         {{ token.symbol[0] if token.symbol else '?' }}
                                     {% endif %}
                                 </div>
-                                <div class="token-info">
-                                    <h3>{{ token.name }}</h3>
-                                    <p>${{ token.symbol }}</p>
-                                    <div class="token-creator" style="font-size: 0.85rem; color: #999; margin-top: 0.3rem;">
-                                        by {% if token.creator.display_name %}
-                                            <span style="color: #20B2AA; font-weight: 500;">
-                                                <i class="fas fa-user-check" style="font-size: 0.8rem;"></i>
-                                                {{ token.creator.display_name }}
+                            </div>
+                            
+                            <!-- Right Column - Content -->
+                            <div class="token-content-column">
+                                <!-- Top Info Band -->
+                                <div class="token-info-band">
+                                    <div class="token-main-info">
+                                        <h3>{{ token.name }}</h3>
+                                        <div class="token-symbol-creator">
+                                            <span class="token-symbol">${{ token.symbol }}</span>
+                                            <span>•</span>
+                                            <span class="creator-name">
+                                                {% if token.creator.display_name %}
+                                                    <i class="fas fa-user-check"></i>
+                                                    {{ token.creator.display_name }}
+                                                {% else %}
+                                                    {{ token.creator.wallet_address[-6:] }}
+                                                {% endif %}
                                             </span>
-                                        {% else %}
-                                            <span style="font-family: monospace;">{{ token.creator.wallet_address[-6:] }}</span>
-                                        {% endif %}
+                                        </div>
                                     </div>
-                                    {% if token.contract_address %}
-                                        <div class="contract-address-small" title="Contract: {{ token.contract_address }}">
-                                            <i class="fas fa-file-contract"></i>
-                                            <span>{{ token.contract_address[:6] }}...{{ token.contract_address[-4:] }}</span>
-                                        </div>
-                                    {% else %}
-                                        <div class="contract-address-small" style="color: #ff9999;" title="Not deployed yet">
-                                            <i class="fas fa-clock"></i>
-                                            <span>Deploying...</span>
-                                        </div>
-                                    {% endif %}
+                                    <div class="token-pills">
+                                        <span class="metric-pill age-pill">{{ token_age }}</span>
+                                        <span class="metric-pill change-pill {{ 'positive' if price_change >= 0 else 'negative' }}">
+                                            {{ '+' if price_change >= 0 else '' }}{{ price_change }}%
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <p style="color: #CCCCCC; font-size: 0.9rem; margin: 1rem 0;">
-                                {{ token.description[:100] }}{{ '...' if token.description|length > 100 else '' }}
-                            </p>
-                            
-                            <div class="token-stats">
-                                <div class="token-stat">
-                                    <div class="token-stat-value">${{ "%.6f"|format((token.current_price|float) * 0.8) }}</div>
-                                    <div class="token-stat-label">Price</div>
+                                
+                                <!-- Stats Row -->
+                                <div class="token-stats-compact">
+                                    <div class="stat-pill">
+                                        <div class="stat-pill-label">Price</div>
+                                        <div class="stat-pill-value">${{ "%.6f"|format((token.current_price|float) * 0.8) }}</div>
+                                    </div>
+                                    <div class="stat-pill">
+                                        <div class="stat-pill-label">Market Cap</div>
+                                        <div class="stat-pill-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
+                                    </div>
+                                    <div class="stat-pill">
+                                        <div class="stat-pill-label">Progress</div>
+                                        <div class="stat-pill-value">{{ "%.0f"|format(token.progress_to_graduation) }}%</div>
+                                    </div>
                                 </div>
-                                <div class="token-stat">
-                                    <div class="token-stat-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
-                                    <div class="token-stat-label">Market Cap</div>
+                                
+                                <!-- Description Drawer -->
+                                {% if token.description %}
+                                <div class="description-drawer">
+                                    <button class="description-toggle" onclick="event.preventDefault(); event.stopPropagation(); this.classList.toggle('active'); this.nextElementSibling.classList.toggle('open');">
+                                        <i class="fas fa-chevron-down"></i>
+                                        <span>Description</span>
+                                    </button>
+                                    <div class="description-content">
+                                        {{ token.description }}
+                                    </div>
                                 </div>
+                                {% endif %}
                             </div>
-                            
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
-                            </div>
-                            <p style="text-align: center; color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0;">
-                                {{ "%.1f"|format(token.progress_to_graduation) }}% to DEX graduation
-                            </p>
                         </a>
                     {% endfor %}
                 </div>

@@ -1006,7 +1006,7 @@ def token_marketplace():
     for token in tokens:
         token.is_pro = TokenService.is_pro_token(token)
     
-    return render_template('app/marketplace.html', tokens=tokens, user=user)
+    return render_template('app/marketplace.html', tokens=tokens, user=user, now=datetime.now(timezone.utc))
 
 @app.route('/app/token/<contract_address>')
 def token_detail(contract_address):
