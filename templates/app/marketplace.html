@@ -602,16 +602,16 @@
         }
         
         .search-input-wrapper.expanded {
-            max-width: clamp(280px, 50vw, 480px);
+            max-width: clamp(320px, 60vw, 600px);
             opacity: 1;
-            margin-left: 0.25rem;
+            margin-left: 0.1rem;
         }
         
         .search-input {
             padding: clamp(0.65rem, 2vw, 0.9rem) clamp(1rem, 3vw, 1.5rem);
             background: rgba(12, 36, 48, 0.65);
-            border: 3px solid #FF0000;
-            border-left: 5px solid #00FF00;
+            border: 1px solid rgba(32, 178, 170, 0.45);
+            border-left: 3px solid #20B2AA;
             border-radius: 10px;
             color: #FFFFFF;
             font-size: clamp(0.8rem, 1.8vw, 0.9rem);
@@ -783,7 +783,7 @@
                     <i class="fas fa-search"></i>
                 </button>
                 <div class="search-input-wrapper" id="searchInputWrapper">
-                    <input type="text" class="search-input" id="tokenSearchInput" placeholder="🔍 ADVANCED SEARCH - Find tokens, creators, and more...">
+                    <input type="text" class="search-input" id="tokenSearchInput" placeholder="Search tokens, creators, tags...">
                 </div>
             </div>
 
