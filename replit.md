@@ -102,3 +102,5 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - ✅ Resolved leaderboard profile modal hanging issue (async/await with error handling)
 - ✅ Fixed Turbo Drive navigation bugs (carousel initialization, number formatting)
 - ✅ Patched datetime timezone mismatch in achievement service (holding_days calculation)
+- ✅ **Implemented comprehensive CSRF protection** (October 2025): Flask-WTF CSRFProtect initialized, CSRF tokens added to all HTML forms and JavaScript fetch calls, X-CSRFToken headers on all POST/DELETE requests
+- ✅ **Added performance database indexes** (October 2025): Activity.created_at, ChatMessage(token_id, created_at), TokenLeaderboard(token_id, points), Holding(token_id, token_amount)
