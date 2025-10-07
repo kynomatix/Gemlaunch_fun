@@ -2126,6 +2126,27 @@
 </style>
 
 <script>
+// Helper function to get CSRF token
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+// Helper function to get MetaMask provider (handles multiple wallet extensions)
+function getMetaMaskProvider() {
+    if (typeof window.ethereum === 'undefined') {
+        return null;
+    }
+    
+    // Check if there are multiple providers (EIP-6963)
+    if (window.ethereum.providers?.length > 0) {
+        return window.ethereum.providers.find(p => p.isMetaMask) || null;
+    }
+    
+    // Single provider - check if it's MetaMask
+    return window.ethereum.isMetaMask ? window.ethereum : null;
+}
+
 function copyWalletAddress(address) {
     if (!address || address === 'None' || address.trim() === '') {
         ProfileNotification.showAlert('Copy Failed', 'No wallet address to copy', 'error');
@@ -2273,12 +2294,13 @@ async function signVerificationMessage() {
     }
     
     try {
-        if (typeof window.ethereum === 'undefined') {
-            ProfileNotification.showAlert('Wallet Not Found', 'Please install MetaMask or another Web3 wallet', 'error');
+        const provider = getMetaMaskProvider();
+        if (!provider) {
+            ProfileNotification.showAlert('Wallet Not Found', 'Please install MetaMask or disable other wallet extensions', 'error');
             return;
         }
         
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const accounts = await provider.request({ method: 'eth_requestAccounts' });
         const currentAccount = accounts[0];
         
         console.log('Current MetaMask account:', currentAccount);
@@ -2290,14 +2312,17 @@ async function signVerificationMessage() {
             return;
         }
         
-        const signature = await window.ethereum.request({
+        const signature = await provider.request({
             method: 'personal_sign',
             params: [walletLinkData.challenge_message, currentAccount]
         });
         
         const response = await fetch('/api/wallet/verify-link', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
             body: JSON.stringify({
                 wallet_address: walletLinkData.wallet_address,
                 wallet_label: walletLinkData.wallet_label,
@@ -2324,13 +2349,14 @@ async function signVerificationMessage() {
 
 async function detectCurrentWallet() {
     try {
-        if (typeof window.ethereum === 'undefined') {
-            ProfileNotification.showAlert('Wallet Not Found', 'Please install MetaMask or another Web3 wallet', 'error');
+        const provider = getMetaMaskProvider();
+        if (!provider) {
+            ProfileNotification.showAlert('Wallet Not Found', 'Please install MetaMask or disable other wallet extensions', 'error');
             return;
         }
         
         // Force MetaMask to refresh accounts
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const accounts = await provider.request({ method: 'eth_requestAccounts' });
         const currentAccount = accounts[0];
         
         const detectedWalletEl = document.getElementById('detectedWallet');
@@ -2362,7 +2388,10 @@ async function unlinkWallet(walletAddress) {
     
     try {
         const response = await fetch(`/api/wallet/unlink/${walletAddress}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
         });
         
         const data = await response.json();
@@ -2964,8 +2993,9 @@ async function acceptTransfer(requestId) {
         }
         
         // CRITICAL: Verify MetaMask is using the correct account
-        if (window.ethereum) {
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        const provider = getMetaMaskProvider();
+        if (provider) {
+            const accounts = await provider.request({ method: 'eth_accounts' });
             const activeAccount = accounts[0]?.toLowerCase();
             const expectedAccount = connectedWallet.address.toLowerCase();
             
@@ -3000,6 +3030,7 @@ async function acceptTransfer(requestId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
             },
             body: JSON.stringify({
                 request_id: requestId,

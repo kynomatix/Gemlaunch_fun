@@ -29,6 +29,20 @@ class WalletManager {
         return meta ? meta.getAttribute('content') : '';
     }
     
+    getMetaMaskProvider() {
+        if (typeof window.ethereum === 'undefined') {
+            return null;
+        }
+        
+        // Check if there are multiple providers (EIP-6963)
+        if (window.ethereum.providers?.length > 0) {
+            return window.ethereum.providers.find(p => p.isMetaMask) || null;
+        }
+        
+        // Single provider - check if it's MetaMask
+        return window.ethereum.isMetaMask ? window.ethereum : null;
+    }
+    
     init() {
         const savedWallet = this.getSavedWallet();
         if (savedWallet) {
@@ -40,8 +54,9 @@ class WalletManager {
     }
     
     setupMetaMaskListeners() {
-        if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.on('accountsChanged', async (accounts) => {
+        const provider = this.getMetaMaskProvider();
+        if (provider) {
+            provider.on('accountsChanged', async (accounts) => {
                 console.log('[WalletManager] MetaMask accountsChanged event:', accounts);
                 console.log('[WalletManager] Current connected wallet:', this.connectedWallet);
                 
@@ -80,7 +95,7 @@ class WalletManager {
                 }
             });
             
-            window.ethereum.on('chainChanged', (chainId) => {
+            provider.on('chainChanged', (chainId) => {
                 console.log('[WalletManager] MetaMask chain changed:', chainId);
                 window.location.reload();
             });
@@ -94,11 +109,7 @@ class WalletManager {
             case 'kasware':
                 return typeof window.kasware !== 'undefined';
             case 'metamask':
-                // Check for MetaMask specifically, not just any wallet
-                if (typeof window.ethereum !== 'undefined') {
-                    return window.ethereum.providers?.some(p => p.isMetaMask) || window.ethereum.isMetaMask || false;
-                }
-                return false;
+                return this.getMetaMaskProvider() !== null;
             default:
                 return false;
         }
@@ -129,26 +140,13 @@ class WalletManager {
                 break;
                 
             case 'metamask':
-                if (typeof window.ethereum !== 'undefined') {
-                    // Check if this is actually MetaMask (not another wallet hijacking window.ethereum)
-                    const provider = window.ethereum.providers?.find(p => p.isMetaMask) || 
-                                   (window.ethereum.isMetaMask ? window.ethereum : null);
-                    
-                    if (provider) {
-                        // Use the specific MetaMask provider
-                        accounts = await provider.request({
-                            method: 'eth_requestAccounts'
-                        });
-                    } else if (window.ethereum.isMetaMask) {
-                        // Fallback: if window.ethereum claims to be MetaMask
-                        accounts = await window.ethereum.request({
-                            method: 'eth_requestAccounts'
-                        });
-                    } else {
-                        throw new Error('MetaMask not found. Another wallet extension is installed. Please disable other wallets or install MetaMask.');
-                    }
+                const provider = this.getMetaMaskProvider();
+                if (provider) {
+                    accounts = await provider.request({
+                        method: 'eth_requestAccounts'
+                    });
                 } else {
-                    throw new Error('MetaMask not found. Please install MetaMask.');
+                    throw new Error('MetaMask not found. Please install MetaMask or disable other wallet extensions that may be interfering.');
                 }
                 break;
                 
@@ -213,19 +211,12 @@ class WalletManager {
                 break;
                 
             case 'metamask':
-                if (typeof window.ethereum !== 'undefined') {
-                    // Use the specific MetaMask provider (same as in requestAccounts)
-                    const provider = window.ethereum.providers?.find(p => p.isMetaMask) || 
-                                   (window.ethereum.isMetaMask ? window.ethereum : null);
-                    
-                    if (provider) {
-                        signature = await provider.request({
-                            method: 'personal_sign',
-                            params: [message, walletAddress],
-                        });
-                    } else {
-                        throw new Error('MetaMask not available. Another wallet extension may be interfering.');
-                    }
+                const provider = this.getMetaMaskProvider();
+                if (provider) {
+                    signature = await provider.request({
+                        method: 'personal_sign',
+                        params: [message, walletAddress],
+                    });
                 } else {
                     throw new Error('MetaMask not available for signing');
                 }
@@ -323,25 +314,28 @@ class WalletManager {
             const previousWallet = this.connectedWallet;
             
             // If MetaMask, revoke permissions to clear cached account (with timeout)
-            if (previousWallet && previousWallet.wallet_type === 'metamask' && typeof window.ethereum !== 'undefined') {
-                try {
-                    console.log('[WalletManager] Revoking MetaMask permissions...');
-                    
-                    // Add 2-second timeout to prevent hanging
-                    const revokePromise = window.ethereum.request({
-                        method: 'wallet_revokePermissions',
-                        params: [{ eth_accounts: {} }]
-                    });
-                    
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Timeout')), 2000)
-                    );
-                    
-                    await Promise.race([revokePromise, timeoutPromise]);
-                    console.log('[WalletManager] MetaMask permissions revoked successfully');
-                } catch (revokeError) {
-                    // Permissions API might not be supported or timed out
-                    console.warn('[WalletManager] Could not revoke MetaMask permissions:', revokeError.message);
+            if (previousWallet && previousWallet.wallet_type === 'metamask') {
+                const provider = this.getMetaMaskProvider();
+                if (provider) {
+                    try {
+                        console.log('[WalletManager] Revoking MetaMask permissions...');
+                        
+                        // Add 2-second timeout to prevent hanging
+                        const revokePromise = provider.request({
+                            method: 'wallet_revokePermissions',
+                            params: [{ eth_accounts: {} }]
+                        });
+                        
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Timeout')), 2000)
+                        );
+                        
+                        await Promise.race([revokePromise, timeoutPromise]);
+                        console.log('[WalletManager] MetaMask permissions revoked successfully');
+                    } catch (revokeError) {
+                        // Permissions API might not be supported or timed out
+                        console.warn('[WalletManager] Could not revoke MetaMask permissions:', revokeError.message);
+                    }
                 }
             }
             
@@ -397,7 +391,13 @@ class WalletManager {
     
     async handleMetaMaskNetwork() {
         try {
-            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            const provider = this.getMetaMaskProvider();
+            if (!provider) {
+                console.warn('MetaMask provider not available for network check');
+                return;
+            }
+            
+            const chainId = await provider.request({ method: 'eth_chainId' });
             
             if (chainId.toLowerCase() !== this.KASPLEX_TESTNET.chainId.toLowerCase()) {
                 const switchNetwork = confirm(
@@ -408,7 +408,7 @@ class WalletManager {
                 if (switchNetwork) {
                     try {
                         await this.addKasplexNetwork();
-                        await window.ethereum.request({
+                        await provider.request({
                             method: 'wallet_switchEthereumChain',
                             params: [{ chainId: this.KASPLEX_TESTNET.chainId }],
                         });
@@ -425,7 +425,12 @@ class WalletManager {
     
     async addKasplexNetwork() {
         try {
-            await window.ethereum.request({
+            const provider = this.getMetaMaskProvider();
+            if (!provider) {
+                throw new Error('MetaMask provider not available');
+            }
+            
+            await provider.request({
                 method: 'wallet_addEthereumChain',
                 params: [this.KASPLEX_TESTNET]
             });
