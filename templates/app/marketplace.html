@@ -774,7 +774,9 @@
                            data-created="{{ token.created_at.timestamp() }}"
                            data-trades="{{ token.trade_count or 0 }}"
                            data-views="{{ token.view_count or 0 }}"
-                           data-holders="{{ token.holder_count or 0 }}">
+                           data-holders="{{ token.holder_count or 0 }}"
+                           data-contract="{{ token.contract_address or '' }}"
+                           data-creator="{% if token.creator %}{{ token.creator.display_name or token.creator.wallet_address[-6:] }}{% endif %}">
                             
                             <!-- Left Column - Image -->
                             <div class="token-image-column">
@@ -803,11 +805,15 @@
                                             <span class="token-symbol">${{ token.symbol }}</span>
                                             <span>•</span>
                                             <span class="creator-name">
-                                                {% if token.creator.display_name %}
-                                                    <i class="fas fa-user-check"></i>
-                                                    {{ token.creator.display_name }}
+                                                {% if token.creator %}
+                                                    {% if token.creator.display_name %}
+                                                        <i class="fas fa-user-check"></i>
+                                                        {{ token.creator.display_name }}
+                                                    {% else %}
+                                                        {{ token.creator.wallet_address[-6:] }}
+                                                    {% endif %}
                                                 {% else %}
-                                                    {{ token.creator.wallet_address[-6:] }}
+                                                    Unknown
                                                 {% endif %}
                                             </span>
                                         </div>
@@ -997,8 +1003,13 @@
                 
                 const tokenName = nameEl.textContent.toLowerCase();
                 const tokenSymbol = symbolEl.textContent.toLowerCase();
+                const contractAddress = (card.getAttribute('data-contract') || '').toLowerCase();
+                const creatorName = (card.getAttribute('data-creator') || '').toLowerCase();
                 
-                return tokenName.includes(searchTerm) || tokenSymbol.includes(searchTerm);
+                return tokenName.includes(searchTerm) || 
+                       tokenSymbol.includes(searchTerm) ||
+                       contractAddress.includes(searchTerm) ||
+                       creatorName.includes(searchTerm);
             });
         }
         
