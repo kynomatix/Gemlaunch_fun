@@ -96,12 +96,19 @@
                         </div>
                     </div>
                     
-                    <div class="user-stats-inline">
-                        <span class="stat-inline-item">{{ "{:,}".format(ranked_user.gem_points or 0) }} Points</span>
-                        <span class="stat-separator">|</span>
-                        <span class="stat-inline-item">{{ ranked_user.total_tokens_created or 0 }} Tokens</span>
-                        <span class="stat-separator">|</span>
-                        <span class="stat-inline-item">${{ "{:,.0f}".format(ranked_user.total_trading_volume or 0) }} Volume</span>
+                    <div class="user-stats-cards">
+                        <div class="stat-card">
+                            <span class="stat-value">{{ "{:,}".format(ranked_user.gem_points or 0) }}</span>
+                            <span class="stat-label">Points</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">{{ ranked_user.total_tokens_created or 0 }}</span>
+                            <span class="stat-label">Tokens</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">${{ "{:,.0f}".format(ranked_user.total_trading_volume or 0) }}</span>
+                            <span class="stat-label">Volume</span>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}

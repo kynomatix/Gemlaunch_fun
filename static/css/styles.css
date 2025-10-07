@@ -1743,6 +1743,46 @@ header nav > div:last-child {
     font-family: 'Courier New', monospace;
 }
 
+.user-stats-cards {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.stat-card {
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    min-width: 70px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    background: rgba(32, 178, 170, 0.15);
+    border-color: rgba(32, 178, 170, 0.4);
+    transform: translateY(-2px);
+}
+
+.stat-card .stat-value {
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.stat-card .stat-label {
+    color: #888888;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
 .user-stats-row {
     display: flex;
     gap: 2rem;
@@ -1958,6 +1998,24 @@ header nav > div:last-child {
         gap: 1rem;
     }
     
+    .user-stats-cards {
+        grid-area: stats;
+        gap: 0.4rem;
+    }
+    
+    .stat-card {
+        min-width: 60px;
+        padding: 0.35rem 0.6rem;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 0.85rem;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 0.65rem;
+    }
+    
     .achievements-grid {
         grid-template-columns: 1fr;
     }
@@ -1984,7 +2042,8 @@ header nav > div:last-child {
     
     /* Remove hover transforms on mobile */
     .rank-row:hover,
-    .reward-tier:hover {
+    .reward-tier:hover,
+    .stat-card:hover {
         transform: none !important;
     }
     
