@@ -65,11 +65,6 @@
             box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
         }
         
-        /* Position All button closer to search */
-        .filter-btn[data-filter="all"] {
-            margin-right: 0.5rem;
-        }
-        
         .tokens-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
@@ -556,6 +551,7 @@
             will-change: transform;
             transform: translateZ(0);
             backface-visibility: hidden;
+            margin-left: -0.25rem;
         }
         
         .search-btn:hover {
@@ -581,6 +577,7 @@
         
         .search-input-wrapper.expanded {
             max-width: clamp(400px, 70vw, 750px);
+            min-width: 400px;
             opacity: 1;
             margin-left: 0.75rem;
         }
@@ -692,6 +689,7 @@
             /* Search input adjustments for mobile */
             .search-input-wrapper.expanded {
                 max-width: 90vw;
+                min-width: 0;
             }
             
             .search-btn:hover {
