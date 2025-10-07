@@ -93,7 +93,6 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - **Unimplemented DEX graduation**: Core feature missing - tokens cannot graduate to Kaspa Finance DEX (TODO at line 209)
 
 ### Low Priority Issues
-- **Deprecated database field**: UserProfile.profile_picture_url is legacy and unused
 - **SQLAlchemy LSP warnings**: 88 type checker false positives due to backref relationships and constructor patterns
 
 ## Fixes Completed
@@ -105,3 +104,4 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - ✅ **Added performance database indexes** (October 2025): Activity.created_at, ChatMessage(token_id, created_at), TokenLeaderboard(token_id, points), Holding(token_id, token_amount)
 - ✅ **Comprehensive MetaMask wallet integration fixes** (October 2025): Created centralized `getMetaMaskProvider()` helper for EIP-6963 multi-wallet support, fixed wallet detection/connection/signing/disconnection to handle multiple wallet extensions, updated all 10+ MetaMask touchpoints (wallet_manager.js + profile.html), added 2-second timeout to prevent disconnect hanging, ensured CSRF tokens on all wallet API endpoints
 - ✅ **Code duplication cleanup** (October 2025): Eliminated 300+ lines of duplicated code by creating reusable utilities - static/js/utils/modal.js (centralized modal system for alert/confirm/prompt), static/js/utils/animations.js (IntersectionObserver scroll reveals with counter animations), utils/validators.py (wallet address validation). Updated docs.js, main.js, token_detail.js, and app.py to use shared utilities
+- ✅ **Deprecated field cleanup** (October 2025): Removed unused UserProfile.profile_picture_url field from model, templates (profile.html, leaderboard.html), app.py fallback logic, and dropped database column
