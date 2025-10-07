@@ -262,8 +262,11 @@ class Holding(db.Model):
     # Relationships
     user = db.relationship('User', backref='holdings')
     
-    # Unique constraint
-    __table_args__ = (db.UniqueConstraint('user_id', 'token_id', name='unique_user_token'),)
+    # Unique constraint and indexes
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'token_id', name='unique_user_token'),
+        db.Index('idx_holding_token_amount', 'token_id', 'token_amount'),
+    )
     
     @property
     def current_value(self):
@@ -465,7 +468,7 @@ class Activity(db.Model):
     is_public = db.Column(db.Boolean, default=True)
     
     # Timestamps
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     # Relationships
     user = db.relationship('User', backref='activities')

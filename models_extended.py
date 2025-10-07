@@ -36,6 +36,11 @@ class ChatMessage(db.Model):
     reactions = db.relationship('MessageReaction', backref='message', lazy='dynamic', cascade='all, delete-orphan')
     reply_to = db.relationship('ChatMessage', remote_side=[id], backref='replies')
     
+    # Composite index for efficient message retrieval
+    __table_args__ = (
+        db.Index('idx_chat_token_time', 'token_id', 'created_at'),
+    )
+    
     def __repr__(self):
         return f'<ChatMessage {self.id} in {self.token.symbol}>'
 
@@ -253,8 +258,11 @@ class TokenLeaderboard(db.Model):
     token = db.relationship('Token', backref='leaderboard_entries')
     user = db.relationship('User', backref='token_leaderboards')
     
-    # Unique constraint
-    __table_args__ = (db.UniqueConstraint('token_id', 'user_id', name='unique_token_user_leaderboard'),)
+    # Unique constraint and composite index
+    __table_args__ = (
+        db.UniqueConstraint('token_id', 'user_id', name='unique_token_user_leaderboard'),
+        db.Index('idx_leaderboard_ranking', 'token_id', 'points'),
+    )
     
     def add_points(self, points):
         """Add points to user's token-specific score"""
