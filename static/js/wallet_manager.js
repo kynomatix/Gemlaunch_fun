@@ -94,7 +94,11 @@ class WalletManager {
             case 'kasware':
                 return typeof window.kasware !== 'undefined';
             case 'metamask':
-                return typeof window.ethereum !== 'undefined';
+                // Check for MetaMask specifically, not just any wallet
+                if (typeof window.ethereum !== 'undefined') {
+                    return window.ethereum.providers?.some(p => p.isMetaMask) || window.ethereum.isMetaMask || false;
+                }
+                return false;
             default:
                 return false;
         }
@@ -126,10 +130,23 @@ class WalletManager {
                 
             case 'metamask':
                 if (typeof window.ethereum !== 'undefined') {
-                    // Get accounts - MetaMask will show account selector if not already connected
-                    accounts = await window.ethereum.request({
-                        method: 'eth_requestAccounts'
-                    });
+                    // Check if this is actually MetaMask (not another wallet hijacking window.ethereum)
+                    const provider = window.ethereum.providers?.find(p => p.isMetaMask) || 
+                                   (window.ethereum.isMetaMask ? window.ethereum : null);
+                    
+                    if (provider) {
+                        // Use the specific MetaMask provider
+                        accounts = await provider.request({
+                            method: 'eth_requestAccounts'
+                        });
+                    } else if (window.ethereum.isMetaMask) {
+                        // Fallback: if window.ethereum claims to be MetaMask
+                        accounts = await window.ethereum.request({
+                            method: 'eth_requestAccounts'
+                        });
+                    } else {
+                        throw new Error('MetaMask not found. Another wallet extension is installed. Please disable other wallets or install MetaMask.');
+                    }
                 } else {
                     throw new Error('MetaMask not found. Please install MetaMask.');
                 }
@@ -197,10 +214,18 @@ class WalletManager {
                 
             case 'metamask':
                 if (typeof window.ethereum !== 'undefined') {
-                    signature = await window.ethereum.request({
-                        method: 'personal_sign',
-                        params: [message, walletAddress],
-                    });
+                    // Use the specific MetaMask provider (same as in requestAccounts)
+                    const provider = window.ethereum.providers?.find(p => p.isMetaMask) || 
+                                   (window.ethereum.isMetaMask ? window.ethereum : null);
+                    
+                    if (provider) {
+                        signature = await provider.request({
+                            method: 'personal_sign',
+                            params: [message, walletAddress],
+                        });
+                    } else {
+                        throw new Error('MetaMask not available. Another wallet extension may be interfering.');
+                    }
                 } else {
                     throw new Error('MetaMask not available for signing');
                 }
