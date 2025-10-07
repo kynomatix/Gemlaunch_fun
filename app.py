@@ -1776,7 +1776,7 @@ def profile():
     """User profile page with wallet connections and stats"""
     user = get_current_user()
     if not user:
-        return redirect(url_for('app_marketplace'))
+        return redirect(url_for('token_marketplace'))
     
     # Get or create user profile
     user_profile = UserProfile.query.filter_by(user_id=user.id).first()
