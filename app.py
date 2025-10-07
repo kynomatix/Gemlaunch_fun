@@ -963,7 +963,7 @@ def create_token():
     """Token creation page and form handler"""
     user = get_current_user()
     if not user:
-        return redirect(url_for('app_marketplace'))
+        return redirect(url_for('token_marketplace'))
     
     if request.method == 'POST':
         # Handle token creation form submission
