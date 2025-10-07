@@ -297,18 +297,26 @@ class WalletManager {
             
             const previousWallet = this.connectedWallet;
             
-            // If MetaMask, revoke permissions to clear cached account
+            // If MetaMask, revoke permissions to clear cached account (with timeout)
             if (previousWallet && previousWallet.wallet_type === 'metamask' && typeof window.ethereum !== 'undefined') {
                 try {
                     console.log('[WalletManager] Revoking MetaMask permissions...');
-                    await window.ethereum.request({
+                    
+                    // Add 2-second timeout to prevent hanging
+                    const revokePromise = window.ethereum.request({
                         method: 'wallet_revokePermissions',
                         params: [{ eth_accounts: {} }]
                     });
+                    
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout')), 2000)
+                    );
+                    
+                    await Promise.race([revokePromise, timeoutPromise]);
                     console.log('[WalletManager] MetaMask permissions revoked successfully');
                 } catch (revokeError) {
-                    // Permissions API might not be supported in all MetaMask versions
-                    console.warn('[WalletManager] Could not revoke MetaMask permissions:', revokeError);
+                    // Permissions API might not be supported or timed out
+                    console.warn('[WalletManager] Could not revoke MetaMask permissions:', revokeError.message);
                 }
             }
             
