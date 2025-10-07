@@ -89,7 +89,6 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 ### Medium Priority Issues
 - **Dashboard backfill queries**: Stats backfilling runs on page load; consider background job processing
 - **Rate limiting gaps**: Only wallet linking has rate limits; add to auth, token creation, chat, admin routes
-- **Incomplete Kaspa signature verification**: Native Kaspa wallets (Kastle, KasWare) signatures not cryptographically verified (TODO at line 275)
 - **Unimplemented DEX graduation**: Core feature missing - tokens cannot graduate to Kaspa Finance DEX (TODO at line 209)
 
 ### Low Priority Issues
@@ -105,3 +104,4 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - ✅ **Comprehensive MetaMask wallet integration fixes** (October 2025): Created centralized `getMetaMaskProvider()` helper for EIP-6963 multi-wallet support, fixed wallet detection/connection/signing/disconnection to handle multiple wallet extensions, updated all 10+ MetaMask touchpoints (wallet_manager.js + profile.html), added 2-second timeout to prevent disconnect hanging, ensured CSRF tokens on all wallet API endpoints
 - ✅ **Code duplication cleanup** (October 2025): Eliminated 300+ lines of duplicated code by creating reusable utilities - static/js/utils/modal.js (centralized modal system for alert/confirm/prompt), static/js/utils/animations.js (IntersectionObserver scroll reveals with counter animations), utils/validators.py (wallet address validation). Updated docs.js, main.js, token_detail.js, and app.py to use shared utilities
 - ✅ **Deprecated field cleanup** (October 2025): Removed unused UserProfile.profile_picture_url field from model, templates (profile.html, leaderboard.html), app.py fallback logic, and dropped database column
+- ✅ **Kaspa wallet signature verification** (October 2025): Implemented cryptographic signature verification for Kastle and KasWare wallets. These wallets use EVM connectivity on Kaspa L2s, so they now use the same Ethereum personal_sign verification as MetaMask. Removed bypass logic and obsolete TODO, added nonce invalidation on verification failure

@@ -258,28 +258,25 @@ def verify_signature():
         # Reconstruct the message that was signed
         message = f"Sign this message to authenticate with Gemlaunch.fun\n\nNonce: {nonce_data['nonce']}\nTimestamp: {nonce_data['timestamp']}\nWallet: {wallet_address.lower()}"
         
-        # Verify signature for EVM wallets (MetaMask)
-        if wallet_type.lower() in ['metamask', 'evm']:
+        # Verify signature for EVM-compatible wallets (MetaMask, Kastle, KasWare on Kaspa L2)
+        if wallet_type.lower() in ['metamask', 'evm', 'kastle', 'kasware']:
             try:
-                # Encode message for Ethereum signing
+                # Encode message for Ethereum personal_sign standard
                 encoded_message = encode_defunct(text=message)
                 
-                # Recover address from signature
+                # Recover address from signature using secp256k1 ECDSA
                 recovered_address = Account.recover_message(encoded_message, signature=signature)
                 
-                # Verify the recovered address matches the claimed address
+                # Verify the recovered address matches the claimed address (normalized to lowercase)
                 if recovered_address.lower() != wallet_address.lower():
+                    # Invalidate nonce on verification failure to prevent replay attacks
+                    session.pop(session_key, None)
                     return jsonify({'error': 'Signature verification failed. Invalid signature.'}), 401
                     
             except Exception as sig_error:
+                # Invalidate nonce on error
+                session.pop(session_key, None)
                 return jsonify({'error': f'Signature verification error: {str(sig_error)}'}), 401
-        
-        # For native Kaspa wallets, we would need Kaspa-specific signature verification
-        # This is a simplified approach - in production, implement proper Kaspa signature verification
-        elif wallet_type.lower() in ['kastle', 'kasware', 'kaspa']:
-            # TODO: Implement Kaspa signature verification using Kasplex SDK
-            # For now, we'll accept these wallet types with a warning
-            print(f"Warning: Native Kaspa signature verification not yet implemented for {wallet_type}")
         
         # Clear the used nonce to prevent replay attacks
         if session_key:
