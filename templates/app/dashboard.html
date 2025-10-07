@@ -2073,8 +2073,8 @@
             }, true);
         }
 
-        // Animation on load for activities
-        document.addEventListener('DOMContentLoaded', function() {
+        // Animation on load for activities - use turbo:load for Turbo Drive compatibility
+        document.addEventListener('turbo:load', function() {
             // Initialize carousel
             const carouselSlides = document.querySelectorAll('.carousel-slide');
             if (carouselSlides.length > 0) {
