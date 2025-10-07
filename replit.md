@@ -39,6 +39,9 @@ Allows users to link wallets that are already primary for another account throug
 ### Wallet Connection System
 A modal-based system supports Kastle, KasWare, and MetaMask. It uses challenge-response authentication, `WalletManager` module for provider abstraction, and handles MetaMask account switching with auto-disconnect on change. API endpoints manage nonce generation, verification, session status, and disconnection. UI conditionally renders access based on wallet connection status.
 
+### Enhanced Marketplace Search
+The marketplace features a comprehensive search system that searches across multiple token fields: token name, symbol, contract address, and creator username/wallet address. Search operates in real-time with case-insensitive matching and works seamlessly with all filter categories (trending, social, new, gainers, near-grad, graduated, pro, basic). The implementation includes null-safe handling to prevent crashes when token data is incomplete. The search bar expands to 400-750px on desktop for comfortable multi-term searches.
+
 ## Design Patterns
 Adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and models. Utilizes efficient static asset organization and a component-based CSS approach.
 
