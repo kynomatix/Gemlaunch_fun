@@ -87,9 +87,8 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - **lazy='dynamic' relationships**: User.tokens_created and User.trades cause extra queries, should use explicit eager loading
 
 ### Medium Priority Issues
-- **Dashboard backfill queries**: Stats backfilling runs on page load; consider background job processing
 - **Rate limiting gaps**: Only wallet linking has rate limits; add to auth, token creation, chat, admin routes
-- **Unimplemented DEX graduation**: Core feature missing - tokens cannot graduate to Kaspa Finance DEX (TODO at line 209)
+- **Unimplemented DEX graduation**: Core feature missing - tokens cannot graduate to Kaspa Finance DEX (TODO at line 209, blocked by Kaspa Finance API)
 
 ### Low Priority Issues
 - **SQLAlchemy LSP warnings**: 88 type checker false positives due to backref relationships and constructor patterns
@@ -105,3 +104,4 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - ✅ **Code duplication cleanup** (October 2025): Eliminated 300+ lines of duplicated code by creating reusable utilities - static/js/utils/modal.js (centralized modal system for alert/confirm/prompt), static/js/utils/animations.js (IntersectionObserver scroll reveals with counter animations), utils/validators.py (wallet address validation). Updated docs.js, main.js, token_detail.js, and app.py to use shared utilities
 - ✅ **Deprecated field cleanup** (October 2025): Removed unused UserProfile.profile_picture_url field from model, templates (profile.html, leaderboard.html), app.py fallback logic, and dropped database column
 - ✅ **Kaspa wallet signature verification** (October 2025): Implemented cryptographic signature verification for Kastle and KasWare wallets. These wallets use EVM connectivity on Kaspa L2s, so they now use the same Ethereum personal_sign verification as MetaMask. Removed bypass logic and obsolete TODO, added nonce invalidation on verification failure
+- ✅ **Dashboard performance optimization** (October 2025): Eliminated 5+ database queries that ran on every dashboard page load by implementing event-driven real-time stat updates. Stats now update instantly when events occur (token creation, chat messages, graduations). Consolidated graduation logic to single canonical path in Token.graduate_token() to prevent stat drift
