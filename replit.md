@@ -71,3 +71,34 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 - **Replicate API**: For AI-powered token image generation (FLUX.1 Schnell).
 - **4chan /biz/**: Real-time meme trend scraping.
 - **Reddit CryptoMoonShots**: Community-validated meme trends.
+
+# Technical Debt & Known Issues
+
+## Recent Codebase Audit (October 2025)
+A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBASE_AUDIT_REPORT.md` for full details.
+
+### Critical Issues (Immediate Action Required)
+- **Hardcoded admin key**: Admin routes use hardcoded 'gemlaunch-admin-2024' key in source code instead of wallet-based authentication with role verification
+
+### High Priority Issues
+- **Missing database indexes**: Activity.created_at, ChatMessage(token_id, created_at), TokenLeaderboard(token_id, points), Holding(token_id, token_amount) need indexes for performance at scale
+- **No CSRF protection**: POST/DELETE routes vulnerable to cross-site request forgery
+- **Monolithic app.py**: 2900-line file needs refactoring into Flask blueprints for maintainability
+- **lazy='dynamic' relationships**: User.tokens_created and User.trades cause extra queries, should use explicit eager loading
+
+### Medium Priority Issues
+- **Code duplication**: Modal handling, scroll animations, wallet validation, and API patterns duplicated across JavaScript files
+- **Dashboard backfill queries**: Stats backfilling runs on page load; consider background job processing
+- **Rate limiting gaps**: Only wallet linking has rate limits; add to auth, token creation, chat, admin routes
+- **Incomplete Kaspa signature verification**: Native Kaspa wallets (Kastle, KasWare) signatures not cryptographically verified (TODO at line 275)
+- **Unimplemented DEX graduation**: Core feature missing - tokens cannot graduate to Kaspa Finance DEX (TODO at line 209)
+
+### Low Priority Issues
+- **Deprecated database field**: UserProfile.profile_picture_url is legacy and unused
+- **SQLAlchemy LSP warnings**: 88 type checker false positives due to backref relationships and constructor patterns
+
+## Fixes Completed
+- ✅ Fixed stored XSS vulnerability in profile modal (proper HTML escaping)
+- ✅ Resolved leaderboard profile modal hanging issue (async/await with error handling)
+- ✅ Fixed Turbo Drive navigation bugs (carousel initialization, number formatting)
+- ✅ Patched datetime timezone mismatch in achievement service (holding_days calculation)
