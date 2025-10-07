@@ -1454,7 +1454,7 @@
     transition: all 0.3s ease;
 }
 
-.leaderboard-header {
+.token-leaderboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1464,11 +1464,11 @@
     transition: background 0.3s ease;
 }
 
-.leaderboard-header:hover {
+.token-leaderboard-header:hover {
     background: linear-gradient(135deg, rgba(32, 178, 170, 0.15), rgba(0, 206, 209, 0.08));
 }
 
-.leaderboard-header h4 {
+.token-leaderboard-header h4 {
     margin: 0;
     color: #20B2AA;
     font-size: 0.95rem;
