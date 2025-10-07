@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
+from flask_wtf.csrf import CSRFProtect
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
@@ -126,6 +127,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # Initialize database
 db.init_app(app)
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
 
 def get_current_user():
     """Get current user from session - only if wallet is verified"""
