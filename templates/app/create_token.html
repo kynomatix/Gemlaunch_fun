@@ -2783,6 +2783,7 @@
             
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                console.log('CSRF Token for image generation:', csrfToken);
                 const response = await fetch('/api/generate-token-image', {
                     method: 'POST',
                     headers: {
