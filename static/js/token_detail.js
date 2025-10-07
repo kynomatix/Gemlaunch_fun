@@ -11,161 +11,6 @@
             return meta ? meta.getAttribute('content') : '';
         },
         
-        // Modal System
-        modals: {
-            // Show a custom alert modal
-            alert: function(title, message, type = 'info', callback) {
-                const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-                const iconColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#FF5252' : '#20B2AA';
-                
-                const modalHTML = `
-                    <div id="customAlertModal" class="modal" style="display: flex;">
-                        <div class="modal-content" style="max-width: 400px;">
-                            <div class="modal-header">
-                                <h3><i class="fas ${iconClass}" style="color: ${iconColor};"></i> ${TokenDetail.escapeHtml(title)}</h3>
-                                <button class="modal-close" onclick="TokenDetail.modals.closeModal('customAlertModal')">&times;</button>
-                            </div>
-                            <div class="modal-body">
-                                <p style="color: #CCC; margin: 0; line-height: 1.5;">${TokenDetail.escapeHtml(message)}</p>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-primary" onclick="TokenDetail.modals.closeModal('customAlertModal')">
-                                    <i class="fas fa-check"></i> OK
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                const existingModal = document.getElementById('customAlertModal');
-                if (existingModal) existingModal.remove();
-                
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-                if (callback) {
-                    const modal = document.getElementById('customAlertModal');
-                    const okBtn = modal.querySelector('.btn-primary');
-                    okBtn.onclick = function() {
-                        TokenDetail.modals.closeModal('customAlertModal');
-                        callback();
-                    };
-                }
-            },
-            
-            // Show a confirm modal
-            confirm: function(title, message, onConfirm, onCancel) {
-                const modalHTML = `
-                    <div id="customConfirmModal" class="modal" style="display: flex;">
-                        <div class="modal-content" style="max-width: 450px;">
-                            <div class="modal-header">
-                                <h3>${TokenDetail.escapeHtml(title)}</h3>
-                                <button class="modal-close" onclick="TokenDetail.modals.closeModal('customConfirmModal')">&times;</button>
-                            </div>
-                            <div class="modal-body">
-                                <div style="color: #CCC; line-height: 1.5;">${TokenDetail.escapeHtml(message)}</div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                                <button type="button" class="btn btn-primary" id="confirmOkBtn">
-                                    <i class="fas fa-check"></i> Confirm
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                const existingModal = document.getElementById('customConfirmModal');
-                if (existingModal) existingModal.remove();
-                
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-                document.getElementById('confirmOkBtn').onclick = function() {
-                    TokenDetail.modals.closeModal('customConfirmModal');
-                    if (onConfirm) onConfirm();
-                };
-                
-                document.getElementById('confirmCancelBtn').onclick = function() {
-                    TokenDetail.modals.closeModal('customConfirmModal');
-                    if (onCancel) onCancel();
-                };
-            },
-            
-            // Show a prompt modal
-            prompt: function(title, message, defaultValue, onSubmit, onCancel, placeholder = 'Enter your input here...') {
-                const modalHTML = `
-                    <div id="customPromptModal" class="modal" style="display: flex;">
-                        <div class="modal-content" style="max-width: 500px;">
-                            <div class="modal-header">
-                                <h3>${TokenDetail.escapeHtml(title)}</h3>
-                                <button class="modal-close" onclick="TokenDetail.modals.closeModal('customPromptModal')">&times;</button>
-                            </div>
-                            <div class="modal-body">
-                                <p style="color: #CCC; margin-bottom: 1rem; line-height: 1.5;">${TokenDetail.escapeHtml(message)}</p>
-                                <input type="text" id="promptInput" class="form-control" 
-                                       value="${TokenDetail.escapeHtml(defaultValue || '')}" 
-                                       placeholder="${TokenDetail.escapeHtml(placeholder)}"
-                                       style="width: 100%;">
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" id="promptCancelBtn">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                                <button type="button" class="btn btn-primary" id="promptSubmitBtn">
-                                    <i class="fas fa-check"></i> Submit
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                const existingModal = document.getElementById('customPromptModal');
-                if (existingModal) existingModal.remove();
-                
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-                const input = document.getElementById('promptInput');
-                setTimeout(() => {
-                    input.focus();
-                    input.select();
-                }, 100);
-                
-                const submitHandler = function() {
-                    const value = document.getElementById('promptInput').value;
-                    TokenDetail.modals.closeModal('customPromptModal');
-                    if (onSubmit) onSubmit(value);
-                };
-                
-                document.getElementById('promptSubmitBtn').onclick = submitHandler;
-                
-                input.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        submitHandler();
-                    }
-                });
-                
-                document.getElementById('promptCancelBtn').onclick = function() {
-                    TokenDetail.modals.closeModal('customPromptModal');
-                    if (onCancel) onCancel();
-                };
-            },
-            
-            // Close modal
-            closeModal: function(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.style.display = 'none';
-                    setTimeout(() => modal.remove(), 300);
-                }
-            },
-            
-            // Show notification (uses existing notification system)
-            showNotification: function(title, message, type = 'info') {
-                TokenDetail.showNotification(title, message, type);
-            }
-        },
-        
         // Trading state
         currentTradeMode: 'buy',
         tokenPrice: null,
@@ -625,7 +470,7 @@
         executeTrade: function() {
             const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
             if (kasAmount <= 0) {
-                this.modals.alert(
+                ModalManager.alert(
                     'Invalid Amount',
                     'Please enter a valid amount to trade.',
                     'error'
@@ -637,7 +482,7 @@
             const actionColor = this.currentTradeMode === 'buy' ? '#4CAF50' : '#FF5252';
             const tokenAmount = document.getElementById('tokenAmount').value;
             
-            this.modals.confirm(
+            ModalManager.confirm(
                 `<i class="fas fa-exchange-alt"></i> Confirm ${action} Order`,
                 `<div style="text-align: center; padding: 1rem;">
                     <div style="font-size: 1.2rem; margin-bottom: 1rem;">
@@ -654,7 +499,7 @@
                 </div>`,
                 function() {
                     console.log(`Executing ${action} order:`, {tokens: tokenAmount, kas: kasAmount});
-                    TokenDetail.modals.alert(
+                    ModalManager.alert(
                         'Trade Submitted',
                         `Your ${action.toLowerCase()} order has been submitted successfully!`,
                         'success'
@@ -1461,7 +1306,7 @@
         votePoll: async function(pollId, optionId) {
             const userWallet = localStorage.getItem('connectedWallet');
             if (!userWallet) {
-                this.modals.alert('❌ Error', 'Please connect your wallet to vote on polls.', 'error');
+                ModalManager.alert('❌ Error', 'Please connect your wallet to vote on polls.', 'error');
                 return;
             }
             
@@ -1482,17 +1327,17 @@
                 
                 if (response.ok) {
                     // Show success message
-                    this.modals.alert('✅ Vote Recorded', 'Your vote has been successfully recorded!', 'success');
+                    ModalManager.alert('✅ Vote Recorded', 'Your vote has been successfully recorded!', 'success');
                     
                     // Reload polls to update the display
                     await this.reloadPolls();
                 } else {
                     // Show error message
-                    this.modals.alert('❌ Error', data.error || 'Failed to vote on poll. Please try again.', 'error');
+                    ModalManager.alert('❌ Error', data.error || 'Failed to vote on poll. Please try again.', 'error');
                 }
             } catch (error) {
                 console.error('Failed to vote on poll:', error);
-                this.modals.alert('❌ Error', 'Failed to vote on poll. Please try again.', 'error');
+                ModalManager.alert('❌ Error', 'Failed to vote on poll. Please try again.', 'error');
             }
         },
         
@@ -1677,7 +1522,7 @@
                     <div class="modal-content" style="max-width: 550px;">
                         <div class="modal-header">
                             <h3><i class="fas fa-star" style="color: #FFD700;"></i> Create Spotlight Message</h3>
-                            <button class="modal-close" onclick="TokenDetail.modals.closeModal('spotlightModal')">&times;</button>
+                            <button class="modal-close" onclick="ModalManager.closeModal('spotlightModal')">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div style="padding: 1rem; background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
@@ -1711,7 +1556,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="TokenDetail.modals.closeModal('spotlightModal')">
+                            <button type="button" class="btn btn-secondary" onclick="ModalManager.closeModal('spotlightModal')">
                                 <i class="fas fa-times"></i> Cancel
                             </button>
                             <button type="button" class="btn btn-primary" id="submitSpotlightBtn">
@@ -1738,7 +1583,7 @@
                 const message = document.getElementById('spotlightMessageInput').value;
                 
                 if (!message || message.trim() === '') {
-                    self.modals.alert(
+                    ModalManager.alert(
                         'Empty Message',
                         'Please enter a message to spotlight.',
                         'error'
@@ -1746,7 +1591,7 @@
                     return;
                 }
                 
-                self.modals.closeModal('spotlightModal');
+                ModalManager.closeModal('spotlightModal');
                 
                 // Continue with the spotlight creation
                 await self.submitSpotlightMessage(message);
@@ -1861,7 +1706,7 @@
     window.openChatSettings = function() { TokenDetail.openChatSettings(); };
     window.copyContractAddress = function(address) {
         navigator.clipboard.writeText(address).then(() => {
-            TokenDetail.modals.alert(
+            ModalManager.alert(
                 'Copied!',
                 'Contract address has been copied to clipboard.',
                 'success'

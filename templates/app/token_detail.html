@@ -108,6 +108,9 @@
         </div>
     </div>
     
+    <!-- Load Modal Manager Utility -->
+    <script src="{{ url_for('static', filename='js/utils/modal.js') }}"></script>
+    
     <!-- Load Token Detail JavaScript Module -->
     <script src="{{ url_for('static', filename='js/token_detail.js') }}"></script>
     
@@ -178,7 +181,7 @@
             const optionCount = container.querySelectorAll('.poll-option').length;
             
             if (optionCount >= 5) {
-                TokenDetail.modals.alert('Poll Options', 'Maximum 5 options allowed', 'error');
+                ModalManager.alert('Poll Options', 'Maximum 5 options allowed', 'error');
                 return;
             }
             
@@ -201,13 +204,13 @@
             const voteCost = document.getElementById('voteCost').value;
             
             if (!question || options.length < 2) {
-                TokenDetail.modals.alert('Missing Information', 'Please enter a question and at least 2 options', 'error');
+                ModalManager.alert('Missing Information', 'Please enter a question and at least 2 options', 'error');
                 return;
             }
             
             const userWallet = localStorage.getItem('connectedWallet');
             if (!userWallet) {
-                TokenDetail.modals.alert('Wallet Required', 'Please connect your wallet first', 'error');
+                ModalManager.alert('Wallet Required', 'Please connect your wallet first', 'error');
                 return;
             }
             
@@ -223,7 +226,7 @@
                 });
                 
                 if (!holdingsResponse.ok) {
-                    TokenDetail.modals.alert('Verification Failed', 'Failed to verify token holdings. Please try again.', 'error');
+                    ModalManager.alert('Verification Failed', 'Failed to verify token holdings. Please try again.', 'error');
                     return;
                 }
                 
@@ -232,7 +235,7 @@
                 
                 // TOKEN GATE CHECK - User must HOLD tokens to create polls
                 if (actualBalance < requiredTokens) {
-                    TokenDetail.modals.alert('Insufficient Tokens', `You need to hold at least ${requiredTokens.toLocaleString()} $${TokenDetail.tokenSymbol} tokens to create polls.\n\nYou currently hold: ${actualBalance.toLocaleString()} $${TokenDetail.tokenSymbol}`, 'error');
+                    ModalManager.alert('Insufficient Tokens', `You need to hold at least ${requiredTokens.toLocaleString()} $${TokenDetail.tokenSymbol} tokens to create polls.\n\nYou currently hold: ${actualBalance.toLocaleString()} $${TokenDetail.tokenSymbol}`, 'error');
                     return;
                 }
                 
@@ -253,7 +256,7 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    TokenDetail.modals.alert('Success', 'Poll created successfully!', 'success');
+                    ModalManager.alert('Success', 'Poll created successfully!', 'success');
                     closePollModal();
                     // Clear form
                     document.getElementById('pollQuestion').value = '';
@@ -276,11 +279,11 @@
                         console.error('Could not parse error response:', e);
                     }
                     console.error('Poll creation failed with status:', response.status, errorMessage);
-                    TokenDetail.modals.alert('Error', errorMessage, 'error');
+                    ModalManager.alert('Error', errorMessage, 'error');
                 }
             } catch (error) {
                 console.error('Error creating poll:', error);
-                TokenDetail.modals.alert('Error', `Failed to create poll: ${error.message || 'Network error'}`, 'error');
+                ModalManager.alert('Error', `Failed to create poll: ${error.message || 'Network error'}`, 'error');
             }
         }
         
@@ -324,7 +327,7 @@
             const tokenCreator = '{{ token.creator.wallet_address }}'.toLowerCase();
             
             if (userWallet.toLowerCase() !== tokenCreator) {
-                TokenDetail.modals.alert(
+                ModalManager.alert(
                     'Access Denied',
                     'Only the token creator can create airdrops.',
                     'error'
@@ -386,7 +389,7 @@
                     <div class="modal-content airdrop-modal-content">
                         <div class="modal-header">
                             <h3><i class="fas fa-gift airdrop-icon-gold"></i> Create Airdrop</h3>
-                            <button class="modal-close" onclick="TokenDetail.modals.closeModal('airdropModal')">&times;</button>
+                            <button class="modal-close" onclick="ModalManager.closeModal('airdropModal')">&times;</button>
                         </div>
                         <div class="modal-body">
                             ${availabilityHTML}
@@ -481,7 +484,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="TokenDetail.modals.closeModal('airdropModal')">
+                            <button type="button" class="btn btn-secondary" onclick="ModalManager.closeModal('airdropModal')">
                                 <i class="fas fa-times"></i> Cancel
                             </button>
                             <button type="button" class="btn btn-primary" onclick="submitAirdrop()">
@@ -545,7 +548,7 @@
         function setAirdropPercentage(percentage) {
             const availableAmount = window.airdropAvailableAmount || 0;
             if (availableAmount === 0) {
-                TokenDetail.modals.alert(
+                ModalManager.alert(
                     'No Tokens Available',
                     'There are no tokens available for airdrop yet. Tokens unlock at 5% per day.',
                     'error'
@@ -572,7 +575,7 @@
             
             // Validate amount (required for all types)
             if (!amount || amount <= 0) {
-                TokenDetail.modals.alert(
+                ModalManager.alert(
                     'Invalid Input',
                     'Please enter a valid token amount.',
                     'error'
@@ -598,7 +601,7 @@
                 case '1': // Random Raffle
                     const winners = document.getElementById('airdropWinners').value;
                     if (!winners || winners <= 0) {
-                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of winners.', 'error');
+                        ModalManager.alert('Invalid Input', 'Please enter a valid number of winners.', 'error');
                         return;
                     }
                     typeSpecificData.winners = winners;
@@ -614,7 +617,7 @@
                 case '2': // Top Contributors
                     const topCount = document.getElementById('airdropTopCount').value;
                     if (!topCount || topCount <= 0) {
-                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of top contributors.', 'error');
+                        ModalManager.alert('Invalid Input', 'Please enter a valid number of top contributors.', 'error');
                         return;
                     }
                     typeSpecificData.topCount = topCount;
@@ -632,7 +635,7 @@
                     if (!distributeToAll) {
                         const chatters = document.getElementById('airdropChatters').value;
                         if (!chatters || chatters <= 0) {
-                            TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of active chatters or check "distribute to all".', 'error');
+                            ModalManager.alert('Invalid Input', 'Please enter a valid number of active chatters or check "distribute to all".', 'error');
                             return;
                         }
                         typeSpecificData.chatters = chatters;
@@ -658,7 +661,7 @@
                 case '4': // Token Holders
                     const minBalance = document.getElementById('airdropMinBalance').value;
                     if (!minBalance || minBalance <= 0) {
-                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid minimum token balance.', 'error');
+                        ModalManager.alert('Invalid Input', 'Please enter a valid minimum token balance.', 'error');
                         return;
                     }
                     typeSpecificData.minBalance = minBalance;
@@ -674,7 +677,7 @@
                 case '5': // Early Supporters
                     const earlyCount = document.getElementById('airdropEarlyCount').value;
                     if (!earlyCount || earlyCount <= 0) {
-                        TokenDetail.modals.alert('Invalid Input', 'Please enter a valid number of early holders.', 'error');
+                        ModalManager.alert('Invalid Input', 'Please enter a valid number of early holders.', 'error');
                         return;
                     }
                     typeSpecificData.earlyCount = earlyCount;
@@ -688,7 +691,7 @@
                     break;
             }
             
-            TokenDetail.modals.closeModal('airdropModal');
+            ModalManager.closeModal('airdropModal');
             
             // Calculate per-user amount if applicable
             let perUserText = '';
@@ -699,7 +702,7 @@
             }
             
             // Show confirmation modal
-            TokenDetail.modals.confirm(
+            ModalManager.confirm(
                 '<i class="fas fa-gift" style="color: #FFD700;"></i> Confirm Airdrop',
                 `<div style="text-align: center; padding: 1rem;">
                     <div style="margin-bottom: 1rem;">
@@ -734,7 +737,7 @@
                         const result = await response.json();
                         
                         if (response.ok && result.success) {
-                            TokenDetail.modals.alert(
+                            ModalManager.alert(
                                 'Airdrop Created!',
                                 `Your ${typeText} airdrop has been created successfully! ${amount} ${{ token.symbol }} has been reserved for distribution. Status: ${result.status}`,
                                 'success'
@@ -743,7 +746,7 @@
                             // Reload the page to update available airdrop amount
                             setTimeout(() => window.location.reload(), 2000);
                         } else {
-                            TokenDetail.modals.alert(
+                            ModalManager.alert(
                                 'Airdrop Failed',
                                 result.error || 'Failed to create airdrop. Please try again.',
                                 'error'
@@ -751,7 +754,7 @@
                         }
                     } catch (error) {
                         console.error('Airdrop creation error:', error);
-                        TokenDetail.modals.alert(
+                        ModalManager.alert(
                             'Airdrop Error',
                             'An unexpected error occurred while creating the airdrop.',
                             'error'

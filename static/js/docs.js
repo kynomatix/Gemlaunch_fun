@@ -53,25 +53,12 @@ document.addEventListener('DOMContentLoaded', function() {
         lastScroll = currentScroll;
     });
 
-    // Enhanced scroll reveal animations for docs content
-    const revealElements = document.querySelectorAll('.docs-panel h3, .docs-panel h4, .highlight-box, .option-card, .process-step, .fee-item, .contract-item, .phase, .competitive-item, .metric-category, .message-category');
-    
-    const revealObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, index * 50);
-            }
-        });
-    }, { threshold: 0.1 });
-
-    revealElements.forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        revealObserver.observe(el);
+    // Enhanced scroll reveal animations for docs content using AnimationUtils
+    AnimationUtils.initScrollReveal('.docs-panel h3, .docs-panel h4, .highlight-box, .option-card, .process-step, .fee-item, .contract-item, .phase, .competitive-item, .metric-category, .message-category', {
+        threshold: 0.1,
+        staggerDelay: 50,
+        translateY: 20,
+        transition: 'opacity 0.6s ease, transform 0.6s ease'
     });
 
     // Mobile menu functionality (reused from main.js)

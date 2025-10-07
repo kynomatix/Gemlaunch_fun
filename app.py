@@ -12,6 +12,7 @@ from models import db, User, Token, Trade, Holding, Achievement, UserAchievement
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
+from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -367,8 +368,6 @@ def check_session():
 @app.route('/api/wallet/request-link', methods=['POST'])
 def request_wallet_link():
     """Request to link a secondary wallet to user account"""
-    import re
-    
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User authentication required'}), 401
@@ -380,12 +379,10 @@ def request_wallet_link():
     if not wallet_address:
         return jsonify({'error': 'Wallet address required'}), 400
     
-    wallet_address = wallet_address.strip()
-    
-    if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
-        return jsonify({'error': 'Invalid wallet address format. Must be 0x followed by 40 hexadecimal characters.'}), 400
-    
-    wallet_address_lower = wallet_address.lower()
+    try:
+        wallet_address_lower = validate_eth_wallet_address(wallet_address)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     
     if wallet_address_lower == user.wallet_address.lower():
         return jsonify({'error': 'Cannot link your primary wallet address'}), 400
@@ -597,7 +594,6 @@ def unlink_wallet(wallet_address):
 def request_transfer():
     """Request ownership transfer from another wallet's owner"""
     from models import TransferRequest
-    import re
     
     user = get_current_user()
     if not user:
@@ -609,12 +605,10 @@ def request_transfer():
     if not wallet_address:
         return jsonify({'error': 'Wallet address required'}), 400
     
-    wallet_address = wallet_address.strip()
-    
-    if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
-        return jsonify({'error': 'Invalid wallet address format. Must be 0x followed by 40 hexadecimal characters.'}), 400
-    
-    wallet_address_lower = wallet_address.lower()
+    try:
+        wallet_address_lower = validate_eth_wallet_address(wallet_address)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     
     if wallet_address_lower == user.wallet_address.lower():
         return jsonify({'error': 'You already own this wallet'}), 400

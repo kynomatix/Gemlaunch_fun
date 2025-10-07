@@ -879,11 +879,13 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/utils/animations.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/utils/animations.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
     // Number formatting function for human-readable numbers

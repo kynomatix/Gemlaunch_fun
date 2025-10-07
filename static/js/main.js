@@ -38,46 +38,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Animated counter for hero stats
-    function animateCounter(element, target, duration = 2000) {
-        const start = 0;
-        const increment = target / (duration / 16);
-        let current = start;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            element.textContent = Math.floor(current).toLocaleString();
-            
-            if (current >= target) {
-                element.textContent = target.toLocaleString();
-                clearInterval(timer);
-            }
-        }, 16);
-    }
-
-    // Intersection Observer for animations
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('active');
-                
-                // Animate counters when hero stats come into view
-                if (entry.target.classList.contains('hero-stats')) {
-                    const counters = entry.target.querySelectorAll('.stat-number');
-                    counters.forEach(counter => {
-                        const target = parseInt(counter.getAttribute('data-target'));
-                        animateCounter(counter, target);
-                    });
-                }
-            }
-        });
-    }, observerOptions);
-
     // XP Bar animations
     function initXPBars() {
         const xpBars = document.querySelectorAll('.xp-fill');
@@ -102,10 +62,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize XP bars
     initXPBars();
 
-    // Observe elements for scroll animations
+    // Initialize scroll reveal animations using AnimationUtils
+    // Add 'reveal' class to elements for CSS compatibility
     document.querySelectorAll('.step, .feature, .kaspa-feature, .benefit, .hero-stats').forEach(el => {
         el.classList.add('reveal');
-        observer.observe(el);
+    });
+    
+    // Setup scroll reveal with AnimationUtils (handles counter animations automatically for .hero-stats)
+    AnimationUtils.initScrollReveal('.step, .feature, .kaspa-feature, .benefit, .hero-stats', {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    }, function(element, index) {
+        // Add 'active' class for CSS compatibility
+        element.classList.add('active');
     });
 
     // Enhanced button hover effects
