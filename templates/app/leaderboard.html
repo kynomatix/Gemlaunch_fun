@@ -82,8 +82,6 @@
                         <div class="user-avatar">
                             {% if ranked_user.profile and ranked_user.profile.avatar_path %}
                                 <img src="{{ url_for('static', filename=ranked_user.profile.avatar_path) }}{% if ranked_user.profile.avatar_updated_at %}?v={{ ranked_user.profile.avatar_updated_at.timestamp() }}{% endif %}" alt="Avatar">
-                            {% elif ranked_user.profile and ranked_user.profile.profile_picture_url %}
-                                <img src="{{ ranked_user.profile.profile_picture_url }}" alt="Avatar">
                             {% else %}
                                 <div class="default-avatar">
                                     <i class="fas fa-user"></i>

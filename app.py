@@ -1740,9 +1740,6 @@ def get_user_profile(user_id):
                 avatar_url = url_for('static', filename=profile.avatar_path, _external=True)
                 if profile.avatar_updated_at:
                     avatar_url += f"?v={int(profile.avatar_updated_at.timestamp())}"
-            elif profile.profile_picture_url:
-                # Fall back to legacy base64 URL
-                avatar_url = profile.profile_picture_url
         
         # Build response
         profile_data = {
@@ -1880,8 +1877,6 @@ def profile():
                         return redirect(url_for('profile'))
                     user_profile.username = username
                     
-            if 'profile_picture_url' in request.form:
-                user_profile.profile_picture_url = request.form['profile_picture_url'].strip()
             if 'twitter_handle' in request.form:
                 user_profile.twitter_handle = request.form['twitter_handle'].strip()
             if 'telegram_handle' in request.form:

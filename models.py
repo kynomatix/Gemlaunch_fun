@@ -361,7 +361,6 @@ class UserProfile(db.Model):
     
     # Profile details
     bio = db.Column(db.Text)
-    profile_picture_url = db.Column(db.String(512))  # Legacy base64 field, deprecated
     avatar_path = db.Column(db.String(256))  # New file path for compressed avatars
     avatar_updated_at = db.Column(db.DateTime)  # For cache busting
     username = db.Column(db.String(64), unique=True, nullable=True)  # Optional custom username

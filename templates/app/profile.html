@@ -214,8 +214,6 @@
                 <div class="profile-picture">
                     {% if user_profile and user_profile.avatar_path %}
                         <img src="{{ url_for('static', filename=user_profile.avatar_path) }}{% if user_profile.avatar_updated_at %}?v={{ user_profile.avatar_updated_at.timestamp() }}{% endif %}" alt="Profile Picture">
-                    {% elif user_profile and user_profile.profile_picture_url %}
-                        <img src="{{ user_profile.profile_picture_url }}" alt="Profile Picture">
                     {% else %}
                         <div class="default-avatar">
                             <i class="fas fa-user"></i>
