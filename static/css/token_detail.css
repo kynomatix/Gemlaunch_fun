@@ -1202,50 +1202,28 @@
 .token-type-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.4rem;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
     border-radius: 8px;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
-    overflow: hidden;
-    white-space: nowrap;
-    max-width: 28px;
-}
-
-.token-type-badge:hover {
-    max-width: 200px;
-    padding: 0.4rem 0.7rem;
-}
-
-.token-type-badge .badge-text {
-    opacity: 0;
-    max-width: 0;
-    display: inline-block;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.token-type-badge:hover .badge-text {
-    opacity: 1;
-    max-width: 100px;
-    margin-left: 0.3rem;
 }
 
 .token-type-badge.basic {
     background: linear-gradient(135deg, rgba(0, 229, 204, 0.95), rgba(32, 178, 170, 0.9));
     border: 1px solid rgba(0, 229, 204, 0.8);
-    color: #000;
+    color: #FFFFFF;
     animation: glow-pulse-teal 2s ease-in-out infinite alternate;
 }
 
 .token-type-badge.advanced {
     background: linear-gradient(135deg, rgba(0, 191, 255, 0.95), rgba(30, 144, 255, 0.9));
     border: 1px solid rgba(0, 191, 255, 0.8);
-    color: #000;
+    color: #FFFFFF;
     animation: glow-pulse-blue 2s ease-in-out infinite alternate;
 }
 
