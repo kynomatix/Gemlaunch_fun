@@ -598,6 +598,24 @@
             box-shadow: 0 0 15px rgba(32, 178, 170, 0.3);
             background: rgba(32, 178, 170, 0.05);
         }
+        
+        /* Filter button collapse animation for search mode */
+        .filter-btn.hidden-for-search {
+            max-width: 0;
+            opacity: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            border: none;
+            pointer-events: none;
+            transition: max-width 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+        }
+        
+        /* Ensure smooth expand transition */
+        .filter-btn:not(.hidden-for-search) {
+            max-width: 200px;
+            transition: max-width 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+        }
 
         /* Mobile breakpoint - All marketplace elements */
         @media (max-width: 768px) {
@@ -1003,8 +1021,13 @@
             searchInputWrapper.classList.toggle('expanded');
             searchToggle.classList.toggle('active');
             
+            const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
+            
             if (searchInputWrapper.classList.contains('expanded')) {
+                nonAllFilters.forEach(btn => btn.classList.add('hidden-for-search'));
                 setTimeout(() => searchInput.focus(), 300);
+            } else {
+                nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
             }
         });
         
@@ -1014,6 +1037,10 @@
                 const wasExpanded = searchInputWrapper.classList.contains('expanded');
                 searchInputWrapper.classList.remove('expanded');
                 searchToggle.classList.remove('active');
+                
+                // Restore all filter buttons
+                const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
+                nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
                 
                 // Clear search input and reapply active filter when closing
                 if (wasExpanded && searchInput.value) {
