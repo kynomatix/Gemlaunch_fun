@@ -893,7 +893,7 @@
             // Show filtered cards in sorted order
             const grid = document.querySelector('.tokens-grid');
             visibleTokens.forEach(({card}) => {
-                card.style.display = 'block';
+                card.style.display = 'flex';
                 grid.appendChild(card); // Re-append to maintain order
             });
             
