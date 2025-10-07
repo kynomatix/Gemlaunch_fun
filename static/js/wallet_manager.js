@@ -24,6 +24,11 @@ class WalletManager {
         this.init();
     }
     
+    getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+    
     init() {
         const savedWallet = this.getSavedWallet();
         if (savedWallet) {
@@ -146,6 +151,7 @@ class WalletManager {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': this.getCsrfToken()
             },
             body: JSON.stringify({
                 wallet_address: walletAddress
@@ -216,6 +222,7 @@ class WalletManager {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': this.getCsrfToken()
             },
             body: JSON.stringify({
                 wallet_address: walletAddress,
@@ -309,6 +316,7 @@ class WalletManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCsrfToken()
                 }
             });
             

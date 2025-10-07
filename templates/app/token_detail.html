@@ -45,6 +45,7 @@
             </div>
             <div class="modal-body">
                 <form id="pollForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label for="pollQuestion">Poll Question</label>
                         <input type="text" id="pollQuestion" placeholder="What should we decide?" maxlength="120" required>

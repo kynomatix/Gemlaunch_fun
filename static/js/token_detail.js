@@ -5,6 +5,12 @@
 
     // Module-scoped variables - avoid global pollution
     const TokenDetail = {
+        // CSRF Token Helper
+        getCsrfToken: function() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        },
+        
         // Modal System
         modals: {
             // Show a custom alert modal
@@ -682,7 +688,8 @@
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/messages`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCsrfToken()
                     },
                     body: JSON.stringify(requestBody)
                 });
@@ -843,7 +850,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet'),
+                        'X-CSRFToken': this.getCsrfToken()
                     },
                     body: JSON.stringify({
                         reaction_type: 'love'
@@ -1001,7 +1009,8 @@
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/message/${messageId}`, {
                     method: 'DELETE',
                     headers: {
-                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet'),
+                        'X-CSRFToken': this.getCsrfToken()
                     }
                 });
                 
@@ -1049,7 +1058,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet'),
+                        'X-CSRFToken': this.getCsrfToken()
                     },
                     body: JSON.stringify({
                         holders_only_chat: newState,
@@ -1254,7 +1264,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Wallet-Address': localStorage.getItem('connectedWallet')
+                        'X-Wallet-Address': localStorage.getItem('connectedWallet'),
+                        'X-CSRFToken': this.getCsrfToken()
                     },
                     body: JSON.stringify({
                         holders_only_chat: settings.holdersOnlyChat,
@@ -1459,7 +1470,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Wallet-Address': userWallet
+                        'X-Wallet-Address': userWallet,
+                        'X-CSRFToken': this.getCsrfToken()
                     },
                     body: JSON.stringify({
                         option_id: optionId

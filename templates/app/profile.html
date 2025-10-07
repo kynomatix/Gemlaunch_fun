@@ -120,6 +120,7 @@
             <!-- Edit Mode -->
             <div class="profile-edit-form" id="profileEdit" style="display: none;">
                 <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="username">Username</label>

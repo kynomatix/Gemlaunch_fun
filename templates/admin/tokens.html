@@ -89,6 +89,7 @@
         </div>
         <div class="modal-body">
             <form id="partnerForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="partnerTokenId" name="token_id">
                 <input type="hidden" name="admin_key" value="gemlaunch-admin-2024">
                 

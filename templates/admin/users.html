@@ -76,6 +76,7 @@
             <div class="action-section">
                 <h4><i class="fas fa-gem"></i> Award Points</h4>
                 <form id="awardPointsForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" id="pointsUserId" name="user_id">
                     <input type="hidden" name="admin_key" value="gemlaunch-admin-2024">
                     <div class="form-group">
@@ -94,6 +95,7 @@
             <div class="action-section">
                 <h4><i class="fas fa-trophy"></i> Grant Accolade</h4>
                 <form id="grantAccoladeForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" id="accoladeUserId" name="user_id">
                     <input type="hidden" name="admin_key" value="gemlaunch-admin-2024">
                     <div class="form-group">
