@@ -65,31 +65,9 @@
             box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
         }
         
-        /* Special "Scope Badge" styling for All button when search is expanded */
-        .filter-btn.active.search-scope {
-            background: rgba(12, 36, 48, 0.7);
-            border: 2px solid transparent;
-            background-image: linear-gradient(rgba(12, 36, 48, 0.7), rgba(12, 36, 48, 0.7)), 
-                              linear-gradient(135deg, #20B2AA, #00CED1, #40E0D0);
-            background-origin: border-box;
-            background-clip: padding-box, border-box;
-            box-shadow: inset 0 0 10px rgba(32, 178, 170, 0.2), 
-                        0 4px 15px rgba(32, 178, 170, 0.3);
-            color: #20B2AA;
-            font-weight: 700;
-            position: relative;
-        }
-        
-        .filter-btn.active.search-scope::before {
-            content: "SCOPE:";
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.5rem;
-            color: #20B2AA;
-            letter-spacing: 1px;
-            opacity: 0.8;
+        /* Position All button closer to search */
+        .filter-btn[data-filter="all"] {
+            margin-right: 0.5rem;
         }
         
         .tokens-grid {
@@ -602,9 +580,9 @@
         }
         
         .search-input-wrapper.expanded {
-            max-width: clamp(320px, 60vw, 600px);
+            max-width: clamp(400px, 70vw, 750px);
             opacity: 1;
-            margin-left: 0.1rem;
+            margin-left: 0.75rem;
         }
         
         .search-input {
@@ -714,12 +692,6 @@
             /* Search input adjustments for mobile */
             .search-input-wrapper.expanded {
                 max-width: 90vw;
-            }
-            
-            /* Adjust "SCOPE:" label for mobile */
-            .filter-btn.active.search-scope::before {
-                font-size: 0.45rem;
-                top: -6px;
             }
             
             .search-btn:hover {
@@ -1073,15 +1045,9 @@
                 
                 if (searchInputWrapper.classList.contains('expanded')) {
                     nonAllFilters.forEach(btn => btn.classList.add('hidden-for-search'));
-                    if (allButton && allButton.classList.contains('active')) {
-                        allButton.classList.add('search-scope');
-                    }
                     setTimeout(() => searchInput.focus(), 250);
                 } else {
                     nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
-                    if (allButton) {
-                        allButton.classList.remove('search-scope');
-                    }
                 }
             });
             
@@ -1089,7 +1055,6 @@
             document.addEventListener('click', function(e) {
                 if (!searchInputWrapper.contains(e.target) && !searchToggle.contains(e.target)) {
                     const wasExpanded = searchInputWrapper.classList.contains('expanded');
-                    const allButton = document.querySelector('.filter-btn[data-filter="all"]');
                     
                     searchInputWrapper.classList.remove('expanded');
                     searchToggle.classList.remove('active');
@@ -1097,11 +1062,6 @@
                     // Restore all filter buttons
                     const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
                     nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
-                    
-                    // Remove search-scope class from All button
-                    if (allButton) {
-                        allButton.classList.remove('search-scope');
-                    }
                     
                     // Clear search input and reapply active filter when closing
                     if (wasExpanded && searchInput.value) {
