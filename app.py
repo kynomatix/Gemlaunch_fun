@@ -883,7 +883,7 @@ def app_dashboard():
     """User dashboard with stats and portfolio - now includes activities and achievements"""
     user = get_current_user()
     if not user:
-        return redirect(url_for('app_marketplace'))
+        return redirect(url_for('token_marketplace'))
     
     # Backfill cached stats if needed
     if not user.total_trades_count or user.total_trades_count == 0:

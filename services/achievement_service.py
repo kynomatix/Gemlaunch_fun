@@ -91,7 +91,13 @@ def calculate_user_progress(user, requirement_type):
             
             for holding in holdings:
                 if holding.first_purchase:
-                    days_held = (current_time - holding.first_purchase).days
+                    # Ensure both datetimes are timezone-aware for comparison
+                    first_purchase = holding.first_purchase
+                    if first_purchase.tzinfo is None:
+                        # If naive, assume UTC and make it aware
+                        first_purchase = first_purchase.replace(tzinfo=timezone.utc)
+                    
+                    days_held = (current_time - first_purchase).days
                     max_days = max(max_days, days_held)
             
             return max_days
