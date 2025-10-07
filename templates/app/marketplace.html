@@ -1010,50 +1010,52 @@
         });
     });
     
-    // Search toggle functionality with null checks
-    const searchToggle = document.getElementById('searchToggle');
-    const searchInputWrapper = document.getElementById('searchInputWrapper');
-    const searchInput = document.getElementById('tokenSearchInput');
-    
-    if (searchToggle && searchInputWrapper && searchInput) {
-        searchToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            searchInputWrapper.classList.toggle('expanded');
-            searchToggle.classList.toggle('active');
-            
-            const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
-            
-            if (searchInputWrapper.classList.contains('expanded')) {
-                nonAllFilters.forEach(btn => btn.classList.add('hidden-for-search'));
-                setTimeout(() => searchInput.focus(), 300);
-            } else {
-                nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
-            }
-        });
+    // Search toggle functionality - wrapped in IIFE to avoid Turbo Drive redeclaration errors
+    (function() {
+        const searchToggle = document.getElementById('searchToggle');
+        const searchInputWrapper = document.getElementById('searchInputWrapper');
+        const searchInput = document.getElementById('tokenSearchInput');
         
-        // Close search when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!searchInputWrapper.contains(e.target) && !searchToggle.contains(e.target)) {
-                const wasExpanded = searchInputWrapper.classList.contains('expanded');
-                searchInputWrapper.classList.remove('expanded');
-                searchToggle.classList.remove('active');
+        if (searchToggle && searchInputWrapper && searchInput) {
+            searchToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                searchInputWrapper.classList.toggle('expanded');
+                searchToggle.classList.toggle('active');
                 
-                // Restore all filter buttons
                 const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
-                nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
                 
-                // Clear search input and reapply active filter when closing
-                if (wasExpanded && searchInput.value) {
-                    searchInput.value = '';
-                    applyFiltersAndSearch();
+                if (searchInputWrapper.classList.contains('expanded')) {
+                    nonAllFilters.forEach(btn => btn.classList.add('hidden-for-search'));
+                    setTimeout(() => searchInput.focus(), 300);
+                } else {
+                    nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
                 }
-            }
-        });
-        
-        // Search functionality - works WITH active filter
-        searchInput.addEventListener('input', function(e) {
-            applyFiltersAndSearch();
-        });
-    }
+            });
+            
+            // Close search when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInputWrapper.contains(e.target) && !searchToggle.contains(e.target)) {
+                    const wasExpanded = searchInputWrapper.classList.contains('expanded');
+                    searchInputWrapper.classList.remove('expanded');
+                    searchToggle.classList.remove('active');
+                    
+                    // Restore all filter buttons
+                    const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
+                    nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
+                    
+                    // Clear search input and reapply active filter when closing
+                    if (wasExpanded && searchInput.value) {
+                        searchInput.value = '';
+                        applyFiltersAndSearch();
+                    }
+                }
+            });
+            
+            // Search functionality - works WITH active filter
+            searchInput.addEventListener('input', function(e) {
+                applyFiltersAndSearch();
+            });
+        }
+    })();
 </script>
 {% endblock %}
