@@ -905,8 +905,8 @@
         return parseFloat(num).toLocaleString();
     }
     
-    // Format market caps on page load
-    document.addEventListener('DOMContentLoaded', function() {
+    // Format market caps on page load - use turbo:load for Turbo Drive compatibility
+    document.addEventListener('turbo:load', function() {
         document.querySelectorAll('.market-cap-display').forEach(element => {
             const rawValue = parseFloat(element.getAttribute('data-raw'));
             if (!isNaN(rawValue)) {
