@@ -124,106 +124,128 @@
 
 <script>
 // User Profile Modal Functions
-function openUserProfile(userId) {
+async function openUserProfile(userId) {
     const modal = document.getElementById('userProfileModal');
-    const modalContent = document.getElementById('userProfileContent');
+    const content = document.getElementById('userProfileContent');
     
-    // Show modal with loading state
+    // Show loading state
+    content.innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #20B2AA;"></i><p style="color: #999; margin-top: 1rem;">Loading profile...</p></div>';
     modal.style.display = 'flex';
-    modalContent.innerHTML = `
-        <div style="text-align: center; padding: 2rem;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #20B2AA;"></i>
-            <p style="color: #999; margin-top: 1rem;">Loading profile...</p>
-        </div>
-    `;
     
-    // Fetch user profile data
-    fetch(`/api/user/${userId}/profile`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayUserProfile(data.profile);
-            } else {
-                modalContent.innerHTML = `
-                    <div style="text-align: center; padding: 2rem;">
-                        <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: #FF6B6B;"></i>
-                        <p style="color: #999; margin-top: 1rem;">Failed to load profile</p>
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching user profile:', error);
-            modalContent.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: #FF6B6B;"></i>
-                    <p style="color: #999; margin-top: 1rem;">Failed to load profile</p>
-                </div>
-            `;
-        });
+    try {
+        const response = await fetch(`/api/user/${userId}/profile`);
+        
+        // CHECK response.ok BEFORE parsing
+        if (!response.ok) {
+            throw new Error(`Failed to load profile: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayUserProfile(data.profile);
+        } else {
+            throw new Error('Profile data not available');
+        }
+    } catch (error) {
+        // Proper error handling with Error object
+        console.error('Profile load error:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p>Failed to load profile</p>
+                <button onclick="closeUserProfileModal()" class="btn-primary" style="margin-top: 1rem;">Close</button>
+            </div>
+        `;
+    }
 }
 
 function displayUserProfile(profile) {
     const modalContent = document.getElementById('userProfileContent');
     
-    // Build avatar HTML
+    // SAFE: Escape all user-provided data
+    const escapeHtml = (str) => {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    };
+    
+    // Escape all user-controlled data
+    const safeDisplayName = escapeHtml(profile.display_name || 'Anonymous');
+    const safeBio = escapeHtml(profile.profile.bio || '');
+    const safeTwitter = escapeHtml(profile.profile.twitter_handle || '');
+    const safeTelegram = escapeHtml(profile.profile.telegram_handle || '');
+    const safeDiscord = escapeHtml(profile.profile.discord_handle || '');
+    const safeWalletAddress = escapeHtml(profile.wallet_address || '');
+    const safeMemberSince = escapeHtml(profile.profile.member_since || profile.created_at || '');
+    
+    // Build avatar HTML (avatar_url is already safe in img src)
     const avatarHTML = profile.profile.avatar_url 
-        ? `<img src="${profile.profile.avatar_url}" alt="${profile.display_name}" style="width: 100%; height: 100%; object-fit: cover;">`
+        ? `<img src="${profile.profile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover;">`
         : `<i class="fas fa-user" style="font-size: 3rem; color: #20B2AA;"></i>`;
     
-    // Build achievements HTML
+    // Build achievements HTML with escaped data
     let achievementsHTML = '';
     if (profile.achievements && profile.achievements.length > 0) {
         achievementsHTML = '<div style="margin-top: 1.5rem;"><h4 style="color: #20B2AA; margin-bottom: 1rem; font-size: 1rem;"><i class="fas fa-trophy"></i> Achievements</h4><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;">';
         profile.achievements.forEach(achievement => {
+            const safeIcon = escapeHtml(achievement.icon || '🏆');
+            const safeName = escapeHtml(achievement.name || '');
+            const safeCategory = escapeHtml(achievement.category || '');
             achievementsHTML += `
                 <div style="background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; padding: 0.75rem; text-align: center;">
-                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">${achievement.icon || '🏆'}</div>
-                    <div style="color: #FFF; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">${achievement.name}</div>
-                    <div style="color: #888; font-size: 0.75rem;">${achievement.category}</div>
+                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">${safeIcon}</div>
+                    <div style="color: #FFF; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">${safeName}</div>
+                    <div style="color: #888; font-size: 0.75rem;">${safeCategory}</div>
                 </div>
             `;
         });
         achievementsHTML += '</div></div>';
     }
     
-    // Build social links HTML
+    // Build social links HTML with escaped data
     let socialLinksHTML = '';
-    const hasSocial = profile.profile.twitter_handle || profile.profile.telegram_handle || profile.profile.discord_handle;
+    const hasSocial = safeTwitter || safeTelegram || safeDiscord;
     if (hasSocial) {
         socialLinksHTML = '<div style="margin-top: 1.5rem;"><h4 style="color: #20B2AA; margin-bottom: 0.75rem; font-size: 1rem;"><i class="fas fa-link"></i> Social Links</h4><div style="display: flex; gap: 1rem; flex-wrap: wrap;">';
         
-        if (profile.profile.twitter_handle) {
+        if (safeTwitter) {
             socialLinksHTML += `
-                <a href="https://twitter.com/${profile.profile.twitter_handle}" target="_blank" rel="noopener noreferrer"
+                <a href="https://twitter.com/${encodeURIComponent(profile.profile.twitter_handle)}" target="_blank" rel="noopener noreferrer"
                    style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(29, 161, 242, 0.1); 
                           border: 1px solid rgba(29, 161, 242, 0.3); border-radius: 8px; color: #1DA1F2; text-decoration: none; font-size: 0.9rem; transition: all 0.3s;">
-                    <i class="fab fa-twitter"></i> ${profile.profile.twitter_handle}
+                    <i class="fab fa-twitter"></i> ${safeTwitter}
                 </a>
             `;
         }
         
-        if (profile.profile.telegram_handle) {
+        if (safeTelegram) {
             socialLinksHTML += `
-                <a href="https://t.me/${profile.profile.telegram_handle}" target="_blank" rel="noopener noreferrer"
+                <a href="https://t.me/${encodeURIComponent(profile.profile.telegram_handle)}" target="_blank" rel="noopener noreferrer"
                    style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(0, 136, 204, 0.1); 
                           border: 1px solid rgba(0, 136, 204, 0.3); border-radius: 8px; color: #0088CC; text-decoration: none; font-size: 0.9rem; transition: all 0.3s;">
-                    <i class="fab fa-telegram"></i> @${profile.profile.telegram_handle}
+                    <i class="fab fa-telegram"></i> @${safeTelegram}
                 </a>
             `;
         }
         
-        if (profile.profile.discord_handle) {
+        if (safeDiscord) {
             socialLinksHTML += `
                 <div style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(114, 137, 218, 0.1); 
                           border: 1px solid rgba(114, 137, 218, 0.3); border-radius: 8px; color: #7289DA; font-size: 0.9rem;">
-                    <i class="fab fa-discord"></i> ${profile.profile.discord_handle}
+                    <i class="fab fa-discord"></i> ${safeDiscord}
                 </div>
             `;
         }
         
         socialLinksHTML += '</div></div>';
     }
+    
+    // Extract wallet display safely
+    const walletDisplay = safeWalletAddress.length >= 10 
+        ? `${safeWalletAddress.substring(0, 6)}...${safeWalletAddress.substring(safeWalletAddress.length - 4)}`
+        : safeWalletAddress;
     
     modalContent.innerHTML = `
         <div style="text-align: center;">
@@ -232,15 +254,15 @@ function displayUserProfile(profile) {
                         border: 3px solid #20B2AA; background: rgba(32, 178, 170, 0.1); display: flex; align-items: center; justify-content: center;">
                 ${avatarHTML}
             </div>
-            <h2 style="color: #FFF; margin-bottom: 0.5rem; font-size: 1.5rem;">${profile.display_name}</h2>
+            <h2 style="color: #FFF; margin-bottom: 0.5rem; font-size: 1.5rem;">${safeDisplayName}</h2>
             <div style="color: #888; font-family: 'Courier New', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
-                ${profile.wallet_address.substring(0, 6)}...${profile.wallet_address.substring(profile.wallet_address.length - 4)}
+                ${walletDisplay}
             </div>
             <div style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(32, 178, 170, 0.1); 
                         border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 15px; color: #20B2AA; font-size: 0.85rem; margin-bottom: 0.5rem;">
                 <i class="fas fa-crown"></i> Rank #${profile.rank}
             </div>
-            ${profile.profile.bio ? `<p style="color: #CCC; margin-top: 1rem; line-height: 1.5;">${profile.profile.bio}</p>` : ''}
+            ${safeBio ? `<p style="color: #CCC; margin-top: 1rem; line-height: 1.5;">${safeBio}</p>` : ''}
         </div>
         
         <!-- Stats Grid -->
@@ -276,7 +298,7 @@ function displayUserProfile(profile) {
         ${socialLinksHTML}
         
         <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: center; color: #888; font-size: 0.85rem;">
-            <i class="fas fa-calendar"></i> Member since ${profile.profile.member_since || profile.created_at}
+            <i class="fas fa-calendar"></i> Member since ${safeMemberSince}
         </div>
     `;
 }
