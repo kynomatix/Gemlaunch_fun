@@ -8,6 +8,8 @@ from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
@@ -132,6 +134,22 @@ db.init_app(app)
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Initialize rate limiter for auth endpoints
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri="memory://"
+)
+
+# Custom rate limit error handler
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({
+        'error': 'Too many authentication attempts. Please wait a moment before trying again.',
+        'retry_after': getattr(e.description, 'retry_after', 60)
+    }), 429
+
 def get_current_user():
     """Get current user from session - only if wallet is verified"""
     wallet_address = session.get('wallet_address')
@@ -192,6 +210,7 @@ def health():
 
 # Wallet Authentication API
 @app.route('/api/auth/nonce', methods=['POST'])
+@limiter.limit("60 per minute")
 def generate_nonce():
     """Generate a nonce for wallet authentication"""
     import secrets
@@ -226,6 +245,7 @@ def generate_nonce():
     })
 
 @app.route('/api/auth/verify', methods=['POST'])
+@limiter.limit("30 per minute")
 def verify_signature():
     """Verify wallet signature and create user session"""
     import time
