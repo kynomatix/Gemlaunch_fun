@@ -880,28 +880,6 @@ def app_dashboard():
     if not user:
         return redirect(url_for('token_marketplace'))
     
-    # Backfill cached stats if needed
-    if not user.total_trades_count or user.total_trades_count == 0:
-        user.total_trades_count = Trade.query.filter_by(user_id=user.id, tx_status='confirmed').count()
-    if not user.total_graduated_tokens or user.total_graduated_tokens == 0:
-        user.total_graduated_tokens = Token.query.filter_by(creator_id=user.id, is_graduated=True).count()
-    if not user.total_tokens_created or user.total_tokens_created == 0:
-        user.total_tokens_created = Token.query.filter_by(creator_id=user.id).count()
-    if not user.total_trading_volume or user.total_trading_volume == 0:
-        total_volume = db.session.query(db.func.sum(Trade.kas_amount)).filter(
-            Trade.user_id == user.id,
-            Trade.tx_status == 'confirmed'
-        ).scalar()
-        user.total_trading_volume = total_volume or 0
-    if not user.total_messages_sent or user.total_messages_sent == 0:
-        try:
-            user.total_messages_sent = ChatMessage.query.filter_by(user_id=user.id).count()
-        except Exception as e:
-            logging.warning(f"Could not backfill total_messages_sent: {e}")
-            user.total_messages_sent = 0
-    # Save the backfill
-    db.session.commit()
-    
     # Evaluate and award achievements
     achievement_progress = evaluate_user_achievements(user.id)
     

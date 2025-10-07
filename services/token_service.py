@@ -322,8 +322,8 @@ class TokenService:
             
             # Check for graduation (market cap >= $70K)
             if not token.is_graduated and token.current_market_cap >= token.graduation_threshold:
-                token.is_graduated = True
-                token.graduated_at = datetime.now(timezone.utc)
+                # Delegate to Token.graduate_token() for consistent graduation logic and stat updates
+                token.graduate_token()
                 logger.info(f"Token {token.symbol} has graduated with market cap ${token.current_market_cap}")
             
             # Commit changes

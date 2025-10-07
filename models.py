@@ -203,9 +203,15 @@ class Token(db.Model):
             self.graduate_token()
     
     def graduate_token(self):
-        """Mark token as graduated"""
+        """Mark token as graduated and update creator stats"""
         self.is_graduated = True
         self.graduated_at = datetime.now(timezone.utc)
+        
+        # Update creator's graduated tokens count (real-time stat)
+        creator = User.query.get(self.creator_id)
+        if creator:
+            creator.total_graduated_tokens = (creator.total_graduated_tokens or 0) + 1
+        
         # TODO: Trigger graduation to Kaspa Finance DEX
     
     def __repr__(self):
@@ -239,6 +245,15 @@ class Trade(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     confirmed_at = db.Column(db.DateTime)
     
+    def confirm_trade(self):
+        """Confirm a trade and update user stats in real-time"""
+        self.tx_status = 'confirmed'
+        self.confirmed_at = datetime.now(timezone.utc)
+        
+        user = User.query.get(self.user_id)
+        if user:
+            user.total_trades_count = (user.total_trades_count or 0) + 1
+            user.total_trading_volume = (user.total_trading_volume or 0) + self.kas_amount
     
     def __repr__(self):
         return f'<Trade {self.trade_type} {self.token_amount} tokens for {self.kas_amount} KAS>'
