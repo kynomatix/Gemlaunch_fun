@@ -87,7 +87,6 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - **lazy='dynamic' relationships**: User.tokens_created and User.trades cause extra queries, should use explicit eager loading
 
 ### Medium Priority Issues
-- **Code duplication**: Modal handling, scroll animations, wallet validation, and API patterns duplicated across JavaScript files
 - **Dashboard backfill queries**: Stats backfilling runs on page load; consider background job processing
 - **Rate limiting gaps**: Only wallet linking has rate limits; add to auth, token creation, chat, admin routes
 - **Incomplete Kaspa signature verification**: Native Kaspa wallets (Kastle, KasWare) signatures not cryptographically verified (TODO at line 275)
@@ -105,3 +104,4 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - ✅ **Implemented comprehensive CSRF protection** (October 2025): Flask-WTF CSRFProtect initialized, CSRF tokens added to all HTML forms and JavaScript fetch calls, X-CSRFToken headers on all POST/DELETE requests
 - ✅ **Added performance database indexes** (October 2025): Activity.created_at, ChatMessage(token_id, created_at), TokenLeaderboard(token_id, points), Holding(token_id, token_amount)
 - ✅ **Comprehensive MetaMask wallet integration fixes** (October 2025): Created centralized `getMetaMaskProvider()` helper for EIP-6963 multi-wallet support, fixed wallet detection/connection/signing/disconnection to handle multiple wallet extensions, updated all 10+ MetaMask touchpoints (wallet_manager.js + profile.html), added 2-second timeout to prevent disconnect hanging, ensured CSRF tokens on all wallet API endpoints
+- ✅ **Code duplication cleanup** (October 2025): Eliminated 300+ lines of duplicated code by creating reusable utilities - static/js/utils/modal.js (centralized modal system for alert/confirm/prompt), static/js/utils/animations.js (IntersectionObserver scroll reveals with counter animations), utils/validators.py (wallet address validation). Updated docs.js, main.js, token_detail.js, and app.py to use shared utilities
