@@ -14,7 +14,7 @@
 - **State Variables**: Line ~131 (AUDIT FIX v4)
 - **Constructor**: Line ~162 (AUDIT FIX v4)
 - **buyTokens()**: Line ~200 (AUDIT FIX v4 - with Anti-Bot)
-- **sellTokens()**: Line ~407 (AUDIT FIX v4)
+- **sellTokens()**: Line ~1582 (AUDIT FIX v4 - KAS-based fees) ⚠️ NOT line 431!
 - **Events**: Line ~266 (AUDIT FIX v4)
 - **View Functions**: Line ~294 (AUDIT FIX v4)
 - **Anti-Bot Documentation**: Line ~330 (Complete specs)
@@ -36,7 +36,7 @@ This document outlines the implementation plan for integrating Kasplex zkEVM blo
   - 40% Platform Development (0.36% of trade)
   - 30% GEM Buyback & Burn (0.27% of trade)
   - 15% Kaspa Network Support (0.135% of trade)
-  - 5% Community Rewards (0.045% of trade)
+  - 15% Community Rewards (0.135% of trade) - uses remainder pattern
 - **Creator Fee (10%)**: 0.1% of trade value → Accumulated and claimable by token creator
 
 ---
@@ -380,9 +380,11 @@ uint256 tradeAmount = remainingValue - (platformFee + creatorFee);
 - Anti-bot fees are SEPARATE from platform fees (0.9%) and creator fees (0.1%)
 - Bot snipes effectively "donate" KAS to the community
 
-**Airdrop Treasury Distribution** (off-chain, managed by platform):
+**Airdrop Treasury Distribution** (OFF-CHAIN - Manual Management):
 - **70% Leaderboard Rewards**: Top traders, creators, and community contributors
 - **30% Team/Dev**: Platform development, security audits, and infrastructure costs
+
+**Important**: The smart contract sends 100% of anti-bot fees to the `airdropTreasury` address. The 70/30 split is handled OFF-CHAIN by the platform team through manual distributions based on leaderboard data. This provides flexibility in reward distribution without hardcoding logic in the immutable smart contract.
 
 **State Variables**:
 ```solidity
@@ -426,46 +428,21 @@ uint256 public totalAntiBotFeesCollected;   // Total historical fees (analytics)
 - `getSecondsUntilNormalFees()` - Display countdown timer
 - `getEffectiveFeeBreakdown(kasAmount)` - Complete fee breakdown for preview
 
-**Sell Function** (AUDIT FIX v3 - Fee on Input, Symmetric with Buy):
-```solidity
-function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) external nonReentrant {
-    require(!graduated && !graduating, "Token graduated or graduating");
-    require(block.timestamp <= deadline, "Transaction expired");
-    require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
-    
-    // AUDIT FIX: Fee on INPUT (tokens) for symmetry with buy
-    uint256 totalFees = tokenAmount * TOTAL_FEE_BPS / 10000; // 1% of tokens
-    uint256 creatorFee = totalFees * CREATOR_SHARE_BPS / 10000; // 10% of fees
-    uint256 platformFee = totalFees - creatorFee; // 90% of fees
-    uint256 tradeTokens = tokenAmount - totalFees;
-    
-    // Calculate KAS output using trade tokens (after fees)
-    uint256 kasOut = quoteSell(tradeTokens);
-    
-    // AUDIT FIX: Slippage protection on KAS received
-    require(kasOut >= minKasOut, "Slippage too high");
-    
-    // Minimum trade check
-    require(kasOut >= MIN_TRADE_AMOUNT, "Below minimum trade");
-    
-    // Update virtual reserves FIRST (CEI pattern)
-    virtualTokenReserve += tradeTokens; // Only trade tokens enter reserve
-    virtualKasReserve -= kasOut;
-    
-    // Convert fee tokens to KAS value for accounting (optional, or keep as tokens)
-    uint256 feeKasValue = quoteSell(totalFees);
-    accumulatedPlatformFees += (feeKasValue * 90) / 100;
-    accumulatedCreatorFees += (feeKasValue * 10) / 100;
-    
-    // Transfer ALL tokens back to pool (including fee tokens)
-    _transfer(msg.sender, address(this), tokenAmount);
-    
-    // Send KAS to user
-    _safeSend(msg.sender, kasOut);
-    
-    emit TokensSold(msg.sender, tokenAmount, kasOut, platformFee, creatorFee);
-}
-```
+## ⚠️ SUPERSEDED SECTION - DO NOT USE
+
+**~~Sell Function (AUDIT FIX v3)~~ - BROKEN TOKEN-BASED FEES**
+
+**⚠️ THIS CODE IS OUTDATED AND BROKEN - DO NOT IMPLEMENT**
+
+**REASON**: This v3 implementation uses token-based fees with hypothetical KAS conversion, causing accounting mismatches. The `quoteSell(totalFees)` creates hypothetical KAS that doesn't exist in contract balance, breaking fee withdrawals.
+
+**USE INSTEAD**: See **Priority 1: Fixed Sell Function** at line ~1582 for the CORRECT V4 implementation with:
+- ✅ Fee on KAS OUTPUT (not token input)
+- ✅ Actual KAS fees (not hypothetical)
+- ✅ Correct accounting that matches contract balance
+- ✅ All fees in KAS for unified accounting
+
+**This section is kept for historical reference only - shows what NOT to do.**
 
 ---
 
@@ -694,8 +671,8 @@ address public treasury;
 - Platform fee (0.9% of trade) distributes to:
   - 40% Platform Development (0.36% of trade)
   - 30% GEM Buyback & Burn (0.27% of trade - accumulates until TGE, then TWAP buybacks)
-  - 15% Kaspa Network Support (0.135% of trade - reduced from 20%)
-  - 5% Community Rewards (0.045% of trade - airdrops, incentives)
+  - 15% Kaspa Network Support (0.135% of trade)
+  - 15% Community Rewards (0.135% of trade - airdrops, incentives, uses remainder pattern)
 - Creator fee: 10% of total fees (0.1% of trade)
 - Multi-sig withdrawal controls
 - Optional vesting schedules for team/contributors
@@ -717,7 +694,7 @@ uint256 public totalFeesCollected;
 uint256 public constant DEV_SHARE = 4000;       // 40% of platform fees
 uint256 public constant BUYBACK_SHARE = 3000;   // 30% of platform fees (accumulates, then TWAP)
 uint256 public constant KASPA_SHARE = 1500;     // 15% of platform fees (Kaspa Network Support)
-uint256 public constant COMMUNITY_SHARE = 500;  // 5% of platform fees
+uint256 public constant COMMUNITY_SHARE = 1500; // 15% of platform fees (CORRECTED from 500)
 
 // TWAP Buyback (activated post-TGE)
 bool public twapBuybackEnabled;
@@ -728,22 +705,23 @@ uint256 public twapBuybackAmount; // KAS per period
 mapping(address => VestingSchedule) public vesting;
 ```
 
-**Fee Distribution Flow** (AUDIT FIX - Safe transfers):
+**Fee Distribution Flow** (AUDIT FIX v4 - Safe transfers + Remainder Pattern):
 ```solidity
 function distributeFees() external nonReentrant {
     uint256 balance = address(this).balance;
     require(balance > 0, "No fees to distribute");
     
+    // Calculate shares (remainder pattern ensures 100% distribution)
     uint256 devAmount = balance * DEV_SHARE / 10000;         // 40%
     uint256 buybackAmount = balance * BUYBACK_SHARE / 10000; // 30%
     uint256 kaspaAmount = balance * KASPA_SHARE / 10000;     // 15%
-    uint256 communityAmount = balance * COMMUNITY_SHARE / 10000; // 5%
+    uint256 communityAmount = balance - devAmount - buybackAmount - kaspaAmount; // 15% (remainder)
     
     // AUDIT FIX: Use .call instead of .transfer to prevent failures
     _safeTransfer(platformDevelopmentWallet, devAmount);
     _safeTransfer(buybackReserveWallet, buybackAmount);        // Accumulates until GEM TGE
     _safeTransfer(kaspaNetworkSupportWallet, kaspaAmount);     // Kaspa ecosystem support
-    _safeTransfer(communityRewardsWallet, communityAmount);
+    _safeTransfer(communityRewardsWallet, communityAmount);    // Remainder = exactly 15%
     
     emit FeesDistributed(devAmount, buybackAmount, kaspaAmount, communityAmount);
 }
@@ -1754,7 +1732,7 @@ function withdrawPlatformFees() external nonReentrant {
   - [ ] Platform Development Wallet (receives 40% of platform fees → 0.36% of trades)
   - [ ] GEM Buyback Reserve Wallet (receives 30% of platform fees → 0.27% of trades, accumulates until GEM TGE)
   - [ ] Kaspa Network Support Wallet (receives 15% of platform fees → 0.135% of trades, ecosystem support)
-  - [ ] Community Rewards Wallet (receives 5% of platform fees → 0.045% of trades)
+  - [ ] Community Rewards Wallet (receives 15% of platform fees → 0.135% of trades, uses remainder pattern)
 - [ ] Configure multi-sig with 2-of-3 or 3-of-5 threshold
 - [ ] Document all wallet addresses and signers
 - [ ] **Publicly announce GemFoundation wallet address** for transparency
@@ -1822,7 +1800,7 @@ function withdrawPlatformFees() external nonReentrant {
 - [ ] Test LP token verification after graduation
 - [ ] Monitor gas costs and optimize
 - [ ] Verify emergency fee rescue mechanism (timelock + admin)
-- [ ] Verify treasury fee distribution: 40% dev, 30% buyback, 15% Kaspa, 5% community, 10% creator
+- [ ] Verify treasury fee distribution: 40% dev, 30% buyback, 15% Kaspa, 15% community (remainder), 10% creator
 
 ### Mainnet Preparation
 - [ ] Complete external security audit (4 internal rounds complete ✅)
