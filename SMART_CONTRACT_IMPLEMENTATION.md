@@ -9,6 +9,13 @@ This document outlines the implementation plan for integrating Kasplex zkEVM blo
 **DEX Partner**: Kaspa Finance (kaspafinance.io)  
 **Security Priority**: CRITICAL - contracts will hold real money
 
+### Fee Structure
+**Total Trading Fees: 1.5%**
+- **1% Platform Fee** → Treasury (distributed: 40% dev, 30% buyback, 20% network, 10% community)
+- **0.5% Creator Fee** → Accumulated and paid to token creator at graduation
+
+**Note**: Creator fee is configurable via `CREATOR_FEE_BPS` constant (currently 50 basis points = 0.5%)
+
 ---
 
 ## 1. Kasplex zkEVM Network Configuration
@@ -125,9 +132,12 @@ function getCurrentPrice() public view returns (uint256 tokensPerETH) {
 uint256 public constant CURVE_SUPPLY_PCT = 75;
 uint256 public constant LP_SUPPLY_PCT = 25;
 uint256 public constant MAX_WALLET_PCT = 10;
-uint256 public constant PLATFORM_FEE_BPS = 100; // 1% fee
+uint256 public constant PLATFORM_FEE_BPS = 100; // 1% platform fee
+uint256 public constant CREATOR_FEE_BPS = 50; // 0.5% creator fee (configurable)
 uint256 public constant GRADUATION_THRESHOLD = 75e18; // 75 KAS raised
 address public treasury; // Gemlaunch treasury contract
+address public creator; // Token creator address
+uint256 public creatorFeesAccumulated; // Creator fees to be paid at graduation
 mapping(address => uint256) public holdings;
 mapping(address => uint256) public lastPurchaseTime;
 uint256 public totalRaised;
@@ -140,11 +150,13 @@ function buyTokens() external payable nonReentrant {
     require(!graduated, "Token graduated");
     require(msg.value > 0, "Must send KAS");
     
-    // Calculate platform fee (1%)
+    // Calculate fees (1% platform + 0.5% creator = 1.5% total)
     uint256 platformFee = msg.value * PLATFORM_FEE_BPS / 10000;
-    uint256 tradeAmount = msg.value - platformFee;
+    uint256 creatorFee = msg.value * CREATOR_FEE_BPS / 10000;
+    uint256 totalFees = platformFee + creatorFee;
+    uint256 tradeAmount = msg.value - totalFees;
     
-    // Calculate tokens based on trade amount (after fee)
+    // Calculate tokens based on trade amount (after fees)
     uint256 tokens = quoteBuy(tradeAmount);
     
     // Enforce wallet cap
@@ -158,10 +170,13 @@ function buyTokens() external payable nonReentrant {
     holdings[msg.sender] += tokens;
     totalRaised += tradeAmount;
     
-    // Send platform fee to treasury
+    // Accumulate creator fee (paid at graduation)
+    creatorFeesAccumulated += creatorFee;
+    
+    // Send platform fee to treasury immediately
     payable(treasury).transfer(platformFee);
     
-    emit TokensPurchased(msg.sender, tokens, tradeAmount, platformFee);
+    emit TokensPurchased(msg.sender, tokens, tradeAmount, platformFee, creatorFee);
     
     // Check graduation
     if (totalRaised >= GRADUATION_THRESHOLD) {
@@ -176,20 +191,42 @@ function sellTokens(uint256 tokenAmount) external nonReentrant {
     // Calculate KAS refund
     uint256 kasRefund = quoteSell(tokenAmount);
     
-    // Calculate platform fee (1% of refund)
+    // Calculate fees (1% platform + 0.5% creator)
     uint256 platformFee = kasRefund * PLATFORM_FEE_BPS / 10000;
-    uint256 userRefund = kasRefund - platformFee;
+    uint256 creatorFee = kasRefund * CREATOR_FEE_BPS / 10000;
+    uint256 totalFees = platformFee + creatorFee;
+    uint256 userRefund = kasRefund - totalFees;
     
     // Update state
     _transfer(msg.sender, address(this), tokenAmount);
     holdings[msg.sender] -= tokenAmount;
     totalRaised -= kasRefund;
     
-    // Send refund to user, fee to treasury
+    // Accumulate creator fee (paid at graduation)
+    creatorFeesAccumulated += creatorFee;
+    
+    // Send refund to user, platform fee to treasury
     payable(msg.sender).transfer(userRefund);
     payable(treasury).transfer(platformFee);
     
-    emit TokensSold(msg.sender, tokenAmount, kasRefund, platformFee);
+    emit TokensSold(msg.sender, tokenAmount, kasRefund, platformFee, creatorFee);
+}
+```
+
+**Creator Fee Payout at Graduation**:
+```solidity
+function _triggerGraduation() internal {
+    require(!graduated, "Already graduated");
+    graduated = true;
+    
+    // Pay accumulated creator fees
+    if (creatorFeesAccumulated > 0) {
+        payable(creator).transfer(creatorFeesAccumulated);
+        emit CreatorFeePayout(creator, creatorFeesAccumulated);
+    }
+    
+    // Proceed with DEX graduation...
+    emit TokenGraduated(address(this), totalRaised, creatorFeesAccumulated);
 }
 ```
 
@@ -514,7 +551,7 @@ function checkGraduationEligibility(address tokenAddress) public view returns (b
 }
 ```
 
-#### Step 2: Liquidity Preparation
+#### Step 2: Liquidity Preparation & Creator Payout
 ```solidity
 function graduate(address tokenAddress) external nonReentrant {
     require(checkGraduationEligibility(tokenAddress), "Not eligible");
@@ -522,15 +559,23 @@ function graduate(address tokenAddress) external nonReentrant {
     BondingCurvePool pool = BondingCurvePool(tokenAddress);
     uint256 kasRaised = pool.totalRaised();
     uint256 lpTokens = pool.mintLPSupply(); // 25% of total supply
+    uint256 creatorFees = pool.creatorFeesAccumulated();
+    address creator = pool.creator();
     
-    // Transfer assets to this contract
+    // Pay creator their accumulated fees FIRST
+    if (creatorFees > 0) {
+        payable(creator).transfer(creatorFees);
+        emit CreatorFeePayout(creator, creatorFees);
+    }
+    
+    // Transfer liquidity assets to this contract
     pool.transferLiquidity(address(this), kasRaised, lpTokens);
     
-    // Add to Kaspa Finance
+    // Add to Kaspa Finance DEX
     addLiquidityToKaspaFinance(tokenAddress, lpTokens, kasRaised);
     
     pool.lockCurve();
-    emit TokenGraduated(tokenAddress, kasRaised, lpTokens);
+    emit TokenGraduated(tokenAddress, kasRaised, lpTokens, creatorFees);
 }
 ```
 
@@ -682,10 +727,13 @@ manticore contracts/BondingCurvePool.sol
 - [ ] Verify contracts on block explorer
 - [ ] Test treasury fee distribution function
 - [ ] Test end-to-end token creation with fee collection
-- [ ] Test bonding curve trades (verify 1% fee goes to treasury)
-- [ ] Test graduation to Kaspa Finance
+- [ ] Test bonding curve trades (verify 1% platform fee + 0.5% creator fee)
+- [ ] Verify platform fees go to treasury immediately
+- [ ] Verify creator fees accumulate in contract
+- [ ] Test graduation to Kaspa Finance with creator payout
+- [ ] Confirm creator receives accumulated fees at graduation
 - [ ] Monitor gas costs and optimize
-- [ ] Verify fee splits match pitch deck model (40/30/20/10)
+- [ ] Verify treasury fee splits match pitch deck model (40/30/20/10)
 
 ### Mainnet Preparation
 - [ ] Complete security audit
