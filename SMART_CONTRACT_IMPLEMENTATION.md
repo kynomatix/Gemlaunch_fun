@@ -154,11 +154,10 @@ uint256 public constant MAX_WALLET_PCT = 10;
 uint256 public constant TOTAL_FEE_BPS = 100; // 1% total trading fee
 uint256 public constant CREATOR_SHARE_BPS = 1000; // 10% of fees (0.1% of trade)
 
-// GRADUATION: Based on USD market cap valuation (KAS amount * KAS/USD price)
-// Target: $70,000 USD market cap
-// Note: Threshold in KAS adjusts with market conditions via oracle
-uint256 public graduationThresholdKAS = 900000 ether; // ~900K KAS (~$70K at $0.078/KAS)
-address public kasUsdOracle; // KAS/USD price oracle (required for USD valuation)
+// GRADUATION: Backend oracle calculates USD market cap off-chain
+// Target: $70,000 USD market cap (backend checks: virtualKasReserve * kasPrice >= $70K)
+// No on-chain threshold storage needed - backend triggers graduation when USD target reached
+address public graduationOracle; // Backend oracle address authorized to trigger graduation
 
 uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // Minimum trade size
 
@@ -276,22 +275,14 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
     accumulatedPlatformFees += platformFee;
     accumulatedCreatorFees += creatorFee;
     
-    // Step 5: Check graduation (USD valuation-based)
-    bool shouldGraduate = !graduated && !graduating && _checkGraduationThreshold();
-    
-    if (shouldGraduate) {
-        graduating = true;
-    }
-    
-    // Step 6: Transfer tokens (wallet cap enforced in _transfer override)
+    // Step 5: Transfer tokens (wallet cap enforced in _transfer override)
     _transfer(address(this), msg.sender, tokensOut);
     
     emit TokensPurchased(msg.sender, tokensOut, tradeAmount, platformFee, creatorFee, antiBotFee);
     
-    // Step 7: Execute graduation if needed
-    if (graduating) {
-        _executeGraduation();
-    }
+    // Note: Graduation checked by backend oracle off-chain
+    // Backend monitors: if (virtualKasReserve * kasPrice >= $70K) → calls initiateGraduation()
+    // No on-chain USD calculation = zero gas overhead for graduation checks
 }
 
 // AUDIT FIX: Safe send helper (replaces .transfer)
@@ -375,67 +366,73 @@ function getEffectiveFeeBreakdown(uint256 kasAmount) external view returns (
 
 **Challenge**: Kasplex zkEVM has no native Chainlink/Pyth oracle yet (network launched Aug 2025).
 
-**Implementation Options**:
+**✅ IMPLEMENTED: Backend Oracle (CoinGecko → Quex Migration Ready)**
 
-#### Option A: Backend Oracle (RECOMMENDED for MVP)
+#### Implementation Details
+
+**Service Location**: `services/kas_oracle.py`
 ```python
-# Backend service fetches KAS price every 5 minutes
-import requests
-
-def update_graduation_threshold():
-    # Fetch current KAS price
-    r = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd')
-    kas_price = r.json()['kaspa']['usd']  # e.g., $0.078
+class KasPriceOracle:
+    TARGET_USD = 70000  # $70K market cap graduation threshold
     
-    # Calculate KAS threshold for $70K market cap
-    threshold_kas = 70000 / kas_price  # 897,435 KAS at $0.078
+    def get_kas_price(self):
+        """Fetch KAS/USD price from CoinGecko API (5min cache)"""
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {"ids": "kaspa", "vs_currencies": "usd"}
+        response = requests.get(url, params=params, timeout=10)
+        return response.json()['kaspa']['usd']
     
-    # Update contract via admin function
-    contract.updateGraduationThreshold(int(threshold_kas * 1e18))
+    def calculate_graduation_threshold(self, target_usd=70000):
+        """Calculate KAS amount for $70K USD market cap"""
+        kas_price = self.get_kas_price()
+        kas_amount = target_usd / kas_price
+        return int(kas_amount * 10**18)  # Convert to wei
+    
+    def get_market_cap_usd(self, kas_reserve_wei):
+        """Calculate USD market cap from KAS reserve"""
+        kas_price = self.get_kas_price()
+        kas_amount = kas_reserve_wei / 10**18
+        return kas_amount * kas_price
 ```
 
-**Pros**: ✅ Simple, reliable, no on-chain oracle needed  
-**Cons**: ⚠️ Centralized, requires backend cron job
-
-#### Option B: Contact Kaspa Finance Team
-- GitHub: [mirzausman371](https://github.com/mirzausman371) (Mirza Usman - Kaspa Finance dev)
-- Telegram: https://t.me/KaspaFinanceIO
-- Ask if they have a deployed KAS/USD oracle contract we can use
-
-#### Option C: Deploy Custom Oracle
-```solidity
-// Simple price oracle (admin-updated)
-contract KasUsdOracle {
-    int256 public latestPrice; // 8 decimals (e.g., 7800000 = $0.078)
-    uint256 public lastUpdate;
-    address public admin;
-    
-    function updatePrice(int256 newPrice) external onlyAdmin {
-        require(newPrice > 0, "Invalid price");
-        latestPrice = newPrice;
-        lastUpdate = block.timestamp;
-        emit PriceUpdated(newPrice, block.timestamp);
-    }
-    
-    function getLatestPrice() external view returns (int256) {
-        require(block.timestamp - lastUpdate < 1 hours, "Stale price");
-        return latestPrice;
-    }
+**API Endpoint**: `GET /api/kas-price`
+```json
+{
+    "success": true,
+    "kas_price": 0.076123,
+    "graduation_threshold_kas": 919564.39,
+    "api_source": "CoinGecko Pro",
+    "last_update": "2025-10-08T11:09:45Z"
 }
 ```
 
-**Pros**: ✅ On-chain, can be upgraded to Chainlink/Pyth later  
-**Cons**: ⚠️ Requires gas for updates, centralized admin
+**Admin Dashboard Integration**: `/admin?key=gemlaunch-admin-2024`
+- Real-time KAS/USD price display
+- Auto-calculated graduation threshold (updates every 60 seconds)
+- Manual refresh button
+- Cache status indicator
 
-#### Option D: Wait for Ecosystem Oracle
-- **Kaskad** (lending protocol) is building Kaspa oracle infrastructure
-- **Quex** (hardware-secured oracle) integrating with Kasplex
-- Timeline: Unknown (ecosystem still early)
+**Architecture Benefits**:
+- ✅ **No gas costs**: All calculations happen off-chain
+- ✅ **Oracle-agnostic**: Contract doesn't store threshold, backend calculates everything
+- ✅ **Easily swappable**: Change `get_kas_price()` source without contract changes
+- ✅ **Migration ready**: Drop-in replacement when Quex oracle is available
 
-**Current Recommendation**:
-1. **MVP**: Use Option A (backend CoinGecko + adjustable threshold)
-2. **Reach out**: Contact Mirza/Kaspa Finance for oracle contract
-3. **Post-Launch**: Migrate to decentralized oracle when available
+**Future Migration Path** (When Quex is Ready):
+```python
+def get_kas_price(self):
+    """Fetch from Quex oracle (just swap this function)"""
+    quex_contract = Web3.eth.contract(address=QUEX_ORACLE, abi=QUEX_ABI)
+    price = quex_contract.functions.getKasUsdPrice().call()
+    return price / 1e8  # 8 decimals
+```
+
+**How Graduation Works**:
+1. Backend fetches KAS price from oracle (CoinGecko)
+2. Backend reads `virtualKasReserve` from contract (free view call)
+3. Backend calculates: `market_cap_usd = kas_reserve * kas_price`
+4. If `market_cap_usd >= $70,000`: Backend triggers `contract.initiateGraduation()`
+5. **Only graduation transaction costs gas** (not price checks)
 
 ---
 
@@ -708,27 +705,22 @@ function _executeGraduation() internal {
     emit TokenGraduated(address(this), kasForLP, lpTokens, block.timestamp);
 }
 
-// ORACLE: Check graduation based on USD market cap valuation
-function _checkGraduationThreshold() internal view returns (bool) {
-    // Option A: Backend oracle updates graduationThresholdKAS based on KAS price
-    return virtualKasReserve >= graduationThresholdKAS;
+// Backend oracle triggers graduation when USD threshold reached
+function initiateGraduation() external {
+    require(msg.sender == graduationOracle, "Only oracle");
+    require(!graduated && !graduating, "Invalid state");
     
-    // Option B: On-chain oracle (if available)
-    // uint256 kasPrice = IKasUsdOracle(kasUsdOracle).getLatestPrice(); // 8 decimals
-    // uint256 marketCapUSD = (virtualKasReserve * kasPrice) / 1e8;
-    // return marketCapUSD >= 70000e18; // $70K USD
+    graduating = true;
+    _executeGraduation();
 }
 
-// View function to check if ready to graduate
-function canGraduate() public view returns (bool) {
-    return !graduated && !graduating && _checkGraduationThreshold();
-}
-
-// Admin function to update KAS threshold (based on KAS price changes)
-function updateGraduationThreshold(uint256 newThresholdKAS) external onlyAdmin {
-    require(newThresholdKAS > 0, "Invalid threshold");
-    graduationThresholdKAS = newThresholdKAS;
-    emit GraduationThresholdUpdated(newThresholdKAS);
+// View function - backend calls this to check status
+function getGraduationStatus() external view returns (
+    uint256 currentKasReserve,
+    bool isGraduated,
+    bool isGraduating
+) {
+    return (virtualKasReserve, graduated, graduating);
 }
 ```
 
