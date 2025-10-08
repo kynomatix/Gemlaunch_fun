@@ -1143,11 +1143,12 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - **Round 1**: Claude (20 findings), ChatGPT (15 findings) - Initial architecture
 - **Round 2**: Claude (7 critical) - Virtual reserves v2 fixes
 - **Round 3**: Claude (4 critical, 6 high) - Implementation details v3
+- **Round 4**: Claude (0 critical, 2 high, 5 medium, 3 low) - **FINAL TESTNET REVIEW** 🟢
 - **Total Critical Fixes**: 18 across all rounds
-- **Status**: Testnet-ready pending final validation
+- **Status**: 🟡 90% Ready → 🟢 100% Ready with Priority 1-3 fixes
 
-### v3 Fixes Summary (Latest Round)
-**Critical Fixes:**
+### v3 Fixes Summary
+**Critical Fixes (All ✅):**
 1. Virtual reserve initialization (0.001 KAS seed)
 2. Symmetric fee calculation (fee on input for both buy/sell)
 3. CEI-compliant graduation check (reserves updated first)
@@ -1157,6 +1158,275 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 1. 0.001 KAS minimum trade amount
 2. Bidirectional transfer cooldown (sender + receiver)
 3. Balance verification for fee withdrawals
+
+---
+
+## ROUND 4 AUDIT - FINAL TESTNET REVIEW (October 8, 2025)
+
+**Overall Assessment**: 🟢 EXCELLENT - All critical issues resolved, ready for testnet with minor fixes
+
+**Remaining Issues**: 0 Critical ✅ | 2 High ⚠️ | 5 Medium ⚠️ | 3 Low ℹ️
+
+### 🔴 HIGH SEVERITY (Round 4)
+
+**H-1: Sell Function Fee Accounting Broken** ⚠️ MUST FIX
+- **Issue**: Fee tokens converted to hypothetical KAS value but never actually sold
+- **Impact**: `accumulatedPlatformFees` increases without actual KAS, breaking withdrawals
+- **Root Cause**: Mixing token fees and KAS fees in same accounting
+- **Solution**: Use KAS-based fees on both buy AND sell (asymmetric but consistent)
+
+**H-2: Min Trade Amount Missing in Buy Function** ⚠️ MUST FIX  
+- **Issue**: Buy allows trades < MIN_TRADE_AMOUNT, sell enforces it
+- **Impact**: Dust attacks, fee evasion (1 wei trade = 0 fee due to rounding)
+- **Solution**: Add `require(msg.value >= MIN_TRADE_AMOUNT)` to buyTokens()
+
+### 🟡 MEDIUM SEVERITY (Round 4)
+
+**M-1: Fee Precision Loss on Small Trades**
+- Two-step division causes rounding errors
+- Creator gets 0 fees on trades where totalFees < 10 wei
+- Fix: Direct calculation `platformFee = msg.value * 90 / 10000`
+
+**M-2: Treasury Distribution Only Sums to 90%**
+- DEV(40%) + BUYBACK(30%) + KASPA(15%) + COMMUNITY(5%) = 90%
+- Missing 10% stuck in contract forever
+- Fix: Adjust COMMUNITY_SHARE to 1500 (15%) or use remainder pattern
+
+**M-3: Graduation Could Fail if Fees Withdrawn Early**
+- Graduation uses virtualKasReserve but fees might be withdrawn
+- Contract balance could be < virtualKasReserve
+- Fix: Verify actual balance before graduation OR block withdrawals until graduated
+
+**M-4: No Protection Against Direct KAS Transfers**
+- Direct transfers break invariant: `balance = virtualKasReserve + fees`
+- Fix: Add `receive() { revert(); }` blocker
+
+**M-5: Partial Fee Withdrawals Create Accounting Confusion**
+- If withdrawable < accumulated, only partial amount sent
+- `accumulatedPlatformFees` decremented but fees still "owed"
+- Fix: Require full amount or revert with clear error
+
+### 🔵 LOW SEVERITY (Round 4)
+
+**L-1**: MIN_TRADE_AMOUNT constant not defined (compilation error)  
+**L-2**: Comments reference old 1.5% fee model  
+**L-3**: Treasury distribution missing GemFoundation clarification
+
+---
+
+## ROUND 4 CORRECTED IMPLEMENTATIONS
+
+### Priority 1: Fixed Sell Function (KAS-Based Fees)
+
+**CORRECTED** - Fee on KAS output (not token input):
+
+```solidity
+uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // 0.001 KAS minimum
+
+function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) external nonReentrant {
+    require(!graduated && !graduating, "Token graduated or graduating");
+    require(block.timestamp <= deadline, "Transaction expired");
+    require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
+    
+    // Calculate FULL KAS output first (before fees)
+    uint256 kasGross = quoteSell(tokenAmount);
+    
+    // Fee on KAS OUTPUT (1% of KAS) - NOT on tokens
+    uint256 totalFeesKas = kasGross * TOTAL_FEE_BPS / 10000; // 1% of KAS
+    uint256 creatorFeeKas = totalFeesKas * 10 / 100; // 10% of fees = 0.1% of KAS
+    uint256 platformFeeKas = totalFeesKas - creatorFeeKas; // 90% of fees = 0.9% of KAS
+    uint256 kasNet = kasGross - totalFeesKas;
+    
+    // Slippage check on NET amount user receives
+    require(kasNet >= minKasOut, "Slippage too high");
+    require(kasNet >= MIN_TRADE_AMOUNT, "Below minimum trade");
+    
+    // CEI Pattern: Update reserves FIRST (full KAS amount leaves)
+    virtualTokenReserve += tokenAmount;
+    virtualKasReserve -= kasGross; // Full amount (including fees)
+    
+    // Accumulate KAS fees (actual KAS, not hypothetical)
+    accumulatedPlatformFees += platformFeeKas;
+    accumulatedCreatorFees += creatorFeeKas;
+    
+    // Transfer tokens to pool
+    _transfer(msg.sender, address(this), tokenAmount);
+    
+    // Send NET KAS to user (fees stay in contract balance)
+    _safeSend(msg.sender, kasNet);
+    
+    emit TokensSold(msg.sender, tokenAmount, kasGross, platformFeeKas, creatorFeeKas);
+}
+```
+
+**Why This Works:**
+- ✅ Fees are actual KAS (not hypothetical)
+- ✅ `accumulatedPlatformFees` matches actual contract balance
+- ✅ Fee withdrawals will work correctly
+- ✅ All accounting in KAS (consistent with buy function)
+
+---
+
+### Priority 2: Fixed Buy Function (Min Trade + Precision)
+
+**CORRECTED** - Minimum trade check + direct fee calculation:
+
+```solidity
+uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // 0.001 KAS
+
+function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant {
+    require(!graduated && !graduating, "Token graduated or graduating");
+    require(block.timestamp <= deadline, "Transaction expired");
+    require(msg.value >= MIN_TRADE_AMOUNT, "Below minimum trade"); // ✅ ADDED
+    
+    // Direct fee calculation (avoids double division rounding)
+    uint256 platformFee = msg.value * 90 / 10000; // 0.9% directly
+    uint256 creatorFee = msg.value * 10 / 10000;  // 0.1% directly
+    uint256 totalFees = platformFee + creatorFee;
+    uint256 tradeAmount = msg.value - totalFees;
+    
+    // Calculate tokens using virtual reserves
+    uint256 tokensOut = quoteBuy(tradeAmount);
+    require(tokensOut >= minTokensOut, "Slippage too high");
+    require(tokensOut > 0, "Insufficient output amount");
+    
+    // CEI Pattern: Update reserves FIRST
+    virtualKasReserve += tradeAmount;
+    virtualTokenReserve -= tokensOut;
+    
+    // Store fees separately
+    accumulatedPlatformFees += platformFee;
+    accumulatedCreatorFees += creatorFee;
+    
+    // Check graduation AFTER reserve update
+    bool shouldGraduate = !graduated && !graduating && virtualKasReserve >= GRADUATION_THRESHOLD;
+    
+    if (shouldGraduate) {
+        graduating = true; // LOCK BEFORE TRANSFERS
+    }
+    
+    // Transfer tokens (wallet cap enforced in _transfer override)
+    _transfer(address(this), msg.sender, tokensOut);
+    
+    emit TokensPurchased(msg.sender, tokensOut, tradeAmount, platformFee, creatorFee);
+    
+    // Execute graduation atomically if flagged
+    if (graduating) {
+        _executeGraduation();
+    }
+}
+```
+
+**Improvements:**
+- ✅ Prevents dust attacks (MIN_TRADE_AMOUNT enforced)
+- ✅ Better fee precision (direct calculation)
+- ✅ Creator gets fair share even on small trades
+
+---
+
+### Priority 3: Fixed Treasury Distribution
+
+**CORRECTED** - Distribution sums to 100%:
+
+```solidity
+// OPTION A: Use remainder pattern (recommended)
+function distributeFees() external nonReentrant {
+    require(msg.sender == treasury || msg.sender == admin, "Unauthorized");
+    
+    uint256 balance = address(this).balance;
+    require(balance > 0, "No fees to distribute");
+    
+    // Calculate shares (avoiding 10% loss)
+    uint256 devAmount = balance * 40 / 100;      // 40%
+    uint256 buybackAmount = balance * 30 / 100;  // 30%
+    uint256 kaspaAmount = balance * 15 / 100;    // 15%
+    uint256 communityAmount = balance - devAmount - buybackAmount - kaspaAmount; // 15% (remainder)
+    
+    // Send to designated wallets
+    _safeSend(platformDevelopmentWallet, devAmount);
+    _safeSend(buybackReserveWallet, buybackAmount);
+    _safeSend(kaspaNetworkSupportWallet, kaspaAmount);
+    _safeSend(communityRewardsWallet, communityAmount);
+    
+    emit FeesDistributed(devAmount, buybackAmount, kaspaAmount, communityAmount);
+}
+
+// OPTION B: Adjust constants to sum to 10000
+uint256 public constant DEV_SHARE = 4000;       // 40%
+uint256 public constant BUYBACK_SHARE = 3000;   // 30%
+uint256 public constant KASPA_SHARE = 1500;     // 15%
+uint256 public constant COMMUNITY_SHARE = 1500; // 15% (adjusted from 500)
+// Total: 10000 = 100% ✓
+```
+
+---
+
+### Medium Priority Fixes
+
+**M-3: Graduation Balance Verification**
+```solidity
+function _executeGraduation() internal {
+    require(graduating && !graduated, "Invalid graduation state");
+    
+    graduated = true;
+    uint256 kasForLP = virtualKasReserve;
+    
+    // ✅ Verify ACTUAL balance after accounting for fees
+    uint256 reservedForFees = accumulatedPlatformFees + accumulatedCreatorFees;
+    uint256 availableBalance = address(this).balance - reservedForFees;
+    require(availableBalance >= kasForLP, "Insufficient liquid balance - fees withdrawn");
+    
+    // Proceed with graduation...
+}
+```
+
+**M-4: Block Direct Transfers**
+```solidity
+// Prevent direct KAS transfers that corrupt accounting
+receive() external payable {
+    revert("Use buyTokens() to purchase");
+}
+
+fallback() external payable {
+    revert("Use buyTokens() to purchase");
+}
+
+// Emergency sweep for accidentally sent KAS
+function sweepExcessKas() external onlyAdmin {
+    uint256 expected = virtualKasReserve + accumulatedPlatformFees + accumulatedCreatorFees;
+    uint256 actual = address(this).balance;
+    
+    if (actual > expected) {
+        uint256 excess = actual - expected;
+        _safeSend(treasury, excess);
+        emit ExcessKasSwept(excess);
+    }
+}
+```
+
+**M-5: Stricter Fee Withdrawal**
+```solidity
+// CORRECTED: Require full amount or revert
+function withdrawPlatformFees() external nonReentrant {
+    require(msg.sender == treasury, "Only treasury");
+    
+    uint256 amount = accumulatedPlatformFees;
+    require(amount > 0, "No fees to withdraw");
+    
+    // Must have enough actual balance (excluding virtual reserve)
+    uint256 reservedForTrading = virtualKasReserve;
+    uint256 availableBalance = address(this).balance - reservedForTrading;
+    
+    require(
+        availableBalance >= amount, 
+        "Insufficient liquid balance - wait for more fees or graduation"
+    );
+    
+    accumulatedPlatformFees = 0;
+    _safeSend(treasury, amount);
+    emit PlatformFeesWithdrawn(amount);
+}
+```
 
 ---
 
@@ -1201,15 +1471,25 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - [ ] Verify contracts on block explorer
 - [ ] Test treasury fee distribution function
 - [ ] Test end-to-end token creation with fee collection
+**Round 4 Critical Fixes Validation (MUST COMPLETE):**
+- [ ] ✅ **H-1: Sell fee accounting** - Verify KAS-based fees (fee on output, not tokens)
+- [ ] ✅ **H-2: Min trade amount** - Confirm buyTokens() enforces MIN_TRADE_AMOUNT
+- [ ] ✅ **M-1: Fee precision** - Test direct calculation (platformFee = msg.value * 90 / 10000)
+- [ ] ✅ **M-2: Treasury distribution** - Verify shares sum to 100% (no lost 10%)
+- [ ] ✅ **M-3: Graduation balance** - Test actual balance verification before graduation
+- [ ] ✅ **M-4: Direct transfers** - Confirm receive()/fallback() revert
+- [ ] ✅ **M-5: Fee withdrawals** - Verify full amount required (no partial withdrawals)
+- [ ] ✅ **Round-trip symmetry** - Buy 1 KAS → Sell tokens → Get ~0.98 KAS (2% loss = 1% each way)
+
 **V3 Audit Fixes Validation:**
 - [ ] Test virtual reserve initialization (0.001 KAS seed prevents division by zero)
-- [ ] Verify symmetric fee calculation (fee on INPUT for both buy and sell)
+- [ ] Verify KAS-based fee calculation for BOTH buy and sell (v4 corrected)
 - [ ] Test CEI pattern: reserves updated BEFORE graduation check
 - [ ] Verify correct LP split: ALL virtualKasReserve + 25% tokens to LP, burn unsold
-- [ ] Test 0.001 KAS minimum trade amount enforcement
+- [ ] Test 0.001 KAS minimum trade amount enforcement (both buy AND sell)
 - [ ] Verify bidirectional transfer cooldown (both sender and receiver)
 - [ ] Test balance verification in fee withdrawal (respects virtualKasReserve)
-- [ ] Verify round-trip buy→sell symmetry (1% each way = 2% total loss)
+- [ ] Verify fee accounting: accumulatedFees matches actual contract balance
 
 **General Validation:**
 - [ ] Test virtual reserve AMM (k = virtualKasReserve * virtualTokenReserve)
@@ -1230,11 +1510,19 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - [ ] Verify treasury fee distribution: 40% dev, 30% buyback, 15% Kaspa, 5% community, 10% creator
 
 ### Mainnet Preparation
-- [ ] Complete security audit
-- [ ] Address all audit findings
-- [ ] Bug bounty program (minimum 2 weeks)
-- [ ] Multi-sig setup for admin functions
-- [ ] Timelock for parameter changes
+- [ ] Complete external security audit (4 internal rounds complete ✅)
+- [ ] Address all audit findings (Round 4 fixes: 2 high + 5 medium)
+- [ ] Bug bounty program (minimum 2 weeks, post-testnet)
+- [ ] Multi-sig setup for admin functions (3-of-5 recommended)
+- [ ] Timelock for parameter changes (24-48 hour delay)
+- [ ] 24-hour testnet stress test with real users
+- [ ] Final independent code review
+
+**Testnet to Mainnet Timeline:**
+- Week 1-2: Deploy Round 4 fixes, comprehensive testing
+- Week 3-4: Community testing, monitor for edge cases
+- Week 5: External audit (if budget allows) or extended testing
+- Week 6+: Mainnet deployment at 100% confidence
 - [ ] Emergency response plan documented
 - [ ] Gas price strategy (EIP-1559)
 - [ ] Contract verification scripts
