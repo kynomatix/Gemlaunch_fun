@@ -135,6 +135,7 @@ uint256 public constant CREATOR_SHARE_BPS = 1000; // 10% of fees (0.1% of trade)
 uint256 public constant GRADUATION_THRESHOLD = 75e18; // 75 KAS in virtual reserve
 
 address public treasury; // Gemlaunch treasury contract
+address public airdropTreasury; // Airdrop Treasury for anti-bot fees
 address public immutable creator; // Token creator address (immutable)
 
 // AUDIT FIX: Virtual reserves - single source of truth for AMM pricing
@@ -144,6 +145,11 @@ uint256 public virtualTokenReserve; // Tradeable tokens only
 // Fee tracking (separate from reserves)
 uint256 public accumulatedPlatformFees;
 uint256 public accumulatedCreatorFees;
+uint256 public accumulatedAntiBotFees; // Separate tracking for anti-bot fees
+
+// Anti-Bot System (GEM System - optional per token)
+bool public antiBotEnabled;
+uint256 public deploymentTime; // Launch timestamp
 
 bool public graduated;
 bool public graduating; // Lock flag during graduation
@@ -183,11 +189,22 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
     require(block.timestamp <= deadline, "Transaction expired");
     require(msg.value > 0, "Must send KAS");
     
-    // Fee calculation: 1% total (100 bps)
-    uint256 totalFees = msg.value * TOTAL_FEE_BPS / 10000; // 1% total
+    // Anti-Bot Fee Calculation (GEM System - if enabled)
+    uint256 antiBotFee = 0;
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        // Linear decay: 95% at t=0 → 1% at t=60
+        uint256 elapsed = block.timestamp - deploymentTime;
+        uint256 feePercent = 9500 - (9400 * elapsed / 60); // 9500 bps = 95%
+        antiBotFee = msg.value * feePercent / 10000;
+        // All anti-bot fees go to Airdrop Treasury
+    }
+    
+    // Standard Fee calculation: 1% total (100 bps)
+    uint256 remainingAmount = msg.value - antiBotFee;
+    uint256 totalFees = remainingAmount * TOTAL_FEE_BPS / 10000; // 1% total
     uint256 creatorFee = totalFees * CREATOR_SHARE_BPS / 10000; // 10% of fees = 0.1% of trade
     uint256 platformFee = totalFees - creatorFee; // 90% of fees = 0.9% of trade
-    uint256 tradeAmount = msg.value - totalFees;
+    uint256 tradeAmount = remainingAmount - totalFees;
     
     // Calculate tokens using virtual reserves (no fee contamination)
     uint256 tokensOut = quoteBuy(tradeAmount);
@@ -1106,6 +1123,15 @@ manticore contracts/BondingCurvePool.sol
 - [ ] Distribution types: Raffle, Top Contributors, Active Chatters, Token Holders
 - [ ] Claiming mechanics with real transactions
 - [ ] Vesting schedule accuracy
+
+**Anti-Bot System (GEM System)**:
+- [ ] Time-based fee decay implementation (95% → 1% over 60 seconds)
+- [ ] Anti-bot fee collection to Airdrop Treasury
+- [ ] Deployment timestamp tracking
+- [ ] Fee formula accuracy: `fee(t) = 95 - (94 × t / 60)`
+- [ ] Optional per-token (antiBotEnabled flag)
+- [ ] Integration with normal 1% trading fees
+- [ ] Testing: Bot attempts at various timestamps (t=0s, 30s, 60s+)
 
 **Social Features**:
 - [ ] Chat messages with spam prevention
