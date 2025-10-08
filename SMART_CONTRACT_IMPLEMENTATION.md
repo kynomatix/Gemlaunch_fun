@@ -128,8 +128,8 @@ function quoteSell(uint256 tokensIn) public view returns (uint256 kasOut) {
 uint256 public constant CURVE_SUPPLY_PCT = 75;
 uint256 public constant LP_SUPPLY_PCT = 25;
 uint256 public constant MAX_WALLET_PCT = 10;
-uint256 public constant PLATFORM_FEE_BPS = 100; // 1% platform fee
-uint256 public immutable CREATOR_FEE_BPS; // 0.5% creator fee (immutable, set in constructor)
+uint256 public constant TOTAL_FEE_BPS = 100; // 1% total trading fee
+uint256 public constant CREATOR_SHARE_BPS = 1000; // 10% of fees (0.1% of trade)
 uint256 public constant GRADUATION_THRESHOLD = 75e18; // 75 KAS in virtual reserve
 
 address public treasury; // Gemlaunch treasury contract
@@ -147,12 +147,13 @@ bool public graduated;
 bool public graduating; // Lock flag during graduation
 ```
 
-**Constructor** (AUDIT FIX - Immutable creator fee):
+**Constructor**:
 ```solidity
-constructor(address _creator, uint256 _creatorFeeBps) {
-    require(_creatorFeeBps >= 25 && _creatorFeeBps <= 100, "Fee must be 0.25-1%");
+constructor(address _creator, address _treasury) {
+    require(_creator != address(0), "Invalid creator");
+    require(_treasury != address(0), "Invalid treasury");
     creator = _creator;
-    CREATOR_FEE_BPS = _creatorFeeBps; // Immutable, prevents rug
+    treasury = _treasury;
 }
 ```
 
@@ -163,10 +164,10 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
     require(block.timestamp <= deadline, "Transaction expired");
     require(msg.value > 0, "Must send KAS");
     
-    // AUDIT FIX: Calculate fees FIRST, then separate from reserves
-    uint256 totalFees = msg.value * 150 / 10000; // 1.5% total
-    uint256 platformFee = totalFees * 2 / 3;     // ~1%
-    uint256 creatorFee = totalFees / 3;          // ~0.5%
+    // Fee calculation: 1% total (100 bps)
+    uint256 totalFees = msg.value * TOTAL_FEE_BPS / 10000; // 1% total
+    uint256 creatorFee = totalFees * CREATOR_SHARE_BPS / 10000; // 10% of fees = 0.1% of trade
+    uint256 platformFee = totalFees - creatorFee; // 90% of fees = 0.9% of trade
     uint256 tradeAmount = msg.value - totalFees;
     
     // Calculate tokens using virtual reserves (no fee contamination)
@@ -215,10 +216,10 @@ function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) ex
     // Calculate KAS output using virtual reserves
     uint256 kasOut = quoteSell(tokenAmount);
     
-    // Calculate fees on output
-    uint256 totalFees = kasOut * 150 / 10000;
-    uint256 platformFee = totalFees * 2 / 3;
-    uint256 creatorFee = totalFees / 3;
+    // Calculate fees: 1% total
+    uint256 totalFees = kasOut * TOTAL_FEE_BPS / 10000; // 1% total
+    uint256 creatorFee = totalFees * CREATOR_SHARE_BPS / 10000; // 10% of fees = 0.1% of trade
+    uint256 platformFee = totalFees - creatorFee; // 90% of fees = 0.9% of trade
     uint256 netKasOut = kasOut - totalFees;
     
     // AUDIT FIX: Slippage protection on NET amount user receives
@@ -403,12 +404,13 @@ address public treasury;
 **Purpose**: Manages platform fees and optional token vesting
 
 **Key Features**:
-- Collects 1% platform fee from all bonding curve trades
-- Distributes fees according to pitch deck model:
-  - 40% Platform Development
-  - 30% GEM Buyback Reserve (accumulates until TGE, then TWAP buybacks)
-  - 20% GemFoundation (ecosystem support, future DAO-controlled)
-  - 10% Community Rewards (airdrops, incentives)
+- Collects 1% total trading fee (90% platform, 10% creator)
+- Platform fee (0.9% of trade) distributes to:
+  - 40% Platform Development (0.36% of trade)
+  - 30% GEM Buyback & Burn (0.27% of trade - accumulates until TGE, then TWAP buybacks)
+  - 15% Kaspa Network Support (0.135% of trade - reduced from 20%)
+  - 5% Community Rewards (0.045% of trade - airdrops, incentives)
+- Creator fee: 10% of total fees (0.1% of trade)
 - Multi-sig withdrawal controls
 - Optional vesting schedules for team/contributors
 - TWAP buyback mechanism post-GEM TGE
@@ -417,19 +419,19 @@ address public treasury;
 ```solidity
 // Treasury wallet addresses
 address public platformDevelopmentWallet;
-address public buybackReserveWallet; // Accumulates KAS until GEM TGE
-address public gemFoundationWallet;  // Ecosystem support (future DAO-controlled)
+address public buybackReserveWallet;      // Accumulates KAS until GEM TGE
+address public kaspaNetworkSupportWallet; // Kaspa ecosystem support
 address public communityRewardsWallet;
 
 // Fee tracking
-uint256 public constant PLATFORM_FEE_BPS = 100; // 1% in basis points
+uint256 public constant PLATFORM_FEE_BPS = 90; // 90% of 1% = 0.9% in basis points
 uint256 public totalFeesCollected;
 
-// Distribution percentages (in basis points)
-uint256 public constant DEV_SHARE = 4000;         // 40%
-uint256 public constant BUYBACK_SHARE = 3000;     // 30% (accumulates, then TWAP)
-uint256 public constant FOUNDATION_SHARE = 2000;  // 20% (future DAO)
-uint256 public constant COMMUNITY_SHARE = 1000;   // 10%
+// Distribution percentages (of platform fees, in basis points)
+uint256 public constant DEV_SHARE = 4000;       // 40% of platform fees
+uint256 public constant BUYBACK_SHARE = 3000;   // 30% of platform fees (accumulates, then TWAP)
+uint256 public constant KASPA_SHARE = 1500;     // 15% of platform fees (Kaspa Network Support)
+uint256 public constant COMMUNITY_SHARE = 500;  // 5% of platform fees
 
 // TWAP Buyback (activated post-TGE)
 bool public twapBuybackEnabled;
@@ -446,18 +448,18 @@ function distributeFees() external nonReentrant {
     uint256 balance = address(this).balance;
     require(balance > 0, "No fees to distribute");
     
-    uint256 devAmount = balance * DEV_SHARE / 10000;
-    uint256 buybackAmount = balance * BUYBACK_SHARE / 10000;
-    uint256 foundationAmount = balance * FOUNDATION_SHARE / 10000;
-    uint256 communityAmount = balance * COMMUNITY_SHARE / 10000;
+    uint256 devAmount = balance * DEV_SHARE / 10000;         // 40%
+    uint256 buybackAmount = balance * BUYBACK_SHARE / 10000; // 30%
+    uint256 kaspaAmount = balance * KASPA_SHARE / 10000;     // 15%
+    uint256 communityAmount = balance * COMMUNITY_SHARE / 10000; // 5%
     
     // AUDIT FIX: Use .call instead of .transfer to prevent failures
     _safeTransfer(platformDevelopmentWallet, devAmount);
-    _safeTransfer(buybackReserveWallet, buybackAmount); // Accumulates until TGE
-    _safeTransfer(gemFoundationWallet, foundationAmount); // Public, transparent
+    _safeTransfer(buybackReserveWallet, buybackAmount);        // Accumulates until GEM TGE
+    _safeTransfer(kaspaNetworkSupportWallet, kaspaAmount);     // Kaspa ecosystem support
     _safeTransfer(communityRewardsWallet, communityAmount);
     
-    emit FeesDistributed(devAmount, buybackAmount, foundationAmount, communityAmount);
+    emit FeesDistributed(devAmount, buybackAmount, kaspaAmount, communityAmount);
 }
 
 function _safeTransfer(address to, uint256 amount) private {
@@ -469,20 +471,17 @@ function _safeTransfer(address to, uint256 amount) private {
 }
 ```
 
-**GemFoundation Governance (Future DAO Integration)**:
+**Kaspa Network Support (Transparent Allocation)**:
 ```solidity
-// Placeholder for future DAO governance
-address public foundationDAO; // Will be set when DAO is deployed
+// 15% of platform fees supports Kaspa ecosystem (miners, development, infrastructure)
+// Transparent wallet with clear allocation guidelines
+address public kaspaNetworkSupportWallet;
 
-// Transfer Foundation control to DAO (one-time, irreversible)
-function transferFoundationToDAO(address _daoAddress) external onlyOwner {
-    require(foundationDAO == address(0), "DAO already set");
-    require(_daoAddress != address(0), "Invalid DAO address");
-    
-    foundationDAO = _daoAddress;
-    // Future: Foundation funds controlled by DAO votes
-    
-    emit FoundationTransferredToDAO(_daoAddress);
+// Future: Could implement governance for allocation decisions
+function updateKaspaNetworkWallet(address _newWallet) external onlyOwner {
+    require(_newWallet != address(0), "Invalid wallet");
+    kaspaNetworkSupportWallet = _newWallet;
+    emit KaspaNetworkWalletUpdated(_newWallet);
 }
 ```
 
@@ -1069,10 +1068,10 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 
 #### Pre-Deployment: Treasury Wallet Setup
 - [ ] **Create Gemlaunch Treasury Wallets** (multi-sig recommended):
-  - [ ] Platform Development Wallet (receives 40% of fees)
-  - [ ] GEM Buyback Reserve Wallet (receives 30% - accumulates until GEM TGE)
-  - [ ] **GemFoundation Wallet** (receives 20% - public, transparent, future DAO-controlled)
-  - [ ] Community Rewards Wallet (receives 10% of fees)
+  - [ ] Platform Development Wallet (receives 40% of platform fees → 0.36% of trades)
+  - [ ] GEM Buyback Reserve Wallet (receives 30% of platform fees → 0.27% of trades, accumulates until GEM TGE)
+  - [ ] Kaspa Network Support Wallet (receives 15% of platform fees → 0.135% of trades, ecosystem support)
+  - [ ] Community Rewards Wallet (receives 5% of platform fees → 0.045% of trades)
 - [ ] Configure multi-sig with 2-of-3 or 3-of-5 threshold
 - [ ] Document all wallet addresses and signers
 - [ ] **Publicly announce GemFoundation wallet address** for transparency
@@ -1120,6 +1119,7 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - [ ] Monitor gas costs and optimize
 - [ ] Verify emergency fee rescue mechanism (timelock + admin)
 - [ ] Test round-trip buy→sell preserves value (within fee tolerance)
+- [ ] Verify treasury fee distribution: 40% dev, 30% buyback, 15% Kaspa, 5% community, 10% creator
 
 ### Mainnet Preparation
 - [ ] Complete security audit
