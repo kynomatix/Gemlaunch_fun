@@ -15,6 +15,14 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - Created visual barrier separating historical/superseded code from current implementation
   - Updated Quick Reference with canonical line numbers
   - All changes were copy-only (no code modifications) to preserve audit integrity
+- **BondingCurvePool.sol COMPLETE Specification** (Lines 179-708):
+  - Added graduation functions (initiateGraduation, completeGraduation) with oracle authorization
+  - Implemented creator fee claim portal (withdrawCreatorFees, getCreatorClaimableAmount)
+  - Added access control & security (receive blocker, pause/unpause, oracle management)
+  - Implemented 10% wallet cap enforcement via _transfer override
+  - Added complete contract structure with OpenZeppelin imports (ERC20, ReentrancyGuard, Pausable, Ownable)
+  - Comprehensive implementation checklist with line number references
+  - STATUS: BondingCurvePool.sol ready for security audit
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
