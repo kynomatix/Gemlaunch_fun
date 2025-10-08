@@ -2520,6 +2520,10 @@ def admin_dashboard():
     total_volume = db.session.query(db.func.sum(Trade.kas_amount)).scalar() or 0
     total_points = db.session.query(db.func.sum(User.gem_points)).scalar() or 0
     
+    # Get KAS oracle status
+    from services.kas_oracle import oracle
+    oracle_status = oracle.get_oracle_status()
+    
     # Get recent activities
     recent_activities = Activity.query.order_by(Activity.created_at.desc()).limit(10).all()
     
@@ -2531,6 +2535,7 @@ def admin_dashboard():
                          total_tokens=total_tokens,
                          total_volume=float(total_volume),
                          total_points=total_points,
+                         oracle_status=oracle_status,
                          recent_activities=recent_activities,
                          top_users=top_users)
 
@@ -2843,6 +2848,22 @@ def gemmy_suggest():
             'error': 'Sorry, I encountered an error. Please try again!',
             'details': str(e) if app.debug else None
         }), 500
+
+@app.route('/api/kas-price', methods=['GET'])
+def get_kas_price():
+    """Get current KAS/USD price from oracle"""
+    try:
+        from services.kas_oracle import oracle
+        status = oracle.get_oracle_status()
+        return jsonify({
+            'success': True,
+            'kas_price': status['kas_price'],
+            'graduation_threshold_kas': status['graduation_threshold_kas'],
+            'api_source': status['api_source'],
+            'last_update': status['last_update'].isoformat() if status['last_update'] else None
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/generate-token-image', methods=['POST'])
 def generate_token_image_api():

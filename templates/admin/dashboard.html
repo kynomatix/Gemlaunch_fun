@@ -13,6 +13,50 @@
         </div>
     </div>
 
+    <!-- KAS Price Oracle -->
+    <div class="oracle-section">
+        <h2><i class="fas fa-chart-line"></i> KAS Price Oracle</h2>
+        <div class="oracle-card">
+            <div class="oracle-main">
+                <div class="price-display">
+                    <div class="price-label">KAS/USD Price</div>
+                    <div class="price-value" id="kas-price">${{ "%.6f"|format(oracle_status.kas_price) }}</div>
+                    <div class="price-source">{{ oracle_status.api_source }}</div>
+                </div>
+                <div class="threshold-display">
+                    <div class="threshold-label">Graduation Threshold</div>
+                    <div class="threshold-value" id="graduation-threshold">{{ "{:,.0f}".format(oracle_status.graduation_threshold_kas) }} KAS</div>
+                    <div class="threshold-usd">≈ $70,000 USD</div>
+                </div>
+            </div>
+            <div class="oracle-status">
+                <div class="status-item">
+                    <i class="fas fa-clock"></i>
+                    <span id="last-update">
+                        {% if oracle_status.last_update %}
+                            {{ oracle_status.last_update.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% else %}
+                            Never
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-sync-alt"></i>
+                    <span id="cache-status">
+                        {% if oracle_status.cache_age_seconds %}
+                            Cached ({{ "%.0f"|format(oracle_status.cache_age_seconds) }}s ago)
+                        {% else %}
+                            Live
+                        {% endif %}
+                    </span>
+                </div>
+                <button id="refresh-oracle" class="oracle-refresh-btn">
+                    <i class="fas fa-sync"></i> Refresh Now
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- System Stats -->
     <div class="stats-grid">
         <div class="stat-card">
@@ -119,6 +163,129 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+}
+
+/* Oracle Section Styles */
+.oracle-section {
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
+    border: 2px solid rgba(32, 178, 170, 0.4);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.oracle-section h2 {
+    color: #20B2AA;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oracle-card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.oracle-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.price-display, .threshold-display {
+    text-align: center;
+}
+
+.price-label, .threshold-label {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.price-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.threshold-value {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #20B2AA;
+    margin-bottom: 0.5rem;
+}
+
+.price-source, .threshold-usd {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.oracle-status {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #AAA;
+    font-size: 0.9rem;
+}
+
+.status-item i {
+    color: #20B2AA;
+}
+
+.oracle-refresh-btn {
+    margin-left: auto;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oracle-refresh-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(32, 178, 170, 0.4);
+}
+
+.oracle-refresh-btn:active {
+    transform: translateY(0);
+}
+
+.oracle-refresh-btn.loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.oracle-refresh-btn.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .admin-header h1 {
@@ -271,4 +438,62 @@
     font-size: 0.9rem;
 }
 </style>
+
+<script>
+// Auto-refresh oracle price
+let autoRefreshInterval = null;
+
+function refreshOraclePrice() {
+    const btn = document.getElementById('refresh-oracle');
+    const priceEl = document.getElementById('kas-price');
+    const thresholdEl = document.getElementById('graduation-threshold');
+    const updateEl = document.getElementById('last-update');
+    const cacheEl = document.getElementById('cache-status');
+    
+    // Show loading state
+    btn.classList.add('loading');
+    btn.disabled = true;
+    
+    fetch('/api/kas-price')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Update price
+                priceEl.textContent = '$' + data.kas_price.toFixed(6);
+                
+                // Update threshold
+                thresholdEl.textContent = data.graduation_threshold_kas.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' KAS';
+                
+                // Update timestamp
+                if (data.last_update) {
+                    const date = new Date(data.last_update);
+                    updateEl.textContent = date.toLocaleString();
+                }
+                
+                // Update cache status
+                cacheEl.textContent = 'Live';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to refresh oracle:', err);
+        })
+        .finally(() => {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        });
+}
+
+// Manual refresh button
+document.getElementById('refresh-oracle').addEventListener('click', refreshOraclePrice);
+
+// Auto-refresh every 60 seconds
+autoRefreshInterval = setInterval(refreshOraclePrice, 60000);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+});
+</script>
 {% endblock %}
