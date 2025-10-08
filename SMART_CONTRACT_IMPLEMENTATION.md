@@ -11,13 +11,13 @@
 - Ignore any section marked as "SUPERSEDED" or "DO NOT USE"
 
 **Quick Reference - Use These Implementations**:
-- **State Variables**: Line ~131 (AUDIT FIX v4)
-- **Constructor**: Line ~162 (AUDIT FIX v4)
-- **buyTokens()**: Line ~200 (AUDIT FIX v4 - with Anti-Bot)
-- **sellTokens()**: Line ~1582 (AUDIT FIX v4 - KAS-based fees) ⚠️ NOT line 431!
-- **Events**: Line ~266 (AUDIT FIX v4)
-- **View Functions**: Line ~294 (AUDIT FIX v4)
-- **Anti-Bot Documentation**: Line ~330 (Complete specs)
+- **State Variables**: Line 149 (AUDIT FIX v4)
+- **Constructor**: Line 181 (AUDIT FIX v4)
+- **buyTokens()**: Line 223 (AUDIT FIX v4 - with Anti-Bot)
+- **sellTokens()**: Line 1586 (AUDIT FIX v4 - KAS-based fees) ⚠️ NOT line 459!
+- **Events**: Line 297 (AUDIT FIX v4)
+- **View Functions**: Line 330 (AUDIT FIX v4)
+- **Anti-Bot Documentation**: Line 366 (Complete specs)
 
 ---
 
@@ -462,7 +462,7 @@ uint256 public totalAntiBotFeesCollected;   // Total historical fees (analytics)
 
 **REASON**: This v3 implementation uses token-based fees with hypothetical KAS conversion, causing accounting mismatches. The `quoteSell(totalFees)` creates hypothetical KAS that doesn't exist in contract balance, breaking fee withdrawals.
 
-**USE INSTEAD**: See **Priority 1: Fixed Sell Function** at line ~1582 for the CORRECT V4 implementation with:
+**USE INSTEAD**: See **Priority 1: Fixed Sell Function** at line 1579 for the CORRECT V4 implementation with:
 - ✅ Fee on KAS OUTPUT (not token input)
 - ✅ Actual KAS fees (not hypothetical)
 - ✅ Correct accounting that matches contract balance
@@ -1633,7 +1633,7 @@ function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) ex
 
 **REASON**: This v3 implementation is missing the Anti-Bot System (GEM) logic that was added in v4.
 
-**USE INSTEAD**: See **Buy Function (AUDIT FIX v4)** at line 200 for the complete implementation with:
+**USE INSTEAD**: See **Buy Function (AUDIT FIX v4)** at line 223 for the complete implementation with:
 - ✅ Anti-bot fee logic (95% → 1% decay)
 - ✅ Proper fee calculation order (anti-bot first, then platform/creator from remainder)
 - ✅ View functions for UX
