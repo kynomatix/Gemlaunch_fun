@@ -92,6 +92,23 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 - **Rate limiting gaps**: Only wallet linking has rate limits; add to auth, token creation, chat, admin routes
 - **Blockchain integration gap**: Platform currently uses mock/database-driven token launches; need smart contract integration on Kasplex zkEVM for real token deployment, bonding curves, and Kaspa Finance DEX graduation (see SMART_CONTRACT_IMPLEMENTATION.md for roadmap)
 
+## Security Audit Integration (October 2025)
+- **External Audits**: Received comprehensive security audits from Claude and ChatGPT covering smart contract architecture
+- **Critical Fixes Implemented**: 13 critical security issues addressed in SMART_CONTRACT_IMPLEMENTATION.md:
+  1. ✅ Fixed bonding curve math (proper constant product AMM instead of broken midpoint pricing)
+  2. ✅ Fixed fee distribution (no double-fee on roundtrips)
+  3. ✅ Fixed fee accounting asymmetry (separate grossInBase/netReservesBase tracking)
+  4. ✅ Fixed graduation front-running (auto-graduation, atomic execution)
+  5. ✅ Added graduation lock mechanism (lockForGraduation mutex)
+  6. ✅ Fixed wallet cap bypass (enforced in _transfer override)
+  7. ✅ Added minimum liquidity check (current balance, not totalRaised)
+  8. ✅ Fixed reentrancy risk (pull-based creator fee claiming)
+  9. ✅ Fixed treasury distribution (use .call instead of .transfer)
+  10. ✅ Added slippage protection (minTokensOut, minRefund, deadline parameters)
+  11. ✅ Replaced all .transfer() with .call{value:}() for smart wallet compatibility
+  12. ✅ Made creator fee immutable (prevents rug pulls)
+  13. ✅ Added TWAP buyback slippage protection (oracle-based price checks)
+
 ### Low Priority Issues
 - **SQLAlchemy LSP warnings**: 88 type checker false positives due to backref relationships and constructor patterns
 

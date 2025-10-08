@@ -1,0 +1,708 @@
+I'll conduct a comprehensive audit of your Gemlaunch smart contract implementation plan. Let me analyze this systematically across security, architecture, economics, and implementation concerns.
+
+---
+
+# 🔍 **Gemlaunch Smart Contract Audit Report**
+
+## **CRITICAL ISSUES** 🚨
+
+### **1. Fee Distribution Math Error - CRITICAL**
+```solidity
+// Current implementation in BondingCurvePool
+uint256 platformFee = msg.value * PLATFORM_FEE_BPS / 10000;  // 1%
+uint256 creatorFee = msg.value * CREATOR_FEE_BPS / 10000;    // 0.5%
+uint256 totalFees = platformFee + creatorFee;                // 1.5%
+uint256 tradeAmount = msg.value - totalFees;
+```
+
+**PROBLEM:** Fees are calculated on the FULL `msg.value`, but then subtracted. This means:
+- User sends 100 KAS
+- Platform fee: 1 KAS (1%)
+- Creator fee: 0.5 KAS (0.5%)
+- **Trade amount should be on 98.5 KAS worth, NOT bonding curve calculated on 98.5**
+
+**But then:**
+```solidity
+uint256 kasRefund = quoteSell(tokenAmount);  // Calculates based on curve
+uint256 platformFee = kasRefund * PLATFORM_FEE_BPS / 10000;  // Takes fee AGAIN on sell
+```
+
+**Double-fee on roundtrips!** If you buy then immediately sell, you lose 3% (1.5% buy + 1.5% sell).
+
+**FIX:**
+```solidity
+function buyTokens() external payable nonReentrant {
+    // Fee taken from input KAS
+    uint256 totalFees = msg.value * 150 / 10000; // 1.5% total
+    uint256 tradeAmount = msg.value - totalFees;
+    
+    uint256 tokens = quoteBuy(tradeAmount);
+    
+    // Split fees
+    uint256 platformFee = totalFees * 2 / 3;  // 1% of 1.5% = 66.67%
+    uint256 creatorFee = totalFees / 3;       // 0.5% of 1.5% = 33.33%
+    
+    // ... rest
+}
+
+function sellTokens(uint256 tokenAmount) external nonReentrant {
+    uint256 kasRefund = quoteSell(tokenAmount);
+    
+    // Fee taken from output KAS
+    uint256 totalFees = kasRefund * 150 / 10000; // 1.5%
+    uint256 userRefund = kasRefund - totalFees;
+    
+    // Split fees
+    uint256 platformFee = totalFees * 2 / 3;
+    uint256 creatorFee = totalFees / 3;
+    
+    // ... rest
+}
+```
+
+---
+
+### **2. Bonding Curve Price Manipulation - CRITICAL**
+
+Your midpoint pricing formula is **WRONG**:
+
+```solidity
+// CURRENT (BROKEN)
+function quoteBuy(uint256 ethAmount) public view returns (uint256) {
+    uint256 currentPrice = getCurrentPrice();
+    uint256 tokenAmount = ethAmount * currentPrice / 1e18;
+    
+    // This is circular logic!
+    tokensPerETH = (remainingTokens - (tokenAmount / 2)) * 1e18 / 
+                   (address(this).balance + (ethAmount / 2));
+}
+```
+
+**PROBLEM:** 
+1. You calculate `tokenAmount` using current price
+2. Then use that `tokenAmount` to calculate a new price
+3. **But you never USE that new price to recalculate tokens!**
+
+This is **not** midpoint pricing. It's current price with a broken adjustment.
+
+**CORRECT MIDPOINT PRICING:**
+
+```solidity
+function quoteBuy(uint256 kasIn) public view returns (uint256 tokensOut) {
+    uint256 poolTokens = balanceOf(address(this));
+    uint256 poolKas = address(this).balance;
+    
+    // Constant product: k = poolTokens * poolKas
+    uint256 k = poolTokens * poolKas;
+    
+    // After buy: k = (poolTokens - tokensOut) * (poolKas + kasIn)
+    // Solve for tokensOut:
+    uint256 newPoolKas = poolKas + kasIn;
+    uint256 newPoolTokens = k / newPoolKas;
+    tokensOut = poolTokens - newPoolTokens;
+    
+    // Safety: ensure we don't drain pool
+    require(tokensOut < poolTokens, "Exceeds available supply");
+}
+
+function quoteSell(uint256 tokensIn) public view returns (uint256 kasOut) {
+    uint256 poolTokens = balanceOf(address(this));
+    uint256 poolKas = address(this).balance;
+    
+    uint256 k = poolTokens * poolKas;
+    
+    uint256 newPoolTokens = poolTokens + tokensIn;
+    uint256 newPoolKas = k / newPoolTokens;
+    kasOut = poolKas - newPoolKas;
+    
+    require(kasOut < poolKas, "Exceeds available KAS");
+}
+```
+
+**Why this matters:** Your current formula can be gamed. Someone can find edge cases where they extract more tokens than they should.
+
+---
+
+### **3. Wallet Cap Can Be Bypassed - HIGH**
+
+```solidity
+require(
+    holdings[msg.sender] + tokens <= (totalSupply() * MAX_WALLET_PCT) / 100,
+    "Exceeds 10% wallet cap"
+);
+```
+
+**PROBLEM:** 
+- Cap is based on `holdings` mapping
+- But user can transfer tokens to fresh wallet
+- Buy more with fresh wallet
+- **Effectively unlimited accumulation**
+
+**FIX:** Track holdings via ERC20 balanceOf, not separate mapping:
+
+```solidity
+require(
+    balanceOf(msg.sender) + tokens <= (totalSupply() * MAX_WALLET_PCT) / 100,
+    "Exceeds 10% wallet cap"
+);
+
+// Remove holdings mapping entirely, use ERC20 balances
+```
+
+**BUT EVEN BETTER:** Override ERC20 `_transfer`:
+
+```solidity
+function _transfer(address from, address to, uint256 amount) internal override {
+    if (!graduated) {
+        require(
+            balanceOf(to) + amount <= (totalSupply() * MAX_WALLET_PCT) / 100,
+            "Exceeds wallet cap"
+        );
+    }
+    super._transfer(from, to, amount);
+}
+```
+
+This prevents **any** wallet from accumulating >10% before graduation, even via transfers.
+
+---
+
+### **4. Graduation Front-Running Attack - HIGH**
+
+```solidity
+function checkGraduationEligibility(address tokenAddress) public view returns (bool) {
+    return pool.totalRaised() >= GRADUATION_THRESHOLD && !pool.graduated();
+}
+
+function graduate(address tokenAddress) external nonReentrant {
+    require(checkGraduationEligibility(tokenAddress), "Not eligible");
+    // ... graduates
+}
+```
+
+**PROBLEM:** 
+1. Anyone can call `graduate()` when threshold is met
+2. Attacker watches mempool for the final buy that hits threshold
+3. **Front-runs with their own `graduate()` transaction with higher gas**
+4. Attacker's transaction mines first, potentially manipulating the graduation state
+
+**Attack scenario:**
+- Bonding curve at 74.9 KAS raised
+- Victim buys 0.2 KAS of tokens (would trigger 75+ threshold)
+- **Attacker sees this in mempool**
+- Attacker submits `graduate()` with 2x gas price
+- Attacker's tx mines first while curve is at 74.9 KAS
+- **Graduation happens with less liquidity than expected**
+
+**FIX:** Auto-graduate in the buy function, don't allow external trigger:
+
+```solidity
+function buyTokens() external payable nonReentrant {
+    // ... normal buy logic
+    
+    totalRaised += tradeAmount;
+    
+    // Auto-graduate if threshold met (same transaction, atomic)
+    if (!graduated && totalRaised >= GRADUATION_THRESHOLD) {
+        _graduateInternal();
+    }
+}
+
+// Remove external graduate() function entirely
+function _graduateInternal() private {
+    require(!graduated, "Already graduated");
+    graduated = true;
+    
+    // ... graduation logic
+}
+```
+
+---
+
+## **HIGH SEVERITY ISSUES** ⚠️
+
+### **5. Creator Fee Rug Risk**
+
+```solidity
+uint256 public constant CREATOR_FEE_BPS = 50; // 0.5% creator fee (configurable)
+```
+
+Wait, it says "configurable" but it's a `constant`? **Which is it?**
+
+If it's truly configurable:
+```solidity
+uint256 public creatorFeeBps = 50; // Mutable
+
+function setCreatorFee(uint256 newFeeBps) external onlyOwner {
+    creatorFeeBps = newFeeBps; // Can be changed to 100% = RUG!
+}
+```
+
+**RISK:** Owner can change creator fee to 90% after people buy, then graduate and steal all fees.
+
+**FIX:** Make it immutable per-token:
+
+```solidity
+// In BondingCurvePool constructor
+uint256 public immutable CREATOR_FEE_BPS;
+
+constructor(address _creator, uint256 _creatorFeeBps) {
+    require(_creatorFeeBps <= 100, "Max 1% creator fee"); // Cap it!
+    creator = _creator;
+    CREATOR_FEE_BPS = _creatorFeeBps;
+}
+```
+
+---
+
+### **6. No Minimum Liquidity Check**
+
+```solidity
+if (totalRaised >= GRADUATION_THRESHOLD) {
+    _triggerGraduation();
+}
+```
+
+**PROBLEM:** Graduation happens at exactly 75 KAS. But what if:
+- 75 KAS raised
+- People sell back down to 10 KAS in pool
+- **Graduation still triggers with only 10 KAS liquidity!**
+
+The check is on `totalRaised` (cumulative), not current balance.
+
+**FIX:** Check **current** contract balance:
+
+```solidity
+function _triggerGraduation() internal {
+    uint256 currentKasBalance = address(this).balance;
+    require(currentKasBalance >= GRADUATION_THRESHOLD, "Insufficient liquidity");
+    
+    // ... graduate
+}
+```
+
+---
+
+### **7. Reentrancy in Graduation**
+
+```solidity
+function _triggerGraduation() internal {
+    graduated = true; // ✅ State change first
+    
+    if (creatorFeesAccumulated > 0) {
+        payable(creator).transfer(creatorFeesAccumulated); // ❌ External call!
+    }
+    
+    // ... more logic
+}
+```
+
+**PROBLEM:** Even with `graduated = true`, what if `creator` is a malicious contract?
+
+```solidity
+// Malicious creator contract
+receive() external payable {
+    // Gets called during transfer
+    // Could call other functions that check `graduated` flag
+    BondingCurvePool(msg.sender).someFunction(); // Bypass checks?
+}
+```
+
+**FIX:** Use pull-over-push pattern:
+
+```solidity
+mapping(address => uint256) public claimableCreatorFees;
+
+function _triggerGraduation() internal {
+    graduated = true;
+    
+    // Don't send, let creator claim
+    claimableCreatorFees[creator] = creatorFeesAccumulated;
+    creatorFeesAccumulated = 0;
+    
+    // ... rest of graduation
+}
+
+function claimCreatorFees() external nonReentrant {
+    uint256 amount = claimableCreatorFees[msg.sender];
+    require(amount > 0, "No fees to claim");
+    
+    claimableCreatorFees[msg.sender] = 0;
+    payable(msg.sender).transfer(amount);
+}
+```
+
+---
+
+### **8. Treasury Distribution Can Fail Silently**
+
+```solidity
+function distributeFees() external nonReentrant {
+    uint256 balance = address(this).balance;
+    
+    payable(platformDevelopmentWallet).transfer(devAmount);
+    payable(buybackReserveWallet).transfer(buybackAmount);
+    payable(gemFoundationWallet).transfer(foundationAmount);
+    payable(communityRewardsWallet).transfer(communityAmount);
+}
+```
+
+**PROBLEM:** If ANY of these `transfer()` calls fail (e.g., recipient is a contract that reverts), the **entire distribution fails**.
+
+**FIX:** Use call and log failures:
+
+```solidity
+function distributeFees() external nonReentrant {
+    uint256 balance = address(this).balance;
+    
+    _safeTransfer(platformDevelopmentWallet, devAmount);
+    _safeTransfer(buybackReserveWallet, buybackAmount);
+    _safeTransfer(gemFoundationWallet, foundationAmount);
+    _safeTransfer(communityRewardsWallet, communityAmount);
+}
+
+function _safeTransfer(address to, uint256 amount) private {
+    (bool success, ) = payable(to).call{value: amount}("");
+    if (!success) {
+        emit TransferFailed(to, amount);
+        // Don't revert, just log and continue
+    }
+}
+```
+
+---
+
+## **MEDIUM SEVERITY ISSUES** 📋
+
+### **9. No Slippage Protection in Bonding Curve**
+
+```solidity
+function buyTokens() external payable nonReentrant {
+    uint256 tokens = quoteBuy(tradeAmount);
+    _transfer(address(this), msg.sender, tokens);
+}
+```
+
+**MISSING:** User can't specify minimum tokens out. Front-runner can sandwich attack:
+1. See user's buy in mempool
+2. Buy first (price goes up)
+3. User's buy executes at worse price
+4. Front-runner sells (profits)
+
+**FIX:**
+```solidity
+function buyTokens(uint256 minTokensOut) external payable nonReentrant {
+    uint256 tokens = quoteBuy(tradeAmount);
+    require(tokens >= minTokensOut, "Slippage too high");
+    _transfer(address(this), msg.sender, tokens);
+}
+```
+
+---
+
+### **10. Gas Griefing in Batch Operations**
+
+Your graduation calls external DEX:
+
+```solidity
+router.addLiquidityETH{value: kasAmount}(
+    token,
+    tokenAmount,
+    tokenAmount * 95 / 100,
+    kasAmount * 95 / 100,
+    treasury,
+    block.timestamp + 300
+);
+```
+
+**PROBLEM:** If `treasury` is a malicious contract that reverts in fallback, graduation **permanently fails**.
+
+**FIX:** Set treasury as EOA only, or use pull pattern for LP tokens.
+
+---
+
+### **11. Integer Overflow in Fee Calculations** 
+
+Wait, you're on Solidity 0.8, so overflows are checked. But:
+
+```solidity
+uint256 k = poolTokens * poolKas; // Could overflow with huge supplies!
+```
+
+**For pools with:**
+- 1 trillion tokens (1e30)
+- 1000 KAS (1e21)
+- k = 1e51 → **overflows uint256 max (1e77 is safe, but 1e51 is getting close)**
+
+**FIX:** Use SafeMath or cap total supply:
+
+```solidity
+require(totalSupply <= 1e27, "Supply too large"); // Cap at 1 billion tokens
+```
+
+---
+
+## **ARCHITECTURAL CONCERNS** 🏗️
+
+### **12. No Upgrade Path for Critical Bugs**
+
+All contracts are immutable. If you find a critical bug post-deploy:
+- Can't fix bonding curve math
+- Can't update graduation logic
+- **Funds are stuck forever**
+
+**RECOMMENDATION:** Use proxy pattern **ONLY** for factory:
+
+```solidity
+// Deploy via UUPS proxy
+contract TokenFactory is UUPSUpgradeable, OwnableUpgradeable {
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+}
+```
+
+**Keep pools non-upgradeable** (more secure once deployed).
+
+---
+
+### **13. Missing Emergency Stop for Entire Platform**
+
+You have pause on individual pools, but no **global circuit breaker**.
+
+If critical bug found across all pools:
+- Must pause each one individually
+- Slow response time
+- Exploit could drain multiple pools
+
+**FIX:** Add global pause in Factory:
+
+```solidity
+bool public globalPaused;
+
+modifier whenNotGloballyPaused() {
+    require(!globalPaused, "Platform paused");
+    _;
+}
+
+// In TokenFactory
+function createToken(...) external whenNotGloballyPaused { ... }
+```
+
+---
+
+## **ECONOMIC CONCERNS** 💰
+
+### **14. TWAP Buyback Price Manipulation**
+
+```solidity
+router.swapExactETHForTokens{value: twapBuybackAmount}(
+    0, // Accept any amount (TWAP smooths price) ← ❌ DANGER!
+    path,
+    address(this),
+    deadline
+);
+```
+
+**PROBLEM:** `minAmountOut = 0` means you accept **ANY price**, even if heavily manipulated.
+
+Attacker can:
+1. See TWAP buyback coming
+2. Buy all GEM tokens (price goes up 100x)
+3. Your buyback executes at 100x price (you get 1% of expected GEM)
+4. Attacker dumps GEM
+5. **You wasted 99% of buyback budget**
+
+**FIX:** Use TWAP price from oracle:
+
+```solidity
+// Get TWAP price from DEX over last N blocks
+uint256 twapPrice = getGemKasTWAP(twapPeriod);
+uint256 minGemOut = twapBuybackAmount * twapPrice * 95 / 100; // 5% slippage
+
+router.swapExactETHForTokens{value: twapBuybackAmount}(
+    minGemOut, // Protect against manipulation
+    path,
+    address(this),
+    deadline
+);
+```
+
+---
+
+### **15. Creator Fee Could Be Zero**
+
+Nothing prevents:
+```solidity
+CREATOR_FEE_BPS = 0; // Creator gets nothing!
+```
+
+Is this intentional? Seems like you'd always want *some* creator incentive.
+
+**RECOMMENDATION:** Enforce minimum:
+```solidity
+require(_creatorFeeBps >= 25 && _creatorFeeBps <= 100, "Fee must be 0.25-1%");
+```
+
+---
+
+## **IMPLEMENTATION GAPS** 🔧
+
+### **16. Missing Anti-Bot Time Delays**
+
+You mention "time-weighted purchase limits" but show no code for it.
+
+**NEEDED:**
+```solidity
+mapping(address => uint256) public lastPurchaseTime;
+uint256 public constant PURCHASE_COOLDOWN = 10 seconds;
+
+function buyTokens() external payable {
+    require(
+        block.timestamp >= lastPurchaseTime[msg.sender] + PURCHASE_COOLDOWN,
+        "Cooldown active"
+    );
+    lastPurchaseTime[msg.sender] = block.timestamp;
+    // ... rest
+}
+```
+
+But wait, this is in your `Phase 1` plan. Make sure it's actually implemented!
+
+---
+
+### **17. No Event for Price Updates**
+
+Your events are missing a critical one:
+
+```solidity
+event PriceUpdate(uint256 newPrice, uint256 totalRaised, uint256 remainingTokens);
+```
+
+Without this, frontend has to manually calculate price after every trade.
+
+---
+
+### **18. LP Token Handling Unclear**
+
+```solidity
+router.addLiquidityETH{...}(
+    ...
+    treasury, // LP tokens recipient (can burn or lock)
+    ...
+);
+```
+
+**QUESTION:** What does treasury DO with LP tokens?
+
+**Options:**
+1. **Burn them** → Liquidity locked forever (good for trust)
+2. **Lock in timelock** → Can remove liquidity after N months (bad for trust)
+3. **Send to DAO** → Community decides (complex governance)
+
+**RECOMMENDATION:** Burn LP tokens immediately:
+
+```solidity
+(,, uint256 liquidity) = router.addLiquidityETH{...}(
+    ...
+    address(this), // Receive LP tokens here
+    ...
+);
+
+// Burn them
+IERC20(lpTokenAddress).transfer(address(0xdead), liquidity);
+emit LPTokensBurned(liquidity);
+```
+
+---
+
+## **TESTING GAPS** 🧪
+
+### **19. Missing Fuzz Test Cases**
+
+Your fuzz tests should include:
+
+```solidity
+// Missing from plan:
+function testFuzz_WalletCapEnforcement(uint256 amount) public { ... }
+function testFuzz_FeeCalculation(uint256 kas) public { ... }
+function testFuzz_GraduationAtEdgeCases(uint256 raised) public { ... }
+function testFuzz_ReentrancyAttack(address attacker) public { ... }
+```
+
+---
+
+### **20. No Chaos/Failure Testing**
+
+Your Phase 5 mentions "chaos testing" but no details.
+
+**NEEDED:**
+- What if Kaspa Finance DEX is down during graduation?
+- What if RPC fails mid-transaction?
+- What if gas prices spike 100x?
+- What if graduation tx runs out of gas?
+
+**Add failure scenario tests:**
+```javascript
+describe("Failure Scenarios", () => {
+  it("Should handle DEX failure gracefully", async () => {
+    // Mock router failure
+    await router.setFailNextCall(true);
+    await expect(graduationController.graduate(token)).to.be.reverted;
+  });
+});
+```
+
+---
+
+## **POSITIVE ASPECTS** ✅
+
+What you got RIGHT:
+
+1. ✅ **Bonding curve supply split (75/25)** - Industry standard
+2. ✅ **ReentrancyGuard usage** - Critical protection
+3. ✅ **Multi-sig treasury** - Good governance
+4. ✅ **Event emission** - Proper indexing
+5. ✅ **Solidity 0.8** - Built-in overflow protection
+6. ✅ **Testnet-first approach** - Smart deployment strategy
+7. ✅ **Comprehensive testing plan** - Unit + integration + fuzz
+8. ✅ **Treasury fee distribution** - Clear and documented
+9. ✅ **TWAP buyback design** - Good tokenomics (fix the execution!)
+10. ✅ **DAO transition plan** - Forward-thinking governance
+
+---
+
+## **FINAL RECOMMENDATIONS** 🎯
+
+### **MUST FIX BEFORE TESTNET:**
+1. ❌ Fix bonding curve math (use constant product)
+2. ❌ Fix fee calculation (avoid double-fee on roundtrips)
+3. ❌ Fix wallet cap bypass (use ERC20 balances + override transfer)
+4. ❌ Fix graduation front-running (auto-graduate in buy tx)
+5. ❌ Fix creator fee pull pattern (avoid reentrancy)
+6. ❌ Add slippage protection to buy/sell
+7. ❌ Fix TWAP buyback slippage (use price oracle)
+
+### **MUST FIX BEFORE MAINNET:**
+8. ❌ Add global pause mechanism
+9. ❌ Clarify LP token handling (burn or lock)
+10. ❌ Add minimum liquidity check for graduation
+11. ❌ Implement all anti-bot mechanisms (not just plan them)
+12. ❌ Add comprehensive failure scenario tests
+
+### **NICE TO HAVE:**
+13. ⚠️ Consider proxy pattern for Factory (emergency fixes)
+14. ⚠️ Add price update events
+15. ⚠️ Document exact LP token burn process
+
+---
+
+## **SECURITY SCORE: 6/10** ⚠️
+
+**Current state:** Good foundation, critical bugs need fixing
+
+**After fixes:** Could be 9/10
+
+**Recommendation:** Do NOT deploy to mainnet without external audit AND fixing all critical issues above.
+
+---
+
+Want me to help you implement the fixes for any of these issues?
