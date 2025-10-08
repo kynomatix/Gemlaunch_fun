@@ -907,42 +907,106 @@ function graduate(address tokenAddress) external nonReentrant {
 }
 ```
 
-#### Step 3: Kaspa Finance Pool Creation
+#### Step 3: Kaspa Finance Pool Creation (Uniswap V3 Architecture)
+
+**Important**: Kaspa Finance uses Uniswap V3 architecture with concentrated liquidity. For graduation liquidity, we use **full-range positions** to ensure liquidity is always active.
+
 ```solidity
 function addLiquidityToKaspaFinance(
     address token,
     uint256 tokenAmount,
     uint256 kasAmount
 ) internal {
-    IKaspaFinanceRouter router = IKaspaFinanceRouter(kaspaFinanceRouter);
+    // Get Kaspa Finance position manager (Uniswap V3 style)
+    INonfungiblePositionManager positionManager = INonfungiblePositionManager(kaspaFinancePositionManager);
     
-    // Approve router
-    IERC20(token).approve(address(router), tokenAmount);
+    // Approve position manager to spend tokens
+    IERC20(token).approve(address(positionManager), tokenAmount);
     
-    // Add liquidity
-    router.addLiquidityETH{value: kasAmount}(
-        token,
-        tokenAmount,
-        tokenAmount * 95 / 100, // 5% slippage
-        kasAmount * 95 / 100,
-        treasury, // LP tokens recipient (can burn or lock)
-        block.timestamp + 300
-    );
+    // Wrap KAS to WKAS for pool
+    IWKAS wkas = IWKAS(kaspaFinanceWKAS);
+    wkas.deposit{value: kasAmount}();
+    wkas.approve(address(positionManager), kasAmount);
+    
+    // Determine token ordering (token0 < token1)
+    (address token0, address token1) = token < address(wkas) 
+        ? (token, address(wkas)) 
+        : (address(wkas), token);
+    (uint256 amount0, uint256 amount1) = token < address(wkas)
+        ? (tokenAmount, kasAmount)
+        : (kasAmount, tokenAmount);
+    
+    // Create full-range position on 0.25% fee tier
+    INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
+        token0: token0,
+        token1: token1,
+        fee: 2500,              // 0.25% fee tier (tightest spreads for initial liquidity)
+        tickLower: -887220,     // Full range lower bound (minimum tick)
+        tickUpper: 887220,      // Full range upper bound (maximum tick)
+        amount0Desired: amount0,
+        amount1Desired: amount1,
+        amount0Min: amount0 * 95 / 100,  // 5% slippage protection
+        amount1Min: amount1 * 95 / 100,  // 5% slippage protection
+        recipient: treasury,    // Treasury receives NFT position
+        deadline: block.timestamp + 300
+    });
+    
+    // Mint the position (returns NFT tokenId)
+    (uint256 tokenId,,,) = positionManager.mint(params);
+    
+    emit LiquidityAddedToKaspaFinance(token, tokenId, tokenAmount, kasAmount);
 }
 ```
 
-### Kaspa Finance Router Interface
+**Why Full Range + 0.25% Fee Tier?**
+- ✅ **Full range (-887220 to 887220)**: Liquidity is ALWAYS active regardless of price movement
+- ✅ **0.25% fee tier**: Tightest spreads for initial liquidity, best user experience
+- ✅ **Users can add custom ranges**: Community can add concentrated liquidity to other tiers (0.05%, 0.3%, 1%) if desired
+- ✅ **NFT position**: Treasury holds position NFT for potential future management
+
+### Kaspa Finance Interfaces (Uniswap V3 Compatible)
 ```solidity
-interface IKaspaFinanceRouter {
-    function addLiquidityETH(
-        address token,
-        uint256 amountTokenDesired,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
-        address to,
-        uint256 deadline
-    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
+interface INonfungiblePositionManager {
+    struct MintParams {
+        address token0;
+        address token1;
+        uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+        uint256 amount0Min;
+        uint256 amount1Min;
+        address recipient;
+        uint256 deadline;
+    }
+    
+    function mint(MintParams calldata params)
+        external
+        payable
+        returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        );
 }
+
+interface IWKAS {
+    function deposit() external payable;
+    function approve(address spender, uint256 amount) external returns (bool);
+}
+```
+
+**Contract Addresses (TO BE PROVIDED BY KASPA FINANCE TEAM)**:
+```solidity
+// TESTNET
+address public constant KASPA_FINANCE_POSITION_MANAGER = 0x0000000000000000000000000000000000000000; // TODO
+address public constant KASPA_FINANCE_FACTORY = 0x0000000000000000000000000000000000000000; // TODO
+address public constant KASPA_FINANCE_WKAS = 0x0000000000000000000000000000000000000000; // TODO
+
+// MAINNET  
+// TBD - Contact Kaspa Finance team: https://t.me/KaspaFinanceIO
 ```
 
 ---
@@ -1571,9 +1635,15 @@ function withdrawPlatformFees() external nonReentrant {
 6. ⏳ **Write comprehensive tests** - Unit + integration + fuzz
 
 ### Research Questions
-- [ ] Kaspa Finance router contract address on testnet/mainnet
-- [ ] Kaspa Finance LP token handling (burn vs lock)
-- [ ] Kaspa Finance pool creation fee structure
+- [ ] **Kaspa Finance contract addresses** (CRITICAL - Required before deployment):
+  - INonfungiblePositionManager address (testnet + mainnet)
+  - Factory address (testnet + mainnet)
+  - WKAS (Wrapped KAS) address (testnet + mainnet)
+  - Contact: https://t.me/KaspaFinanceIO
+- [ ] **Kaspa Finance V3 pool creation**:
+  - Confirm 0.25% fee tier (2500 basis points) exists
+  - Verify full-range position support (-887220 to 887220)
+  - Pool initialization requirements (if any)
 - [ ] Multi-sig wallet setup (Gnosis Safe on Kasplex?)
 - [ ] Audit firm selection and timeline
 
