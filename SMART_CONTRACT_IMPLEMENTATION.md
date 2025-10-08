@@ -289,7 +289,7 @@ address public treasury;
 - Distributes fees according to pitch deck model:
   - 40% Platform Development
   - 30% GEM Buyback Reserve (accumulates until TGE, then TWAP buybacks)
-  - 20% Network Support (validators, infrastructure)
+  - 20% GemFoundation (ecosystem support, future DAO-controlled)
   - 10% Community Rewards (airdrops, incentives)
 - Multi-sig withdrawal controls
 - Optional vesting schedules for team/contributors
@@ -300,7 +300,7 @@ address public treasury;
 // Treasury wallet addresses
 address public platformDevelopmentWallet;
 address public buybackReserveWallet; // Accumulates KAS until GEM TGE
-address public networkSupportWallet;
+address public gemFoundationWallet;  // Ecosystem support (future DAO-controlled)
 address public communityRewardsWallet;
 
 // Fee tracking
@@ -308,10 +308,10 @@ uint256 public constant PLATFORM_FEE_BPS = 100; // 1% in basis points
 uint256 public totalFeesCollected;
 
 // Distribution percentages (in basis points)
-uint256 public constant DEV_SHARE = 4000;      // 40%
-uint256 public constant BUYBACK_SHARE = 3000;  // 30% (accumulates, then TWAP)
-uint256 public constant NETWORK_SHARE = 2000;  // 20%
-uint256 public constant COMMUNITY_SHARE = 1000; // 10%
+uint256 public constant DEV_SHARE = 4000;         // 40%
+uint256 public constant BUYBACK_SHARE = 3000;     // 30% (accumulates, then TWAP)
+uint256 public constant FOUNDATION_SHARE = 2000;  // 20% (future DAO)
+uint256 public constant COMMUNITY_SHARE = 1000;   // 10%
 
 // TWAP Buyback (activated post-TGE)
 bool public twapBuybackEnabled;
@@ -330,15 +330,32 @@ function distributeFees() external nonReentrant {
     
     uint256 devAmount = balance * DEV_SHARE / 10000;
     uint256 buybackAmount = balance * BUYBACK_SHARE / 10000;
-    uint256 networkAmount = balance * NETWORK_SHARE / 10000;
+    uint256 foundationAmount = balance * FOUNDATION_SHARE / 10000;
     uint256 communityAmount = balance * COMMUNITY_SHARE / 10000;
     
     payable(platformDevelopmentWallet).transfer(devAmount);
     payable(buybackReserveWallet).transfer(buybackAmount); // Accumulates until TGE
-    payable(networkSupportWallet).transfer(networkAmount);
+    payable(gemFoundationWallet).transfer(foundationAmount); // Public, transparent accumulation
     payable(communityRewardsWallet).transfer(communityAmount);
     
-    emit FeesDistributed(devAmount, buybackAmount, networkAmount, communityAmount);
+    emit FeesDistributed(devAmount, buybackAmount, foundationAmount, communityAmount);
+}
+```
+
+**GemFoundation Governance (Future DAO Integration)**:
+```solidity
+// Placeholder for future DAO governance
+address public foundationDAO; // Will be set when DAO is deployed
+
+// Transfer Foundation control to DAO (one-time, irreversible)
+function transferFoundationToDAO(address _daoAddress) external onlyOwner {
+    require(foundationDAO == address(0), "DAO already set");
+    require(_daoAddress != address(0), "Invalid DAO address");
+    
+    foundationDAO = _daoAddress;
+    // Future: Foundation funds controlled by DAO votes
+    
+    emit FoundationTransferredToDAO(_daoAddress);
 }
 ```
 
@@ -766,10 +783,11 @@ manticore contracts/BondingCurvePool.sol
 - [ ] **Create Gemlaunch Treasury Wallets** (multi-sig recommended):
   - [ ] Platform Development Wallet (receives 40% of fees)
   - [ ] GEM Buyback Reserve Wallet (receives 30% - accumulates until GEM TGE)
-  - [ ] Network Support Wallet (receives 20% of fees)
+  - [ ] **GemFoundation Wallet** (receives 20% - public, transparent, future DAO-controlled)
   - [ ] Community Rewards Wallet (receives 10% of fees)
 - [ ] Configure multi-sig with 2-of-3 or 3-of-5 threshold
 - [ ] Document all wallet addresses and signers
+- [ ] **Publicly announce GemFoundation wallet address** for transparency
 - [ ] Test multi-sig transaction flow on testnet
 
 #### Post-GEM TGE: TWAP Buyback Activation
@@ -780,6 +798,13 @@ manticore contracts/BondingCurvePool.sol
 - [ ] Set buyback amount per period
 - [ ] Set up automated keeper/bot to call `executeTWAPBuyback()` periodically
 - [ ] Monitor buyback execution and GEM burn events
+
+#### Future: GemFoundation DAO Transition
+- [ ] Design and deploy DAO governance contracts
+- [ ] Create proposal/voting mechanism
+- [ ] Call `transferFoundationToDAO()` to transfer control
+- [ ] Test DAO-controlled fund allocation
+- [ ] Document DAO governance process for community
 
 #### Smart Contract Deployment
 - [ ] Configure Hardhat for Kasplex testnet (Chain ID: 167012)
