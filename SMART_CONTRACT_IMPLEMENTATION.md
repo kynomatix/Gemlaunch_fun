@@ -10,11 +10,13 @@ This document outlines the implementation plan for integrating Kasplex zkEVM blo
 **Security Priority**: CRITICAL - contracts will hold real money
 
 ### Fee Structure
-**Total Trading Fees: 1.5%**
-- **1% Platform Fee** → Treasury (distributed: 40% dev, 30% buyback, 20% network, 10% community)
-- **0.5% Creator Fee** → Accumulated and paid to token creator at graduation
-
-**Note**: Creator fee is configurable via `CREATOR_FEE_BPS` constant (currently 50 basis points = 0.5%)
+**Total Trading Fees: 1%**
+- **Platform Fee (90%)**: 0.9% of trade value → Treasury
+  - 40% Platform Development (0.36% of trade)
+  - 30% GEM Buyback & Burn (0.27% of trade)
+  - 15% Kaspa Network Support (0.135% of trade)
+  - 5% Community Rewards (0.045% of trade)
+- **Creator Fee (10%)**: 0.1% of trade value → Accumulated and claimable by token creator
 
 ---
 
@@ -147,13 +149,30 @@ bool public graduated;
 bool public graduating; // Lock flag during graduation
 ```
 
-**Constructor**:
+**Constructor** (AUDIT FIX v3 - Initialize Virtual Reserves):
 ```solidity
-constructor(address _creator, address _treasury) {
+constructor(
+    string memory name,
+    string memory symbol,
+    uint256 totalSupply,
+    address _creator,
+    address _treasury
+) ERC20(name, symbol) {
     require(_creator != address(0), "Invalid creator");
     require(_treasury != address(0), "Invalid treasury");
+    
     creator = _creator;
     treasury = _treasury;
+    
+    // Mint total supply to contract
+    _mint(address(this), totalSupply);
+    
+    // CRITICAL: Initialize virtual reserves to prevent division by zero
+    uint256 curveSupply = totalSupply * CURVE_SUPPLY_PCT / 100; // 75%
+    virtualTokenReserve = curveSupply;
+    virtualKasReserve = 0.001 ether; // 0.001 KAS virtual seed for initial pricing
+    
+    // LP tokens (25%) stay in contract, not in virtualTokenReserve
 }
 ```
 
@@ -206,51 +225,98 @@ function _safeSend(address to, uint256 amount) private {
     require(success, "Transfer failed");
 }
 
-**Sell Function** (AUDIT FIX v2 - Virtual Reserve Pattern):
+**Sell Function** (AUDIT FIX v3 - Fee on Input, Symmetric with Buy):
 ```solidity
 function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) external nonReentrant {
     require(!graduated && !graduating, "Token graduated or graduating");
     require(block.timestamp <= deadline, "Transaction expired");
     require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
     
-    // Calculate KAS output using virtual reserves
-    uint256 kasOut = quoteSell(tokenAmount);
+    // AUDIT FIX: Fee on INPUT (tokens) for symmetry with buy
+    uint256 totalFees = tokenAmount * TOTAL_FEE_BPS / 10000; // 1% of tokens
+    uint256 creatorFee = totalFees * CREATOR_SHARE_BPS / 10000; // 10% of fees
+    uint256 platformFee = totalFees - creatorFee; // 90% of fees
+    uint256 tradeTokens = tokenAmount - totalFees;
     
-    // Calculate fees: 1% total
-    uint256 totalFees = kasOut * TOTAL_FEE_BPS / 10000; // 1% total
-    uint256 creatorFee = totalFees * CREATOR_SHARE_BPS / 10000; // 10% of fees = 0.1% of trade
-    uint256 platformFee = totalFees - creatorFee; // 90% of fees = 0.9% of trade
-    uint256 netKasOut = kasOut - totalFees;
+    // Calculate KAS output using trade tokens (after fees)
+    uint256 kasOut = quoteSell(tradeTokens);
     
-    // AUDIT FIX: Slippage protection on NET amount user receives
-    require(netKasOut >= minKasOut, "Slippage too high");
+    // AUDIT FIX: Slippage protection on KAS received
+    require(kasOut >= minKasOut, "Slippage too high");
+    
+    // Minimum trade check
+    require(kasOut >= MIN_TRADE_AMOUNT, "Below minimum trade");
     
     // Update virtual reserves FIRST (CEI pattern)
-    virtualTokenReserve += tokenAmount;
-    virtualKasReserve -= kasOut; // Full amount leaves virtual reserve
+    virtualTokenReserve += tradeTokens; // Only trade tokens enter reserve
+    virtualKasReserve -= kasOut;
     
-    // Store fees separately
-    accumulatedPlatformFees += platformFee;
-    accumulatedCreatorFees += creatorFee;
+    // Convert fee tokens to KAS value for accounting (optional, or keep as tokens)
+    uint256 feeKasValue = quoteSell(totalFees);
+    accumulatedPlatformFees += (feeKasValue * 90) / 100;
+    accumulatedCreatorFees += (feeKasValue * 10) / 100;
     
-    // Transfer tokens back to pool
+    // Transfer ALL tokens back to pool (including fee tokens)
     _transfer(msg.sender, address(this), tokenAmount);
     
-    // Send net KAS to user
-    _safeSend(msg.sender, netKasOut);
+    // Send KAS to user
+    _safeSend(msg.sender, kasOut);
     
     emit TokensSold(msg.sender, tokenAmount, kasOut, platformFee, creatorFee);
 }
 ```
 
-**Wallet Cap Enforcement** (AUDIT FIX v2 - Cooldown + Circulating Supply):
+---
+
+### AUDIT FIX v3 Updates (Critical Fixes)
+
+**C-1: Virtual Reserve Initialization** ✅
+- Added proper constructor initialization with 0.001 KAS virtual seed
+- Prevents division by zero on first trade
+- Clear separation: 75% to virtualTokenReserve, 25% for LP
+
+**C-2: Symmetric Fee Calculation** ✅
+- Buy: Fee on INPUT (KAS)
+- Sell: Fee on INPUT (tokens) - NOW SYMMETRIC
+- Eliminates round-trip asymmetry
+- Fee tokens converted to KAS value for unified accounting
+
+**C-3: Graduation Check Timing** ✅
+- Reserves updated FIRST (CEI pattern)
+- Graduation checked AFTER update (uses actual new state)
+- Eliminates premature graduation risk
+
+**C-4: Correct LP Reserve Split** ✅
+- ALL virtualKasReserve goes to LP (~75 KAS)
+- 25% of total supply (reserved tokens) go to LP
+- Unsold curve tokens burned
+- Correct economic model
+
+**H-1: Minimum Trade Amount** ✅
+- 0.001 KAS minimum enforced
+- Prevents dust attacks and rounding exploits
+- Applied to both buy and sell
+
+**H-2: Enhanced Transfer Cooldown** ✅
+- Cooldown tracks BOTH sender and receiver
+- Prevents flash loan and multi-wallet bypass
+- 5-minute window enforced
+
+**H-3: Balance Verification** ✅
+- Graduation verifies sufficient balance
+- Fee withdrawals respect reserve requirements
+- Invariant: balance >= virtualKasReserve + accumulated fees
+
+---
+
+**Wallet Cap Enforcement** (AUDIT FIX v3 - Enhanced Cooldown):
 ```solidity
 mapping(address => uint256) public lastTransferTime;
 uint256 public constant TRANSFER_COOLDOWN = 5 minutes;
 
-// Override _transfer to enforce wallet cap + cooldown
+// Override _transfer to enforce wallet cap + bidirectional cooldown
 function _transfer(address from, address to, uint256 amount) internal override {
-    if (!graduated && to != address(this)) {
+    if (!graduated && from != address(this) && to != address(this)) {
         // Circulating supply = total - contract holdings
         uint256 circulating = totalSupply() - balanceOf(address(this));
         
@@ -260,14 +326,18 @@ function _transfer(address from, address to, uint256 amount) internal override {
             "Exceeds 10% wallet cap"
         );
         
-        // AUDIT FIX: Add cooldown to prevent flash loan / multi-wallet Sybil
-        if (from != address(this)) { // Exempt buys from pool
-            require(
-                block.timestamp >= lastTransferTime[to] + TRANSFER_COOLDOWN,
-                "Transfer cooldown active"
-            );
-            lastTransferTime[to] = block.timestamp;
-        }
+        // AUDIT FIX v3: Bidirectional cooldown (sender AND receiver)
+        require(
+            block.timestamp >= lastTransferTime[from] + TRANSFER_COOLDOWN,
+            "Sender cooldown active"
+        );
+        require(
+            block.timestamp >= lastTransferTime[to] + TRANSFER_COOLDOWN,
+            "Receiver cooldown active"
+        );
+        
+        lastTransferTime[from] = block.timestamp;
+        lastTransferTime[to] = block.timestamp;
     }
     super._transfer(from, to, amount);
 }
@@ -287,13 +357,22 @@ function claimCreatorFees() external nonReentrant {
     emit CreatorFeeClaimed(creator, amount);
 }
 
-// Platform fee withdrawal (ONLY treasury)
+// Platform fee withdrawal (AUDIT FIX v3 - Balance Verification)
 function withdrawPlatformFees() external nonReentrant {
     require(msg.sender == treasury, "Only treasury");
     require(accumulatedPlatformFees > 0, "No fees to withdraw");
     
+    // CRITICAL: Ensure contract has enough balance after reserving for graduation
+    uint256 withdrawable = address(this).balance - virtualKasReserve;
     uint256 amount = accumulatedPlatformFees;
-    accumulatedPlatformFees = 0;
+    
+    // Can only withdraw what's actually available
+    if (amount > withdrawable) {
+        amount = withdrawable;
+    }
+    
+    require(amount > 0, "Insufficient withdrawable balance");
+    accumulatedPlatformFees -= amount;
     
     _safeSend(treasury, amount);
     emit PlatformFeesWithdrawn(amount);
@@ -315,7 +394,7 @@ function rescueStuckCreatorFees(address newRecipient) external onlyAdmin afterTi
 }
 ```
 
-**Graduation Execution** (AUDIT FIX v2 - Atomic, Lock-Before-Transfer):
+**Graduation Execution** (AUDIT FIX v3 - Correct LP Split + Balance Verification):
 ```solidity
 // Internal graduation execution (called atomically within buyTokens)
 function _executeGraduation() internal {
@@ -324,23 +403,29 @@ function _executeGraduation() internal {
     // Mark graduated (locks all future trading)
     graduated = true;
     
-    // Snapshot reserves for LP creation
+    // ALL virtualKasReserve goes to LP
     uint256 kasForLP = virtualKasReserve;
-    uint256 tokensForLP = virtualTokenReserve;
     
-    // Calculate 75/25 split for LP
-    uint256 curveKas = kasForLP * 75 / 100;
-    uint256 lpKas = kasForLP * 25 / 100;
-    uint256 lpTokens = tokensForLP; // All remaining tokens go to LP
+    // CRITICAL: Verify contract has sufficient balance for graduation
+    require(address(this).balance >= kasForLP, "Insufficient balance for graduation");
+    
+    // LP gets the 25% reserved tokens (NOT from virtualTokenReserve)
+    uint256 lpTokens = totalSupply() * LP_SUPPLY_PCT / 100;
+    
+    // Burn unsold curve tokens (from the 75% allocation)
+    uint256 unsoldCurveTokens = virtualTokenReserve;
+    if (unsoldCurveTokens > 0) {
+        _burn(address(this), unsoldCurveTokens);
+    }
     
     // Transfer graduation data to controller
-    IGraduationController(graduationController).graduateToken{value: lpKas}(
+    IGraduationController(graduationController).graduateToken{value: kasForLP}(
         address(this),
         lpTokens,
-        curveKas
+        kasForLP
     );
     
-    emit TokenGraduated(address(this), kasForLP, tokensForLP, block.timestamp);
+    emit TokenGraduated(address(this), kasForLP, lpTokens, block.timestamp);
 }
 
 // View function to check if ready to graduate
@@ -1055,10 +1140,23 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - Public: buy/sell (with slippage + deadline protection)
 
 ### Audit Results
-- **Round 1**: Claude (20 findings), ChatGPT (15 findings)
-- **Round 2**: Claude (4 critical), ChatGPT (3 critical)
-- **Total Critical Fixes**: 7 architectural changes
-- **Status**: Production-ready pending external audit
+- **Round 1**: Claude (20 findings), ChatGPT (15 findings) - Initial architecture
+- **Round 2**: Claude (7 critical) - Virtual reserves v2 fixes
+- **Round 3**: Claude (4 critical, 6 high) - Implementation details v3
+- **Total Critical Fixes**: 18 across all rounds
+- **Status**: Testnet-ready pending final validation
+
+### v3 Fixes Summary (Latest Round)
+**Critical Fixes:**
+1. Virtual reserve initialization (0.001 KAS seed)
+2. Symmetric fee calculation (fee on input for both buy/sell)
+3. CEI-compliant graduation check (reserves updated first)
+4. Correct LP split (ALL KAS + 25% tokens to LP, burn unsold)
+
+**High Priority Fixes:**
+1. 0.001 KAS minimum trade amount
+2. Bidirectional transfer cooldown (sender + receiver)
+3. Balance verification for fee withdrawals
 
 ---
 
@@ -1103,12 +1201,23 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - [ ] Verify contracts on block explorer
 - [ ] Test treasury fee distribution function
 - [ ] Test end-to-end token creation with fee collection
+**V3 Audit Fixes Validation:**
+- [ ] Test virtual reserve initialization (0.001 KAS seed prevents division by zero)
+- [ ] Verify symmetric fee calculation (fee on INPUT for both buy and sell)
+- [ ] Test CEI pattern: reserves updated BEFORE graduation check
+- [ ] Verify correct LP split: ALL virtualKasReserve + 25% tokens to LP, burn unsold
+- [ ] Test 0.001 KAS minimum trade amount enforcement
+- [ ] Verify bidirectional transfer cooldown (both sender and receiver)
+- [ ] Test balance verification in fee withdrawal (respects virtualKasReserve)
+- [ ] Verify round-trip buy→sell symmetry (1% each way = 2% total loss)
+
+**General Validation:**
 - [ ] Test virtual reserve AMM (k = virtualKasReserve * virtualTokenReserve)
 - [ ] Verify fees stored separately (accumulatedPlatformFees, accumulatedCreatorFees)
-- [ ] Test 1.5% total fee doesn't contaminate AMM pricing
+- [ ] Test 1% total fee doesn't contaminate AMM pricing
 - [ ] Verify slippage protection (minTokensOut, minKasOut, deadline)
 - [ ] Test creator fee access control (only creator can claim)
-- [ ] Test platform fee access control (only treasury can withdraw)
+- [ ] Test platform fee withdrawal with balance verification
 - [ ] Verify wallet cap uses circulating supply (not total supply)
 - [ ] Test 5-minute transfer cooldown (prevents flash loans)
 - [ ] Test graduation lock BEFORE _transfer (no reentrancy window)
@@ -1118,7 +1227,6 @@ AMM invariant: k = virtualKasReserve * virtualTokenReserve (pure)
 - [ ] Test LP token verification after graduation
 - [ ] Monitor gas costs and optimize
 - [ ] Verify emergency fee rescue mechanism (timelock + admin)
-- [ ] Test round-trip buy→sell preserves value (within fee tolerance)
 - [ ] Verify treasury fee distribution: 40% dev, 30% buyback, 15% Kaspa, 5% community, 10% creator
 
 ### Mainnet Preparation
