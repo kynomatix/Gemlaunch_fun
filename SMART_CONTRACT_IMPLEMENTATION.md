@@ -157,7 +157,8 @@ uint256 public constant GRADUATION_THRESHOLD = 75e18; // 75 KAS in virtual reser
 uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // Minimum trade size
 
 address public treasury; // Gemlaunch treasury contract
-address public airdropTreasury; // Airdrop Treasury for anti-bot fees
+address public airdropTreasury; // Airdrop Treasury for anti-bot fees (70% of anti-bot fees)
+address public platformDevelopmentWallet; // Platform dev wallet (30% of anti-bot fees)
 address public immutable creator; // Token creator address (immutable)
 
 // AUDIT FIX: Virtual reserves - single source of truth for AMM pricing
@@ -177,7 +178,7 @@ bool public graduated;
 bool public graduating; // Lock flag during graduation
 ```
 
-**Constructor** (AUDIT FIX v4 - Anti-Bot Validation):
+**Constructor** (AUDIT FIX v4 - Anti-Bot Validation + Transparent Split):
 ```solidity
 constructor(
     string memory name,
@@ -186,16 +187,20 @@ constructor(
     address _creator,
     address _treasury,
     address _airdropTreasury,
+    address _platformDevelopmentWallet,
     bool _antiBotEnabled
 ) ERC20(name, symbol) {
     require(_creator != address(0), "Invalid creator");
     require(_treasury != address(0), "Invalid treasury");
     require(_airdropTreasury != address(0), "Invalid airdrop treasury");
+    require(_platformDevelopmentWallet != address(0), "Invalid platform wallet");
     require(_airdropTreasury != address(this), "Airdrop treasury cannot be self");
+    require(_platformDevelopmentWallet != address(this), "Platform wallet cannot be self");
     
     creator = _creator;
     treasury = _treasury;
     airdropTreasury = _airdropTreasury;
+    platformDevelopmentWallet = _platformDevelopmentWallet;
     antiBotEnabled = _antiBotEnabled;
     
     // AUDIT FIX: Only set deploymentTime if anti-bot enabled
@@ -225,7 +230,7 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
     uint256 remainingValue = msg.value;
     uint256 antiBotFee = 0;
     
-    // AUDIT FIX: Step 1 - Calculate and deduct anti-bot fee FIRST
+    // AUDIT FIX v4: Step 1 - Calculate and deduct anti-bot fee FIRST
     if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
         uint256 elapsed = block.timestamp - deploymentTime;
         // Linear decay: 95% → 1% over 60 seconds
@@ -233,10 +238,18 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
         antiBotFee = msg.value * feePercent / 10000;
         remainingValue = msg.value - antiBotFee;
         
-        // Send anti-bot fee immediately to airdrop treasury
+        // TRANSPARENCY FIX: Split anti-bot fees at contract level (no cross-wallet transfers)
+        uint256 leaderboardFee = antiBotFee * 70 / 100;  // 70% → Airdrop/Leaderboard
+        uint256 platformDevFee = antiBotFee - leaderboardFee; // 30% → Platform Dev
+        
         totalAntiBotFeesCollected += antiBotFee;
-        _safeSend(airdropTreasury, antiBotFee);
+        
+        // Direct routing (clean on-chain flows, no intermediary transfers)
+        _safeSend(airdropTreasury, leaderboardFee);
+        _safeSend(platformDevelopmentWallet, platformDevFee);
+        
         emit AntiBotFeePaid(msg.sender, antiBotFee, elapsed);
+        emit AntiBotFeeSplit(leaderboardFee, platformDevFee); // Transparency event
     }
     
     // AUDIT FIX: Step 2 - Calculate platform/creator fees from REMAINING value
@@ -304,6 +317,11 @@ event AntiBotFeePaid(
     address indexed user,
     uint256 feeAmount,
     uint256 elapsedSeconds
+);
+
+event AntiBotFeeSplit(
+    uint256 leaderboardAmount,
+    uint256 platformDevAmount
 );
 
 event Graduated(address indexed pool, uint256 kasLiquidity, uint256 tokenLiquidity);
@@ -375,16 +393,21 @@ uint256 creatorFee = remainingValue * 10 / 10000;   // 0.1% of remainder
 uint256 tradeAmount = remainingValue - (platformFee + creatorFee);
 ```
 
-**Fee Distribution**:
-- **100% of anti-bot fees → Airdrop Treasury** (transferred immediately via `_safeSend`)
+**Fee Distribution** (ON-CHAIN TRANSPARENT SPLIT):
+- **Anti-bot fees split at contract level** (transparent, no cross-wallet transfers)
+  - **70% → Airdrop Treasury** (leaderboard rewards for top traders/creators)
+  - **30% → Platform Development Wallet** (security audits, infrastructure)
 - Anti-bot fees are SEPARATE from platform fees (0.9%) and creator fees (0.1%)
-- Bot snipes effectively "donate" KAS to the community
+- Bot snipes effectively "donate" KAS: 70% to community, 30% to platform
 
-**Airdrop Treasury Distribution** (OFF-CHAIN - Manual Management):
-- **70% Leaderboard Rewards**: Top traders, creators, and community contributors
-- **30% Team/Dev**: Platform development, security audits, and infrastructure costs
+**Why Split at Contract Level?**
+- ✅ **Transparent**: On-chain flows show exact 70/30 split immediately
+- ✅ **Trustless**: Hardcoded in immutable contract, no manual transfers needed
+- ✅ **Clean Optics**: No funds flowing from airdrop treasury to dev wallet (red flag avoided)
+- ✅ **Auditable**: Anyone can verify the split by reading contract events
 
-**Important**: The smart contract sends 100% of anti-bot fees to the `airdropTreasury` address. The 70/30 split is handled OFF-CHAIN by the platform team through manual distributions based on leaderboard data. This provides flexibility in reward distribution without hardcoding logic in the immutable smart contract.
+**Airdrop Treasury Management** (Manual Distribution):
+The airdrop treasury receives 70% of anti-bot fees. Platform manually distributes to leaderboard winners based on on-chain performance data (trades, volume, community engagement).
 
 **State Variables**:
 ```solidity
@@ -410,7 +433,9 @@ uint256 public totalAntiBotFeesCollected;   // Total historical fees (analytics)
 1. User sends 100 KAS at t=5 seconds
 2. Elapsed = 5s
 3. Fee percent = 9500 - (9400 × 5 / 60) = 8716 bps = 87.16%
-4. Anti-bot fee = 100 × 0.8716 = 87.16 KAS → Airdrop Treasury (immediate transfer)
+4. Anti-bot fee = 100 × 0.8716 = 87.16 KAS (split transparently):
+   ├─ 61.01 KAS (70%) → Airdrop Treasury (leaderboard rewards)
+   └─ 26.15 KAS (30%) → Platform Development Wallet
 5. Remaining = 12.84 KAS
 6. Platform fee = 12.84 × 0.009 = 0.116 KAS (0.9% of remainder)
 7. Creator fee = 12.84 × 0.001 = 0.013 KAS (0.1% of remainder)
@@ -421,7 +446,8 @@ uint256 public totalAntiBotFeesCollected;   // Total historical fees (analytics)
 **Game Theory Analysis**:
 - **Bot Perspective**: Early snipe (t=0) = 95% fee → Get 5% value. Wait 60s = 1% fee → Get 99% value
 - **Rational Choice**: WAIT (anti-bot neutralizes sniping advantage ✓)
-- **Community Benefit**: Failed bot snipes fund rewards (70% leaderboard, 30% team/dev) ✓
+- **Community Benefit**: Failed bot snipes fund ecosystem (70% leaderboard, 30% platform dev) ✓
+- **On-Chain Transparency**: Split happens in contract, no cross-wallet transfers (clean optics) ✓
 
 **Frontend UX Functions**:
 - `getCurrentAntiBotFee(kasAmount)` - Show user exact fee before trade
