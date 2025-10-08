@@ -1,5 +1,26 @@
 # Gemlaunch.fun - Blockchain Smart Contract Implementation Plan
 
+## ⚠️ IMPLEMENTATION NOTES
+
+**CURRENT VERSION**: v4 (AUDIT-APPROVED - Anti-Bot System)
+
+**IMPORTANT**: 
+- Some sections contain historical/outdated code marked with ⚠️ SUPERSEDED
+- Always use the **AUDIT FIX v4** versions for implementation
+- Key functions are clearly labeled with version numbers
+- Ignore any section marked as "SUPERSEDED" or "DO NOT USE"
+
+**Quick Reference - Use These Implementations**:
+- **State Variables**: Line ~131 (AUDIT FIX v4)
+- **Constructor**: Line ~162 (AUDIT FIX v4)
+- **buyTokens()**: Line ~200 (AUDIT FIX v4 - with Anti-Bot)
+- **sellTokens()**: Line ~407 (AUDIT FIX v4)
+- **Events**: Line ~266 (AUDIT FIX v4)
+- **View Functions**: Line ~294 (AUDIT FIX v4)
+- **Anti-Bot Documentation**: Line ~330 (Complete specs)
+
+---
+
 ## Overview
 
 This document outlines the implementation plan for integrating Kasplex zkEVM blockchain smart contracts into gemlaunch.fun to enable real token launches, bonding curve trading, and DEX graduation.
@@ -1598,60 +1619,19 @@ function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) ex
 
 ---
 
-### Priority 2: Fixed Buy Function (Min Trade + Precision)
+### ~~Priority 2: Fixed Buy Function (Min Trade + Precision)~~ ⚠️ SUPERSEDED BY V4
 
-**CORRECTED** - Minimum trade check + direct fee calculation:
+**⚠️ THIS SECTION IS OUTDATED - DO NOT USE**
 
-```solidity
-uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // 0.001 KAS
+**REASON**: This v3 implementation is missing the Anti-Bot System (GEM) logic that was added in v4.
 
-function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant {
-    require(!graduated && !graduating, "Token graduated or graduating");
-    require(block.timestamp <= deadline, "Transaction expired");
-    require(msg.value >= MIN_TRADE_AMOUNT, "Below minimum trade"); // ✅ ADDED
-    
-    // Direct fee calculation (avoids double division rounding)
-    uint256 platformFee = msg.value * 90 / 10000; // 0.9% directly
-    uint256 creatorFee = msg.value * 10 / 10000;  // 0.1% directly
-    uint256 totalFees = platformFee + creatorFee;
-    uint256 tradeAmount = msg.value - totalFees;
-    
-    // Calculate tokens using virtual reserves
-    uint256 tokensOut = quoteBuy(tradeAmount);
-    require(tokensOut >= minTokensOut, "Slippage too high");
-    require(tokensOut > 0, "Insufficient output amount");
-    
-    // CEI Pattern: Update reserves FIRST
-    virtualKasReserve += tradeAmount;
-    virtualTokenReserve -= tokensOut;
-    
-    // Store fees separately
-    accumulatedPlatformFees += platformFee;
-    accumulatedCreatorFees += creatorFee;
-    
-    // Check graduation AFTER reserve update
-    bool shouldGraduate = !graduated && !graduating && virtualKasReserve >= GRADUATION_THRESHOLD;
-    
-    if (shouldGraduate) {
-        graduating = true; // LOCK BEFORE TRANSFERS
-    }
-    
-    // Transfer tokens (wallet cap enforced in _transfer override)
-    _transfer(address(this), msg.sender, tokensOut);
-    
-    emit TokensPurchased(msg.sender, tokensOut, tradeAmount, platformFee, creatorFee);
-    
-    // Execute graduation atomically if flagged
-    if (graduating) {
-        _executeGraduation();
-    }
-}
-```
+**USE INSTEAD**: See **Buy Function (AUDIT FIX v4)** at line 200 for the complete implementation with:
+- ✅ Anti-bot fee logic (95% → 1% decay)
+- ✅ Proper fee calculation order (anti-bot first, then platform/creator from remainder)
+- ✅ View functions for UX
+- ✅ MIN_TRADE_AMOUNT validation
 
-**Improvements:**
-- ✅ Prevents dust attacks (MIN_TRADE_AMOUNT enforced)
-- ✅ Better fee precision (direct calculation)
-- ✅ Creator gets fair share even on small trades
+**This section is kept for historical reference only.**
 
 ---
 
