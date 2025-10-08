@@ -1,0 +1,329 @@
+Here’s a full, professional-grade **audit and technical review** of the *Gemlaunch.fun smart contract suite and development plan*. This is written in the style of a security auditor’s report and includes architecture validation, economic integrity review, and actionable fixes across the Solidity stack and the full deployment pipeline.
+
+---
+
+## 🔍 Executive Summary
+
+**Status:** Review of the proposed architecture and pseudocode for Gemlaunch.fun (Pump.fun-style bonding-curve launchpad on Kasplex zkEVM).
+**Target Environment:** Kasplex zkEVM Testnet → Mainnet
+**Security Priority:** **CRITICAL** — contract will hold user funds (KAS bridged).
+
+### Key Findings
+
+| Severity     | Category                  | Description                                                                                                       |
+| ------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Critical** | Curve Math                | The midpoint pricing mechanism is non-conservative and can cause liquidity divergence and price drift.            |
+| **Critical** | Graduation Race Condition | The graduation process is non-atomic and can be front-run or manipulated between threshold check and LP creation. |
+| **High**     | Fee Accounting            | TotalRaised mis-accounting during sells can result in an underflow or inconsistent graduation state.              |
+| **High**     | ETH/KAS Transfers         | `transfer()` calls can fail due to 2300 gas limit—use low-level `call` with reentrancy guards.                    |
+| **High**     | Slippage                  | buy/sell functions lack user-configurable `minOut`/`deadline`, exposing users to MEV sandwich attacks.            |
+| **Medium**   | Wallet Cap                | Cap is based on totalSupply() instead of circulating supply; exploitable before LP lock.                          |
+| **Medium**   | Creator Fee Push          | Creator fee push at graduation can revert and brick token graduation.                                             |
+| **Medium**   | Router ABI                | Kaspa Finance router interface assumes Uniswap v2 compliance — must be confirmed before mainnet deployment.       |
+| **Low**      | Parameter Governance      | Platform fees are mutable by the owner without a timelock; risk of governance attack.                             |
+
+---
+
+## 🧩 Architecture Validation
+
+The architecture correctly modularizes into:
+
+* **TokenFactory.sol** → Token + Pool deployment
+* **BondingCurvePool.sol** → Trade logic, fee routing, anti-whale mechanics
+* **GraduationController.sol** → DEX migration logic
+* **Treasury/VestingVault.sol** → Fee distribution, buybacks, and DAO transition
+
+The design cleanly separates **economic logic** from **governance**, but the **cross-contract atomicity** between the BondingCurvePool and GraduationController is not yet hardened.
+
+---
+
+## ⚙️ Detailed Contract Analysis
+
+### 1. BondingCurvePool.sol
+
+#### **Critical – Inconsistent Pricing Logic**
+
+The midpoint formula:
+
+```solidity
+tokensPerETH = (remainingTokens - (tokenAmount / 2)) * 1e18 / 
+               (address(this).balance + (ethAmount / 2));
+```
+
+* Fails to conserve value over round-trip buy-sell cycles.
+* Susceptible to division-by-zero and rounding spikes at low liquidity.
+* Encourages arbitrage manipulation if a trader repeatedly buys/sells around threshold points.
+
+**✅ Recommendation:**
+Implement a deterministic **virtual reserve model** (Uniswap v2-like invariant):
+
+```solidity
+k = x * y
+price = Δx / (y - Δy)
+```
+
+Use `getAmountOut` / `getAmountIn` utilities from UniswapV2Math for MEV resilience.
+
+---
+
+#### **High – Fee Accounting Drift**
+
+`totalRaised` is incremented and decremented incorrectly:
+
+```solidity
+totalRaised += tradeAmount; // buy
+totalRaised -= kasRefund;   // sell (pre-fee)
+```
+
+This desynchronizes accounting and can block graduation if totalRaised < threshold after heavy trading.
+
+**✅ Fix:**
+Track two variables:
+
+```solidity
+uint256 public grossRaised; // all deposits
+uint256 public netReserves; // current liquidity
+```
+
+Use `netReserves` for pricing and graduation.
+
+---
+
+#### **High – Unsafe Native Sends**
+
+All `.transfer()` calls can fail under gas-intensive treasury wallets.
+**✅ Fix:** Replace with:
+
+```solidity
+(bool ok, ) = treasury.call{value: amount}("");
+require(ok, "Treasury send failed");
+```
+
+Apply CEI ordering and nonReentrant guard.
+
+---
+
+#### **High – Slippage and Deadline**
+
+Currently, users have no protection against front-running or price jumps.
+
+**✅ Add:**
+
+```solidity
+function buyTokens(uint256 minOut, uint256 deadline) external payable;
+function sellTokens(uint256 tokenAmount, uint256 minOut, uint256 deadline) external;
+```
+
+---
+
+#### **Medium – Wallet Cap Misapplied**
+
+Cap uses total supply instead of circulating supply:
+
+```solidity
+require(balance + tokens <= totalSupply() * MAX_WALLET_PCT / 100)
+```
+
+**✅ Fix:**
+
+```solidity
+uint256 circulating = totalSupply() - balanceOf(address(this));
+```
+
+---
+
+#### **Medium – Creator Fee Push at Graduation**
+
+If the creator address is a contract with a revert-on-receive, graduation can brick.
+
+**✅ Fix:** Switch to pull pattern:
+
+```solidity
+function withdrawCreatorFees() external {
+    require(msg.sender == creator);
+    uint256 amount = creatorFeesAccumulated;
+    creatorFeesAccumulated = 0;
+    _safeSend(msg.sender, amount);
+}
+```
+
+---
+
+### 2. GraduationController.sol
+
+#### **Critical – Non-Atomic Graduation**
+
+Flow:
+
+1. Check threshold
+2. Pay creator
+3. Transfer liquidity
+4. Add to DEX
+5. Lock curve
+
+If a buy occurs between steps 1–3, graduation executes with outdated reserves → exploitable arbitrage.
+
+**✅ Fix:**
+
+* Add `graduating` state flag.
+* First set `graduating = true` and lock all trades.
+* Snapshot reserves and complete LP add atomically.
+* Mark `graduated = true` and emit event.
+
+---
+
+#### **High – Router Assumption Risk**
+
+You assume:
+
+```solidity
+addLiquidityETH(address token, uint amountTokenDesired, ...)
+```
+
+Kaspa Finance router may differ (Kaspa uses WKAS wrapped asset).
+**✅ Fix:** Confirm ABI or wrap with adapter contract.
+
+---
+
+### 3. Treasury/VestingVault.sol
+
+#### **High – TWAP Buyback Risk**
+
+Current implementation executes:
+
+```solidity
+router.swapExactETHForTokens(...)
+IERC20(gemToken).transfer(address(0xdead), balance);
+```
+
+* No price validation → potential to buy at inflated prices.
+* Predictable timing → sandwichable.
+
+**✅ Fix:**
+
+* Integrate on-chain TWAP oracle from Kaspa Finance DEX.
+* Use randomized keeper delay.
+* Introduce buyback spread to smooth volatility.
+
+---
+
+#### **Medium – Unbounded Fee Distribution**
+
+Entire balance is distributed per call, risking gas bloat or uneven timing.
+**✅ Fix:** Implement minimum threshold and partial payouts:
+
+```solidity
+if (balance > MIN_THRESHOLD) distributeProportionally();
+```
+
+---
+
+### 4. TokenFactory.sol
+
+#### **High – Anti-Spam Incomplete**
+
+Without a deployment fee or rate limiter, token spam is trivial.
+**✅ Fix:**
+
+```solidity
+require(msg.value >= CREATE_FEE);
+require(block.timestamp - lastCreate[msg.sender] > 10 minutes);
+```
+
+---
+
+## 🧠 Economic Model Analysis
+
+| Risk                      | Impact                           | Mitigation                         |
+| ------------------------- | -------------------------------- | ---------------------------------- |
+| Curve exploits            | Value leakage to arbitrage bots  | Use deterministic AMM math         |
+| Front-running             | User losses                      | Add slippage + deadline            |
+| Whale capture             | Centralization risk              | Enforce volume limits per block    |
+| Creator fee               | Incentive, but also tax friction | Limit to buys pre-graduation       |
+| Post-grad liquidity crash | De-pegging on listing            | Match LP ratio to last curve price |
+
+---
+
+## 🔒 Access Control
+
+Roles:
+
+* **ADMIN**: Timelock-controlled param changes
+* **GUARDIAN**: Emergency pause only
+* **TREASURY**: Multi-sig wallet
+* **PAUSER**: Limited to pools
+
+Ensure timelock delay (≥24h) for fee parameter changes and router updates.
+
+---
+
+## 🧪 Testing Recommendations
+
+### Add These Properties
+
+| Property    | Purpose                                           |
+| ----------- | ------------------------------------------------- |
+| Invariant 1 | Base + token reserves non-negative                |
+| Invariant 2 | Round-trip buy→sell returns within ±1% after fees |
+| Invariant 3 | totalRaised only increases over time              |
+| Invariant 4 | Graduation only once per pool                     |
+| Invariant 5 | Price continuity under random trade order         |
+
+### Fuzz Tests
+
+* Variable slippage / max wallet combinations
+* Randomized order of buys and sells
+* Simulate threshold-race scenarios
+
+---
+
+## 🧰 Infrastructure & DevOps
+
+* Confirm RPC chain IDs dynamically via `eth_chainId` on init.
+* Multi-endpoint fallback: `kasplextest.xyz` + backup nodes.
+* Configure CI/CD test gating: deploy to testnet → run Hardhat + Foundry integration tests → verify explorer.
+* Implement a **Prometheus watchdog** to monitor:
+
+  * Unexpected pool graduation
+  * Pool with negative balance
+  * Treasury send failures
+
+---
+
+## 🧾 Governance and DAO Transition
+
+GemFoundation DAO migration should follow:
+
+1. Deploy DAO governance contract (GovernorBravo or Tally-compatible).
+2. Call `transferFoundationToDAO()` once.
+3. Freeze owner privileges in Treasury.
+4. Move buyback/reserve control to DAO proposal voting.
+
+---
+
+## ✅ Final Recommendations Summary
+
+| Priority | Action                                              |
+| -------- | --------------------------------------------------- |
+| 🔴       | Replace midpoint curve with invariant-based pricing |
+| 🔴       | Fix fee accounting symmetry                         |
+| 🔴       | Make graduation atomic                              |
+| 🔴       | Add slippage + deadline parameters                  |
+| 🔴       | Replace all `.transfer()` with low-level safe calls |
+| 🟡       | Circulating-supply-based wallet cap                 |
+| 🟡       | Timelock governance for fees                        |
+| 🟡       | Randomized TWAP buyback logic                       |
+| 🟢       | Add deployment anti-spam limits                     |
+| 🟢       | Extend fuzz tests for liquidity invariants          |
+
+---
+
+## 📋 Conclusion
+
+The **Gemlaunch.fun** architecture is well thought out for a launchpad bonding-curve system. However, it must **replace the heuristic midpoint curve**, **fix fee asymmetry**, and **make graduation atomic** before real liquidity is exposed.
+
+With these changes and a formal verification pass (Slither + Manticore + manual invariant proofs), the platform will be suitable for mainnet deployment on Kasplex zkEVM with minimized exploit surface.
+
+---
+
+Would you like me to produce a **line-by-line annotated audit report** (like Trail of Bits style) or a **risk-matrix + remediation tracking table** formatted for internal GitHub issues next?
