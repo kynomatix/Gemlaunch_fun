@@ -380,6 +380,10 @@ uint256 tradeAmount = remainingValue - (platformFee + creatorFee);
 - Anti-bot fees are SEPARATE from platform fees (0.9%) and creator fees (0.1%)
 - Bot snipes effectively "donate" KAS to the community
 
+**Airdrop Treasury Distribution** (off-chain, managed by platform):
+- **70% Leaderboard Rewards**: Top traders, creators, and community contributors
+- **30% Team/Dev**: Platform development, security audits, and infrastructure costs
+
 **State Variables**:
 ```solidity
 bool public antiBotEnabled;                 // Optional per-token
@@ -415,7 +419,7 @@ uint256 public totalAntiBotFeesCollected;   // Total historical fees (analytics)
 **Game Theory Analysis**:
 - **Bot Perspective**: Early snipe (t=0) = 95% fee → Get 5% value. Wait 60s = 1% fee → Get 99% value
 - **Rational Choice**: WAIT (anti-bot neutralizes sniping advantage ✓)
-- **Community Benefit**: Failed bot snipes fund Airdrop Treasury in KAS ✓
+- **Community Benefit**: Failed bot snipes fund rewards (70% leaderboard, 30% team/dev) ✓
 
 **Frontend UX Functions**:
 - `getCurrentAntiBotFee(kasAmount)` - Show user exact fee before trade
