@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
     <title>{% block title %}Gemlaunch.fun{% endblock %}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
@@ -30,6 +31,17 @@
     
     {% block extra_head %}{% endblock %}
     <style>
+        /* View Transitions API - Smooth page transitions */
+        @view-transition {
+            navigation: auto;
+        }
+        
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation-duration: 0.3s;
+            animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
         /* Unified App Layout Styles */
         .app-container {
             display: flex;
