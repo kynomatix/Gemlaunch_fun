@@ -27,7 +27,7 @@ This document outlines the implementation plan for integrating Kasplex zkEVM blo
 Network Name: Kasplex zkEVM Testnet
 RPC URL: https://rpc.kasplextest.xyz
 Chain ID: 167012
-Block Explorer: https://frontend.kasplextest.xyz
+Block Explorer: http://explorer.testnet.kasplextest.xyz
 Native Token: KAS (bridged from Kaspa L1)
 Faucet: 50 KAS every 24 hours (no auth required)
 ```
