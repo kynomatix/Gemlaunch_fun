@@ -155,20 +155,26 @@ bool public graduated;
 bool public graduating; // Lock flag during graduation
 ```
 
-**Constructor** (AUDIT FIX v3 - Initialize Virtual Reserves):
+**Constructor** (AUDIT FIX v3 - Initialize Virtual Reserves + Anti-Bot):
 ```solidity
 constructor(
     string memory name,
     string memory symbol,
     uint256 totalSupply,
     address _creator,
-    address _treasury
+    address _treasury,
+    address _airdropTreasury,
+    bool _antiBotEnabled
 ) ERC20(name, symbol) {
     require(_creator != address(0), "Invalid creator");
     require(_treasury != address(0), "Invalid treasury");
+    require(_airdropTreasury != address(0), "Invalid airdrop treasury");
     
     creator = _creator;
     treasury = _treasury;
+    airdropTreasury = _airdropTreasury;
+    antiBotEnabled = _antiBotEnabled;
+    deploymentTime = block.timestamp; // Record launch time
     
     // Mint total supply to contract
     _mint(address(this), totalSupply);
@@ -224,11 +230,19 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
     // Store fees separately (NOT in reserves)
     accumulatedPlatformFees += platformFee;
     accumulatedCreatorFees += creatorFee;
+    if (antiBotFee > 0) {
+        accumulatedAntiBotFees += antiBotFee;
+        // Transfer anti-bot fees immediately to Airdrop Treasury
+        _safeSend(airdropTreasury, antiBotFee);
+    }
     
     // Transfer tokens (wallet cap enforced in _transfer override)
     _transfer(address(this), msg.sender, tokensOut);
     
     emit TokensPurchased(msg.sender, tokensOut, tradeAmount, platformFee, creatorFee);
+    if (antiBotFee > 0) {
+        emit AntiBotFeePaid(msg.sender, antiBotFee, block.timestamp - deploymentTime);
+    }
     
     // Execute graduation atomically if flagged
     if (graduating) {
@@ -241,6 +255,78 @@ function _safeSend(address to, uint256 amount) private {
     (bool success, ) = payable(to).call{value: amount}("");
     require(success, "Transfer failed");
 }
+
+**Events** (including Anti-Bot):
+```solidity
+event TokensPurchased(address indexed buyer, uint256 tokensOut, uint256 kasIn, uint256 platformFee, uint256 creatorFee);
+event TokensSold(address indexed seller, uint256 tokensIn, uint256 kasOut, uint256 platformFee, uint256 creatorFee);
+event AntiBotFeePaid(address indexed buyer, uint256 antiBotFee, uint256 secondsSinceLaunch);
+event Graduated(address indexed pool, uint256 kasLiquidity, uint256 tokenLiquidity);
+```
+
+---
+
+### 2.2.1 Anti-Bot System (GEM System) - Complete Implementation
+
+**Purpose**: Prevent bot sniping with time-based KAS fee decay that makes instant purchases unprofitable while rewarding patient community members.
+
+**Mechanism**: Linear fee decay from 95% → 1% over 60 seconds after token launch.
+
+**Formula**:
+```solidity
+// Linear decay over 60 seconds
+if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+    uint256 elapsed = block.timestamp - deploymentTime;
+    uint256 feePercent = 9500 - (9400 * elapsed / 60); // 9500 bps = 95%
+    antiBotFee = msg.value * feePercent / 10000;
+}
+
+// Examples:
+// t=0s:  95% fee (9500 bps)
+// t=10s: 79.33% fee (~7933 bps)
+// t=30s: 48% fee (4800 bps)
+// t=60s: 1% fee (100 bps) - normal trading begins
+```
+
+**Fee Distribution**:
+- **100% of anti-bot fees → Airdrop Treasury** (transferred immediately via `_safeSend`)
+- Anti-bot fees are SEPARATE from platform fees (0.9%) and creator fees (0.1%)
+- Bot snipes effectively "donate" KAS to the community
+
+**State Variables**:
+```solidity
+bool public antiBotEnabled;              // Optional per-token
+uint256 public deploymentTime;           // Launch timestamp
+address public airdropTreasury;          // Receives all anti-bot fees
+uint256 public accumulatedAntiBotFees;   // Total anti-bot fees collected
+```
+
+**Security Considerations**:
+1. ✅ **Fee Order**: Anti-bot fee deducted FIRST, then platform/creator fees calculated on remainder
+2. ✅ **Immediate Transfer**: Anti-bot fees sent to treasury immediately (not accumulated)
+3. ✅ **No Reserve Contamination**: Anti-bot fees never enter virtual reserves
+4. ✅ **Optional**: Can be disabled per-token (antiBotEnabled = false)
+5. ✅ **Time-based**: Uses block.timestamp (works with Kaspa's 100ms blocks = 600 blocks in 60s)
+6. ✅ **Event Tracking**: `AntiBotFeePaid` event logs fee amount and elapsed time
+
+**Example Trade Flow** (100 KAS at t=5s):
+```
+1. User sends 100 KAS at t=5 seconds
+2. Elapsed = 5s
+3. Fee percent = 9500 - (9400 × 5 / 60) = 8716 bps = 87.16%
+4. Anti-bot fee = 100 × 0.8716 = 87.16 KAS → Airdrop Treasury
+5. Remaining = 12.84 KAS
+6. Platform fee (0.9%) = 0.116 KAS
+7. Creator fee (0.1%) = 0.013 KAS
+8. Trade amount = 12.71 KAS → Bonding curve
+9. User receives tokens worth 12.71 KAS (paid 100 KAS total)
+```
+
+**Why It Works**:
+- Bots lose ~87-95% trying to snipe at t=0-10s (unprofitable)
+- Humans who wait 60s trade at normal 1% fees
+- Failed bot attempts fund community airdrops
+- Game theory optimal: everyone waits, leveling the playing field
 
 **Sell Function** (AUDIT FIX v3 - Fee on Input, Symmetric with Buy):
 ```solidity
