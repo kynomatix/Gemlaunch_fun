@@ -288,17 +288,18 @@ address public treasury;
 - Collects 1% platform fee from all bonding curve trades
 - Distributes fees according to pitch deck model:
   - 40% Platform Development
-  - 30% GEM Buyback & Burn
+  - 30% GEM Buyback Reserve (accumulates until TGE, then TWAP buybacks)
   - 20% Network Support (validators, infrastructure)
   - 10% Community Rewards (airdrops, incentives)
 - Multi-sig withdrawal controls
 - Optional vesting schedules for team/contributors
+- TWAP buyback mechanism post-GEM TGE
 
 **State Variables**:
 ```solidity
 // Treasury wallet addresses
 address public platformDevelopmentWallet;
-address public buybackBurnWallet;
+address public buybackReserveWallet; // Accumulates KAS until GEM TGE
 address public networkSupportWallet;
 address public communityRewardsWallet;
 
@@ -308,14 +309,20 @@ uint256 public totalFeesCollected;
 
 // Distribution percentages (in basis points)
 uint256 public constant DEV_SHARE = 4000;      // 40%
-uint256 public constant BUYBACK_SHARE = 3000;  // 30%
+uint256 public constant BUYBACK_SHARE = 3000;  // 30% (accumulates, then TWAP)
 uint256 public constant NETWORK_SHARE = 2000;  // 20%
 uint256 public constant COMMUNITY_SHARE = 1000; // 10%
+
+// TWAP Buyback (activated post-TGE)
+bool public twapBuybackEnabled;
+address public gemTokenAddress;
+uint256 public twapPeriod = 24 hours;
+uint256 public twapBuybackAmount; // KAS per period
 
 mapping(address => VestingSchedule) public vesting;
 ```
 
-**Fee Collection Flow**:
+**Fee Distribution Flow**:
 ```solidity
 function distributeFees() external nonReentrant {
     uint256 balance = address(this).balance;
@@ -327,11 +334,59 @@ function distributeFees() external nonReentrant {
     uint256 communityAmount = balance * COMMUNITY_SHARE / 10000;
     
     payable(platformDevelopmentWallet).transfer(devAmount);
-    payable(buybackBurnWallet).transfer(buybackAmount);
+    payable(buybackReserveWallet).transfer(buybackAmount); // Accumulates until TGE
     payable(networkSupportWallet).transfer(networkAmount);
     payable(communityRewardsWallet).transfer(communityAmount);
     
     emit FeesDistributed(devAmount, buybackAmount, networkAmount, communityAmount);
+}
+```
+
+**TWAP Buyback System (Post-TGE)**:
+```solidity
+// Enable TWAP buyback after GEM TGE
+function enableTWAPBuyback(
+    address _gemTokenAddress,
+    uint256 _twapPeriod,
+    uint256 _buybackAmountPerPeriod
+) external onlyOwner {
+    require(!twapBuybackEnabled, "Already enabled");
+    require(_gemTokenAddress != address(0), "Invalid GEM address");
+    
+    gemTokenAddress = _gemTokenAddress;
+    twapPeriod = _twapPeriod;
+    twapBuybackAmount = _buybackAmountPerPeriod;
+    twapBuybackEnabled = true;
+    
+    emit TWAPBuybackEnabled(_gemTokenAddress, _twapPeriod, _buybackAmountPerPeriod);
+}
+
+// Execute TWAP buyback (called periodically after TGE)
+function executeTWAPBuyback() external nonReentrant {
+    require(twapBuybackEnabled, "TWAP not enabled");
+    require(address(buybackReserveWallet).balance >= twapBuybackAmount, "Insufficient reserve");
+    
+    // Use Kaspa Finance router to swap KAS for GEM
+    IKaspaFinanceRouter router = IKaspaFinanceRouter(kaspaFinanceRouter);
+    
+    address[] memory path = new address[](2);
+    path[0] = router.WKAS(); // Wrapped KAS
+    path[1] = gemTokenAddress;
+    
+    uint256 deadline = block.timestamp + 300;
+    
+    // Execute TWAP buyback swap
+    router.swapExactETHForTokens{value: twapBuybackAmount}(
+        0, // Accept any amount (TWAP smooths price)
+        path,
+        address(this), // Treasury receives GEM
+        deadline
+    );
+    
+    // Burn the purchased GEM tokens
+    IERC20(gemTokenAddress).transfer(address(0xdead), IERC20(gemTokenAddress).balanceOf(address(this)));
+    
+    emit TWAPBuybackExecuted(twapBuybackAmount, block.timestamp);
 }
 ```
 
@@ -710,12 +765,21 @@ manticore contracts/BondingCurvePool.sol
 #### Pre-Deployment: Treasury Wallet Setup
 - [ ] **Create Gemlaunch Treasury Wallets** (multi-sig recommended):
   - [ ] Platform Development Wallet (receives 40% of fees)
-  - [ ] GEM Buyback & Burn Wallet (receives 30% of fees)
+  - [ ] GEM Buyback Reserve Wallet (receives 30% - accumulates until GEM TGE)
   - [ ] Network Support Wallet (receives 20% of fees)
   - [ ] Community Rewards Wallet (receives 10% of fees)
 - [ ] Configure multi-sig with 2-of-3 or 3-of-5 threshold
 - [ ] Document all wallet addresses and signers
 - [ ] Test multi-sig transaction flow on testnet
+
+#### Post-GEM TGE: TWAP Buyback Activation
+- [ ] Deploy GEM token on Kasplex zkEVM
+- [ ] Create GEM/KAS liquidity pool on Kaspa Finance
+- [ ] Call `enableTWAPBuyback()` with GEM token address
+- [ ] Set TWAP period (e.g., 24 hours)
+- [ ] Set buyback amount per period
+- [ ] Set up automated keeper/bot to call `executeTWAPBuyback()` periodically
+- [ ] Monitor buyback execution and GEM burn events
 
 #### Smart Contract Deployment
 - [ ] Configure Hardhat for Kasplex testnet (Chain ID: 167012)
