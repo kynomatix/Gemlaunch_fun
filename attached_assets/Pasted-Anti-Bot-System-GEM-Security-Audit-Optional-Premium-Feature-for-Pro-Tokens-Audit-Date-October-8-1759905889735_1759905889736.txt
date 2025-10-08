@@ -1,0 +1,486 @@
+Anti-Bot System (GEM) - Security Audit
+Optional Premium Feature for Pro Tokens
+Audit Date: October 8, 2025
+Feature: Time-based KAS fee decay (95% → 1% over 60 seconds)
+Status: ⚠️ NEEDS CRITICAL FIXES BEFORE DEPLOYMENT
+
+🎯 Executive Summary
+Overall Assessment: 🟡 GOOD CONCEPT, CRITICAL IMPLEMENTATION ISSUES
+The anti-bot mechanism is economically sound and game-theoretically optimal. However, the current implementation has 3 critical issues that must be fixed before deployment:
+
+CRITICAL: Sell function still uses old (broken) token-based fee accounting
+CRITICAL: Anti-bot fee calculation conflicts with existing fee structure
+HIGH: No protection against timestamp manipulation
+MEDIUM: 60-second window too predictable (MEV opportunity)
+
+
+🔴 CRITICAL ISSUES
+C-1: Sell Function Uses OLD BROKEN CODE
+Location: Document shows outdated sell function
+Issue: The sell function in the anti-bot document is the OLD V3 version that was already identified as broken:
+solidity// ❌ THIS IS THE BROKEN V3 CODE (DO NOT USE)
+function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) external nonReentrant {
+    // Fee on INPUT (tokens) - BROKEN ACCOUNTING
+    uint256 totalFees = tokenAmount * TOTAL_FEE_BPS / 10000; // 1% of tokens
+    uint256 tradeTokens = tokenAmount - totalFees;
+    uint256 kasOut = quoteSell(tradeTokens);
+    
+    // Convert fee tokens to KAS value - ❌ HYPOTHETICAL, NOT ACTUAL KAS
+    uint256 feeKasValue = quoteSell(totalFees);
+    accumulatedPlatformFees += (feeKasValue * 90) / 100;
+    accumulatedCreatorFees += (feeKasValue * 10) / 100;
+}
+This was fixed in V4 to:
+solidity// ✅ CORRECT V4 CODE (USE THIS)
+function sellTokens(uint256 tokenAmount, uint256 minKasOut, uint256 deadline) external nonReentrant {
+    // Fee on KAS OUTPUT (not tokens)
+    uint256 kasGross = quoteSell(tokenAmount);
+    uint256 totalFeesKas = kasGross * TOTAL_FEE_BPS / 10000; // 1% of KAS
+    uint256 kasNet = kasGross - totalFeesKas;
+    
+    // Accumulate ACTUAL KAS fees
+    accumulatedPlatformFees += platformFeeKas;
+    accumulatedCreatorFees += creatorFeeKas;
+}
+Fix Required: Update document to use V4 corrected sell function.
+
+C-2: Anti-Bot Fee Calculation Order Conflict
+Location: buyTokens() - Fee calculation sequence
+Issue: The anti-bot fee calculation as described creates a conflict:
+solidity// DESCRIBED FLOW:
+1. Anti-bot fee deducted FIRST (87.16 KAS from 100 KAS)
+2. Remaining = 12.84 KAS
+3. Platform fee (0.9%) = 0.116 KAS from 12.84 KAS
+4. Creator fee (0.1%) = 0.013 KAS from 12.84 KAS
+5. Trade amount = 12.71 KAS
+
+// But where does the 12.84 KAS come from?
+// Current V4 code:
+uint256 platformFee = msg.value * 90 / 10000; // Calculates from FULL msg.value
+uint256 creatorFee = msg.value * 10 / 10000;
+Problem: You can't calculate platform/creator fees from msg.value if anti-bot fee is deducted first!
+Correct Implementation:
+solidityfunction buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant {
+    require(msg.value >= MIN_TRADE_AMOUNT, "Below minimum trade");
+    
+    uint256 remainingValue = msg.value;
+    uint256 antiBotFee = 0;
+    
+    // 1. Calculate and deduct anti-bot fee FIRST
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        uint256 elapsed = block.timestamp - deploymentTime;
+        uint256 feePercent = 9500 - (9400 * elapsed / 60);
+        antiBotFee = msg.value * feePercent / 10000;
+        remainingValue = msg.value - antiBotFee;
+        
+        // Transfer anti-bot fee immediately
+        _safeSend(airdropTreasury, antiBotFee);
+        emit AntiBotFeePaid(msg.sender, antiBotFee, elapsed);
+    }
+    
+    // 2. Calculate platform/creator fees from REMAINING value
+    uint256 platformFee = remainingValue * 90 / 10000; // 0.9% of remainder
+    uint256 creatorFee = remainingValue * 10 / 10000;  // 0.1% of remainder
+    uint256 totalFees = platformFee + creatorFee;
+    uint256 tradeAmount = remainingValue - totalFees;
+    
+    // 3. Rest of buy logic...
+    uint256 tokensOut = quoteBuy(tradeAmount);
+    require(tokensOut >= minTokensOut, "Slippage too high");
+    
+    virtualKasReserve += tradeAmount;
+    virtualTokenReserve -= tokensOut;
+    
+    accumulatedPlatformFees += platformFee;
+    accumulatedCreatorFees += creatorFee;
+    
+    // ... rest of function
+}
+Updated Example (100 KAS at t=5s):
+1. msg.value = 100 KAS
+2. Anti-bot fee = 87.16 KAS → Airdrop Treasury
+3. Remaining = 12.84 KAS
+4. Platform fee = 12.84 * 0.009 = 0.116 KAS
+5. Creator fee = 12.84 * 0.001 = 0.013 KAS
+6. Trade amount = 12.84 - 0.129 = 12.71 KAS
+7. User gets tokens worth 12.71 KAS ✓
+Risk: CRITICAL - Fee accounting will be incorrect without this fix
+
+C-3: Anti-Bot Fee Decimal Precision Loss
+Location: Fee calculation
+Issue: Integer division loses precision:
+solidityuint256 feePercent = 9500 - (9400 * elapsed / 60);
+// At elapsed = 5:
+// 9400 * 5 = 47000
+// 47000 / 60 = 783.33... = 783 (rounds down)
+// feePercent = 9500 - 783 = 8717 (should be 8716.67)
+Better implementation:
+solidity// Use basis point precision throughout
+uint256 feePercent = 9500 - ((9400 * elapsed) / 60);
+// Multiply first, then divide to preserve precision
+Or even better, use 1e18 precision:
+solidityuint256 decayRate = (9400 * 1e18) / 60; // Decay per second with precision
+uint256 feePercent = 9500 - ((decayRate * elapsed) / 1e18);
+Risk: MEDIUM - Small rounding errors accumulate
+
+🟠 HIGH SEVERITY ISSUES
+H-1: Timestamp Manipulation Risk
+Location: Anti-bot timing
+Issue: block.timestamp can be manipulated by validators:
+solidityif (block.timestamp < deploymentTime + 60) {
+    // Validator can manipulate timestamp within ~12 second window
+}
+On Kasplex zkEVM:
+
+Based on Kaspa L1 (100ms blocks)
+Validators have some timestamp flexibility
+Could shift timing by several seconds
+
+Attack Scenario:
+1. Bot sees token deploy at t=0
+2. Bot submits buy at t=62 (expects no anti-bot fee)
+3. Malicious validator sets block.timestamp to t=55
+4. Bot pays 8.3% anti-bot fee instead of 0%
+Mitigation:
+solidity// Option 1: Use block number instead (more reliable)
+uint256 public deploymentBlock;
+uint256 public constant ANTIBOT_BLOCKS = 600; // ~60s at 100ms blocks
+
+if (antiBotEnabled && block.number < deploymentBlock + ANTIBOT_BLOCKS) {
+    uint256 elapsedBlocks = block.number - deploymentBlock;
+    uint256 feePercent = 9500 - (9400 * elapsedBlocks / ANTIBOT_BLOCKS);
+    // ...
+}
+
+// Option 2: Add timestamp bounds check
+require(
+    block.timestamp >= deploymentTime && 
+    block.timestamp <= deploymentTime + 120,
+    "Suspicious timestamp"
+);
+Risk: HIGH - Users could pay unexpected fees
+
+H-2: 60-Second Window Too Predictable
+Location: Anti-bot duration
+Issue: Fixed 60-second window creates MEV opportunity:
+1. Bots monitor mempool
+2. Wait until exactly t=60
+3. Submit hundreds of transactions at t=60
+4. First ~10 get through with 1% fees
+5. Race condition for "first after anti-bot"
+Better Approach:
+solidity// Randomized window: 55-65 seconds
+uint256 public antiBotDuration; // Set during deployment
+
+constructor(...) {
+    // Use block hash for pseudo-randomness
+    antiBotDuration = 55 + (uint256(blockhash(block.number - 1)) % 11);
+}
+
+// Or use Chainlink VRF for true randomness (more expensive)
+Risk: HIGH - MEV bots still have advantage at t=60
+
+🟡 MEDIUM SEVERITY ISSUES
+M-1: No Toggle for Disabling Anti-Bot
+Location: State management
+Issue: antiBotEnabled is set but no function to toggle it:
+soliditybool public antiBotEnabled; // How is this set?
+Missing:
+solidityconstructor(..., bool _enableAntiBot) {
+    antiBotEnabled = _enableAntiBot;
+    if (_enableAntiBot) {
+        deploymentTime = block.timestamp;
+    }
+}
+
+// Optional: Allow creator to disable early (if failed launch)
+function disableAntiBot() external {
+    require(msg.sender == creator, "Only creator");
+    require(block.timestamp < deploymentTime + 300, "Must disable within 5 min");
+    antiBotEnabled = false;
+    emit AntiBotDisabled();
+}
+Risk: MEDIUM - Can't configure per-token
+
+M-2: Airdrop Treasury Address Not Validated
+Location: Constructor
+Issue: No validation of airdrop treasury:
+solidityaddress public airdropTreasury; // Could be address(0)
+Fix:
+solidityconstructor(..., address _airdropTreasury) {
+    require(_airdropTreasury != address(0), "Invalid airdrop treasury");
+    require(_airdropTreasury != address(this), "Cannot be self");
+    airdropTreasury = _airdropTreasury;
+}
+Risk: MEDIUM - Anti-bot fees could be lost
+
+M-3: accumulatedAntiBotFees Variable Unused
+Location: State variables
+Issue: Variable declared but never used:
+solidityuint256 public accumulatedAntiBotFees; // Declared but not incremented
+Two options:
+Option A: Remove it (since fees sent immediately)
+solidity// Don't need accumulator if fees sent immediately
+// Remove: uint256 public accumulatedAntiBotFees;
+Option B: Track total for analytics
+solidityuint256 public totalAntiBotFeesCollected; // Total historical
+
+function buyTokens(...) {
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        // ...
+        totalAntiBotFeesCollected += antiBotFee;
+        _safeSend(airdropTreasury, antiBotFee);
+    }
+}
+Risk: MEDIUM - Confusing for analytics
+
+M-4: No View Function for Current Anti-Bot Fee
+Location: Missing helper functions
+Issue: Users can't check current fee before buying:
+Add:
+solidityfunction getCurrentAntiBotFee(uint256 kasAmount) public view returns (uint256) {
+    if (!antiBotEnabled) return 0;
+    if (block.timestamp >= deploymentTime + 60) return 0;
+    
+    uint256 elapsed = block.timestamp - deploymentTime;
+    uint256 feePercent = 9500 - (9400 * elapsed / 60);
+    return kasAmount * feePercent / 10000;
+}
+
+function getSecondsUntilNormalFees() public view returns (uint256) {
+    if (!antiBotEnabled) return 0;
+    if (block.timestamp >= deploymentTime + 60) return 0;
+    return deploymentTime + 60 - block.timestamp;
+}
+Risk: MEDIUM - Poor UX, users can't plan trades
+
+🔵 LOW SEVERITY ISSUES
+L-1: Gas Cost Higher with Anti-Bot
+Issue: Additional computation and external call:
+solidityif (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+    // +2000 gas for calculation
+    _safeSend(airdropTreasury, antiBotFee); // +21000 gas for send
+}
+Total overhead: ~23k gas during anti-bot period
+Mitigation: Document gas costs, users pay for protection
+
+L-2: Event Not Defined
+Issue: AntiBotFeePaid event referenced but not defined:
+solidityemit AntiBotFeePaid(msg.sender, antiBotFee, elapsed);
+Add:
+solidityevent AntiBotFeePaid(
+    address indexed user,
+    uint256 feeAmount,
+    uint256 elapsedSeconds
+);
+
+L-3: No Emergency Disable for Broken Launches
+Issue: If token launch fails (no buyers), anti-bot stays on forever:
+Add:
+solidityfunction emergencyDisableAntiBot() external onlyAdmin {
+    require(block.timestamp > deploymentTime + 300, "Must wait 5 min");
+    require(virtualKasReserve < 1 ether, "Token has activity");
+    antiBotEnabled = false;
+    emit AntiBotEmergencyDisabled();
+}
+
+✅ CORRECTED IMPLEMENTATION
+Complete Anti-Bot Buy Function
+solidityuint256 public constant MIN_TRADE_AMOUNT = 0.001 ether;
+bool public antiBotEnabled;
+uint256 public deploymentTime;
+address public airdropTreasury;
+uint256 public totalAntiBotFeesCollected;
+
+event AntiBotFeePaid(address indexed user, uint256 feeAmount, uint256 elapsedSeconds);
+event TokensPurchased(
+    address indexed buyer,
+    uint256 tokensOut,
+    uint256 tradeAmount,
+    uint256 platformFee,
+    uint256 creatorFee,
+    uint256 antiBotFee
+);
+
+constructor(
+    string memory name,
+    string memory symbol,
+    uint256 totalSupply,
+    address _creator,
+    address _treasury,
+    address _airdropTreasury,
+    bool _enableAntiBot
+) ERC20(name, symbol) {
+    require(_creator != address(0), "Invalid creator");
+    require(_treasury != address(0), "Invalid treasury");
+    require(_airdropTreasury != address(0), "Invalid airdrop treasury");
+    
+    creator = _creator;
+    treasury = _treasury;
+    airdropTreasury = _airdropTreasury;
+    antiBotEnabled = _enableAntiBot;
+    
+    if (_enableAntiBot) {
+        deploymentTime = block.timestamp;
+    }
+    
+    _mint(address(this), totalSupply);
+    
+    uint256 curveSupply = totalSupply * CURVE_SUPPLY_PCT / 100;
+    virtualTokenReserve = curveSupply;
+    virtualKasReserve = 0.001 ether;
+}
+
+function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant {
+    require(!graduated && !graduating, "Token graduated or graduating");
+    require(block.timestamp <= deadline, "Transaction expired");
+    require(msg.value >= MIN_TRADE_AMOUNT, "Below minimum trade");
+    
+    uint256 remainingValue = msg.value;
+    uint256 antiBotFee = 0;
+    
+    // Step 1: Calculate and deduct anti-bot fee FIRST
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        uint256 elapsed = block.timestamp - deploymentTime;
+        // Linear decay: 95% → 1% over 60 seconds
+        uint256 feePercent = 9500 - (9400 * elapsed / 60);
+        antiBotFee = msg.value * feePercent / 10000;
+        remainingValue = msg.value - antiBotFee;
+        
+        // Send anti-bot fee immediately to airdrop treasury
+        totalAntiBotFeesCollected += antiBotFee;
+        _safeSend(airdropTreasury, antiBotFee);
+        emit AntiBotFeePaid(msg.sender, antiBotFee, elapsed);
+    }
+    
+    // Step 2: Calculate platform/creator fees from REMAINING value
+    uint256 platformFee = remainingValue * 90 / 10000; // 0.9% of remainder
+    uint256 creatorFee = remainingValue * 10 / 10000;  // 0.1% of remainder
+    uint256 totalFees = platformFee + creatorFee;
+    uint256 tradeAmount = remainingValue - totalFees;
+    
+    // Step 3: AMM calculation
+    uint256 tokensOut = quoteBuy(tradeAmount);
+    require(tokensOut >= minTokensOut, "Slippage too high");
+    require(tokensOut > 0, "Insufficient output");
+    
+    // Step 4: Update state (CEI pattern)
+    virtualKasReserve += tradeAmount;
+    virtualTokenReserve -= tokensOut;
+    
+    accumulatedPlatformFees += platformFee;
+    accumulatedCreatorFees += creatorFee;
+    
+    // Step 5: Check graduation
+    bool shouldGraduate = !graduated && !graduating && virtualKasReserve >= GRADUATION_THRESHOLD;
+    
+    if (shouldGraduate) {
+        graduating = true;
+    }
+    
+    // Step 6: Transfer tokens
+    _transfer(address(this), msg.sender, tokensOut);
+    
+    emit TokensPurchased(msg.sender, tokensOut, tradeAmount, platformFee, creatorFee, antiBotFee);
+    
+    // Step 7: Execute graduation if needed
+    if (graduating) {
+        _executeGraduation();
+    }
+}
+
+// View functions for frontend
+function getCurrentAntiBotFee(uint256 kasAmount) public view returns (uint256) {
+    if (!antiBotEnabled) return 0;
+    if (block.timestamp >= deploymentTime + 60) return 0;
+    
+    uint256 elapsed = block.timestamp - deploymentTime;
+    uint256 feePercent = 9500 - (9400 * elapsed / 60);
+    return kasAmount * feePercent / 10000;
+}
+
+function getSecondsUntilNormalFees() public view returns (uint256) {
+    if (!antiBotEnabled) return 0;
+    if (block.timestamp >= deploymentTime + 60) return 0;
+    return deploymentTime + 60 - block.timestamp;
+}
+
+function getEffectiveFeeBreakdown(uint256 kasAmount) external view returns (
+    uint256 antiBotFee,
+    uint256 platformFee,
+    uint256 creatorFee,
+    uint256 tradeAmount
+) {
+    antiBotFee = getCurrentAntiBotFee(kasAmount);
+    uint256 remaining = kasAmount - antiBotFee;
+    platformFee = remaining * 90 / 10000;
+    creatorFee = remaining * 10 / 10000;
+    tradeAmount = remaining - platformFee - creatorFee;
+}
+
+📊 ECONOMIC ANALYSIS
+Game Theory Check ✅
+Bot Perspective:
+Early snipe (t=0): Pay 95% fee → Get 5% of KAS value in tokens
+Wait 60s (t=60): Pay 1% fee → Get 99% of KAS value in tokens
+
+Rational choice: WAIT
+Outcome: Anti-bot effectively neutralizes sniping advantage ✅
+Community Benefit ✅
+Failed bot snipe: 95 KAS → Airdrop Treasury
+Community members: Get tokens at fair price
+Alignment: Bots fund community ✅
+Edge Case: What if NO ONE buys?
+t=0-60s: No buys (everyone waiting)
+t=60s: Rush of buyers (race condition)
+Result: First ~10 transactions get through, rest queued
+
+Solution: Randomized duration (55-65s) prevents exact timing
+
+🎯 DEPLOYMENT RECOMMENDATIONS
+For Testnet:
+
+✅ Implement corrected buy function with proper fee order
+✅ Add view functions for UX (getCurrentAntiBotFee, etc.)
+✅ Fix sell function (use V4 version, not V3)
+✅ Add constructor parameters for anti-bot config
+✅ Test fee breakdown at t=0, 10, 30, 60 seconds
+
+For Mainnet:
+
+Consider block-based timing instead of timestamp
+Add randomized duration (55-65s) to prevent MEV
+Implement emergency disable for failed launches
+Add comprehensive events for analytics
+Document gas costs clearly for users
+
+
+✅ FINAL VERDICT
+Status: 🟡 GOOD FEATURE, NEEDS FIXES
+Current Implementation: 6/10
+
+Concept: Excellent ✅
+Economics: Sound ✅
+Game Theory: Optimal ✅
+Code: Needs critical fixes ❌
+
+With Fixes: 9/10 (Ready for testnet)
+Critical Fixes Required:
+
+Fix fee calculation order (anti-bot first, then platform/creator)
+Use V4 sell function (not broken V3)
+Add proper constructor and view functions
+Define AntiBotFeePaid event
+
+Estimated Time: 2-3 hours to implement fixes
+
+🚦 RECOMMENDATION
+Do NOT deploy anti-bot system until:
+
+✅ Fee calculation order corrected
+✅ Sell function updated to V4
+✅ View functions added
+✅ Tested at multiple time points
+
+Then: Deploy to testnet alongside core contracts
+Would you like me to provide the complete corrected implementation ready for deployment?

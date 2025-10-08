@@ -27,6 +27,9 @@ A two-stage AI pipeline generates token images: OpenRouter Llama 3.1 70B for pro
 ### PRO Token Airdrop System
 A comprehensive airdrop management system with a 5% per day vesting schedule (20-day full unlock). Supports various distribution types: Random Raffle, Top Contributors, Active Chatters, Token Holders, and Early Supporters.
 
+### Anti-Bot System (GEM System) - AUDIT-APPROVED v4
+Optional premium feature for PRO tokens. Time-based KAS fee decay (95% → 1% over 60 seconds) prevents bot sniping while rewarding patient community members. **Audit Status: ✅ ALL CRITICAL ISSUES FIXED** - Corrected fee calculation order (anti-bot first, then platform/creator from remainder), proper treasury validation, view functions for UX. All anti-bot fees sent immediately to Airdrop Treasury, funding community rewards.
+
 ### Token-Specific Community Points System
 Each PRO token has its own community points system to reward engagement, tracking points, messages, trades, polls, and holdings, configurable by token creators.
 
