@@ -153,7 +153,13 @@ uint256 public constant LP_SUPPLY_PCT = 25;
 uint256 public constant MAX_WALLET_PCT = 10;
 uint256 public constant TOTAL_FEE_BPS = 100; // 1% total trading fee
 uint256 public constant CREATOR_SHARE_BPS = 1000; // 10% of fees (0.1% of trade)
-uint256 public constant GRADUATION_THRESHOLD = 75e18; // 75 KAS in virtual reserve
+
+// GRADUATION: Based on USD market cap valuation (KAS amount * KAS/USD price)
+// Target: $70,000 USD market cap
+// Note: Threshold in KAS adjusts with market conditions via oracle
+uint256 public graduationThresholdKAS = 900000 ether; // ~900K KAS (~$70K at $0.078/KAS)
+address public kasUsdOracle; // KAS/USD price oracle (required for USD valuation)
+
 uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // Minimum trade size
 
 address public treasury; // Gemlaunch treasury contract
@@ -270,8 +276,8 @@ function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonR
     accumulatedPlatformFees += platformFee;
     accumulatedCreatorFees += creatorFee;
     
-    // Step 5: Check graduation
-    bool shouldGraduate = !graduated && !graduating && virtualKasReserve >= GRADUATION_THRESHOLD;
+    // Step 5: Check graduation (USD valuation-based)
+    bool shouldGraduate = !graduated && !graduating && _checkGraduationThreshold();
     
     if (shouldGraduate) {
         graduating = true;
@@ -363,7 +369,77 @@ function getEffectiveFeeBreakdown(uint256 kasAmount) external view returns (
 
 ---
 
-### 2.2.1 Anti-Bot System (GEM System) - AUDIT-APPROVED Implementation
+### 2.2.1 KAS/USD Price Oracle - Graduation USD Valuation
+
+**Purpose**: Provide KAS/USD price feed to calculate when tokens reach $70K market cap valuation for graduation.
+
+**Challenge**: Kasplex zkEVM has no native Chainlink/Pyth oracle yet (network launched Aug 2025).
+
+**Implementation Options**:
+
+#### Option A: Backend Oracle (RECOMMENDED for MVP)
+```python
+# Backend service fetches KAS price every 5 minutes
+import requests
+
+def update_graduation_threshold():
+    # Fetch current KAS price
+    r = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd')
+    kas_price = r.json()['kaspa']['usd']  # e.g., $0.078
+    
+    # Calculate KAS threshold for $70K market cap
+    threshold_kas = 70000 / kas_price  # 897,435 KAS at $0.078
+    
+    # Update contract via admin function
+    contract.updateGraduationThreshold(int(threshold_kas * 1e18))
+```
+
+**Pros**: ✅ Simple, reliable, no on-chain oracle needed  
+**Cons**: ⚠️ Centralized, requires backend cron job
+
+#### Option B: Contact Kaspa Finance Team
+- GitHub: [mirzausman371](https://github.com/mirzausman371) (Mirza Usman - Kaspa Finance dev)
+- Telegram: https://t.me/KaspaFinanceIO
+- Ask if they have a deployed KAS/USD oracle contract we can use
+
+#### Option C: Deploy Custom Oracle
+```solidity
+// Simple price oracle (admin-updated)
+contract KasUsdOracle {
+    int256 public latestPrice; // 8 decimals (e.g., 7800000 = $0.078)
+    uint256 public lastUpdate;
+    address public admin;
+    
+    function updatePrice(int256 newPrice) external onlyAdmin {
+        require(newPrice > 0, "Invalid price");
+        latestPrice = newPrice;
+        lastUpdate = block.timestamp;
+        emit PriceUpdated(newPrice, block.timestamp);
+    }
+    
+    function getLatestPrice() external view returns (int256) {
+        require(block.timestamp - lastUpdate < 1 hours, "Stale price");
+        return latestPrice;
+    }
+}
+```
+
+**Pros**: ✅ On-chain, can be upgraded to Chainlink/Pyth later  
+**Cons**: ⚠️ Requires gas for updates, centralized admin
+
+#### Option D: Wait for Ecosystem Oracle
+- **Kaskad** (lending protocol) is building Kaspa oracle infrastructure
+- **Quex** (hardware-secured oracle) integrating with Kasplex
+- Timeline: Unknown (ecosystem still early)
+
+**Current Recommendation**:
+1. **MVP**: Use Option A (backend CoinGecko + adjustable threshold)
+2. **Reach out**: Contact Mirza/Kaspa Finance for oracle contract
+3. **Post-Launch**: Migrate to decentralized oracle when available
+
+---
+
+### 2.2.2 Anti-Bot System (GEM System) - AUDIT-APPROVED Implementation
 
 **Audit Status**: ✅ **FIXED** - All critical issues resolved (v4)
 
@@ -632,9 +708,27 @@ function _executeGraduation() internal {
     emit TokenGraduated(address(this), kasForLP, lpTokens, block.timestamp);
 }
 
+// ORACLE: Check graduation based on USD market cap valuation
+function _checkGraduationThreshold() internal view returns (bool) {
+    // Option A: Backend oracle updates graduationThresholdKAS based on KAS price
+    return virtualKasReserve >= graduationThresholdKAS;
+    
+    // Option B: On-chain oracle (if available)
+    // uint256 kasPrice = IKasUsdOracle(kasUsdOracle).getLatestPrice(); // 8 decimals
+    // uint256 marketCapUSD = (virtualKasReserve * kasPrice) / 1e8;
+    // return marketCapUSD >= 70000e18; // $70K USD
+}
+
 // View function to check if ready to graduate
 function canGraduate() public view returns (bool) {
-    return !graduated && !graduating && virtualKasReserve >= GRADUATION_THRESHOLD;
+    return !graduated && !graduating && _checkGraduationThreshold();
+}
+
+// Admin function to update KAS threshold (based on KAS price changes)
+function updateGraduationThreshold(uint256 newThresholdKAS) external onlyAdmin {
+    require(newThresholdKAS > 0, "Invalid threshold");
+    graduationThresholdKAS = newThresholdKAS;
+    emit GraduationThresholdUpdated(newThresholdKAS);
 }
 ```
 
