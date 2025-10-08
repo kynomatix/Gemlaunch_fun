@@ -125,11 +125,72 @@ function getCurrentPrice() public view returns (uint256 tokensPerETH) {
 uint256 public constant CURVE_SUPPLY_PCT = 75;
 uint256 public constant LP_SUPPLY_PCT = 25;
 uint256 public constant MAX_WALLET_PCT = 10;
+uint256 public constant PLATFORM_FEE_BPS = 100; // 1% fee
 uint256 public constant GRADUATION_THRESHOLD = 75e18; // 75 KAS raised
+address public treasury; // Gemlaunch treasury contract
 mapping(address => uint256) public holdings;
 mapping(address => uint256) public lastPurchaseTime;
 uint256 public totalRaised;
 bool public graduated;
+```
+
+**Fee Collection on Trades**:
+```solidity
+function buyTokens() external payable nonReentrant {
+    require(!graduated, "Token graduated");
+    require(msg.value > 0, "Must send KAS");
+    
+    // Calculate platform fee (1%)
+    uint256 platformFee = msg.value * PLATFORM_FEE_BPS / 10000;
+    uint256 tradeAmount = msg.value - platformFee;
+    
+    // Calculate tokens based on trade amount (after fee)
+    uint256 tokens = quoteBuy(tradeAmount);
+    
+    // Enforce wallet cap
+    require(
+        holdings[msg.sender] + tokens <= (totalSupply() * MAX_WALLET_PCT) / 100,
+        "Exceeds 10% wallet cap"
+    );
+    
+    // Transfer tokens
+    _transfer(address(this), msg.sender, tokens);
+    holdings[msg.sender] += tokens;
+    totalRaised += tradeAmount;
+    
+    // Send platform fee to treasury
+    payable(treasury).transfer(platformFee);
+    
+    emit TokensPurchased(msg.sender, tokens, tradeAmount, platformFee);
+    
+    // Check graduation
+    if (totalRaised >= GRADUATION_THRESHOLD) {
+        _triggerGraduation();
+    }
+}
+
+function sellTokens(uint256 tokenAmount) external nonReentrant {
+    require(!graduated, "Token graduated");
+    require(holdings[msg.sender] >= tokenAmount, "Insufficient balance");
+    
+    // Calculate KAS refund
+    uint256 kasRefund = quoteSell(tokenAmount);
+    
+    // Calculate platform fee (1% of refund)
+    uint256 platformFee = kasRefund * PLATFORM_FEE_BPS / 10000;
+    uint256 userRefund = kasRefund - platformFee;
+    
+    // Update state
+    _transfer(msg.sender, address(this), tokenAmount);
+    holdings[msg.sender] -= tokenAmount;
+    totalRaised -= kasRefund;
+    
+    // Send refund to user, fee to treasury
+    payable(msg.sender).transfer(userRefund);
+    payable(treasury).transfer(platformFee);
+    
+    emit TokensSold(msg.sender, tokenAmount, kasRefund, platformFee);
+}
 ```
 
 **Security Features**:
@@ -187,17 +248,54 @@ address public treasury;
 **Purpose**: Manages platform fees and optional token vesting
 
 **Key Features**:
-- Collects platform fees from trades
-- Distributes fees to stakeholders
-- Optional vesting schedules for team/contributors
+- Collects 1% platform fee from all bonding curve trades
+- Distributes fees according to pitch deck model:
+  - 40% Platform Development
+  - 30% GEM Buyback & Burn
+  - 20% Network Support (validators, infrastructure)
+  - 10% Community Rewards (airdrops, incentives)
 - Multi-sig withdrawal controls
+- Optional vesting schedules for team/contributors
 
 **State Variables**:
 ```solidity
-mapping(address => VestingSchedule) public vesting;
+// Treasury wallet addresses
+address public platformDevelopmentWallet;
+address public buybackBurnWallet;
+address public networkSupportWallet;
+address public communityRewardsWallet;
+
+// Fee tracking
+uint256 public constant PLATFORM_FEE_BPS = 100; // 1% in basis points
 uint256 public totalFeesCollected;
-address[] public feeRecipients;
-mapping(address => uint256) public feeShares;
+
+// Distribution percentages (in basis points)
+uint256 public constant DEV_SHARE = 4000;      // 40%
+uint256 public constant BUYBACK_SHARE = 3000;  // 30%
+uint256 public constant NETWORK_SHARE = 2000;  // 20%
+uint256 public constant COMMUNITY_SHARE = 1000; // 10%
+
+mapping(address => VestingSchedule) public vesting;
+```
+
+**Fee Collection Flow**:
+```solidity
+function distributeFees() external nonReentrant {
+    uint256 balance = address(this).balance;
+    require(balance > 0, "No fees to distribute");
+    
+    uint256 devAmount = balance * DEV_SHARE / 10000;
+    uint256 buybackAmount = balance * BUYBACK_SHARE / 10000;
+    uint256 networkAmount = balance * NETWORK_SHARE / 10000;
+    uint256 communityAmount = balance * COMMUNITY_SHARE / 10000;
+    
+    payable(platformDevelopmentWallet).transfer(devAmount);
+    payable(buybackBurnWallet).transfer(buybackAmount);
+    payable(networkSupportWallet).transfer(networkAmount);
+    payable(communityRewardsWallet).transfer(communityAmount);
+    
+    emit FeesDistributed(devAmount, buybackAmount, networkAmount, communityAmount);
+}
 ```
 
 ---
@@ -563,17 +661,31 @@ manticore contracts/BondingCurvePool.sol
 ## 8. Deployment Checklist
 
 ### Testnet Deployment
+
+#### Pre-Deployment: Treasury Wallet Setup
+- [ ] **Create Gemlaunch Treasury Wallets** (multi-sig recommended):
+  - [ ] Platform Development Wallet (receives 40% of fees)
+  - [ ] GEM Buyback & Burn Wallet (receives 30% of fees)
+  - [ ] Network Support Wallet (receives 20% of fees)
+  - [ ] Community Rewards Wallet (receives 10% of fees)
+- [ ] Configure multi-sig with 2-of-3 or 3-of-5 threshold
+- [ ] Document all wallet addresses and signers
+- [ ] Test multi-sig transaction flow on testnet
+
+#### Smart Contract Deployment
 - [ ] Configure Hardhat for Kasplex testnet (Chain ID: 167012)
 - [ ] Fund deployer wallet from faucet (50 KAS)
-- [ ] Deploy TokenFactory.sol
-- [ ] Deploy GraduationController.sol
-- [ ] Deploy Treasury.sol
-- [ ] Set up contract relationships (controller ↔ factory)
+- [ ] Deploy Treasury.sol with wallet addresses
+- [ ] Deploy TokenFactory.sol with Treasury reference
+- [ ] Deploy GraduationController.sol with Kaspa Finance router
+- [ ] Set up contract relationships (controller ↔ factory ↔ treasury)
 - [ ] Verify contracts on block explorer
-- [ ] Test end-to-end token creation
-- [ ] Test bonding curve trades
+- [ ] Test treasury fee distribution function
+- [ ] Test end-to-end token creation with fee collection
+- [ ] Test bonding curve trades (verify 1% fee goes to treasury)
 - [ ] Test graduation to Kaspa Finance
 - [ ] Monitor gas costs and optimize
+- [ ] Verify fee splits match pitch deck model (40/30/20/10)
 
 ### Mainnet Preparation
 - [ ] Complete security audit
