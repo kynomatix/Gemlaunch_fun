@@ -60,7 +60,9 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 - **particles.js**: Particle animation library.
 
 ## Blockchain Integration
-- **Kaspa Blockchain**: Target L1 for memecoin deployment.
+- **Kasplex zkEVM L2**: EVM-compatible Layer 2 on Kaspa for smart contract deployment (Chain ID: 202555 mainnet, 167012 testnet)
+- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools
+- **Smart Contract Stack**: Solidity ^0.8.20, Hardhat, OpenZeppelin, bonding curve token launches
 
 ## External Services
 - **Telegram**: Community engagement.
@@ -88,7 +90,7 @@ A comprehensive audit identified 15 issues across 4 severity levels. See `CODEBA
 
 ### Medium Priority Issues
 - **Rate limiting gaps**: Only wallet linking has rate limits; add to auth, token creation, chat, admin routes
-- **Unimplemented DEX graduation**: Core feature missing - tokens cannot graduate to Kaspa Finance DEX (TODO at line 209, blocked by Kaspa Finance API)
+- **Blockchain integration gap**: Platform currently uses mock/database-driven token launches; need smart contract integration on Kasplex zkEVM for real token deployment, bonding curves, and Kaspa Finance DEX graduation (see SMART_CONTRACT_IMPLEMENTATION.md for roadmap)
 
 ### Low Priority Issues
 - **SQLAlchemy LSP warnings**: 88 type checker false positives due to backref relationships and constructor patterns
