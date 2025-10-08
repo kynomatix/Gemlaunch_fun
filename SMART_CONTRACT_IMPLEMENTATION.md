@@ -1005,11 +1005,17 @@ address public constant KASPA_FINANCE_POSITION_MANAGER = 0x4E25637cF39822364b877
 // Name: Kaspa Finance V3 Positions NFT-V1 (KFC-V3-POS)
 // Explorer: http://explorer.testnet.kasplextest.xyz/token/0x4E25637cF39822364b877F81B18c5B6CF0eeF589
 
+address public constant KASPA_FINANCE_WKAS = 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94; // ✅ VERIFIED
+// Name: Wrapped Kas (WKAS)
+// Explorer: http://explorer.testnet.kasplextest.xyz/token/0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+
 address public constant KASPA_FINANCE_FACTORY = 0x0000000000000000000000000000000000000000; // TODO
-address public constant KASPA_FINANCE_WKAS = 0x0000000000000000000000000000000000000000; // TODO
+// Check Position Manager transactions to find Factory address
 
 // MAINNET  
 // TBD - Contact Kaspa Finance team: https://t.me/KaspaFinanceIO
+
+// SOURCE CODE: https://github.com/KaspaFinance/V3-Core-Contracts (Uniswap V3 fork)
 ```
 
 ---
@@ -1640,9 +1646,10 @@ function withdrawPlatformFees() external nonReentrant {
 ### Research Questions
 - [ ] **Kaspa Finance contract addresses** (CRITICAL - Required before deployment):
   - ✅ INonfungiblePositionManager: `0x4E25637cF39822364b877F81B18c5B6CF0eeF589` (testnet verified)
-  - [ ] INonfungiblePositionManager mainnet address
-  - [ ] Factory address (testnet + mainnet)
-  - [ ] WKAS (Wrapped KAS) address (testnet + mainnet)
+  - ✅ WKAS: `0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94` (testnet verified)
+  - [ ] Factory address (testnet) - Check Position Manager creation transaction
+  - [ ] Mainnet addresses (Position Manager, WKAS, Factory)
+  - ✅ Source Code: https://github.com/KaspaFinance/V3-Core-Contracts (Uniswap V3 fork)
   - Contact: https://t.me/KaspaFinanceIO
 - [ ] **Kaspa Finance V3 pool creation**:
   - Confirm 0.25% fee tier (2500 basis points) exists
