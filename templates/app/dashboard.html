@@ -1741,6 +1741,32 @@
             }
         }
         
+        // CRITICAL FIX: Force grid recalculation to prevent broken/squashed cards
+        function recalculateTokenGrids() {
+            // Find all token grids
+            const grids = document.querySelectorAll('.token-grid');
+            
+            grids.forEach(grid => {
+                // Force browser to recalculate by accessing computed styles
+                const computed = window.getComputedStyle(grid);
+                const display = computed.display;
+                
+                // Trigger reflow by temporarily changing and restoring display
+                grid.style.display = 'none';
+                grid.offsetHeight; // Force reflow
+                grid.style.display = display || 'grid';
+                
+                // Also ensure all child token cards are properly rendered
+                const cards = grid.querySelectorAll('.token-card');
+                cards.forEach(card => {
+                    card.offsetHeight; // Force reflow on each card
+                });
+            });
+            
+            // Trigger resize event to recalculate responsive grid
+            window.dispatchEvent(new Event('resize'));
+        }
+        
         // Ensure the function is available immediately when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
             // Re-attach to window to ensure it's available
@@ -1759,6 +1785,9 @@
             
             // Debug: Log that function is available
             console.log('toggleSidebar function initialized:', typeof window.toggleSidebar);
+            
+            // CRITICAL: Recalculate grids after DOM loads
+            setTimeout(recalculateTokenGrids, 50);
         });
         
         // Also attach for Turbo navigation
@@ -1775,6 +1804,9 @@
                     }
                 }
             }
+            
+            // CRITICAL: Recalculate grids after Turbo navigation
+            setTimeout(recalculateTokenGrids, 50);
         });
         
         // Wallet disconnect functionality
@@ -1816,6 +1848,11 @@
                 setTimeout(() => {
                     window.updateCategoryHeader(window.currentCategoryIndex || 0);
                 }, 10);
+            }
+            
+            // CRITICAL: Recalculate grids when switching to tokens tab
+            if (tabName === 'tokens') {
+                setTimeout(recalculateTokenGrids, 50);
             }
         }
 
