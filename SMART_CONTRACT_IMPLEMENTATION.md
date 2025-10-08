@@ -1080,6 +1080,69 @@ manticore contracts/BondingCurvePool.sol
 - Edge cases: dust amounts, max supply, zero liquidity
 - Failure scenarios: insufficient balance, slippage exceeded
 
+### 6.5 Platform Integration Tests (Testnet)
+**Frontend-Blockchain Integration**:
+- [ ] Real wallet transactions (buy/sell with actual gas)
+- [ ] Transaction confirmation flows
+- [ ] Gas estimation accuracy
+- [ ] Failed transaction handling & recovery
+- [ ] Optimistic UI updates validation
+
+**AI Services Testing**:
+- [ ] OpenRouter API under load (Gemmy chat, image prompts)
+- [ ] Replicate image generation reliability
+- [ ] Trend scraping (4chan, Reddit) with rate limits
+- [ ] 12-hour cache behavior verification
+- [ ] Cost tracking and API limits
+
+**Multi-Wallet System**:
+- [ ] Wallet linking with real EVM signatures
+- [ ] Transfer request flow (request → accept → merge)
+- [ ] Account merging edge cases
+- [ ] Cross-wallet balance tracking
+
+**Airdrop System**:
+- [ ] PRO token vesting (5% daily unlock over 20 days)
+- [ ] Distribution types: Raffle, Top Contributors, Active Chatters, Token Holders
+- [ ] Claiming mechanics with real transactions
+- [ ] Vesting schedule accuracy
+
+**Social Features**:
+- [ ] Chat messages with spam prevention
+- [ ] Polls & voting (one vote per wallet verification)
+- [ ] Token-gated spotlights (holder verification)
+- [ ] Reaction system
+- [ ] Message deletion (creator authorization)
+
+**Achievement System**:
+- [ ] Point accumulation from trades, chat, holdings
+- [ ] Achievement unlocking triggers
+- [ ] Leaderboard real-time updates
+- [ ] Concurrent action handling
+
+**Community Points (Per Token)**:
+- [ ] Points tracking per token
+- [ ] Engagement scoring accuracy
+- [ ] Token-specific leaderboards
+- [ ] Creator configuration options
+
+**Referral System**:
+- [ ] Custom referral code validation
+- [ ] Referral tracking across wallets
+- [ ] Reward distribution mechanics
+
+**Real-time Features**:
+- [ ] WebSocket price updates
+- [ ] Live chat message streaming
+- [ ] Wallet state change notifications
+- [ ] Trading event broadcasts
+
+**Gas & Transaction Optimization**:
+- [ ] Gas price estimation (EIP-1559)
+- [ ] Transaction batching opportunities
+- [ ] Nonce management with multiple pending txs
+- [ ] Failed transaction retry logic
+
 ---
 
 ## 7. Technology Stack
