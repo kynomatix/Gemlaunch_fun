@@ -184,28 +184,9 @@
         
         .token-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
-            max-width: 100%;
-            overflow-x: hidden;
-            width: 100%; /* CRITICAL: Ensure grid has explicit width */
-            min-height: 200px; /* CRITICAL: Reserve space to prevent layout shift */
-            contain: layout; /* CRITICAL: Isolate layout calculations */
-            visibility: hidden; /* CRITICAL: Hide until ready (better than opacity) */
-        }
-        
-        .token-grid.loaded {
-            visibility: visible;
-            animation: fadeInGrid 0.2s ease-in forwards;
-        }
-        
-        @keyframes fadeInGrid {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
+            width: 100%;
         }
         
         .token-card {
@@ -387,6 +368,7 @@
             
             .token-grid {
                 grid-template-columns: 1fr;
+                width: 100%;
             }
             
             /* Fix dashboard positioning on mobile */
@@ -1760,46 +1742,8 @@
             }
         }
         
-        // CRITICAL FIX: Force grid recalculation to prevent broken/squashed cards
+        // Simple approach: Just trigger resize to recalculate grids
         function recalculateTokenGrids() {
-            // Find all token grids
-            const grids = document.querySelectorAll('.token-grid');
-            
-            if (grids.length === 0) return;
-            
-            grids.forEach(grid => {
-                // Remove loaded class first
-                grid.classList.remove('loaded');
-                
-                // Force browser to recalculate by accessing computed styles
-                const computed = window.getComputedStyle(grid);
-                const display = computed.display;
-                
-                // Ensure parent containers have width
-                let parent = grid.parentElement;
-                while (parent && parent !== document.body) {
-                    if (!parent.style.width && getComputedStyle(parent).width === 'auto') {
-                        parent.style.width = '100%';
-                    }
-                    parent = parent.parentElement;
-                }
-                
-                // Trigger reflow
-                grid.offsetHeight;
-                
-                // Also ensure all child token cards are properly rendered
-                const cards = grid.querySelectorAll('.token-card');
-                cards.forEach(card => {
-                    card.offsetHeight; // Force reflow on each card
-                });
-                
-                // Add loaded class to make visible with fade-in
-                requestAnimationFrame(() => {
-                    grid.classList.add('loaded');
-                });
-            });
-            
-            // Trigger resize event to recalculate responsive grid
             window.dispatchEvent(new Event('resize'));
         }
         
