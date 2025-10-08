@@ -29,7 +29,7 @@
 - [ ] **1.1** Set up Kasplex zkEVM Testnet RPC connection
   - [ ] Add Testnet network to MetaMask/Kastle
   - [ ] Configure RPC URL: https://rpc.kasplextest.xyz (Chain ID: 167012)
-  - [ ] Obtain testnet KAS from faucet (50 KAS/24hrs)
+  - [ ] 👤 **MANUAL**: Obtain testnet KAS from faucet (https://app.kaspafinance.io/faucets?chain=kasplexTestnet) - User must complete (bot-protected)
   - [ ] Verify block explorer access: http://explorer.testnet.kasplextest.xyz
 
 - [ ] **1.2** Configure development environment
