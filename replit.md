@@ -3,6 +3,17 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
 
 # Recent Changes
 
+## October 9, 2025
+- **Pre-Smart Contract Development Checklist Created** (Pre_SC_Dev.md):
+  - Comprehensive tracking document for all missing platform features before smart contract deployment
+  - 13 feature categories organized into 4 implementation phases
+  - 80+ granular checkboxes for systematic implementation tracking
+  - Smart contract function references for each feature
+  - Files to update listed for each section
+  - 4-week implementation timeline (Phase 1: Critical Trading UX → Phase 4: Safety Features)
+  - Definition of Done criteria and contract integration checklist
+  - Categories: Slippage Controls, Real-Time Quotes, Anti-Bot UI, Creator Fee Portal, Cooldown Timer, Wallet Cap Warning, Graduation Tracker, Post-Graduation Trading, Registry Pagination
+
 ## October 8, 2025
 - **Fixed Dashboard Turbo Navigation Bug**: Resolved grid layout rendering issue when navigating from other pages. Added `data-turbo="false"` to Dashboard link and implemented View Transitions API for smooth page transitions without white flash.
 - **View Transitions API**: Added cross-fade animations for full page reloads, eliminating white screen between page loads while maintaining proper grid layout calculations.
