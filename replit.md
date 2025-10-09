@@ -46,6 +46,14 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - Airdrop treasury can now hold 25% vested allocations
   - Transfers FROM airdropTreasury exempt from 10% cap (allows >10% distributions to team/founders/vesting contracts)
   - Line 621-641: Complete implementation with 4 exemption categories
+- **Post-Graduation DEX Trading Integration** (RESEARCH PHASE - Oct 9, 2025):
+  - Goal: Enable seamless trading on gemlaunch.fun AFTER graduation via Kaspa Finance DEX backend routing
+  - Confirmed: Kaspa Finance is Uniswap V3 fork with full EVM compatibility
+  - Factory Address (confirmed by Mirza): 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
+  - Pending: SwapRouter, Quoter, NonfungiblePositionManager addresses (awaiting Mirza response)
+  - Architecture: TradeRouter service routes to bonding curve OR DEX based on graduation status
+  - UX: Same interface, backend handles routing (users don't notice switch)
+  - Benefits: Community stays on platform, chat/airdrops continue, better liquidity post-grad
 
 # User Preferences
 Preferred communication style: Simple, everyday language.

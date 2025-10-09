@@ -1531,6 +1531,191 @@ All 3 core contracts now have **COMPLETE v4 canonical implementations** with com
 
 ---
 
+## 🔄 POST-GRADUATION DEX TRADING INTEGRATION (RESEARCH PHASE)
+
+**Goal**: Enable seamless trading on gemlaunch.fun AFTER token graduation by routing to Kaspa Finance DEX backend
+
+**User Experience**:
+```
+Before Graduation: User clicks "Buy" → Bonding Curve Contract
+After Graduation:  User clicks "Buy" → Kaspa Finance DEX (via backend router)
+                   ↑
+            (Same UI, different execution layer!)
+```
+
+### 📊 Research Findings - Kaspa Finance Architecture
+
+**Confirmed Information** (October 9, 2025):
+
+✅ **Kaspa Finance = Uniswap V3 Fork**
+- Repository: https://github.com/KaspaFinance
+- Core Contracts: V3-Core-Contracts (TypeScript)
+- Periphery Contracts: V3-Periphery-Contracts (Solidity)
+- Architecture: Full Uniswap V3 implementation with NFT positions
+
+✅ **Contract Addresses** (Confirmed by Mirza @ Kaspa Finance):
+```solidity
+// PRIMARY ADDRESS (CONFIRMED)
+Factory Address: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
+
+// NEED TO CONFIRM (Standard Uniswap V3 equivalents):
+SwapRouter:                   ❓ (likely 0xE592427A0AEce92De3Edee1F18E0157C05861564)
+NonfungiblePositionManager:   ❓ (likely 0xC36442b4a4522E871399CD717aBDD847Ab11FE88)
+Quoter:                       ❓ (likely 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6)
+```
+
+✅ **Chain Information**:
+- Network: Kasplex zkEVM L2 (Chain ID: 167012 testnet, 202555 mainnet)
+- Full EVM compatibility (standard Uniswap V3 calls work)
+- Telegram: https://t.me/KaspaFinanceIO
+- Contact: Mirza (responds in 24+ hours)
+
+### 🔧 Technical Integration Requirements
+
+**Phase 1: Contract Address Discovery** ⏳ IN PROGRESS
+- [x] Factory address confirmed: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
+- [ ] Get SwapRouter address from Mirza/team
+- [ ] Get NonfungiblePositionManager address (for our graduation NFT positions)
+- [ ] Get Quoter address (for price quotes)
+- [ ] Verify pool addresses from graduation NFT position IDs
+
+**Phase 2: Backend Trade Router** 📋 PLANNED
+```python
+# services/trade_router.py (NEW FILE)
+class TradeRouter:
+    """Routes trades to bonding curve OR Kaspa Finance DEX"""
+    
+    async def execute_buy(token_address, kas_amount, user_wallet):
+        token = Token.query.filter_by(contract_address=token_address).first()
+        
+        if token.is_graduated:
+            # Route to Kaspa Finance DEX
+            return await self._buy_on_dex(...)
+        else:
+            # Route to bonding curve
+            return await self._buy_on_curve(...)
+```
+
+**Phase 3: Kaspa Finance SDK Integration** 📋 PLANNED
+```python
+# services/kaspa_finance_sdk.py (NEW FILE)
+class KaspaFinanceSwap:
+    """Wrapper for Kaspa Finance Uniswap V3 swaps"""
+    
+    FACTORY = "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8"
+    ROUTER = "❓"  # Need from Mirza
+    QUOTER = "❓"  # Need from Mirza
+    
+    @staticmethod
+    async def quote_swap(pool_address, amount_in):
+        # Call Quoter.quoteExactInputSingle()
+        
+    @staticmethod
+    async def build_swap_tx(pool_address, amount_in, min_out):
+        # Build SwapRouter.exactInputSingle() transaction
+```
+
+**Phase 4: API Endpoints** 📋 PLANNED
+```python
+# app.py (NEW ROUTES)
+@app.route('/api/trade/buy', methods=['POST'])
+async def trade_buy():
+    """Universal buy - routes to curve or DEX based on graduation status"""
+    
+@app.route('/api/trade/sell', methods=['POST'])
+async def trade_sell():
+    """Universal sell - routes to curve or DEX based on graduation status"""
+    
+@app.route('/api/trade/quote', methods=['GET'])
+async def trade_quote():
+    """Get price quote from curve or DEX"""
+```
+
+**Phase 5: Frontend Updates** 📋 PLANNED
+```javascript
+// static/js/trading.js (MINIMAL CHANGES)
+async function executeBuy(tokenAddress, kasAmount) {
+    // Call unified /api/trade/buy endpoint
+    // Backend determines curve vs DEX routing
+    // User experience stays identical!
+}
+```
+
+### 📋 Implementation Checklist
+
+**Research Phase** (Current):
+- [x] Identify Kaspa Finance as Uniswap V3 fork
+- [x] Confirm Factory address: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
+- [x] Find GitHub repositories (Core + Periphery contracts)
+- [x] Understand Uniswap V3 architecture integration
+- [ ] **Contact Mirza for remaining contract addresses**
+- [ ] Verify pool creation from graduation NFT positions
+- [ ] Test swap on Kaspa Finance testnet manually
+
+**Development Phase** (Next):
+- [ ] Create `services/trade_router.py` (routing logic)
+- [ ] Create `services/kaspa_finance_sdk.py` (Uniswap V3 wrapper)
+- [ ] Implement price quote functions (quoteBuy, quoteSell)
+- [ ] Build swap transaction builders
+- [ ] Add unified API endpoints (/api/trade/*)
+- [ ] Update frontend trading widget (use unified endpoints)
+- [ ] Handle slippage (DEX needs ~5% vs curve's 1%)
+
+**Testing Phase** (Future):
+- [ ] Test curve → DEX transition at graduation
+- [ ] Verify chat/airdrops work with DEX trading
+- [ ] Test slippage protection
+- [ ] Monitor gas costs (DEX swaps may be higher)
+- [ ] Ensure seamless UX (users shouldn't notice backend change)
+
+### 🎯 Key Benefits
+
+**Why This Approach**:
+1. ✅ **Community Stays on Platform** - Users keep chatting/earning airdrops on gemlaunch.fun
+2. ✅ **Seamless UX** - Same trading interface, backend handles routing
+3. ✅ **Better Liquidity** - Graduated tokens have DEX depth (100% KAS + 25% tokens)
+4. ✅ **Lower Fees** - DEX swap fees (0.25%) vs bonding curve (1%)
+5. ✅ **No User Confusion** - Automatic routing, no manual switching
+
+**Alternative Approach (Rejected)**:
+- ❌ Redirect users to Kaspa Finance website (loses community engagement)
+- ❌ Users must leave gemlaunch.fun to trade (breaks airdrop tracking)
+- ❌ Fragments community across platforms
+
+### 🚧 Blockers & Next Actions
+
+**BLOCKER: Missing Contract Addresses**
+- SwapRouter address needed for executing swaps
+- Quoter address needed for price quotes  
+- NonfungiblePositionManager address needed to verify pool addresses
+
+**ACTION ITEMS**:
+1. **User to contact Mirza** for remaining addresses (24+ hour response time)
+2. **Once addresses confirmed**: Update this document with complete contract mapping
+3. **Begin backend implementation**: Trade router + Kaspa Finance SDK
+4. **Test on testnet**: Verify swap execution with real Kaspa Finance pools
+
+### 📚 Reference Documentation
+
+**Kaspa Finance Resources**:
+- GitHub: https://github.com/KaspaFinance
+- Core Contracts: https://github.com/KaspaFinance/V3-Core-Contracts
+- Periphery Contracts: https://github.com/KaspaFinance/V3-Periphery-Contracts
+- Telegram: https://t.me/KaspaFinanceIO
+- Contact: Mirza (mirzausman371 on GitHub)
+
+**Uniswap V3 Documentation** (Architecture Reference):
+- Swap Router: https://docs.uniswap.org/contracts/v3/reference/periphery/SwapRouter
+- Quoter: https://docs.uniswap.org/contracts/v3/reference/periphery/lens/Quoter
+- NFT Position Manager: https://docs.uniswap.org/contracts/v3/reference/periphery/NonfungiblePositionManager
+
+**Kasplex zkEVM**:
+- Testnet RPC: https://rpc.kasplextest.xyz (Chain ID: 167012)
+- Mainnet RPC: https://evmrpc.kasplex.org (Chain ID: 202555)
+- Docs: https://docs-kasplex.gitbook.io/l2-network/
+
+---
+
 ## Overview
 
 This document outlines the implementation plan for integrating Kasplex zkEVM blockchain smart contracts into gemlaunch.fun to enable real token launches, bonding curve trading, and DEX graduation.
