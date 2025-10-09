@@ -2210,7 +2210,9 @@ def init_database():
                         'image_url': 'https://i.imgur.com/laser-eyes.png',
                         'creator': user_creator,  # YOU own this token
                         'website': 'https://lasereyes.pro',
-                        'twitter': 'https://x.com/lasereyeskaspa'
+                        'twitter': 'https://x.com/lasereyeskaspa',
+                        'trade_count': 400,  # Example: $200k volume
+                        'volume': 200000  # $200k total volume
                     },
                     {
                         'name': 'PepeCoin',
@@ -2250,7 +2252,7 @@ def init_database():
                     token.current_price = token_data['price']
                     token.circulating_supply = 1000000000  # 1B tokens
                     token.deployment_status = 'deployed'
-                    token.trade_count = 42  # Mock trades
+                    token.trade_count = token_data.get('trade_count', 42)  # Use custom or default
                     token.holder_count = 156  # Mock holders
                     # Make some tokens pro (with reserved percentage)
                     if token_data['symbol'] in ['KAS', 'KDOG']:

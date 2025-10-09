@@ -1356,13 +1356,13 @@
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Accumulated</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #20B2AA;">
-                                                {{ "%.4f"|format((token.trade_count or 0) * 0.05) }} KAS
+                                                {{ "%.2f"|format((token.trade_count or 0) * 5) }} KAS
                                             </div>
                                         </div>
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Lifetime Earned</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
-                                                {{ "%.4f"|format((token.trade_count or 0) * 0.05) }} KAS
+                                                {{ "%.2f"|format((token.trade_count or 0) * 5) }} KAS
                                             </div>
                                         </div>
                                     </div>
@@ -3413,14 +3413,14 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     };
     
     // Calculate fee stats (placeholder calculations - will be replaced with SC data)
-    const avgTradeSize = 10; // Average 10 KAS per trade (placeholder)
+    const avgTradeSize = 5000; // Average 5000 KAS per trade (~$500 at $0.10/KAS)
     const feeRate = 0.001; // 0.1% creator fee
     const accumulatedFees = tradeCount * avgTradeSize * feeRate;
     const lifetimeFees = accumulatedFees; // Same for now (no claims yet)
     const platformFees = tradeCount * avgTradeSize * 0.009; // 0.9% platform fee
     
     // Get KAS price for USD conversion (placeholder)
-    const kasPrice = 0.15; // $0.15 per KAS (will fetch from API later)
+    const kasPrice = 0.10; // $0.10 per KAS (will fetch from API later)
     
     // Update modal content
     document.getElementById('feeTokenName').textContent = tokenName;
@@ -3435,7 +3435,7 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     }
     
     // Update earnings display
-    document.getElementById('accumulatedFees').textContent = accumulatedFees.toFixed(4) + ' KAS';
+    document.getElementById('accumulatedFees').textContent = accumulatedFees.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
     document.getElementById('accumulatedFeesUSD').textContent = '$' + (accumulatedFees * kasPrice).toFixed(2) + ' USD';
     document.getElementById('totalTrades').textContent = tradeCount;
     
