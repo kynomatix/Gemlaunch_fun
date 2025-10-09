@@ -1553,8 +1553,8 @@ NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589  // Block
 WKAS (Wrapped KAS):        0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
 SwapRouter:                 0xDf88D478aF51C0AB616aFBfDD933c874e142858c  // Block 7.58M, Oct 2025
 
-// PENDING CONFIRMATION (Need from Mirza):
-QuoterV2:                   ❓ TBD (source code analysis incomplete)
+// ✅ ALL ADDRESSES CONFIRMED:
+QuoterV2:                   0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
 ```
 
 **📍 Explorer Links:**
@@ -1585,12 +1585,12 @@ QuoterV2:                   ❓ TBD (source code analysis incomplete)
 
 ### 🔧 Technical Integration Requirements
 
-**Phase 1: Contract Address Discovery** ⏳ IN PROGRESS (4/5 Complete)
+**Phase 1: Contract Address Discovery** ✅ COMPLETE (5/5 Confirmed)
 - [x] Factory address confirmed: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
 - [x] SwapRouter address found: 0xDf88D478aF51C0AB616aFBfDD933c874e142858c (via transaction analysis)
 - [x] NonfungiblePositionManager confirmed: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589
 - [x] WKAS address confirmed: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
-- [ ] Get QuoterV2 address (obfuscated in app source code, need from Mirza or contract deployer records)
+- [x] QuoterV2 address confirmed: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
 
 **Phase 2: Backend Trade Router** 📋 PLANNED
 ```python
@@ -1616,8 +1616,8 @@ class KaspaFinanceSwap:
     """Wrapper for Kaspa Finance Uniswap V3 swaps"""
     
     FACTORY = "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8"
-    ROUTER = "0xDf88D478aF51C0AB616aFBfDD933c874e142858c"  # SwapRouter (found Oct 9)
-    QUOTER = "❓"  # QuoterV2 - Need from Mirza
+    ROUTER = "0xDf88D478aF51C0AB616aFBfDD933c874e142858c"  # SwapRouter
+    QUOTER = "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B"  # QuoterV2
     
     @staticmethod
     async def quote_swap(pool_address, amount_in):
@@ -1661,7 +1661,7 @@ async function executeBuy(tokenAddress, kasAmount) {
 - [x] Confirm Factory address: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
 - [x] Find GitHub repositories (Core + Periphery contracts)
 - [x] Understand Uniswap V3 architecture integration
-- [ ] **Contact Mirza for remaining contract addresses**
+- [x] **All contract addresses confirmed (5/5)**
 - [ ] Verify pool creation from graduation NFT positions
 - [ ] Test swap on Kaspa Finance testnet manually
 
@@ -1726,6 +1726,227 @@ async function executeBuy(tokenAddress, kasAmount) {
 - Testnet RPC: https://rpc.kasplextest.xyz (Chain ID: 167012)
 - Mainnet RPC: https://evmrpc.kasplex.org (Chain ID: 202555)
 - Docs: https://docs-kasplex.gitbook.io/l2-network/
+
+---
+
+## 💰 CREATOR FEE CLAIM PORTAL INTEGRATION
+
+**UI Status**: ✅ Complete (October 9, 2025)  
+**Smart Contract Status**: ✅ Specification Complete (Lines 597-610)  
+**Integration Status**: 🔄 Pending web3 connection
+
+### 📊 UI Components (Implemented)
+
+**Dashboard Token Cards** (`templates/app/dashboard.html` lines 1348-1385):
+```html
+<!-- Creator Fee Stats Display -->
+<div class="creator-fee-stats">
+  <div>Accumulated: 2,000.00 KAS</div>
+  <div>Volume Traded: $200,000</div>
+  <button onclick="openCreatorFeeModal(...)">Fees</button>
+</div>
+```
+
+**Creator Fee Modal** (`templates/app/partials/creator_fee_modal.html`):
+- Displays accumulated KAS fees with real-time USD value from oracle
+- Shows total trading volume and trade count
+- Graduation-aware claim status (available only after $70K market cap)
+- Greyed-out claim button when disabled (pre-graduation)
+- Placeholder for `withdrawCreatorFees()` smart contract call
+
+**Calculation Logic** (Uses KAS Price Oracle):
+```javascript
+// Fees earned in KAS (from trading volume)
+const totalVolumeKAS = tradeCount * 5000;  // Average 5000 KAS per trade
+const accumulatedFeesKAS = totalVolumeKAS * 0.001;  // 0.1% creator fee
+
+// Real-time USD conversion from oracle
+const kasPrice = {{ kas_price }};  // From services/kas_oracle.py
+const feesUSD = accumulatedFeesKAS * kasPrice;
+```
+
+### 🔗 Smart Contract Integration Path
+
+**Smart Contract Function** (BondingCurvePool.sol, Lines 597-610):
+```solidity
+function withdrawCreatorFees() external nonReentrant {
+    require(msg.sender == creator, "Only creator");
+    require(isGraduated, "Must graduate first");
+    
+    uint256 claimable = creatorFeesAccrued;
+    require(claimable > 0, "No fees");
+    
+    creatorFeesAccrued = 0;
+    totalCreatorFeesClaimed += claimable;
+    
+    payable(creator).sendValue(claimable);
+    emit CreatorFeesWithdrawn(creator, claimable);
+}
+```
+
+**Integration Steps** (When Contracts Deployed):
+
+1. **Update Frontend JavaScript** (`templates/app/dashboard.html` line 3473):
+```javascript
+async function claimCreatorFees() {
+    // Connect to wallet
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    
+    // Get contract instance
+    const poolContract = new ethers.Contract(
+        currentTokenData.contractAddress,
+        BONDING_CURVE_ABI,
+        signer
+    );
+    
+    try {
+        // Call withdrawCreatorFees()
+        const tx = await poolContract.withdrawCreatorFees();
+        
+        // Show pending state
+        showTransactionPending(tx.hash);
+        
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        
+        // Update UI with new balances
+        await refreshCreatorFeeStats();
+        
+        // Show success
+        showSuccessMessage(`Claimed ${accumulatedFees} KAS!`);
+    } catch (error) {
+        showErrorMessage(error.message);
+    }
+}
+```
+
+2. **Add View Function for UI Data** (Read current claimable amount):
+```javascript
+async function getCreatorClaimableAmount(tokenAddress) {
+    const poolContract = new ethers.Contract(
+        tokenAddress,
+        BONDING_CURVE_ABI,
+        provider
+    );
+    
+    const claimable = await poolContract.creatorFeesAccrued();
+    return ethers.utils.formatEther(claimable);
+}
+```
+
+3. **Add Event Listeners** (Update UI on claims):
+```javascript
+poolContract.on("CreatorFeesWithdrawn", (creator, amount, event) => {
+    if (creator.toLowerCase() === userWallet.toLowerCase()) {
+        refreshCreatorFeeStats();
+        showNotification(`${ethers.utils.formatEther(amount)} KAS claimed!`);
+    }
+});
+```
+
+### 📋 Integration Checklist
+
+**Prerequisites**:
+- [x] UI components built (dashboard cards + modal)
+- [x] KAS price oracle integration (`services/kas_oracle.py`)
+- [x] Smart contract function specification (lines 597-610)
+- [x] Graduation status tracking logic
+- [ ] Deploy BondingCurvePool.sol to testnet
+- [ ] Get contract ABI JSON file
+
+**Web3 Integration** (Phase 1 - Smart Contract Deployment):
+- [ ] Add ethers.js library to frontend
+- [ ] Create `static/js/contracts/BondingCurveABI.json`
+- [ ] Create `static/js/web3/creator_fees.js` service
+- [ ] Update `claimCreatorFees()` to call smart contract
+- [ ] Add `getCreatorClaimableAmount()` view function
+- [ ] Wire up event listeners for real-time updates
+
+**Backend Support** (Phase 2 - Tracking & Caching):
+- [ ] Create `services/fee_tracker.py` to cache on-chain fee data
+- [ ] Add event listener for `CreatorFeesWithdrawn` events
+- [ ] Update database when fees claimed (for analytics)
+- [ ] Add API endpoint: `/api/token/<address>/creator-fees`
+
+**Testing** (Phase 3):
+- [ ] Test claim flow on testnet (with graduated token)
+- [ ] Verify graduation requirement (should fail pre-graduation)
+- [ ] Test edge cases (no fees, multiple claims)
+- [ ] Gas estimation for claim transactions
+- [ ] Mobile wallet integration (MetaMask mobile)
+
+### 🔄 Data Flow
+
+**Current (Mock Data)**:
+```
+Dashboard → JavaScript calculates fees → Display in UI
+                ↓
+          (Placeholder data from trade_count × 5 KAS)
+```
+
+**After Smart Contract Integration**:
+```
+Smart Contract (creatorFeesAccrued) → RPC Query → Cache in Backend
+                                                          ↓
+                                            Dashboard UI displays real fees
+                                                          ↓
+                                         User clicks "Claim" → withdrawCreatorFees()
+                                                          ↓
+                                           Event emitted → UI updates → Show success
+```
+
+### 📊 Example Integration (Complete Flow)
+
+```javascript
+// 1. Load creator fees on dashboard
+async function loadCreatorFeeStats(tokenAddress) {
+    const fees = await getCreatorClaimableAmount(tokenAddress);
+    const kasPrice = await fetch('/api/kas-price').then(r => r.json());
+    
+    document.getElementById('accumulatedFees').textContent = 
+        `${parseFloat(fees).toLocaleString()} KAS`;
+    document.getElementById('accumulatedFeesUSD').textContent = 
+        `$${(fees * kasPrice.price).toFixed(2)} USD`;
+}
+
+// 2. Check graduation status
+async function canClaimFees(tokenAddress) {
+    const poolContract = new ethers.Contract(tokenAddress, ABI, provider);
+    const isGraduated = await poolContract.isGraduated();
+    const fees = await poolContract.creatorFeesAccrued();
+    
+    return isGraduated && fees > 0;
+}
+
+// 3. Execute claim
+async function claimCreatorFees() {
+    const canClaim = await canClaimFees(currentTokenData.contractAddress);
+    if (!canClaim) {
+        alert('Token must graduate before claiming fees');
+        return;
+    }
+    
+    // Execute withdrawal (code above)...
+}
+```
+
+### 🎯 Success Metrics
+
+**When Integration Complete**:
+- ✅ Creators can view real-time accumulated fees from on-chain data
+- ✅ Claim button only enabled for graduated tokens (enforced by smart contract)
+- ✅ Successful claims emit events and update UI instantly
+- ✅ USD value reflects current KAS price from oracle
+- ✅ Transaction history shows all fee claims
+- ✅ Gas estimates shown before transaction submission
+
+**Files Modified for Integration**:
+- `templates/app/dashboard.html` (update `claimCreatorFees()` function)
+- `static/js/web3/creator_fees.js` (NEW - web3 service)
+- `static/js/contracts/BondingCurveABI.json` (NEW - contract ABI)
+- `services/fee_tracker.py` (NEW - optional caching layer)
+- `app.py` (add `/api/token/<address>/creator-fees` endpoint)
 
 ---
 

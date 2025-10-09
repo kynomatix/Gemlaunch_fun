@@ -396,7 +396,7 @@
   - [x] NonfungiblePositionManager: `0x4E25637cF39822364b877F81B18c5B6CF0eeF589`
   - [x] WKAS: `0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94`
   - [x] SwapRouter: `0xDf88D478aF51C0AB616aFBfDD933c874e142858c`
-  - [ ] QuoterV2: TBD (pending Mirza response)
+  - [x] QuoterV2: `0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B`
 
 ### Required Backend Services
 - [x] KAS/USD Price Oracle (`services/kas_oracle.py`)

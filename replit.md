@@ -3,7 +3,25 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
 
 # Recent Changes
 
-## October 9, 2025
+## October 9, 2025 (PM Update)
+- **QuoterV2 Address Confirmed**: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
+  - All 5/5 Kaspa Finance contract addresses now confirmed
+  - Updated SMART_CONTRACT_IMPLEMENTATION.md, Pre_SC_Dev.md, and replit.md
+- **Creator Fee Portal Integration Documentation Complete**:
+  - Added comprehensive integration section to SMART_CONTRACT_IMPLEMENTATION.md
+  - Documented connective path: UI → Smart Contract withdrawCreatorFees()
+  - Complete web3 integration code examples with ethers.js
+  - Data flow diagrams (mock → real on-chain data)
+  - Integration checklist with 3 phases (Prerequisites, Web3, Backend Support)
+  - Files: `SMART_CONTRACT_IMPLEMENTATION.md` lines 1735-1953
+- **Creator Fee Calculation Fixes**:
+  - Fixed USD/KAS conversion to use real-time oracle price
+  - Unified fee calculations between dashboard cards and modal popup
+  - Fees earned in KAS (2,000 KAS from 400 trades), USD value from oracle
+  - Laser Eyes updated to 400 trades as $200k volume example
+  - Volume display now calculated from KAS amount × oracle price
+
+## October 9, 2025 (AM Update)
 - **Creator Fee Claim Portal UI Complete** (Section 8 from Pre_SC_Dev.md):
   - Added fee stats display to each token card in "Your Created Tokens" dashboard section
   - Created dedicated Creator Fee Modal (`creator_fee_modal.html`) showing:
@@ -72,12 +90,12 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
 - **Post-Graduation DEX Trading Integration** (RESEARCH PHASE - Oct 9, 2025):
   - Goal: Enable seamless trading on gemlaunch.fun AFTER graduation via Kaspa Finance DEX backend routing
   - Confirmed: Kaspa Finance is Uniswap V3 fork with full EVM compatibility
-  - **Kaspa Finance Contract Addresses (Kasplex Testnet - Chain ID 167012)** - 4/5 Complete:
+  - **Kaspa Finance Contract Addresses (Kasplex Testnet - Chain ID 167012)** - ✅ COMPLETE:
     - ✅ Factory: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8 (Block 2.49M, May 2025)
     - ✅ NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589 (Block 7.52M, Oct 2025)
     - ✅ WKAS: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
     - ✅ SwapRouter: 0xDf88D478aF51C0AB616aFBfDD933c874e142858c (Block 7.58M, Oct 2025)
-    - ❓ QuoterV2: TBD (obfuscated in app source, pending Mirza response)
+    - ✅ QuoterV2: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
   - Architecture: TradeRouter service routes to bonding curve OR DEX based on graduation status
   - UX: Same interface, backend handles routing (users don't notice switch)
   - Benefits: Community stays on platform, chat/airdrops continue, better liquidity post-grad
