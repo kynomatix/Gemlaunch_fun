@@ -1558,9 +1558,9 @@ QuoterV2:                   ❓ TBD
 ```
 
 **📍 Explorer Links:**
-- Factory: https://frontend.kasplextest.xyz/address/0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
-- NFT Position Manager: https://frontend.kasplextest.xyz/address/0x4E25637cF39822364b877F81B18c5B6CF0eeF589
-- WKAS: https://frontend.kasplextest.xyz/address/0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+- Factory: https://explorer.testnet.kasplextest.xyz/address/0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
+- NFT Position Manager: https://explorer.testnet.kasplextest.xyz/address/0x4E25637cF39822364b877F81B18c5B6CF0eeF589
+- WKAS: https://explorer.testnet.kasplextest.xyz/address/0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
 
 **⚠️ Note:** GitHub repo deployment files (kasplex.json from June 2025) contain older addresses from a previous deployment. Use the addresses above confirmed by Mirza.
 
@@ -3772,8 +3772,8 @@ module.exports = {
         network: "kasplexTestnet",
         chainId: 167012,
         urls: {
-          apiURL: "https://frontend.kasplextest.xyz/api",
-          browserURL: "https://frontend.kasplextest.xyz"
+          apiURL: "https://explorer.testnet.kasplextest.xyz/api",
+          browserURL: "https://explorer.testnet.kasplextest.xyz"
         }
       },
       {
