@@ -1356,19 +1356,19 @@
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Accumulated</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #20B2AA;">
-                                                {% set avg_trade_usd = 500 %}
-                                                {% set total_volume_usd = (token.trade_count or 0) * avg_trade_usd %}
-                                                {% set fees_usd = total_volume_usd * 0.001 %}
-                                                {% set fees_kas = fees_usd / (kas_price if kas_price > 0 else 0.10) %}
+                                                {% set avg_trade_kas = 5000 %}
+                                                {% set total_volume_kas = (token.trade_count or 0) * avg_trade_kas %}
+                                                {% set fees_kas = total_volume_kas * 0.001 %}
                                                 {{ "{:,.2f}".format(fees_kas) }} KAS
                                             </div>
                                         </div>
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Volume Traded</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
-                                                {% set avg_trade_usd = 500 %}
-                                                {% set total_volume_usd = (token.trade_count or 0) * avg_trade_usd %}
-                                                ${{ "{:,.0f}".format(total_volume_usd) }}
+                                                {% set avg_trade_kas = 5000 %}
+                                                {% set total_volume_kas = (token.trade_count or 0) * avg_trade_kas %}
+                                                {% set volume_usd = total_volume_kas * (kas_price if kas_price > 0 else 0.10) %}
+                                                ${{ "{:,.0f}".format(volume_usd) }}
                                             </div>
                                         </div>
                                     </div>
