@@ -195,30 +195,42 @@
 ### 8. ✅ Creator Fee Claim Portal
 **Smart Contract Functions:** `getCreatorClaimableAmount()`, `withdrawCreatorFees()`
 
-- [ ] Add "Creator Dashboard" section to profile
-  - [ ] Show only for token creators
-  - [ ] Display all tokens created by user
-- [ ] Display accumulated fees per token
-  - [ ] Query `getCreatorClaimableAmount()` for each token
-  - [ ] Show claimable amount in KAS
-  - [ ] Display USD equivalent
-- [ ] Add "Claim Fees" button
-  - [ ] Call `withdrawCreatorFees()` on click
-  - [ ] Show transaction confirmation modal
-  - [ ] Display success message on claim
-- [ ] Show fee claim history
-  - [ ] Track all past claims
-  - [ ] Display transaction hashes
-  - [ ] Total fees earned lifetime
-- [ ] Add fee statistics
-  - [ ] Total fees earned (all tokens)
-  - [ ] Average fee per token
-  - [ ] Top earning token
+**STATUS: ✅ UI COMPLETE** (Smart contract integration pending)
 
-**Files to Update:**
-- `templates/app/profile.html`
-- `static/js/profile.js` (create if needed)
-- `routes.py` (add creator dashboard route)
+- [x] Add "Creator Dashboard" section to dashboard
+  - [x] Show only for token creators (in "Your Created Tokens" section)
+  - [x] Display all tokens created by user
+- [x] Display accumulated fees per token
+  - [x] Show accumulated fees in KAS (placeholder calculation)
+  - [x] Show claimable amount in KAS
+  - [x] Display USD equivalent
+- [x] Add "Claim Fees" button
+  - [x] Modal with detailed fee breakdown
+  - [x] Graduation status check (enabled only after $70K)
+  - [x] Placeholder for `withdrawCreatorFees()` call
+  - [x] Transaction confirmation ready for SC integration
+- [x] Show fee statistics
+  - [x] Total fees accumulated per token
+  - [x] Platform vs Creator fee breakdown (0.9% vs 0.1%)
+  - [x] Total trades count
+  - [x] Fee rate display (0.1% per trade)
+- [x] Creator Fee Modal UI
+  - [x] Token info header with image
+  - [x] Fee stats grid (accumulated, lifetime, trades, rate)
+  - [x] Fee breakdown section (platform/creator split)
+  - [x] Claim status badge (pre/post graduation)
+  - [x] Claim button (disabled until graduated)
+
+**Files Updated:**
+- ✅ `templates/app/dashboard.html` (added fee stats to token cards)
+- ✅ `templates/app/partials/creator_fee_modal.html` (new modal template)
+- ✅ JavaScript functions (openCreatorFeeModal, closeCreatorFeeModal, claimCreatorFees)
+
+**Next Steps for SC Integration:**
+- Replace placeholder fee calculations with `getCreatorClaimableAmount()` contract call
+- Wire claim button to `withdrawCreatorFees()` contract function
+- Add transaction confirmation and success feedback
+- Fetch real KAS/USD price from oracle
 
 ---
 

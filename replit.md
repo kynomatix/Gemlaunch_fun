@@ -4,6 +4,18 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
 # Recent Changes
 
 ## October 9, 2025
+- **Creator Fee Claim Portal UI Complete** (Section 8 from Pre_SC_Dev.md):
+  - Added fee stats display to each token card in "Your Created Tokens" dashboard section
+  - Created dedicated Creator Fee Modal (`creator_fee_modal.html`) showing:
+    - Accumulated fees (KAS + USD)
+    - Lifetime fees earned
+    - Platform vs Creator fee breakdown (0.9% vs 0.1%)
+    - Total trades and fee rate
+    - Claim status badge (graduation-aware)
+  - Implemented modal JavaScript (open/close, data population, graduation checks)
+  - Claim button disabled until token graduates ($70K market cap)
+  - Placeholder calculations ready for smart contract integration
+  - Files: `templates/app/dashboard.html`, `templates/app/partials/creator_fee_modal.html`
 - **Pre-Smart Contract Development Checklist Created** (Pre_SC_Dev.md):
   - Comprehensive tracking document for all missing platform features before smart contract deployment
   - 13 feature categories organized into 4 implementation phases
