@@ -613,15 +613,22 @@ function setGraduationOracle(address newOracle) external onlyOwner {
 }
 ```
 
-#### Wallet Cap Enforcement (AUDIT FIX v4 - Anti-Whale)
+#### Wallet Cap Enforcement (AUDIT FIX v4 - Anti-Whale with PRO Token Support)
 ```solidity
 // Override _transfer to enforce 10% wallet cap
 function _transfer(address from, address to, uint256 amount) internal virtual override {
     require(from != address(0), "Transfer from zero address");
     require(to != address(0), "Transfer to zero address");
     
-    // Enforce wallet cap (except for contract itself and graduated pools)
-    if (to != address(this) && !graduated) {
+    // Enforce wallet cap with exemptions for:
+    // 1. Contract itself (holds curve + LP supply)
+    // 2. Airdrop treasury (holds vested allocations up to 25%)
+    // 3. Graduated pools (no restrictions after DEX listing)
+    // 4. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
+    if (to != address(this) && 
+        to != airdropTreasury && 
+        from != airdropTreasury &&
+        !graduated) {
         uint256 recipientBalance = balanceOf(to);
         uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100; // 10%
         require(recipientBalance + amount <= maxWallet, "Exceeds max wallet");
@@ -704,8 +711,11 @@ Before deploying, verify ALL v4 fixes are present:
 - [ ] OpenZeppelin Ownable, Pausable, ReentrancyGuard (line 638-641)
 
 **Anti-Whale Protection:**
-- [ ] _transfer override with 10% wallet cap (line 618)
-- [ ] Exemption for contract and graduated pools (line 623)
+- [ ] _transfer override with 10% wallet cap (line 621)
+- [ ] Exemption for contract itself (line 631)
+- [ ] Exemption for airdropTreasury receiving (line 632) - allows holding 25% vested allocation
+- [ ] Exemption for transfers FROM airdropTreasury (line 633) - allows >10% distributions to team/founders
+- [ ] Exemption for graduated pools (line 634)
 
 ---
 
@@ -736,9 +746,10 @@ This section (lines 179-708) now contains the **COMPLETE** implementation specif
 - Graduation oracle management
 - OpenZeppelin: ReentrancyGuard, Pausable, Ownable
 
-✅ **Anti-Whale Protection**
+✅ **Anti-Whale Protection (PRO Token Compatible)**
 - 10% wallet cap via _transfer override
-- Exemptions for contract and graduated pools
+- Exemptions for contract, airdropTreasury (receiving), airdropTreasury (sending), graduated pools
+- **PRO Token Support**: Allows airdrop treasury to hold 25% vested allocations and distribute >10% to team/founders
 
 **STATUS**: Ready for security audit. All critical, high, and medium severity issues from Round 4 have been addressed.
 

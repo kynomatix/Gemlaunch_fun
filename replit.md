@@ -40,6 +40,12 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - Position tracking: NFT position IDs, graduation timestamps
   - STATUS: ✅ AUDIT READY
 - **v4 Canonical Implementation Complete**: All 3 core contracts (BondingCurvePool, TokenFactory, GraduationController) now have complete audit-ready specifications addressing all critical audit findings from Claude 4.5 review
+- **CRITICAL FIX: PRO Token Wallet Cap Conflict Resolved**:
+  - Issue: 10% wallet cap would block PRO token airdrop allocations (up to 25% of supply)
+  - Solution: Updated _transfer override with airdropTreasury exemptions
+  - Airdrop treasury can now hold 25% vested allocations
+  - Transfers FROM airdropTreasury exempt from 10% cap (allows >10% distributions to team/founders/vesting contracts)
+  - Line 621-641: Complete implementation with 4 exemption categories
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
