@@ -1543,6 +1543,29 @@ After Graduation:  User clicks "Buy" → Kaspa Finance DEX (via backend router)
             (Same UI, different execution layer!)
 ```
 
+### 📊 **KASPA FINANCE CONTRACT ADDRESSES** (CURRENT DEPLOYMENT)
+
+**✅ CONFIRMED ADDRESSES** (October 9, 2025):
+```solidity
+// VERIFIED ON KASPLEX TESTNET (Chain ID: 167012)
+Factory:                    0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8  // Block 5, May 2025
+NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589  // Block 2.19M, July 2025  
+WKAS (Wrapped KAS):        0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+
+// PENDING CONFIRMATION (Need from Mirza):
+SwapRouter:                 ❓ TBD
+QuoterV2:                   ❓ TBD
+```
+
+**📍 Explorer Links:**
+- Factory: https://frontend.kasplextest.xyz/address/0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
+- NFT Position Manager: https://frontend.kasplextest.xyz/address/0x4E25637cF39822364b877F81B18c5B6CF0eeF589
+- WKAS: https://frontend.kasplextest.xyz/address/0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+
+**⚠️ Note:** GitHub repo deployment files (kasplex.json from June 2025) contain older addresses from a previous deployment. Use the addresses above confirmed by Mirza.
+
+---
+
 ### 📊 Research Findings - Kaspa Finance Architecture
 
 **Confirmed Information** (October 9, 2025):
@@ -1553,22 +1576,11 @@ After Graduation:  User clicks "Buy" → Kaspa Finance DEX (via backend router)
 - Periphery Contracts: V3-Periphery-Contracts (Solidity)
 - Architecture: Full Uniswap V3 implementation with NFT positions
 
-✅ **Contract Addresses** (Confirmed by Mirza @ Kaspa Finance):
-```solidity
-// PRIMARY ADDRESS (CONFIRMED)
-Factory Address: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
-
-// NEED TO CONFIRM (Standard Uniswap V3 equivalents):
-SwapRouter:                   ❓ (likely 0xE592427A0AEce92De3Edee1F18E0157C05861564)
-NonfungiblePositionManager:   ❓ (likely 0xC36442b4a4522E871399CD717aBDD847Ab11FE88)
-Quoter:                       ❓ (likely 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6)
-```
-
 ✅ **Chain Information**:
 - Network: Kasplex zkEVM L2 (Chain ID: 167012 testnet, 202555 mainnet)
 - Full EVM compatibility (standard Uniswap V3 calls work)
 - Telegram: https://t.me/KaspaFinanceIO
-- Contact: Mirza (responds in 24+ hours)
+- Contact: Mirza (mirzausman371 on GitHub, responds in 24+ hours)
 
 ### 🔧 Technical Integration Requirements
 

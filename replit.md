@@ -49,8 +49,12 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
 - **Post-Graduation DEX Trading Integration** (RESEARCH PHASE - Oct 9, 2025):
   - Goal: Enable seamless trading on gemlaunch.fun AFTER graduation via Kaspa Finance DEX backend routing
   - Confirmed: Kaspa Finance is Uniswap V3 fork with full EVM compatibility
-  - Factory Address (confirmed by Mirza): 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
-  - Pending: SwapRouter, Quoter, NonfungiblePositionManager addresses (awaiting Mirza response)
+  - **Kaspa Finance Contract Addresses (Kasplex Testnet - Chain ID 167012)**:
+    - ✅ Factory: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8 (Block 5, May 2025)
+    - ✅ NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589 (Block 2.19M, July 2025)
+    - ✅ WKAS: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+    - ❓ SwapRouter: TBD (need from Mirza)
+    - ❓ QuoterV2: TBD (need from Mirza)
   - Architecture: TradeRouter service routes to bonding curve OR DEX based on graduation status
   - UX: Same interface, backend handles routing (users don't notice switch)
   - Benefits: Community stays on platform, chat/airdrops continue, better liquidity post-grad
