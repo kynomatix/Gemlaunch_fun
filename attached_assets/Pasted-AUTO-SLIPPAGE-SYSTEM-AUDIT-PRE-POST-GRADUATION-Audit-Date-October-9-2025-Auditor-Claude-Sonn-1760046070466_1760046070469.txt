@@ -1,0 +1,1119 @@
+AUTO-SLIPPAGE SYSTEM AUDIT - PRE & POST GRADUATION
+Audit Date: October 9, 2025
+Auditor: Claude (Sonnet 4.5)
+Focus: Auto-slippage calculation for bonding curve (pre-graduation) and DEX trades (post-graduation)
+
+🎯 EXECUTIVE SUMMARY
+Overall Assessment: ⚠️ GOOD WITH CRITICAL ISSUES
+The auto-slippage system shows good understanding of the two-phase trading model (bonding curve vs DEX), but has 3 critical issues and 5 medium issues that must be fixed before deployment.
+Issues Found
+
+🔴 3 Critical - Missing contract integration, view function visibility, external call gas issues
+🟡 5 Medium - Logic errors, security concerns, missing validation
+🔵 4 Low - Optimization opportunities, UX improvements
+
+Status: ❌ NOT READY - REQUIRES FIXES
+
+🔴 CRITICAL ISSUES
+C-1: Pre-Graduation Functions Not Integrated into BondingCurvePool.sol
+Severity: 🔴 CRITICAL
+Impact: Functions won't exist in deployed contract
+Problem: The pre-graduation slippage functions are shown as standalone but need to be added to BondingCurvePool.sol
+Current Code:
+solidity/**
+ * @notice Calculate optimal slippage for bonding curve trades
+ */
+function calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    // ❌ WHERE DOES THIS FUNCTION GO?
+    // ❌ Not in BondingCurvePool.sol specification
+}
+Fix Required:
+solidity// Add to BondingCurvePool.sol (after line 475 - AMM Pricing Functions)
+
+/**
+ * @notice Calculate optimal slippage for bonding curve trades
+ * @dev Bonding curve has deterministic pricing, so slippage is minimal
+ * @param kasAmount Amount of KAS to trade (before fees)
+ * @return optimalSlippageBps Recommended slippage in basis points
+ */
+function calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    // Base slippage for bonding curve (deterministic pricing)
+    uint256 baseSlippage = 50; // 0.5% base
+    
+    // Calculate trade size relative to pool
+    uint256 tradeImpactBps = (kasAmount * 10000) / virtualKasReserve;
+    
+    // Adjust slippage based on trade size
+    if (tradeImpactBps > 100) { // Trade is >1% of pool
+        baseSlippage += 50; // Increase to 1%
+    }
+    
+    // Anti-bot period adds volatility (more retry risk)
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        baseSlippage += 50; // +0.5% during anti-bot period
+    }
+    
+    // Cap at 200 bps (2%) for bonding curve
+    optimalSlippageBps = baseSlippage > 200 ? 200 : baseSlippage;
+}
+
+/**
+ * @notice Calculate minimum tokens to receive with auto-slippage
+ * @param kasIn Amount of KAS to spend (before fees)
+ * @return minTokensOut Minimum tokens with auto-calculated slippage protection
+ */
+function getMinTokensOutWithAutoSlippage(uint256 kasIn) external view returns (uint256 minTokensOut) {
+    // Get expected output (after all fees)
+    (uint256 antiBotFee, uint256 platformFee, uint256 creatorFee, uint256 tradeAmount) 
+        = getEffectiveFeeBreakdown(kasIn);
+    
+    uint256 expectedTokens = quoteBuy(tradeAmount);
+    
+    // Apply auto-calculated slippage
+    uint256 slippageBps = calculateOptimalSlippage(kasIn);
+    minTokensOut = expectedTokens * (10000 - slippageBps) / 10000;
+}
+
+/**
+ * @notice Get risk level for UI alerts
+ * @param kasAmount Amount of KAS to trade
+ * @return riskLevel 0 = Silent, 1 = Warning, 2 = Block
+ */
+function getSlippageRiskLevel(uint256 kasAmount) external view returns (uint8 riskLevel) {
+    uint256 slippageBps = calculateOptimalSlippage(kasAmount);
+    
+    if (slippageBps < 200) return 0; // <2% = Silent execution
+    if (slippageBps < 500) return 1; // 2-5% = Warning modal
+    return 2; // >5% = Block trade (shouldn't happen on bonding curve)
+}
+Location in Document: Add after line 475 (AMM Pricing Functions) in BondingCurvePool.sol
+
+C-2: AutoSlippageCalculator Uses External Calls in View Function
+Severity: 🔴 CRITICAL
+Impact: Gas estimation failure, function will revert
+Problem: getMinAmountOutWithAutoSlippage() calls this.calculateDEXSlippage() which is an external call, but the function is marked as returns (view implied)
+Current Code:
+solidityfunction getMinAmountOutWithAutoSlippage(
+    address poolAddress,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+) external returns (uint256 minAmountOut, uint256 slippageBps) {
+    
+    // ❌ CRITICAL: This makes an external call to QuoterV2
+    (uint256 amountOut, , , ) = QUOTER.quoteExactInputSingle(quoteParams);
+    
+    // ❌ CRITICAL: This makes an external call to self
+    SlippageParams memory params = this.calculateDEXSlippage(poolAddress, tokenIn, tokenOut, amountIn);
+    
+    // ❌ RESULT: Function consumes gas, should not be called on-chain
+}
+Fix Required:
+solidity// Option 1: Make it explicitly non-view (for backend use only)
+function getMinAmountOutWithAutoSlippage(
+    address poolAddress,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+) external returns (uint256 minAmountOut, uint256 slippageBps) {
+    
+    // Call QuoterV2 (state-changing for gas accounting)
+    IQuoterV2.QuoteExactInputSingleParams memory quoteParams = IQuoterV2.QuoteExactInputSingleParams({
+        tokenIn: tokenIn,
+        tokenOut: tokenOut,
+        amountIn: amountIn,
+        fee: 2500,
+        sqrtPriceLimitX96: 0
+    });
+    
+    // ✅ This works because function is not view
+    (uint256 amountOut, , , ) = QUOTER.quoteExactInputSingle(quoteParams);
+    
+    // Calculate optimal slippage (internal call, not external)
+    SlippageParams memory params = _calculateDEXSlippageInternal(poolAddress, tokenIn, tokenOut, amountIn);
+    slippageBps = params.totalSlippageBps;
+    
+    minAmountOut = amountOut * (10000 - slippageBps) / 10000;
+}
+
+// Make internal helper version
+function _calculateDEXSlippageInternal(
+    address poolAddress,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+) internal returns (SlippageParams memory params) {
+    // Same logic as calculateDEXSlippage, but internal
+    // ...
+}
+Alternative Fix (Recommended):
+solidity// Move slippage calculation to backend (off-chain)
+// AutoSlippageCalculator becomes a library, not deployed contract
+
+library AutoSlippageLib {
+    function calculateDEXSlippage(...) internal pure returns (SlippageParams memory) {
+        // Pure logic, no external calls
+    }
+}
+
+// Backend calls QuoterV2 directly via ethers.js/web3.py
+// Backend applies slippage calculation off-chain
+// Result: Zero on-chain gas cost for slippage calculation
+
+C-3: Missing Kaspa Finance QuoterV2 Address for Testnet
+Severity: 🔴 CRITICAL
+Impact: Contract deployment will fail
+Problem: QuoterV2 address hardcoded but not verified for Kasplex zkEVM testnet
+Current Code:
+solidityIQuoterV2 public constant QUOTER = IQuoterV2(0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B);
+// ❌ Is this the correct address for Kasplex zkEVM Testnet?
+// ❌ Document shows Position Manager and WKAS, but not QuoterV2
+Verified Kaspa Finance Addresses (from document):
+solidity// Kasplex zkEVM Testnet (Chain ID: 167012)
+address public constant POSITION_MANAGER = 0x4E25637cF39822364b877F81B18c5B6CF0eeF589; ✅ VERIFIED
+address public constant WKAS = 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94; ✅ VERIFIED
+address public constant QUOTER_V2 = ???; // ❌ NOT DOCUMENTED
+Fix Required:
+
+Contact Kaspa Finance team (https://t.me/KaspaFinanceIO) to get QuoterV2 address
+Verify address on testnet block explorer
+Update constant before deployment
+
+Temporary Workaround:
+solidity// Use off-chain quoter instead (backend calls via ethers.js)
+// Don't deploy AutoSlippageCalculator to testnet until address confirmed
+
+🟡 MEDIUM SEVERITY ISSUES
+M-1: getEffectiveFeeBreakdown() Called with this. in Pre-Graduation
+Severity: 🟡 MEDIUM
+Impact: Unnecessary gas consumption
+Problem: Using this.functionName() makes an external call instead of internal call
+Current Code:
+solidityfunction getMinTokensOutWithAutoSlippage(uint256 kasIn) external view returns (uint256 minTokensOut) {
+    // ❌ External call (unnecessary gas cost)
+    (, , , uint256 tradeAmount) = this.getEffectiveFeeBreakdown(kasIn);
+}
+Fix:
+solidityfunction getMinTokensOutWithAutoSlippage(uint256 kasIn) external view returns (uint256 minTokensOut) {
+    // ✅ Internal call (cheaper gas)
+    (uint256 antiBotFee, uint256 platformFee, uint256 creatorFee, uint256 tradeAmount) 
+        = getEffectiveFeeBreakdown(kasIn);
+    
+    uint256 expectedTokens = quoteBuy(tradeAmount);
+    uint256 slippageBps = calculateOptimalSlippage(kasIn);
+    minTokensOut = expectedTokens * (10000 - slippageBps) / 10000;
+}
+
+M-2: Division by Zero Risk in Pre-Graduation calculateOptimalSlippage()
+Severity: 🟡 MEDIUM
+Impact: Function reverts if virtualKasReserve = 0
+Problem: Early trades might have very small virtualKasReserve, causing division issues
+Current Code:
+solidityuint256 tradeImpactBps = (kasAmount * 10000) / virtualKasReserve;
+// ❌ What if virtualKasReserve = 0.001 ether (initial seed)?
+// ❌ What if kasAmount = 1000 ether (huge trade)?
+// Result: tradeImpactBps = 1000 * 10000 / 0.001 = 10,000,000,000 bps (overflow)
+Fix:
+solidityfunction calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    uint256 baseSlippage = 50; // 0.5% base
+    
+    // ✅ Add zero check and overflow protection
+    if (virtualKasReserve > 0) {
+        uint256 tradeImpactBps = (kasAmount * 10000) / virtualKasReserve;
+        
+        // ✅ Cap trade impact at reasonable level
+        if (tradeImpactBps > 10000) {
+            tradeImpactBps = 10000; // Cap at 100% of pool
+        }
+        
+        if (tradeImpactBps > 100) {
+            baseSlippage += 50;
+        }
+    }
+    
+    // Anti-bot adjustment
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        baseSlippage += 50;
+    }
+    
+    optimalSlippageBps = baseSlippage > 200 ? 200 : baseSlippage;
+}
+
+M-3: Post-Graduation Liquidity Estimation is Oversimplified
+Severity: 🟡 MEDIUM
+Impact: Inaccurate slippage calculations
+Problem: Liquidity estimation just adds token balances without considering price ratios
+Current Code:
+solidityfunction _estimatePoolLiquidity(address poolAddress, uint160 sqrtPriceX96) 
+    internal 
+    view 
+    returns (uint256 liquidityKAS) 
+{
+    uint256 token0Balance = IERC20(IUniswapV3Pool(poolAddress).token0()).balanceOf(poolAddress);
+    uint256 token1Balance = IERC20(IUniswapV3Pool(poolAddress).token1()).balanceOf(poolAddress);
+    
+    // ❌ WRONG: This assumes token0 = token1 value (not true)
+    liquidityKAS = token0Balance + token1Balance;
+}
+Fix:
+solidityfunction _estimatePoolLiquidity(address poolAddress, uint160 sqrtPriceX96) 
+    internal 
+    view 
+    returns (uint256 liquidityKAS) 
+{
+    IUniswapV3Pool pool = IUniswapV3Pool(poolAddress);
+    address token0 = pool.token0();
+    address token1 = pool.token1();
+    
+    uint256 token0Balance = IERC20(token0).balanceOf(poolAddress);
+    uint256 token1Balance = IERC20(token1).balanceOf(poolAddress);
+    
+    // ✅ Determine which token is WKAS
+    if (token0 == WKAS_ADDRESS) {
+        // Token0 is KAS, convert token1 to KAS value
+        uint256 price = _sqrtPriceToPrice(sqrtPriceX96);
+        uint256 token1ValueInKAS = token1Balance * price / 1e18;
+        liquidityKAS = token0Balance + token1ValueInKAS;
+    } else {
+        // Token1 is KAS, convert token0 to KAS value
+        uint256 price = _sqrtPriceToPrice(sqrtPriceX96);
+        uint256 token0ValueInKAS = token0Balance * price / 1e18;
+        liquidityKAS = token1Balance + token0ValueInKAS;
+    }
+}
+
+function _sqrtPriceToPrice(uint160 sqrtPriceX96) internal pure returns (uint256) {
+    // Convert sqrtPriceX96 to human-readable price
+    uint256 price = (uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * 1e18) >> (96 * 2);
+    return price;
+}
+
+M-4: Missing Graduated State Check in Pre-Graduation Functions
+Severity: 🟡 MEDIUM
+Impact: Functions return incorrect values after graduation
+Problem: Auto-slippage functions should fail gracefully after graduation
+Current Code:
+solidityfunction calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    // ❌ No check if token graduated
+    // ❌ After graduation, virtualKasReserve = 0 (transferred to DEX)
+    // ❌ Function returns wrong values
+}
+Fix:
+solidityfunction calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    // ✅ Revert if graduated (should use DEX slippage instead)
+    require(!graduated, "Use DEX slippage calculation post-graduation");
+    
+    uint256 baseSlippage = 50;
+    
+    if (virtualKasReserve > 0) {
+        uint256 tradeImpactBps = (kasAmount * 10000) / virtualKasReserve;
+        if (tradeImpactBps > 100) {
+            baseSlippage += 50;
+        }
+    }
+    
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        baseSlippage += 50;
+    }
+    
+    optimalSlippageBps = baseSlippage > 200 ? 200 : baseSlippage;
+}
+
+M-5: Backend Retry Logic Missing Transaction Rebuilding
+Severity: 🟡 MEDIUM
+Impact: Retry mechanism won't work
+Problem: Python code references _rebuild_tx_with_new_slippage() but doesn't implement it
+Current Code:
+pythonexcept Exception as e:
+    if "slippage" in str(e).lower() and attempt < max_retries:
+        new_slippage = await self._calculate_retry_slippage(attempt)
+        # ❌ Function not implemented
+        swap_tx = await self._rebuild_tx_with_new_slippage(swap_tx, new_slippage)
+Fix:
+pythonasync def _rebuild_tx_with_new_slippage(self, original_tx, new_slippage_bps):
+    """
+    Rebuild swap transaction with new slippage tolerance
+    """
+    # Recalculate minAmountOut with new slippage
+    pool_address = original_tx['pool']
+    token_in = original_tx['tokenIn']
+    token_out = original_tx['tokenOut']
+    amount_in = original_tx['amountIn']
+    
+    # Get new quote
+    quote = await self.quoter.quoteExactInputSingle({
+        'tokenIn': token_in,
+        'tokenOut': token_out,
+        'amountIn': amount_in,
+        'fee': 2500,
+        'sqrtPriceLimitX96': 0
+    })
+    
+    # Apply new slippage
+    min_amount_out = quote['amountOut'] * (10000 - new_slippage_bps) // 10000
+    
+    # Rebuild transaction
+    return {
+        'from': original_tx['from'],
+        'to': SWAP_ROUTER_ADDRESS,
+        'data': self._encode_swap_call(token_in, token_out, amount_in, min_amount_out),
+        'value': amount_in if token_in == WKAS_ADDRESS else 0,
+        'gas': await self.estimate_gas(...),
+        'maxFeePerGas': await self.get_max_fee(),
+        'maxPriorityFeePerGas': await self.get_priority_fee()
+    }
+
+🔵 LOW SEVERITY ISSUES
+L-1: Hardcoded Price Volatility in Mock Implementation
+Severity: 🔵 LOW
+Impact: Inaccurate slippage calculations
+Current Code:
+solidityfunction _getPriceVolatility(address poolAddress) internal view returns (uint256) {
+    // TODO: Implement with Chainlink or TWAP oracle
+    return 300; // ❌ Always returns 3% volatility
+}
+Recommendation:
+solidity// Option 1: Use Uniswap V3 TWAP (built-in oracle)
+function _getPriceVolatility(address poolAddress) internal view returns (uint256) {
+    IUniswapV3Pool pool = IUniswapV3Pool(poolAddress);
+    
+    // Get current price
+    (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
+    uint256 currentPrice = _sqrtPriceToPrice(sqrtPriceX96);
+    
+    // Get 5-minute TWAP price
+    uint32[] memory secondsAgos = new uint32[](2);
+    secondsAgos[0] = 300; // 5 minutes ago
+    secondsAgos[1] = 0;   // now
+    
+    (int56[] memory tickCumulatives, ) = pool.observe(secondsAgos);
+    int24 avgTick = int24((tickCumulatives[1] - tickCumulatives[0]) / 300);
+    uint256 twapPrice = _tickToPrice(avgTick);
+    
+    // Calculate volatility (price deviation)
+    uint256 deviation = currentPrice > twapPrice
+        ? ((currentPrice - twapPrice) * 10000) / twapPrice
+        : ((twapPrice - currentPrice) * 10000) / twapPrice;
+    
+    return deviation; // Returns basis points (e.g., 300 = 3%)
+}
+
+L-2: Risk Level Boundaries Could Be Configurable
+Severity: 🔵 LOW
+Impact: UX flexibility
+Current Code:
+solidityif (slippageBps < 200) return 0; // <2% hardcoded
+if (slippageBps < 500) return 1; // 5% hardcoded
+Recommendation:
+solidity// Add configurable thresholds
+uint256 public silentThreshold = 200;  // 2% default
+uint256 public warningThreshold = 500; // 5% default
+
+function updateRiskThresholds(uint256 _silent, uint256 _warning) external onlyOwner {
+    require(_silent < _warning, "Invalid thresholds");
+    silentThreshold = _silent;
+    warningThreshold = _warning;
+}
+
+function getSlippageRiskLevel(uint256 kasAmount) external view returns (uint8 riskLevel) {
+    uint256 slippageBps = calculateOptimalSlippage(kasAmount);
+    
+    if (slippageBps < silentThreshold) return 0;
+    if (slippageBps < warningThreshold) return 1;
+    return 2;
+}
+
+L-3: Missing Event Emissions in AutoSlippageCalculator
+Severity: 🔵 LOW
+Impact: Reduced observability
+Recommendation:
+solidityevent SlippageCalculated(
+    address indexed pool,
+    uint256 amountIn,
+    uint256 calculatedSlippageBps,
+    uint8 riskLevel
+);
+
+event RetrySlippageAdjusted(
+    address indexed pool,
+    uint256 previousSlippage,
+    uint256 newSlippage,
+    uint256 attemptNumber
+);
+
+function calculateDEXSlippage(...) external returns (SlippageParams memory params) {
+    // ... calculation logic ...
+    
+    emit SlippageCalculated(poolAddress, amountIn, params.totalSlippageBps, params.riskLevel);
+    return params;
+}
+
+L-4: Backend Python Service Missing Error Types
+Severity: 🔵 LOW
+Impact: Generic error handling
+Recommendation:
+pythonclass SlippageCalculationError(Exception):
+    """Raised when slippage calculation fails"""
+    pass
+
+class MaxRetriesExceededError(Exception):
+    """Raised when swap retries exhausted"""
+    pass
+
+class InsufficientLiquidityError(Exception):
+    """Raised when pool liquidity too low"""
+    pass
+
+async def calculate_slippage_for_dex_trade(self, ...):
+    try:
+        min_amount_out, slippage_bps = await self._call_contract(...)
+    except ContractError as e:
+        raise SlippageCalculationError(f"Failed to calculate slippage: {e}")
+    
+    if slippage_bps > 1500:  # >15%
+        raise InsufficientLiquidityError("Trade too large for available liquidity")
+    
+    return {...}
+
+📋 IMPLEMENTATION RECOMMENDATIONS
+✅ Recommended Architecture
+Option A: Hybrid (On-Chain + Off-Chain) - RECOMMENDED
+┌────────────────────────────────────────┐
+│  BondingCurvePool.sol (Pre-Graduation) │
+│  ├─ calculateOptimalSlippage()         │ ← On-chain (cheap, deterministic)
+│  ├─ getMinTokensOutWithAutoSlippage()  │
+│  └─ getSlippageRiskLevel()             │
+└────────────────────────────────────────┘
+
+┌────────────────────────────────────────┐
+│  Backend Service (Post-Graduation)     │
+│  ├─ Call QuoterV2.quoteExactInputSingle│ ← Off-chain (free, flexible)
+│  ├─ Calculate slippage in Python       │
+│  └─ Build transaction with minAmountOut│
+└────────────────────────────────────────┘
+Why This Works:
+
+✅ Pre-graduation: Bonding curve math is simple, cheap to compute on-chain
+✅ Post-graduation: DEX quotes require external calls, better done off-chain
+✅ Backend has flexibility to add ML models, historical data, etc.
+✅ Zero gas cost for post-graduation slippage calculation
+
+
+Option B: Pure Off-Chain - ALTERNATIVE
+Backend calculates ALL slippage (pre and post graduation)
+- Pro: Maximum flexibility, zero gas cost
+- Con: Requires backend for all trades (centralization)
+
+✅ Fixed Implementation - Pre-Graduation (BondingCurvePool.sol)
+Add these functions after line 475 (AMM Pricing Functions):
+solidity// ============================================================================
+// AUTO-SLIPPAGE CALCULATION (PRE-GRADUATION)
+// ============================================================================
+
+/**
+ * @notice Calculate optimal slippage for bonding curve trades
+ * @dev Bonding curve has deterministic pricing, slippage from trade size + anti-bot
+ * @param kasAmount Amount of KAS to trade (before fees)
+ * @return optimalSlippageBps Recommended slippage in basis points (50-200 typical)
+ */
+function calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    require(!graduated, "Use DEX slippage calculation post-graduation");
+    
+    uint256 baseSlippage = 50; // 0.5% base for bonding curve
+    
+    // Adjust for trade size impact
+    if (virtualKasReserve > 0) {
+        uint256 tradeImpactBps = (kasAmount * 10000) / virtualKasReserve;
+        
+        // Cap at 100% of pool (prevents overflow)
+        if (tradeImpactBps > 10000) {
+            tradeImpactBps = 10000;
+        }
+        
+        // Large trades (>1% of pool) need higher slippage
+        if (tradeImpactBps > 100) {
+            baseSlippage += 50; // +0.5% for large trades
+        }
+    }
+    
+    // Anti-bot period adds volatility
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        baseSlippage += 50; // +0.5% during anti-bot window
+    }
+    
+    // Cap at 200 bps (2%) for bonding curve
+    optimalSlippageBps = baseSlippage > 200 ? 200 : baseSlippage;
+}
+
+/**
+ * @notice Calculate minimum tokens with auto-slippage protection
+ * @param kasIn Amount of KAS to spend (before fees)
+ * @return minTokensOut Minimum tokens user should accept
+ * @return expectedTokens Expected tokens without slippage
+ * @return slippageBps Applied slippage in basis points
+ */
+function getMinTokensOutWithAutoSlippage(uint256 kasIn) 
+    external 
+    view 
+    returns (uint256 minTokensOut, uint256 expectedTokens, uint256 slippageBps) 
+{
+    // Get fee breakdown
+    (uint256 antiBotFee, uint256 platformFee, uint256 creatorFee, uint256 tradeAmount) 
+        = getEffectiveFeeBreakdown(kasIn);
+    
+    // Calculate expected output
+    expectedTokens = quoteBuy(tradeAmount);
+    
+    // Calculate optimal slippage
+    slippageBps = calculateOptimalSlippage(kasIn);
+    
+    // Apply slippage protection
+    minTokensOut = expectedTokens * (10000 - slippageBps) / 10000;
+}
+
+/**
+ * @notice Get risk level for UI warnings
+ * @param kasAmount Amount of KAS to trade
+ * @return riskLevel 0 = Silent, 1 = Warning, 2 = Block
+ */
+function getSlippageRiskLevel(uint256 kasAmount) external view returns (uint8 riskLevel) {
+    uint256 slippageBps = calculateOptimalSlippage(kasAmount);
+    
+    if (slippageBps < 200) return 0; // <2% = Execute silently
+    if (slippageBps < 500) return 1; // 2-5% = Show warning
+    return 2; // >5% = Block trade (shouldn't happen on curve)
+}
+
+✅ Fixed Implementation - Post-Graduation (Backend Service)
+Create services/dex_slippage.py:
+python# services/dex_slippage.py
+
+from web3 import Web3
+from eth_abi import encode
+import asyncio
+
+class DEXSlippageService:
+    """
+    Calculate optimal slippage for post-graduation DEX trades
+    Uses Kaspa Finance QuoterV2 for accurate price quotes
+    """
+    
+    # Kaspa Finance addresses (Testnet)
+    QUOTER_V2 = "0x..." # TODO: Get from Kaspa Finance team
+    SWAP_ROUTER = "0x..." # SwapRouter address
+    WKAS = "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94"
+    
+    def __init__(self, web3_provider):
+        self.w3 = Web3(Web3.HTTPProvider(web3_provider))
+        self.quoter = self.w3.eth.contract(
+            address=self.QUOTER_V2,
+            abi=QUOTER_V2_ABI
+        )
+    
+    async def calculate_dex_slippage(
+        self,
+        pool_address: str,
+        token_in: str,
+        token_out: str,
+        amount_in: int
+    ) -> dict:
+        """
+        Calculate optimal slippage for DEX swap
+        Returns: {slippage_bps, risk_level, volatility, liquidity_factor}
+        """
+        
+        # Base slippage for DEX trading
+        base_slippage = 100  # 1%
+        
+        # Get price volatility (from TWAP oracle or historical data)
+        volatility = await self._get_price_volatility(pool_MContinueaddress)
+    volatility_adjustment = 0
+    if volatility > 500:  # >5% volatility
+        volatility_adjustment = 100  # +1%
+    
+    # Estimate pool liquidity
+    liquidity_kas = await self._estimate_pool_liquidity(pool_address)
+    
+    # Calculate trade impact
+    trade_impact_bps = (amount_in * 10000) // liquidity_kas if liquidity_kas > 0 else 10000
+    
+    liquidity_adjustment = 0
+    if trade_impact_bps > 100:  # Trade >1% of pool
+        liquidity_adjustment = 50  # +0.5%
+    
+    if liquidity_kas < Web3.to_wei(10000, 'ether'):  # Pool <10K KAS
+        liquidity_adjustment += 100  # +1%
+    
+    # Total slippage calculation
+    total_slippage = base_slippage + volatility_adjustment + liquidity_adjustment
+    
+    # Cap at 1500 bps (15%)
+    if total_slippage > 1500:
+        total_slippage = 1500
+    
+    # Determine risk level
+    if total_slippage < 500:  # <5%
+        risk_level = "silent"
+    elif total_slippage <= 1500:  # 5-15%
+        risk_level = "warning"
+    else:  # >15%
+        risk_level = "blocked"
+    
+    return {
+        'slippage_bps': total_slippage,
+        'slippage_percent': total_slippage / 100,
+        'risk_level': risk_level,
+        'breakdown': {
+            'base': base_slippage,
+            'volatility': volatility_adjustment,
+            'liquidity': liquidity_adjustment
+        },
+        'pool_stats': {
+            'volatility_bps': volatility,
+            'liquidity_kas': Web3.from_wei(liquidity_kas, 'ether'),
+            'trade_impact_bps': trade_impact_bps
+        }
+    }
+
+async def get_quote_with_slippage(
+    self,
+    token_in: str,
+    token_out: str,
+    amount_in: int,
+    pool_address: str
+) -> dict:
+    """
+    Get DEX quote and calculate minAmountOut with auto-slippage
+    """
+    
+    # Get quote from QuoterV2
+    quote_params = {
+        'tokenIn': token_in,
+        'tokenOut': token_out,
+        'amountIn': amount_in,
+        'fee': 2500,  # 0.25% fee tier
+        'sqrtPriceLimitX96': 0
+    }
+    
+    try:
+        result = await self.quoter.functions.quoteExactInputSingle(
+            quote_params
+        ).call()
+        
+        amount_out = result[0]  # Expected output
+        
+    except Exception as e:
+        raise Exception(f"QuoterV2 call failed: {e}")
+    
+    # Calculate optimal slippage
+    slippage_data = await self.calculate_dex_slippage(
+        pool_address, token_in, token_out, amount_in
+    )
+    
+    # Apply slippage
+    min_amount_out = (amount_out * (10000 - slippage_data['slippage_bps'])) // 10000
+    
+    return {
+        'amount_out': amount_out,
+        'min_amount_out': min_amount_out,
+        'slippage_bps': slippage_data['slippage_bps'],
+        'risk_level': slippage_data['risk_level'],
+        'pool_stats': slippage_data['pool_stats']
+    }
+
+async def execute_swap_with_retry(
+    self,
+    token_in: str,
+    token_out: str,
+    amount_in: int,
+    recipient: str,
+    pool_address: str,
+    max_retries: int = 3
+) -> dict:
+    """
+    Execute DEX swap with intelligent retry on slippage failure
+    """
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            # Get quote with auto-slippage
+            quote = await self.get_quote_with_slippage(
+                token_in, token_out, amount_in, pool_address
+            )
+            
+            # Build swap transaction
+            swap_tx = await self._build_swap_transaction(
+                token_in=token_in,
+                token_out=token_out,
+                amount_in=amount_in,
+                min_amount_out=quote['min_amount_out'],
+                recipient=recipient
+            )
+            
+            # Send transaction
+            tx_hash = await self.w3.eth.send_transaction(swap_tx)
+            receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            if receipt.status == 1:
+                return {
+                    'success': True,
+                    'tx_hash': tx_hash.hex(),
+                    'amount_out': quote['amount_out'],
+                    'min_amount_out': quote['min_amount_out'],
+                    'slippage_used': quote['slippage_bps'],
+                    'attempt': attempt
+                }
+        
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            # Check if it's a slippage error
+            if ('slippage' in error_msg or 'too little received' in error_msg) and attempt < max_retries:
+                # Calculate increased slippage for retry
+                new_slippage = quote['slippage_bps'] + (100 * attempt)  # +1% per attempt
+                if new_slippage > 1500:
+                    new_slippage = 1500
+                
+                print(f"Retry {attempt}: Increasing slippage to {new_slippage/100}%")
+                continue
+            else:
+                raise Exception(f"Swap failed after {attempt} attempts: {e}")
+    
+    raise Exception("Max retries exceeded")
+
+async def _get_price_volatility(self, pool_address: str) -> int:
+    """
+    Calculate price volatility using TWAP oracle
+    Returns: volatility in basis points
+    """
+    try:
+        pool_contract = self.w3.eth.contract(
+            address=pool_address,
+            abi=UNISWAP_V3_POOL_ABI
+        )
+        
+        # Get current price
+        slot0 = await pool_contract.functions.slot0().call()
+        sqrt_price_x96 = slot0[0]
+        current_price = self._sqrt_price_to_price(sqrt_price_x96)
+        
+        # Get 5-minute TWAP
+        seconds_agos = [300, 0]  # 5 minutes ago, now
+        observations = await pool_contract.functions.observe(seconds_agos).call()
+        tick_cumulatives = observations[0]
+        
+        avg_tick = (tick_cumulatives[1] - tick_cumulatives[0]) // 300
+        twap_price = self._tick_to_price(avg_tick)
+        
+        # Calculate deviation
+        if current_price > twap_price:
+            deviation = ((current_price - twap_price) * 10000) // twap_price
+        else:
+            deviation = ((twap_price - current_price) * 10000) // twap_price
+        
+        return deviation
+    
+    except Exception as e:
+        # Fallback to conservative estimate
+        print(f"Volatility calculation failed: {e}")
+        return 300  # 3% default
+
+async def _estimate_pool_liquidity(self, pool_address: str) -> int:
+    """
+    Estimate pool liquidity in KAS value
+    """
+    try:
+        pool_contract = self.w3.eth.contract(
+            address=pool_address,
+            abi=UNISWAP_V3_POOL_ABI
+        )
+        
+        token0 = await pool_contract.functions.token0().call()
+        token1 = await pool_contract.functions.token1().call()
+        
+        # Get balances
+        token0_contract = self.w3.eth.contract(address=token0, abi=ERC20_ABI)
+        token1_contract = self.w3.eth.contract(address=token1, abi=ERC20_ABI)
+        
+        token0_balance = await token0_contract.functions.balanceOf(pool_address).call()
+        token1_balance = await token1_contract.functions.balanceOf(pool_address).call()
+        
+        # Get current price
+        slot0 = await pool_contract.functions.slot0().call()
+        sqrt_price_x96 = slot0[0]
+        price = self._sqrt_price_to_price(sqrt_price_x96)
+        
+        # Convert to KAS value
+        if token0.lower() == self.WKAS.lower():
+            # Token0 is WKAS
+            token1_value_in_kas = (token1_balance * price) // 10**18
+            total_liquidity = token0_balance + token1_value_in_kas
+        else:
+            # Token1 is WKAS
+            token0_value_in_kas = (token0_balance * 10**18) // price
+            total_liquidity = token1_balance + token0_value_in_kas
+        
+        return total_liquidity
+    
+    except Exception as e:
+        print(f"Liquidity estimation failed: {e}")
+        return Web3.to_wei(10000, 'ether')  # 10K KAS fallback
+
+async def _build_swap_transaction(
+    self,
+    token_in: str,
+    token_out: str,
+    amount_in: int,
+    min_amount_out: int,
+    recipient: str
+) -> dict:
+    """
+    Build swap transaction for SwapRouter.exactInputSingle()
+    """
+    
+    swap_router = self.w3.eth.contract(
+        address=self.SWAP_ROUTER,
+        abi=SWAP_ROUTER_ABI
+    )
+    
+    params = {
+        'tokenIn': token_in,
+        'tokenOut': token_out,
+        'fee': 2500,
+        'recipient': recipient,
+        'deadline': int(time.time()) + 300,  # 5 minutes
+        'amountIn': amount_in,
+        'amountOutMinimum': min_amount_out,
+        'sqrtPriceLimitX96': 0
+    }
+    
+    # Build transaction
+    tx = await swap_router.functions.exactInputSingle(params).build_transaction({
+        'from': recipient,
+        'value': amount_in if token_in.lower() == self.WKAS.lower() else 0,
+        'gas': 300000,  # Estimate
+        'maxFeePerGas': await self.w3.eth.max_priority_fee + await self.w3.eth.gas_price,
+        'maxPriorityFeePerGas': await self.w3.eth.max_priority_fee,
+        'nonce': await self.w3.eth.get_transaction_count(recipient)
+    })
+    
+    return tx
+
+def _sqrt_price_to_price(self, sqrt_price_x96: int) -> int:
+    """Convert Uniswap V3 sqrtPriceX96 to human-readable price"""
+    return (sqrt_price_x96 ** 2 * 10**18) >> (96 * 2)
+
+def _tick_to_price(self, tick: int) -> int:
+    """Convert tick to price"""
+    return int(1.0001 ** tick * 10**18)
+============================================================================
+FRONTEND INTEGRATION
+============================================================================
+async def get_auto_slippage_for_trade(
+token_address: str,
+kas_amount: float,
+is_graduated: bool
+) -> dict:
+"""
+Unified function for frontend to get auto-slippage
+Automatically selects bonding curve or DEX calculation
+"""
+if not is_graduated:
+    # Pre-graduation: Use bonding curve calculation
+    pool_contract = web3.eth.contract(
+        address=token_address,
+        abi=BONDING_CURVE_POOL_ABI
+    )
+    
+    kas_wei = Web3.to_wei(kas_amount, 'ether')
+    
+    # Call on-chain auto-slippage function
+    result = await pool_contract.functions.getMinTokensOutWithAutoSlippage(kas_wei).call()
+    
+    return {
+        'min_tokens_out': result[0],
+        'expected_tokens': result[1],
+        'slippage_bps': result[2],
+        'slippage_percent': result[2] / 100,
+        'risk_level': await pool_contract.functions.getSlippageRiskLevel(kas_wei).call(),
+        'source': 'bonding_curve'
+    }
+
+else:
+    # Post-graduation: Use DEX calculation
+    dex_service = DEXSlippageService(WEB3_PROVIDER)
+    
+    pool_address = await get_kaspa_finance_pool(token_address)
+    kas_wei = Web3.to_wei(kas_amount, 'ether')
+    
+    quote = await dex_service.get_quote_with_slippage(
+        token_in=WKAS,
+        token_out=token_address,
+        amount_in=kas_wei,
+        pool_address=pool_address
+    )
+    
+    risk_level_map = {
+        'silent': 0,
+        'warning': 1,
+        'blocked': 2
+    }
+    
+    return {
+        'min_tokens_out': quote['min_amount_out'],
+        'expected_tokens': quote['amount_out'],
+        'slippage_bps': quote['slippage_bps'],
+        'slippage_percent': quote['slippage_bps'] / 100,
+        'risk_level': risk_level_map[quote['risk_level']],
+        'pool_stats': quote['pool_stats'],
+        'source': 'kaspa_finance_dex'
+    }
+
+---
+
+## 📊 COMPLETE AUDIT SUMMARY
+
+### Issues Breakdown
+
+| Severity | Count | Status |
+|----------|-------|--------|
+| 🔴 Critical | 3 | Must fix before deployment |
+| 🟡 Medium | 5 | Should fix before mainnet |
+| 🔵 Low | 4 | Nice to have improvements |
+
+### Critical Fixes Required
+
+1. **C-1**: Add pre-graduation functions to BondingCurvePool.sol (Lines 475+)
+2. **C-2**: Remove AutoSlippageCalculator.sol OR make it library-only (off-chain use)
+3. **C-3**: Get QuoterV2 address from Kaspa Finance team before deployment
+
+### Medium Fixes Recommended
+
+1. **M-1**: Change `this.getEffectiveFeeBreakdown()` to internal call
+2. **M-2**: Add division by zero protection in calculateOptimalSlippage()
+3. **M-3**: Fix liquidity estimation with proper price conversion
+4. **M-4**: Add graduated state check to pre-graduation functions
+5. **M-5**: Implement `_rebuild_tx_with_new_slippage()` in Python service
+
+---
+
+## ✅ RECOMMENDED DEPLOYMENT PLAN
+
+### Phase 1: Pre-Graduation Slippage (TESTNET)
+
+**Deploy**:
+1. Add 3 functions to BondingCurvePool.sol:
+   - `calculateOptimalSlippage()`
+   - `getMinTokensOutWithAutoSlippage()`
+   - `getSlippageRiskLevel()`
+
+2. Update BondingCurvePool.sol specification (lines 475-520)
+
+3. Test on testnet:
+```javascript
+   // Test auto-slippage calculation
+   const kasAmount = ethers.utils.parseEther("10");
+   const result = await pool.getMinTokensOutWithAutoSlippage(kasAmount);
+   console.log("Min tokens:", result.minTokensOut);
+   console.log("Expected tokens:", result.expectedTokens);
+   console.log("Slippage:", result.slippageBps / 100, "%");
+
+Phase 2: Post-Graduation Slippage (BACKEND)
+Deploy:
+
+Get QuoterV2 address from Kaspa Finance
+Create services/dex_slippage.py
+Implement backend service (no smart contract needed)
+Test with graduated tokens:
+
+python   service = DEXSlippageService(web3_provider)
+   quote = await service.get_quote_with_slippage(
+       token_in=WKAS,
+       token_out=graduated_token,
+       amount_in=Web3.to_wei(10, 'ether'),
+       pool_address=pool_address
+   )
+   print(f"Min amount out: {quote['min_amount_out']}")
+   print(f"Slippage: {quote['slippage_bps']/100}%")
+   print(f"Risk level: {quote['risk_level']}")
+
+Phase 3: Frontend Integration
+Update trading UI:
+javascript// frontend/components/TradingModal.jsx
+
+async function executeTrade(kasAmount) {
+    const tokenAddress = selectedToken.address;
+    const isGraduated = selectedToken.graduated;
+    
+    // Get auto-slippage
+    const slippageData = await fetch('/api/auto-slippage', {
+        method: 'POST',
+        body: JSON.stringify({
+            token_address: tokenAddress,
+            kas_amount: kasAmount,
+            is_graduated: isGraduated
+        })
+    }).then(r => r.json());
+    
+    // Show slippage to user
+    if (slippageData.risk_level === 1) {
+        // Warning modal
+        const confirmed = await showWarningModal(
+            `High slippage: ${slippageData.slippage_percent}%`
+        );
+        if (!confirmed) return;
+    } else if (slippageData.risk_level === 2) {
+        // Block trade
+        showErrorModal("Slippage too high. Try smaller amount.");
+        return;
+    }
+    
+    // Execute trade with auto-calculated slippage
+    if (!isGraduated) {
+        // Bonding curve trade
+        await bondingCurveContract.buyTokens(
+            slippageData.min_tokens_out,
+            deadline,
+            { value: kasAmount }
+        );
+    } else {
+        // DEX trade
+        await swapRouter.exactInputSingle({
+            tokenIn: WKAS,
+            tokenOut: tokenAddress,
+            fee: 2500,
+            recipient: userAddress,
+            deadline: deadline,
+            amountIn: kasAmount,
+            amountOutMinimum: slippageData.min_tokens_out,
+            sqrtPriceLimitX96: 0
+        });
+    }
+}
+
+🎯 FINAL VERDICT
+Status: ⚠️ NOT READY - REQUIRES FIXES
+Approve for Testnet: ❌ NO - After C-1, C-2, C-3 fixed
+Approve for Mainnet: ❌ NO - After all Critical + Medium issues fixed
+Action Items
+Critical (Must Fix):
+
+ Add auto-slippage functions to BondingCurvePool.sol
+ Remove/refactor AutoSlippageCalculator.sol (use backend instead)
+ Get QuoterV2 address from Kaspa Finance team
+
+Medium (Should Fix):
+4. [ ] Fix internal vs external call in getMinTokensOutWithAutoSlippage()
+5. [ ] Add division by zero protection
+6. [ ] Improve liquidity estimation logic
+7. [ ] Add graduated state checks
+8. [ ] Complete Python retry implementation
+Low (Nice to Have):
+9. [ ] Implement TWAP volatility calculation
+10. [ ] Make risk thresholds configurable
+11. [ ] Add event emissions
+12. [ ] Improve Python error handling
+
+Audit Complete ✅
+Recommendation: Fix critical issues, then re-audit before testnet deployment
+Estimated Fix Time: 4-6 hours for critical issues, 8-10 hours for all issues

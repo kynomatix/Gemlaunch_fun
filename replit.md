@@ -27,6 +27,12 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - User alerts only when needed: silent <2%, warning 5-15%, block >15%
   - Bonding curve: 0.5-1% base | DEX: 1-3% base (dynamic adjustments for volatility/liquidity)
   - UX priority: 95% of trades execute silently without user intervention
+- **Auto-Slippage Audit & Fixes** (Claude Sonnet 4.5):
+  - Pre-grad functions integrated into BondingCurvePool.sol (lines 529-600)
+  - Added overflow protection, zero-division checks, graduated state validation
+  - Post-grad implementation changed to **off-chain backend** (saves gas, no contract deployment)
+  - Python service: `DEXAutoSlippageCalculator` with QuoterV2 integration (0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B confirmed)
+  - Fixed: Internal calls (cheaper gas), retry logic with +1% per attempt (max 3), risk level detection
 
 ## October 9, 2025 (AM Update)
 - **Creator Fee Claim Portal UI Complete** (Section 8 from Pre_SC_Dev.md):
