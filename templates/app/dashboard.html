@@ -1356,13 +1356,16 @@
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Accumulated</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #20B2AA;">
-                                                {{ "%.2f"|format((token.trade_count or 0) * 5) }} KAS
+                                                {% set fees_kas = (token.trade_count or 0) * 5 %}
+                                                {{ "{:,.2f}".format(fees_kas) }} KAS
                                             </div>
                                         </div>
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Volume Traded</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
-                                                ${{ "{:,.0f}".format((token.trade_count or 0) * 500) }}
+                                                {% set fees_kas = (token.trade_count or 0) * 5 %}
+                                                {% set volume_usd = (fees_kas / 0.001) * 0.10 %}
+                                                ${{ "{:,.0f}".format(volume_usd) }}
                                             </div>
                                         </div>
                                     </div>
