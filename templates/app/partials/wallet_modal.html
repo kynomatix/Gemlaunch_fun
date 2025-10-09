@@ -176,20 +176,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
         flex-shrink: 0;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.05);
     }
     
-    .wallet-option-icon.kastle {
-        background: linear-gradient(135deg, #7B68EE, #9370DB);
-    }
-    
-    .wallet-option-icon.kasware {
-        background: linear-gradient(135deg, #F6851B, #E2761B);
-    }
-    
-    .wallet-option-icon.metamask {
-        background: linear-gradient(135deg, #F6851B, #E2761B);
+    .wallet-option-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
     
     .wallet-option-info {
@@ -227,7 +222,6 @@
         .wallet-option-icon {
             width: 40px;
             height: 40px;
-            font-size: 1.25rem;
         }
         
         .wallet-option-info h3 {
@@ -268,8 +262,8 @@
         
         <div class="wallet-modal-options">
             <button class="wallet-option-button" onclick="connectWalletFromModal('kastle')">
-                <div class="wallet-option-icon kastle">
-                    <i class="fas fa-wallet"></i>
+                <div class="wallet-option-icon">
+                    <img src="{{ url_for('static', filename='images/kastle_wallet.jpg') }}" alt="Kastle Wallet">
                 </div>
                 <div class="wallet-option-info">
                     <h3>Kastle Wallet</h3>
@@ -278,8 +272,8 @@
             </button>
             
             <button class="wallet-option-button" onclick="connectWalletFromModal('kasware')">
-                <div class="wallet-option-icon kasware">
-                    <i class="fas fa-cube"></i>
+                <div class="wallet-option-icon">
+                    <img src="{{ url_for('static', filename='images/kasware_wallet.jpg') }}" alt="KasWare">
                 </div>
                 <div class="wallet-option-info">
                     <h3>KasWare</h3>
@@ -288,8 +282,8 @@
             </button>
             
             <button class="wallet-option-button" onclick="connectWalletFromModal('metamask')">
-                <div class="wallet-option-icon metamask">
-                    <i class="fab fa-ethereum"></i>
+                <div class="wallet-option-icon">
+                    <img src="{{ url_for('static', filename='images/metamask_wallet.jpg') }}" alt="MetaMask">
                 </div>
                 <div class="wallet-option-info">
                     <h3>MetaMask</h3>
