@@ -225,15 +225,15 @@ All critical and high severity issues have been addressed in v4:
 
 ### 📋 QUICK REFERENCE - Audit Package Summary
 
-**Submit Lines 250-1428 for Security Audit**
+**Submit Lines 250-1472 for Security Audit**
 
 | Contract | Line Range | Checklist | Key Features |
 |----------|-----------|-----------|--------------|
 | **BondingCurvePool.sol** | 250-756 | 73 checks | Trading, fees, graduation, anti-whale |
-| **TokenFactory.sol** | 758-1073 | 36 checks | Token creation, anti-spam, registry |
-| **GraduationController.sol** | 1076-1428 | 47 checks | DEX integration, oracle, emergency controls |
+| **TokenFactory.sol** | 758-1116 | 40 checks | Token creation, anti-spam, registry, emergency recovery |
+| **GraduationController.sol** | 1118-1472 | 47 checks | DEX integration, oracle, emergency controls |
 
-**Total: 1,178 lines of audit-ready Solidity code with 156 validation checkboxes**
+**Total: 1,222 lines of audit-ready Solidity code with 160 validation checkboxes**
 
 **Critical Features:**
 - ✅ Anti-Bot GEM System (70/30 split at contract level)
@@ -836,6 +836,8 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     
     event DeploymentCooldownUpdated(uint256 newCooldown);
     event GraduationControllerUpdated(address indexed newController);
+    event EmergencyTokenRecovery(address indexed token, uint256 amount);
+    event EmergencyKASRecovery(uint256 amount);
 }
 ```
 
@@ -957,6 +959,20 @@ function pause() external onlyOwner {
 function unpause() external onlyOwner {
     _unpause();
 }
+
+// Emergency token recovery (if tokens accidentally sent to factory)
+function emergencyWithdrawToken(address token, uint256 amount) external onlyOwner {
+    require(token != address(0), "Invalid token");
+    IERC20(token).transfer(owner(), amount);
+    emit EmergencyTokenRecovery(token, amount);
+}
+
+// Emergency KAS recovery (if KAS accidentally sent to factory)
+function emergencyWithdrawKAS(uint256 amount) external onlyOwner {
+    require(address(this).balance >= amount, "Insufficient balance");
+    payable(owner()).transfer(amount);
+    emit EmergencyKASRecovery(amount);
+}
 ```
 
 #### View Functions (AUDIT FIX v4)
@@ -1030,10 +1046,12 @@ function getSecondsUntilNextDeployment(address user) external view returns (uint
 - [ ] getSecondsUntilNextDeployment() for countdown timers (line 974)
 
 **Admin Functions:**
-- [ ] setDeploymentCooldown() with max 1 hour limit (line 916)
-- [ ] setGraduationController() address updates (line 923)
-- [ ] pause/unpause emergency controls (line 930-936)
-- [ ] OpenZeppelin Ownable, Pausable, ReentrancyGuard (line 772)
+- [ ] setDeploymentCooldown() with max 1 hour limit (line 952)
+- [ ] setGraduationController() address updates (line 959)
+- [ ] pause/unpause emergency controls (line 966-972)
+- [ ] emergencyWithdrawToken() for stuck token recovery (line 979)
+- [ ] emergencyWithdrawKAS() for stuck KAS recovery (line 986)
+- [ ] OpenZeppelin Ownable, Pausable, ReentrancyGuard (line 786)
 
 **View Functions:**
 - [ ] getDeployedTokenCount() total token counter (line 942)
@@ -1049,9 +1067,11 @@ function getSecondsUntilNextDeployment(address user) external view returns (uint
 - [ ] platformDevelopmentWallet address (line 777)
 
 **Events:**
-- [ ] TokenCreated event (line 803)
-- [ ] DeploymentCooldownUpdated event (line 814)
-- [ ] GraduationControllerUpdated event (line 815)
+- [ ] TokenCreated event (line 826)
+- [ ] DeploymentCooldownUpdated event (line 840)
+- [ ] GraduationControllerUpdated event (line 841)
+- [ ] EmergencyTokenRecovery event (line 842)
+- [ ] EmergencyKASRecovery event (line 843)
 
 ---
 
@@ -1088,8 +1108,9 @@ This section (lines 758-981) contains the **COMPLETE** implementation specificat
 - Deployment cooldown updates (max 1 hour)
 - Graduation controller updates
 - Emergency pause/unpause
+- Emergency token/KAS recovery (stuck funds)
 
-**STATUS**: Ready for security audit. All anti-spam, validation, and registry features implemented.
+**STATUS**: Ready for security audit. All anti-spam, validation, registry, and emergency recovery features implemented.
 
 ---
 
@@ -1463,14 +1484,14 @@ All 3 core contracts now have **COMPLETE v4 canonical implementations** with com
 - Access Control: OpenZeppelin (ReentrancyGuard, Pausable, Ownable)
 - **Checklist**: Lines 649-721 (73 implementation checkboxes)
 
-✅ **2. TokenFactory.sol** (Lines 758-1073)
+✅ **2. TokenFactory.sol** (Lines 758-1116)
 - Token Deployment: createToken() with full metadata storage
 - Anti-Spam: 60-second cooldown per user (configurable 0-3600s)
 - Input Validation: Name/symbol length, supply limits (1M-1B), description (280 chars)
 - Registry: On-chain token tracking with pagination
-- Admin Controls: Pause/unpause, cooldown updates
+- Admin Controls: Pause/unpause, cooldown updates, emergency recovery
 - View Functions: canDeploy(), getDeployedTokens(), getTokenInfo()
-- **Checklist**: Lines 986-1035 (36 implementation checkboxes)
+- **Checklist**: Lines 1024-1077 (40 implementation checkboxes)
 
 ✅ **3. GraduationController.sol** (Lines 1076-1428)
 - Graduation Flow: 2-step process (initiate → complete)
@@ -1488,10 +1509,10 @@ All 3 core contracts now have **COMPLETE v4 canonical implementations** with com
 | Contract | Lines | Checklist | Status | Blockers |
 |----------|-------|-----------|--------|----------|
 | **BondingCurvePool.sol** | 250-756 | 73 checks | ✅ AUDIT READY | None |
-| **TokenFactory.sol** | 758-1073 | 36 checks | ✅ AUDIT READY | None |
-| **GraduationController.sol** | 1076-1428 | 47 checks | ✅ AUDIT READY | None |
+| **TokenFactory.sol** | 758-1116 | 40 checks | ✅ AUDIT READY | None |
+| **GraduationController.sol** | 1118-1472 | 47 checks | ✅ AUDIT READY | None |
 
-**Total Implementation Checkboxes: 156** - Comprehensive validation for audit review
+**Total Implementation Checkboxes: 160** - Comprehensive validation for audit review (includes emergency recovery)
 
 **All Critical Audit Findings Addressed:**
 - ✅ Version confusion eliminated (single v4 canonical section)
@@ -1503,7 +1524,7 @@ All 3 core contracts now have **COMPLETE v4 canonical implementations** with com
 - ✅ Access controls and emergency functions complete
 
 **Next Steps:**
-1. Submit lines 250-1428 for professional security audit (3 contracts + 156 validation checkboxes)
+1. Submit lines 250-1472 for professional security audit (3 contracts + 160 validation checkboxes)
 2. Address any audit findings
 3. Deploy to Kasplex zkEVM Testnet (Chain ID: 167012)
 4. Begin Phase 2: Backend web3 integration
