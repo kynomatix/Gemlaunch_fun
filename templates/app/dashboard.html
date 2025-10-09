@@ -3385,9 +3385,121 @@
                 max-height: none;
             }
         }
+
+<!-- Include Creator Fee Modal -->
+{% include 'app/partials/creator_fee_modal.html' %}
+
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/utils/animations.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<script>
+// Creator Fee Modal Functions
+let currentTokenData = {};
+
+function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
+    // Store current token data
+    currentTokenData = {
+        id: tokenId,
+        name: tokenName,
+        symbol: tokenSymbol,
+        image: tokenImage,
+        tradeCount: tradeCount,
+        marketCap: marketCap,
+        progressToGrad: progressToGrad
+    };
+    
+    // Calculate fee stats (placeholder calculations - will be replaced with SC data)
+    const avgTradeSize = 10; // Average 10 KAS per trade (placeholder)
+    const feeRate = 0.001; // 0.1% creator fee
+    const accumulatedFees = tradeCount * avgTradeSize * feeRate;
+    const lifetimeFees = accumulatedFees; // Same for now (no claims yet)
+    const platformFees = tradeCount * avgTradeSize * 0.009; // 0.9% platform fee
+    
+    // Get KAS price for USD conversion (placeholder)
+    const kasPrice = 0.15; // $0.15 per KAS (will fetch from API later)
+    
+    // Update modal content
+    document.getElementById('feeTokenName').textContent = tokenName;
+    document.getElementById('feeTokenSymbol').textContent = '$' + tokenSymbol;
+    
+    // Update token image
+    const imageEl = document.getElementById('feeTokenImage');
+    if (tokenImage) {
+        imageEl.innerHTML = `<img src="${tokenImage}" alt="${tokenName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">`;
+    } else {
+        imageEl.innerHTML = '💎';
+    }
+    
+    // Update fee statistics
+    document.getElementById('accumulatedFees').textContent = accumulatedFees.toFixed(4) + ' KAS';
+    document.getElementById('accumulatedFeesUSD').textContent = '$' + (accumulatedFees * kasPrice).toFixed(2) + ' USD';
+    document.getElementById('totalLifetimeFees').textContent = lifetimeFees.toFixed(4) + ' KAS';
+    document.getElementById('totalLifetimeFeesUSD').textContent = '$' + (lifetimeFees * kasPrice).toFixed(2) + ' USD';
+    document.getElementById('totalTrades').textContent = tradeCount;
+    
+    // Update fee breakdown
+    document.getElementById('platformFeeAmount').textContent = platformFees.toFixed(4) + ' KAS';
+    document.getElementById('creatorFeeAmount').textContent = accumulatedFees.toFixed(4) + ' KAS';
+    
+    // Update claim status
+    const claimStatusBadge = document.getElementById('claimStatusBadge');
+    const claimStatusText = document.getElementById('claimStatusText');
+    const claimBtn = document.getElementById('claimFeesBtn');
+    
+    // Check if graduated (market cap >= $70,000)
+    const isGraduated = marketCap >= 70000;
+    
+    if (isGraduated && accumulatedFees > 0) {
+        claimStatusBadge.className = 'claim-status-badge success';
+        claimStatusText.innerHTML = '<i class="fas fa-check-circle"></i> Ready to claim! Token has graduated.';
+        claimBtn.disabled = false;
+    } else if (isGraduated && accumulatedFees === 0) {
+        claimStatusBadge.className = 'claim-status-badge';
+        claimStatusText.innerHTML = '<i class="fas fa-info-circle"></i> No fees to claim yet';
+        claimBtn.disabled = true;
+    } else {
+        claimStatusBadge.className = 'claim-status-badge';
+        claimStatusText.innerHTML = `<i class="fas fa-info-circle"></i> Available after graduation ($70K market cap) - Currently at ${progressToGrad.toFixed(1)}%`;
+        claimBtn.disabled = true;
+    }
+    
+    // Show modal
+    document.getElementById('creatorFeeModal').style.display = 'flex';
+}
+
+function closeCreatorFeeModal() {
+    document.getElementById('creatorFeeModal').style.display = 'none';
+    currentTokenData = {};
+}
+
+function claimCreatorFees() {
+    // Placeholder for smart contract integration
+    alert('🚧 Smart Contract Integration Coming Soon!\n\nThis will call withdrawCreatorFees() on the smart contract to claim your accumulated fees.\n\nFor now, this is a UI preview only.');
+    
+    // When SC is integrated, this will:
+    // 1. Connect wallet
+    // 2. Call contract.withdrawCreatorFees()
+    // 3. Show transaction confirmation
+    // 4. Update fee balances
+    // 5. Show success message
+}
+
+// Close modal on outside click
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('creatorFeeModal');
+    if (e.target === modal) {
+        closeCreatorFeeModal();
+    }
+});
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeCreatorFeeModal();
+    }
+});
+</script>
 {% endblock %}
