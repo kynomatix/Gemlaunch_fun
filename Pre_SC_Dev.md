@@ -17,30 +17,46 @@
 
 ## Phase 1: Critical Trading UX
 
-### 1. ✅ Slippage & Deadline Controls
+### 1. ✅ Auto-Slippage Protection (Smart Optimization)
 **Smart Contract Parameters:** `minTokensOut`, `minKasOut`, `deadline`
 
-- [ ] Add slippage tolerance selector to trade panel
-  - [ ] Preset options: 0.5%, 1%, 2%, 5%
-  - [ ] Custom slippage input field
-  - [ ] Save user preference to localStorage
-- [ ] Add deadline picker
-  - [ ] Preset options: 5min, 10min, 30min
-  - [ ] Custom deadline input
-  - [ ] Calculate Unix timestamp for contract call
-- [ ] Add price impact warning
-  - [ ] Calculate price impact percentage
-  - [ ] Show warning for >5% impact
-  - [ ] Block trades >20% impact with confirmation modal
-- [ ] Display slippage breakdown
-  - [ ] Expected output amount
-  - [ ] Minimum guaranteed amount (after slippage)
-  - [ ] "Transaction may revert" warning for high slippage
+**Strategy:** Automatic slippage calculation with intelligent retry - NO manual user controls needed
+
+- [ ] Implement auto-slippage calculation algorithm
+  - [ ] Analyze recent price volatility (5min window)
+  - [ ] Calculate trade size vs pool liquidity ratio
+  - [ ] Determine optimal slippage dynamically
+  - [ ] **Bonding Curve:** 0.5-1% base slippage
+  - [ ] **DEX (post-grad):** 1-3% base slippage
+- [ ] Add volatility-aware adjustments
+  - [ ] High volatility (>5%): +1% slippage
+  - [ ] Large trade (>1% of pool): +0.5% slippage
+  - [ ] Low liquidity (<$10K): +1% slippage
+  - [ ] Cap maximum at 15% (auto-reject above)
+- [ ] Implement intelligent retry on failure
+  - [ ] If tx fails due to slippage → recalculate
+  - [ ] Increase slippage by 1% on retry
+  - [ ] Max 3 retry attempts
+  - [ ] Show progress to user during retries
+- [ ] User alerts (only when needed)
+  - [ ] Silent execution: <2% slippage
+  - [ ] Warning modal: 5-15% slippage
+    - Show expected vs minimum tokens
+    - Explain why (low liquidity, large trade, etc.)
+    - [Cancel] [Proceed Anyway] buttons
+  - [ ] Block modal: >15% slippage
+    - "Too risky to execute"
+    - Suggest smaller trade or wait
+    - [Go Back] button only
+- [ ] Automatic deadline calculation
+  - [ ] Bonding curve: 5min default
+  - [ ] DEX: 10min default (higher variability)
+  - [ ] Extend on retry: +2min per attempt
 
 **Files to Update:**
-- `templates/app/partials/token_trading.html`
-- `static/js/token_detail.js`
-- `static/css/token_detail.css`
+- `static/js/auto_slippage.js` (NEW - slippage calculation engine)
+- `static/js/token_detail.js` (integrate auto-slippage)
+- `templates/app/partials/slippage_warning_modal.html` (NEW - warning UI)
 
 ---
 

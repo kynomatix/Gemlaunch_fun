@@ -20,6 +20,13 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - Fees earned in KAS (2,000 KAS from 400 trades), USD value from oracle
   - Laser Eyes updated to 400 trades as $200k volume example
   - Volume display now calculated from KAS amount × oracle price
+- **Auto-Slippage Strategy Adopted**:
+  - Updated Pre_SC_Dev.md with auto-slippage optimization approach
+  - NO manual slippage controls - system calculates optimal slippage automatically
+  - Intelligent retry on failure: recalculates slippage and retries up to 3 times
+  - User alerts only when needed: silent <2%, warning 5-15%, block >15%
+  - Bonding curve: 0.5-1% base | DEX: 1-3% base (dynamic adjustments for volatility/liquidity)
+  - UX priority: 95% of trades execute silently without user intervention
 
 ## October 9, 2025 (AM Update)
 - **Creator Fee Claim Portal UI Complete** (Section 8 from Pre_SC_Dev.md):
