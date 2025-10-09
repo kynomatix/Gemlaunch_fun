@@ -523,6 +523,64 @@ function quoteSell(uint256 tokensIn) public view returns (uint256 kasOut) {
 }
 ```
 
+#### Auto-Slippage Calculation (Pre-Graduation - Bonding Curve)
+```solidity
+/**
+ * @notice Calculate optimal slippage for bonding curve trades
+ * @dev Bonding curve has deterministic pricing, so slippage is minimal
+ * @param kasAmount Amount of KAS to trade
+ * @return optimalSlippageBps Recommended slippage in basis points (0.5-1% typical)
+ */
+function calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
+    // Base slippage for bonding curve (deterministic pricing)
+    uint256 baseSlippage = 50; // 0.5% base
+    
+    // Calculate trade size relative to pool
+    uint256 tradeImpactBps = (kasAmount * 10000) / virtualKasReserve;
+    
+    // Adjust slippage based on trade size
+    if (tradeImpactBps > 100) { // Trade is >1% of pool
+        baseSlippage += 50; // Increase to 1%
+    }
+    
+    // Anti-bot period adds volatility (more retry risk)
+    if (antiBotEnabled && block.timestamp < deploymentTime + 60) {
+        baseSlippage += 50; // +0.5% during anti-bot period
+    }
+    
+    // Cap at 200 bps (2%) for bonding curve
+    optimalSlippageBps = baseSlippage > 200 ? 200 : baseSlippage;
+}
+
+/**
+ * @notice Calculate minimum tokens to receive with auto-slippage
+ * @param kasIn Amount of KAS to spend (before fees)
+ * @return minTokensOut Minimum tokens with auto-calculated slippage protection
+ */
+function getMinTokensOutWithAutoSlippage(uint256 kasIn) external view returns (uint256 minTokensOut) {
+    // Get expected output
+    (, , , uint256 tradeAmount) = this.getEffectiveFeeBreakdown(kasIn);
+    uint256 expectedTokens = quoteBuy(tradeAmount);
+    
+    // Apply auto-calculated slippage
+    uint256 slippageBps = calculateOptimalSlippage(kasIn);
+    minTokensOut = expectedTokens * (10000 - slippageBps) / 10000;
+}
+
+/**
+ * @notice Get risk level for UI alerts
+ * @param kasAmount Amount of KAS to trade
+ * @return riskLevel 0 = Silent (execute), 1 = Warning (alert user), 2 = Block (reject)
+ */
+function getSlippageRiskLevel(uint256 kasAmount) external view returns (uint8 riskLevel) {
+    uint256 slippageBps = calculateOptimalSlippage(kasAmount);
+    
+    if (slippageBps < 200) return 0;      // <2% = Silent execution
+    if (slippageBps < 500) return 1;      // 2-5% = Warning modal
+    return 2;                              // >5% = Block trade (shouldn't happen on bonding curve)
+}
+```
+
 #### Treasury Fee Distribution (AUDIT FIX - Remainder Pattern)
 ```solidity
 function distributeFees() external nonReentrant {
@@ -1652,6 +1710,265 @@ async function executeBuy(tokenAddress, kasAmount) {
     // Backend determines curve vs DEX routing
     // User experience stays identical!
 }
+```
+
+**Phase 6: Auto-Slippage for DEX Trading** 📋 CRITICAL (Post-Graduation)
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title AutoSlippageCalculator
+ * @notice Calculate optimal slippage for post-graduation DEX trades
+ * @dev Used by backend to determine minAmountOut for SwapRouter.exactInputSingle()
+ */
+contract AutoSlippageCalculator {
+    
+    IQuoterV2 public constant QUOTER = IQuoterV2(0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B);
+    
+    struct SlippageParams {
+        uint256 baseSlippageBps;      // Base slippage in basis points
+        uint256 volatilityAdjustment;  // Additional slippage for volatile markets
+        uint256 liquidityAdjustment;   // Additional slippage for low liquidity
+        uint256 totalSlippageBps;      // Final calculated slippage
+        uint8 riskLevel;               // 0 = Silent, 1 = Warning, 2 = Block
+    }
+    
+    /**
+     * @notice Calculate optimal slippage for DEX swap (Post-Graduation)
+     * @param poolAddress Kaspa Finance pool address
+     * @param tokenIn Input token address (WKAS or Token)
+     * @param tokenOut Output token address
+     * @param amountIn Amount to swap
+     * @return params Complete slippage parameters with risk level
+     */
+    function calculateDEXSlippage(
+        address poolAddress,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) external returns (SlippageParams memory params) {
+        
+        // Step 1: Base slippage for DEX (market-driven pricing)
+        params.baseSlippageBps = 100; // 1% base for DEX
+        
+        // Step 2: Analyze price volatility (last 5 minutes)
+        uint256 priceVolatility = _getPriceVolatility(poolAddress);
+        if (priceVolatility > 500) { // >5% volatility
+            params.volatilityAdjustment = 100; // +1% slippage
+        }
+        
+        // Step 3: Check liquidity depth
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(poolAddress).slot0();
+        uint256 poolLiquidity = _estimatePoolLiquidity(poolAddress, sqrtPriceX96);
+        
+        uint256 tradeImpactBps = (amountIn * 10000) / poolLiquidity;
+        
+        if (tradeImpactBps > 100) { // Trade is >1% of pool
+            params.liquidityAdjustment = 50; // +0.5% slippage
+        }
+        if (poolLiquidity < 10000 ether) { // Low liquidity (<$10K)
+            params.liquidityAdjustment += 100; // +1% additional
+        }
+        
+        // Step 4: Calculate total slippage
+        params.totalSlippageBps = params.baseSlippageBps 
+            + params.volatilityAdjustment 
+            + params.liquidityAdjustment;
+        
+        // Step 5: Cap at 1500 bps (15% max)
+        if (params.totalSlippageBps > 1500) {
+            params.totalSlippageBps = 1500;
+        }
+        
+        // Step 6: Determine risk level for UX
+        if (params.totalSlippageBps < 500) {
+            params.riskLevel = 0; // <5% = Silent execution
+        } else if (params.totalSlippageBps <= 1500) {
+            params.riskLevel = 1; // 5-15% = Warning modal
+        } else {
+            params.riskLevel = 2; // >15% = Block trade
+        }
+        
+        return params;
+    }
+    
+    /**
+     * @notice Calculate minimum output with auto-slippage for DEX swap
+     * @param poolAddress Kaspa Finance pool address
+     * @param tokenIn Input token
+     * @param tokenOut Output token
+     * @param amountIn Amount to swap
+     * @return minAmountOut Minimum output with auto-calculated slippage
+     * @return slippageBps Applied slippage in basis points
+     */
+    function getMinAmountOutWithAutoSlippage(
+        address poolAddress,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) external returns (uint256 minAmountOut, uint256 slippageBps) {
+        
+        // Get quote from Kaspa Finance QuoterV2
+        IQuoterV2.QuoteExactInputSingleParams memory quoteParams = IQuoterV2.QuoteExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            fee: 2500, // 0.25% fee tier
+            sqrtPriceLimitX96: 0
+        });
+        
+        (uint256 amountOut, , , ) = QUOTER.quoteExactInputSingle(quoteParams);
+        
+        // Calculate optimal slippage
+        SlippageParams memory params = this.calculateDEXSlippage(poolAddress, tokenIn, tokenOut, amountIn);
+        slippageBps = params.totalSlippageBps;
+        
+        // Apply slippage to quote
+        minAmountOut = amountOut * (10000 - slippageBps) / 10000;
+    }
+    
+    /**
+     * @notice Intelligent retry mechanism - increase slippage on failure
+     * @param previousSlippageBps Previous attempt's slippage
+     * @param attemptNumber Current retry attempt (1-3)
+     * @return newSlippageBps Updated slippage for retry
+     */
+    function calculateRetrySlippage(uint256 previousSlippageBps, uint256 attemptNumber) 
+        external 
+        pure 
+        returns (uint256 newSlippageBps) 
+    {
+        require(attemptNumber <= 3, "Max 3 retry attempts");
+        
+        // Increase by 1% per retry attempt
+        newSlippageBps = previousSlippageBps + (100 * attemptNumber);
+        
+        // Cap at 15% maximum
+        if (newSlippageBps > 1500) {
+            newSlippageBps = 1500;
+        }
+    }
+    
+    // Internal helper: Estimate price volatility (mock - implement with oracle)
+    function _getPriceVolatility(address poolAddress) internal view returns (uint256) {
+        // TODO: Implement with Chainlink or TWAP oracle
+        // For now, return conservative estimate
+        return 300; // 3% volatility estimate
+    }
+    
+    // Internal helper: Estimate pool liquidity from sqrtPrice
+    function _estimatePoolLiquidity(address poolAddress, uint160 sqrtPriceX96) 
+        internal 
+        view 
+        returns (uint256 liquidityKAS) 
+    {
+        // Simplified liquidity estimation
+        // TODO: Implement proper liquidity calculation from pool state
+        uint256 token0Balance = IERC20(IUniswapV3Pool(poolAddress).token0()).balanceOf(poolAddress);
+        uint256 token1Balance = IERC20(IUniswapV3Pool(poolAddress).token1()).balanceOf(poolAddress);
+        
+        // Return KAS-equivalent liquidity
+        liquidityKAS = token0Balance + token1Balance; // Simplified
+    }
+}
+
+// Required interfaces
+interface IUniswapV3Pool {
+    function slot0() external view returns (
+        uint160 sqrtPriceX96,
+        int24 tick,
+        uint16 observationIndex,
+        uint16 observationCardinality,
+        uint16 observationCardinalityNext,
+        uint8 feeProtocol,
+        bool unlocked
+    );
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+}
+
+interface IQuoterV2 {
+    struct QuoteExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint256 amountIn;
+        uint24 fee;
+        uint160 sqrtPriceLimitX96;
+    }
+    
+    function quoteExactInputSingle(QuoteExactInputSingleParams memory params)
+        external
+        returns (
+            uint256 amountOut,
+            uint160 sqrtPriceX96After,
+            uint32 initializedTicksCrossed,
+            uint256 gasEstimate
+        );
+}
+
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+}
+```
+
+**Backend Integration** (Python/ethers.js):
+```python
+# services/auto_slippage.py (NEW FILE)
+from web3 import Web3
+from eth_abi import encode
+
+class AutoSlippageService:
+    """Backend service for auto-slippage calculation"""
+    
+    CALCULATOR_ADDRESS = "0x..." # Deploy AutoSlippageCalculator.sol
+    
+    async def calculate_slippage_for_dex_trade(self, pool_address, token_in, token_out, amount_in):
+        """
+        Calculate optimal slippage for post-graduation DEX trade
+        Returns: (min_amount_out, slippage_bps, risk_level)
+        """
+        
+        # Call AutoSlippageCalculator.getMinAmountOutWithAutoSlippage()
+        min_amount_out, slippage_bps = await self._call_contract(...)
+        
+        # Determine risk level
+        if slippage_bps < 500:      # <5%
+            risk_level = "silent"
+        elif slippage_bps <= 1500:  # 5-15%
+            risk_level = "warning"
+        else:                       # >15%
+            risk_level = "blocked"
+        
+        return {
+            'min_amount_out': min_amount_out,
+            'slippage_bps': slippage_bps,
+            'slippage_percent': slippage_bps / 100,
+            'risk_level': risk_level
+        }
+    
+    async def execute_with_retry(self, swap_tx, max_retries=3):
+        """
+        Execute DEX swap with intelligent retry on slippage failure
+        """
+        for attempt in range(1, max_retries + 1):
+            try:
+                tx_hash = await self.web3.eth.send_transaction(swap_tx)
+                receipt = await self.web3.eth.wait_for_transaction_receipt(tx_hash)
+                
+                if receipt.status == 1:
+                    return receipt
+            
+            except Exception as e:
+                if "slippage" in str(e).lower() and attempt < max_retries:
+                    # Recalculate with higher slippage
+                    new_slippage = await self._calculate_retry_slippage(attempt)
+                    swap_tx = await self._rebuild_tx_with_new_slippage(swap_tx, new_slippage)
+                    continue
+                else:
+                    raise
+        
+        raise Exception("Max retries exceeded")
 ```
 
 ### 📋 Implementation Checklist
