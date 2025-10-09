@@ -1616,8 +1616,8 @@ class KaspaFinanceSwap:
     """Wrapper for Kaspa Finance Uniswap V3 swaps"""
     
     FACTORY = "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8"
-    ROUTER = "❓"  # Need from Mirza
-    QUOTER = "❓"  # Need from Mirza
+    ROUTER = "0xDf88D478aF51C0AB616aFBfDD933c874e142858c"  # SwapRouter (found Oct 9)
+    QUOTER = "❓"  # QuoterV2 - Need from Mirza
     
     @staticmethod
     async def quote_swap(pool_address, amount_in):
