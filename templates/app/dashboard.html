@@ -3419,15 +3419,13 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     };
     
     // Calculate fee stats (placeholder calculations - will be replaced with SC data)
-    const avgTradeUSD = 500; // Average $500 per trade
-    const totalVolumeUSD = tradeCount * avgTradeUSD;
-    const feesUSD = totalVolumeUSD * 0.001; // 0.1% creator fee in USD
+    // Fees are earned in KAS, then converted to USD for display
+    const avgTradeKAS = 5000; // Average 5000 KAS per trade
+    const totalVolumeKAS = tradeCount * avgTradeKAS;
+    const accumulatedFees = totalVolumeKAS * 0.001; // 0.1% creator fee in KAS
     
     // Get KAS price from template (real-time from oracle)
     const kasPrice = {{ kas_price if kas_price > 0 else 0.10 }};
-    
-    // Convert fees to KAS
-    const accumulatedFees = feesUSD / kasPrice;
     
     // Update modal content
     document.getElementById('feeTokenName').textContent = tokenName;
