@@ -1343,10 +1343,40 @@
                                         <div class="token-stat-label">Trades</div>
                                     </div>
                                 </div>
+                                
+                                <!-- Creator Fee Stats -->
+                                <div class="creator-fee-stats" style="margin-top: 1rem; padding: 1rem; background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <span style="font-size: 0.85rem; color: #20B2AA; font-weight: 600;">
+                                            <i class="fas fa-coins"></i> Creator Fees
+                                        </span>
+                                        <span style="font-size: 0.75rem; color: #AAA;">0.1% per trade</span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                        <div>
+                                            <div style="font-size: 0.75rem; color: #AAA;">Accumulated</div>
+                                            <div style="font-size: 1rem; font-weight: 700; color: #20B2AA;">
+                                                {{ "%.4f"|format((token.trade_count or 0) * 0.05) }} KAS
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 0.75rem; color: #AAA;">Lifetime Earned</div>
+                                            <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
+                                                {{ "%.4f"|format((token.trade_count or 0) * 0.05) }} KAS
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                <a href="/app/token/{{ token.id }}" class="btn btn-secondary" style="margin-top: 1rem; text-align: center;">
-                                    View Details
-                                </a>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                    <a href="/app/token/{{ token.id }}" class="btn btn-secondary" style="flex: 1; text-align: center;">
+                                        View Details
+                                    </a>
+                                    <button class="btn btn-primary" style="flex: 1; background: linear-gradient(135deg, #20B2AA, #00CED1);" 
+                                            onclick="openCreatorFeeModal('{{ token.id }}', '{{ token.name }}', '{{ token.symbol }}', '{{ token.image_url or '' }}', {{ token.trade_count or 0 }}, {{ token.current_market_cap or 0 }}, {{ token.progress_to_graduation or 0 }})">
+                                        <i class="fas fa-wallet"></i> Fees
+                                    </button>
+                                </div>
                             </div>
                         {% endfor %}
                     </div>
