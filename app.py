@@ -934,6 +934,10 @@ def app_dashboard():
     # Get referral info for achievements
     referral = Referral.query.filter_by(referrer_id=user.id).first()
     
+    # Get current KAS price from oracle
+    from services.kas_oracle import oracle
+    kas_price = oracle.get_kas_price()
+    
     return render_template('app/dashboard.html', 
                          user=user,
                          achievement_progress=achievement_progress,
@@ -945,7 +949,8 @@ def app_dashboard():
                          all_achievements=all_achievements,
                          total_achievements=total_achievements,
                          achievement_points=achievement_points,
-                         referral=referral)
+                         referral=referral,
+                         kas_price=kas_price)
 
 @app.route('/app/create', methods=['GET', 'POST'])
 def create_token():

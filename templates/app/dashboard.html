@@ -1356,16 +1356,19 @@
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Accumulated</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #20B2AA;">
-                                                {% set fees_kas = (token.trade_count or 0) * 5 %}
+                                                {% set avg_trade_usd = 500 %}
+                                                {% set total_volume_usd = (token.trade_count or 0) * avg_trade_usd %}
+                                                {% set fees_usd = total_volume_usd * 0.001 %}
+                                                {% set fees_kas = fees_usd / (kas_price if kas_price > 0 else 0.10) %}
                                                 {{ "{:,.2f}".format(fees_kas) }} KAS
                                             </div>
                                         </div>
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Volume Traded</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
-                                                {% set fees_kas = (token.trade_count or 0) * 5 %}
-                                                {% set volume_usd = (fees_kas / 0.001) * 0.10 %}
-                                                ${{ "{:,.0f}".format(volume_usd) }}
+                                                {% set avg_trade_usd = 500 %}
+                                                {% set total_volume_usd = (token.trade_count or 0) * avg_trade_usd %}
+                                                ${{ "{:,.0f}".format(total_volume_usd) }}
                                             </div>
                                         </div>
                                     </div>
@@ -3416,14 +3419,15 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     };
     
     // Calculate fee stats (placeholder calculations - will be replaced with SC data)
-    const avgTradeSize = 5000; // Average 5000 KAS per trade (~$500 at $0.10/KAS)
-    const feeRate = 0.001; // 0.1% creator fee
-    const accumulatedFees = tradeCount * avgTradeSize * feeRate;
-    const lifetimeFees = accumulatedFees; // Same for now (no claims yet)
-    const platformFees = tradeCount * avgTradeSize * 0.009; // 0.9% platform fee
+    const avgTradeUSD = 500; // Average $500 per trade
+    const totalVolumeUSD = tradeCount * avgTradeUSD;
+    const feesUSD = totalVolumeUSD * 0.001; // 0.1% creator fee in USD
     
-    // Get KAS price for USD conversion (placeholder)
-    const kasPrice = 0.10; // $0.10 per KAS (will fetch from API later)
+    // Get KAS price from template (real-time from oracle)
+    const kasPrice = {{ kas_price if kas_price > 0 else 0.10 }};
+    
+    // Convert fees to KAS
+    const accumulatedFees = feesUSD / kasPrice;
     
     // Update modal content
     document.getElementById('feeTokenName').textContent = tokenName;
