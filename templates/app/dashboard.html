@@ -1360,9 +1360,9 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <div style="font-size: 0.75rem; color: #AAA;">Lifetime Earned</div>
+                                            <div style="font-size: 0.75rem; color: #AAA;">Volume Traded</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
-                                                {{ "%.2f"|format((token.trade_count or 0) * 5) }} KAS
+                                                ${{ "{:,.0f}".format((token.trade_count or 0) * 500) }}
                                             </div>
                                         </div>
                                     </div>
