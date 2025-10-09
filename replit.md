@@ -15,14 +15,31 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - Created visual barrier separating historical/superseded code from current implementation
   - Updated Quick Reference with canonical line numbers
   - All changes were copy-only (no code modifications) to preserve audit integrity
-- **BondingCurvePool.sol COMPLETE Specification** (Lines 179-708):
+- **BondingCurvePool.sol COMPLETE Specification** (Lines 220-748):
   - Added graduation functions (initiateGraduation, completeGraduation) with oracle authorization
   - Implemented creator fee claim portal (withdrawCreatorFees, getCreatorClaimableAmount)
   - Added access control & security (receive blocker, pause/unpause, oracle management)
   - Implemented 10% wallet cap enforcement via _transfer override
   - Added complete contract structure with OpenZeppelin imports (ERC20, ReentrancyGuard, Pausable, Ownable)
   - Comprehensive implementation checklist with line number references
-  - STATUS: BondingCurvePool.sol ready for security audit
+  - STATUS: ✅ AUDIT READY
+- **TokenFactory.sol COMPLETE Specification** (Lines 752-975):
+  - Full createToken() implementation with metadata storage (name, symbol, description, image, socials)
+  - Anti-spam controls: 60-second deployment cooldown per user (configurable 0-3600s)
+  - Input validation: name/symbol length, supply limits (1M-1B tokens), 280-char descriptions
+  - On-chain token registry with pagination (getDeployedTokens with offset/limit)
+  - Admin functions: pause/unpause, cooldown updates, graduation controller management
+  - View functions: canDeploy(), getSecondsUntilNextDeployment(), getTokenInfo()
+  - STATUS: ✅ AUDIT READY
+- **GraduationController.sol COMPLETE Specification** (Lines 979-1218):
+  - Two-step graduation flow: initiateGraduation() → completeGraduation()
+  - Kaspa Finance DEX integration (Uniswap V3 architecture, full-range positions, 0.25% fee tier)
+  - Backend oracle integration for USD market cap verification ($70K threshold)
+  - Liquidity transfer: virtualKasReserve + 25% token supply to DEX
+  - Emergency controls: graduation reversal, token recovery, oracle updates
+  - Position tracking: NFT position IDs, graduation timestamps
+  - STATUS: ✅ AUDIT READY
+- **v4 Canonical Implementation Complete**: All 3 core contracts (BondingCurvePool, TokenFactory, GraduationController) now have complete audit-ready specifications addressing all critical audit findings from Claude 4.5 review
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
