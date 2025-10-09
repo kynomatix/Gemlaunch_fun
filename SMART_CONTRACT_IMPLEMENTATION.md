@@ -1548,19 +1548,20 @@ After Graduation:  User clicks "Buy" → Kaspa Finance DEX (via backend router)
 **✅ CONFIRMED ADDRESSES** (October 9, 2025):
 ```solidity
 // VERIFIED ON KASPLEX TESTNET (Chain ID: 167012)
-Factory:                    0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8  // Block 5, May 2025
-NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589  // Block 2.19M, July 2025  
+Factory:                    0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8  // Block 2.49M, deployed May 2025
+NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589  // Block 7.52M, deployed Oct 2025  
 WKAS (Wrapped KAS):        0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+SwapRouter:                 0xDf88D478aF51C0AB616aFBfDD933c874e142858c  // Block 7.58M, Oct 2025
 
 // PENDING CONFIRMATION (Need from Mirza):
-SwapRouter:                 ❓ TBD
-QuoterV2:                   ❓ TBD
+QuoterV2:                   ❓ TBD (source code analysis incomplete)
 ```
 
 **📍 Explorer Links:**
 - Factory: https://explorer.testnet.kasplextest.xyz/address/0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
 - NFT Position Manager: https://explorer.testnet.kasplextest.xyz/address/0x4E25637cF39822364b877F81B18c5B6CF0eeF589
 - WKAS: https://explorer.testnet.kasplextest.xyz/address/0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+- SwapRouter: https://explorer.testnet.kasplextest.xyz/address/0xDf88D478aF51C0AB616aFBfDD933c874e142858c
 
 **⚠️ Note:** GitHub repo deployment files (kasplex.json from June 2025) contain older addresses from a previous deployment. Use the addresses above confirmed by Mirza.
 
@@ -1584,12 +1585,12 @@ QuoterV2:                   ❓ TBD
 
 ### 🔧 Technical Integration Requirements
 
-**Phase 1: Contract Address Discovery** ⏳ IN PROGRESS
+**Phase 1: Contract Address Discovery** ⏳ IN PROGRESS (4/5 Complete)
 - [x] Factory address confirmed: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8
-- [ ] Get SwapRouter address from Mirza/team
-- [ ] Get NonfungiblePositionManager address (for our graduation NFT positions)
-- [ ] Get Quoter address (for price quotes)
-- [ ] Verify pool addresses from graduation NFT position IDs
+- [x] SwapRouter address found: 0xDf88D478aF51C0AB616aFBfDD933c874e142858c (via transaction analysis)
+- [x] NonfungiblePositionManager confirmed: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589
+- [x] WKAS address confirmed: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+- [ ] Get QuoterV2 address (obfuscated in app source code, need from Mirza or contract deployer records)
 
 **Phase 2: Backend Trade Router** 📋 PLANNED
 ```python
