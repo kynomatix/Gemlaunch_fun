@@ -39,7 +39,6 @@
             <!-- Claim Status -->
             <div class="claim-status-section">
                 <div class="claim-status-badge" id="claimStatusBadge">
-                    <i class="fas fa-info-circle"></i>
                     <span id="claimStatusText">Available after graduation ($70K market cap)</span>
                 </div>
             </div>
@@ -166,22 +165,20 @@
 .claim-status-badge {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
+    justify-content: center;
+    padding: 1rem 1.5rem;
     background: rgba(255, 193, 7, 0.1);
     border: 1px solid rgba(255, 193, 7, 0.3);
     border-radius: 10px;
     color: #FFC107;
+    font-size: 0.95rem;
+    text-align: center;
 }
 
 .claim-status-badge.success {
     background: rgba(76, 175, 80, 0.1);
     border-color: rgba(76, 175, 80, 0.3);
     color: #4CAF50;
-}
-
-.claim-status-badge i {
-    font-size: 1.2rem;
 }
 
 .last-claim-info {

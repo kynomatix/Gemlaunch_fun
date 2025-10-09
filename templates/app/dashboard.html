@@ -3449,15 +3449,15 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     
     if (isGraduated && accumulatedFees > 0) {
         claimStatusBadge.className = 'claim-status-badge success';
-        claimStatusText.innerHTML = '<i class="fas fa-check-circle"></i> Ready to claim! Token has graduated.';
+        claimStatusText.textContent = '✓ Ready to claim! Token has graduated.';
         claimBtn.disabled = false;
     } else if (isGraduated && accumulatedFees === 0) {
         claimStatusBadge.className = 'claim-status-badge';
-        claimStatusText.innerHTML = '<i class="fas fa-info-circle"></i> No fees to claim yet';
+        claimStatusText.textContent = 'No fees to claim yet';
         claimBtn.disabled = true;
     } else {
         claimStatusBadge.className = 'claim-status-badge';
-        claimStatusText.innerHTML = `<i class="fas fa-info-circle"></i> Available after graduation ($70K market cap) - Currently at ${progressToGrad.toFixed(1)}%`;
+        claimStatusText.textContent = `Claim available after graduation ($70K market cap) • Currently at ${progressToGrad.toFixed(1)}%`;
         claimBtn.disabled = true;
     }
     
