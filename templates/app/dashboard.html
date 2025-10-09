@@ -3434,16 +3434,10 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
         imageEl.innerHTML = '💎';
     }
     
-    // Update fee statistics
+    // Update earnings display
     document.getElementById('accumulatedFees').textContent = accumulatedFees.toFixed(4) + ' KAS';
     document.getElementById('accumulatedFeesUSD').textContent = '$' + (accumulatedFees * kasPrice).toFixed(2) + ' USD';
-    document.getElementById('totalLifetimeFees').textContent = lifetimeFees.toFixed(4) + ' KAS';
-    document.getElementById('totalLifetimeFeesUSD').textContent = '$' + (lifetimeFees * kasPrice).toFixed(2) + ' USD';
     document.getElementById('totalTrades').textContent = tradeCount;
-    
-    // Update fee breakdown
-    document.getElementById('platformFeeAmount').textContent = platformFees.toFixed(4) + ' KAS';
-    document.getElementById('creatorFeeAmount').textContent = accumulatedFees.toFixed(4) + ' KAS';
     
     // Update claim status
     const claimStatusBadge = document.getElementById('claimStatusBadge');

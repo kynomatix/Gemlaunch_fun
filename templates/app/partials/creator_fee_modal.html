@@ -17,60 +17,21 @@
                 </div>
             </div>
             
-            <!-- Fee Statistics Grid -->
-            <div class="fee-stats-grid">
-                <div class="fee-stat-card">
-                    <div class="fee-stat-icon"><i class="fas fa-wallet"></i></div>
-                    <div class="fee-stat-content">
-                        <div class="fee-stat-label">Accumulated Fees</div>
-                        <div class="fee-stat-value" id="accumulatedFees">0.00 KAS</div>
-                        <div class="fee-stat-usd" id="accumulatedFeesUSD">$0.00 USD</div>
-                    </div>
+            <!-- Earnings Display -->
+            <div class="earnings-display">
+                <div class="earnings-main">
+                    <div class="earnings-label">Your Creator Earnings</div>
+                    <div class="earnings-amount" id="accumulatedFees">0.00 KAS</div>
+                    <div class="earnings-usd" id="accumulatedFeesUSD">$0.00 USD</div>
                 </div>
-                
-                <div class="fee-stat-card">
-                    <div class="fee-stat-icon"><i class="fas fa-chart-line"></i></div>
-                    <div class="fee-stat-content">
-                        <div class="fee-stat-label">Total Lifetime Fees</div>
-                        <div class="fee-stat-value" id="totalLifetimeFees">0.00 KAS</div>
-                        <div class="fee-stat-usd" id="totalLifetimeFeesUSD">$0.00 USD</div>
+                <div class="earnings-details">
+                    <div class="earnings-detail-item">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span id="totalTrades">0</span> trades
                     </div>
-                </div>
-                
-                <div class="fee-stat-card">
-                    <div class="fee-stat-icon"><i class="fas fa-exchange-alt"></i></div>
-                    <div class="fee-stat-content">
-                        <div class="fee-stat-label">Total Trades</div>
-                        <div class="fee-stat-value" id="totalTrades">0</div>
-                        <div class="fee-stat-usd">All-time volume</div>
-                    </div>
-                </div>
-                
-                <div class="fee-stat-card">
-                    <div class="fee-stat-icon"><i class="fas fa-percentage"></i></div>
-                    <div class="fee-stat-content">
-                        <div class="fee-stat-label">Fee Rate</div>
-                        <div class="fee-stat-value">0.1%</div>
-                        <div class="fee-stat-usd">Per trade</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Fee Breakdown Section -->
-            <div class="fee-breakdown-section">
-                <h4><i class="fas fa-chart-pie"></i> Fee Breakdown</h4>
-                <div class="fee-breakdown-info">
-                    <div class="fee-breakdown-item">
-                        <span class="fee-breakdown-label">
-                            <i class="fas fa-building"></i> Platform Fee (0.9%)
-                        </span>
-                        <span class="fee-breakdown-value" id="platformFeeAmount">0.00 KAS</span>
-                    </div>
-                    <div class="fee-breakdown-item">
-                        <span class="fee-breakdown-label">
-                            <i class="fas fa-user"></i> Your Creator Fee (0.1%)
-                        </span>
-                        <span class="fee-breakdown-value highlight" id="creatorFeeAmount">0.00 KAS</span>
+                    <div class="earnings-detail-item">
+                        <i class="fas fa-percentage"></i>
+                        0.1% fee rate
                     </div>
                 </div>
             </div>
@@ -80,27 +41,6 @@
                 <div class="claim-status-badge" id="claimStatusBadge">
                     <i class="fas fa-info-circle"></i>
                     <span id="claimStatusText">Available after graduation ($70K market cap)</span>
-                </div>
-            </div>
-            
-            <!-- Last Claim Info (if claimed before) -->
-            <div class="last-claim-info" id="lastClaimInfo" style="display: none;">
-                <div class="last-claim-header">
-                    <i class="fas fa-history"></i> Last Claim
-                </div>
-                <div class="last-claim-details">
-                    <div class="last-claim-item">
-                        <span>Amount:</span>
-                        <strong id="lastClaimAmount">0.00 KAS</strong>
-                    </div>
-                    <div class="last-claim-item">
-                        <span>Date:</span>
-                        <strong id="lastClaimDate">Never</strong>
-                    </div>
-                    <div class="last-claim-item">
-                        <span>Transaction:</span>
-                        <a href="#" id="lastClaimTxLink" target="_blank" class="tx-link">View TX</a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -117,7 +57,7 @@
 <style>
 /* Creator Fee Modal Styles */
 .creator-fee-modal {
-    max-width: 700px;
+    max-width: 500px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
@@ -164,109 +104,58 @@
     font-size: 1rem;
 }
 
-.fee-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.fee-stat-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(32, 178, 170, 0.2);
-    border-radius: 12px;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: all 0.3s ease;
-}
-
-.fee-stat-card:hover {
-    border-color: rgba(32, 178, 170, 0.4);
-    transform: translateY(-2px);
-}
-
-.fee-stat-icon {
-    font-size: 1.5rem;
-    color: #20B2AA;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(32, 178, 170, 0.1);
-    border-radius: 8px;
-}
-
-.fee-stat-content {
-    flex: 1;
-}
-
-.fee-stat-label {
-    font-size: 0.75rem;
-    color: #AAA;
-    margin-bottom: 0.25rem;
-}
-
-.fee-stat-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #20B2AA;
-}
-
-.fee-stat-usd {
-    font-size: 0.75rem;
-    color: #888;
-    margin-top: 0.2rem;
-}
-
-.fee-breakdown-section {
+/* Earnings Display */
+.earnings-display {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(32, 178, 170, 0.2);
     border-radius: 12px;
-    padding: 1.25rem;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.earnings-main {
     margin-bottom: 1.5rem;
 }
 
-.fee-breakdown-section h4 {
-    margin: 0 0 1rem 0;
-    color: #20B2AA;
+.earnings-label {
+    font-size: 0.9rem;
+    color: #AAA;
+    margin-bottom: 0.75rem;
+}
+
+.earnings-amount {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.earnings-usd {
     font-size: 1rem;
+    color: #888;
 }
 
-.fee-breakdown-info {
+.earnings-details {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    justify-content: center;
+    gap: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(32, 178, 170, 0.2);
 }
 
-.fee-breakdown-item {
+.earnings-detail-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-}
-
-.fee-breakdown-label {
-    color: #CCC;
+    gap: 0.5rem;
+    color: #AAA;
     font-size: 0.9rem;
 }
 
-.fee-breakdown-label i {
-    margin-right: 0.5rem;
-    color: #20B2AA;
-}
-
-.fee-breakdown-value {
-    font-weight: 700;
-    color: #FFF;
-    font-size: 1rem;
-}
-
-.fee-breakdown-value.highlight {
+.earnings-detail-item i {
     color: #20B2AA;
 }
 
