@@ -29,151 +29,229 @@
 
 ---
 
-## 📋 IMPLEMENTATION PROGRESS TRACKER
+## 🚀 SMART CONTRACT IMPLEMENTATION ROADMAP (DEPENDENCY-SEQUENCED)
+
+⚠️ **CRITICAL**: Follow phases in exact order - each phase unlocks the next. Skipping steps will cause failure.
 
 **Status Legend**: ✅ Complete | 🔄 In Progress | ⏸️ Blocked | ⬜ Not Started
 
-### PHASE 1: TESTNET ENVIRONMENT SETUP (START HERE)
-- [ ] **1.1** Set up Kasplex zkEVM Testnet RPC connection
-  - [ ] Add Testnet network to MetaMask/Kastle
-  - [ ] Configure RPC URL: https://rpc.kasplextest.xyz (Chain ID: 167012)
-  - [ ] 👤 **MANUAL**: Obtain testnet KAS from faucet (https://app.kaspafinance.io/faucets?chain=kasplexTestnet) - User must complete (bot-protected)
-  - [ ] Verify block explorer access: http://explorer.testnet.kasplextest.xyz
+---
 
-- [ ] **1.2** Configure development environment
-  - [ ] Install Hardhat/Foundry for Solidity development
-  - [ ] Set up testnet deployment wallet (separate from mainnet)
-  - [ ] Configure environment variables (TESTNET_RPC, TESTNET_PRIVATE_KEY)
-  - [ ] Test basic contract deployment on testnet
+### **PHASE 0: Preflight Readiness** (1-2 days) - ⭐ START HERE
+**Goal:** Prepare deployment tools and testnet environment  
+**Dependencies:** NONE → This unblocks everything
 
-### PHASE 2: SMART CONTRACT DEVELOPMENT (TESTNET)
-- [ ] **2.1** Deploy Core Contracts (AUDIT FIX v4)
-  - [ ] Deploy TokenFactory.sol to testnet
-  - [ ] Deploy BondingCurvePool.sol (with Anti-Bot System)
-  - [ ] Deploy GraduationController.sol
-  - [ ] Verify contracts on testnet block explorer
+- [ ] **0.1** Install Deployment Tools
+  - [ ] Install Hardhat: `npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox`
+  - [ ] Initialize Hardhat project: `npx hardhat init`
+  - [ ] Install OpenZeppelin contracts: `npm install @openzeppelin/contracts`
 
-- [ ] **2.2** Contract Configuration
-  - [ ] Set treasury addresses (testnet wallets)
-  - [ ] Configure airdrop treasury (70% anti-bot fees)
-  - [ ] Set platform development wallet (30% anti-bot fees)
-  - [ ] Initialize fee parameters (1% total, 90/10 split)
+- [ ] **0.2** Testnet Wallet Setup
+  - [ ] Create testnet deployer wallet (MetaMask/Kastle)
+  - [ ] Get Kasplex testnet KAS from faucet: https://app.kaspafinance.io/faucets?chain=kasplexTestnet
+  - [ ] Configure wallet to Kasplex Testnet (Chain ID: 167012, RPC: https://rpc.kasplextest.xyz)
 
-- [ ] **2.3** Test Contract Functions (Testnet)
-  - [ ] Test buyTokens() with/without Anti-Bot System
-  - [ ] Test sellTokens() with KAS-based fees
-  - [ ] Test graduation trigger at $70K USD threshold
-  - [ ] Test fee distribution (platform/creator/anti-bot split)
-  - [ ] Test wallet cap (10%) and cooldown (5 min)
+- [ ] **0.3** Environment Configuration
+  - [ ] Create `.env` file with:
+    - `TESTNET_RPC_URL=https://rpc.kasplextest.xyz`
+    - `TESTNET_PRIVATE_KEY=<deployer_wallet_key>`
+    - `BLOCK_EXPLORER_URL=http://explorer.testnet.kasplextest.xyz`
+  - [ ] Lock in audit v4 contracts (NO MORE EDITS to BondingCurvePool.sol, TokenFactory.sol, GraduationController.sol)
 
-### PHASE 3: BACKEND INTEGRATION (TESTNET)
-- [ ] **3.1** Blockchain Service Layer
-  - [ ] Implement Web3.py/ethers.js connection to testnet
-  - [ ] Create contract interaction service (deploy, buy, sell)
-  - [ ] Implement event listening (TokensPurchased, Graduated)
-  - [ ] Add transaction signing/broadcasting
+- [ ] **0.4** Pre-Deployment Verification
+  - [ ] Run Hardhat test suite: `npx hardhat test`
+  - [ ] Ensure 100% test pass rate
+  - [ ] Verify testnet KAS balance sufficient for deployments (~0.5 KAS)
 
-- [ ] **3.2** Oracle Integration (Already Complete ✅)
-  - [x] KAS/USD price oracle (CoinGecko → Quex migration ready)
-  - [x] Graduation threshold calculator ($70K USD)
-  - [x] Admin dashboard integration
-  - [ ] Connect oracle to testnet graduation trigger
-
-- [ ] **3.3** Database Schema Updates
-  - [ ] Add blockchain-specific fields to Token model
-    - [ ] contract_address (testnet)
-    - [ ] deployment_tx_hash
-    - [ ] virtual_kas_reserve
-    - [ ] virtual_token_reserve
-  - [ ] Track on-chain trades vs mock trades
-  - [ ] Store anti-bot fee analytics
-
-### PHASE 4: FRONTEND INTEGRATION (TESTNET)
-- [ ] **4.1** Wallet Connection
-  - [ ] Update wallet connection to support Kasplex zkEVM Testnet
-  - [ ] Add network switching prompt (if user on wrong network)
-  - [ ] Display testnet KAS balance
-
-- [ ] **4.2** Token Creation Flow
-  - [ ] Replace mock token creation with actual contract deployment
-  - [ ] Show deployment transaction confirmation
-  - [ ] Display contract address after deployment
-  - [ ] Handle deployment failures gracefully
-
-- [ ] **4.3** Trading Interface
-  - [ ] Connect buy/sell buttons to contract functions
-  - [ ] Implement slippage protection UI (minTokensOut/maxTokensIn)
-  - [ ] Show Anti-Bot fee countdown (if enabled)
-  - [ ] Display real-time fee breakdown (anti-bot/platform/creator)
-  - [ ] Show transaction confirmation modals
-
-- [ ] **4.4** Graduation Flow
-  - [ ] Monitor virtualKasReserve × kasPrice for $70K threshold
-  - [ ] Trigger graduation transaction when threshold reached
-  - [ ] Show graduation animation/celebration
-  - [ ] Display Kaspa Finance DEX link post-graduation
-
-### PHASE 5: TESTING & AUDITING (TESTNET)
-- [ ] **5.1** End-to-End Testing
-  - [ ] Create test token with Anti-Bot System enabled
-  - [ ] Execute buy trades at different time intervals (0s, 30s, 60s)
-  - [ ] Verify anti-bot fee decay (95% → 1%)
-  - [ ] Test sell transactions
-  - [ ] Verify fee distributions (check wallet balances)
-  - [ ] Test graduation flow (reach $70K threshold)
-
-- [ ] **5.2** Security Testing
-  - [ ] Test wallet cap enforcement (attempt >10% purchase)
-  - [ ] Test transfer cooldown (5 min)
-  - [ ] Attempt reentrancy attacks
-  - [ ] Test slippage protection limits
-  - [ ] Verify fee accounting (accumulated vs actual balance)
-
-- [ ] **5.3** Edge Case Testing
-  - [ ] Minimum trade amount enforcement (0.001 KAS)
-  - [ ] Maximum wallet balance scenarios
-  - [ ] Simultaneous buy/sell transactions
-  - [ ] Contract pause/emergency scenarios
-
-### PHASE 6: MAINNET PREPARATION
-- [ ] **6.1** Final Audit
-  - [ ] Complete professional security audit (optional)
-  - [ ] Fix any remaining issues from testnet testing
-  - [ ] Update contract code if needed
-  - [ ] Get community review
-
-- [ ] **6.2** Mainnet Configuration
-  - [ ] Configure mainnet RPC: https://evmrpc.kasplex.org (Chain ID: 202555)
-  - [ ] Set up mainnet deployment wallet (SECURE)
-  - [ ] Configure production treasury addresses
-  - [ ] Set up mainnet monitoring/alerting
-
-- [ ] **6.3** Mainnet Deployment
-  - [ ] Deploy TokenFactory to mainnet
-  - [ ] Deploy initial contracts
-  - [ ] Verify contracts on mainnet explorer
-  - [ ] Update frontend to use mainnet contracts
-
-### PHASE 7: POST-LAUNCH
-- [ ] **7.1** Monitoring
-  - [ ] Set up transaction monitoring
-  - [ ] Monitor contract events (buys/sells/graduations)
-  - [ ] Track gas usage and optimization opportunities
-  - [ ] Monitor fee collection and distribution
-
-- [ ] **7.2** Analytics
-  - [ ] Track total value locked (TVL)
-  - [ ] Monitor graduation rate
-  - [ ] Analyze anti-bot effectiveness
-  - [ ] Generate financial reports
+**Unlocks:** ✅ Phase 1 (contract deployment)
 
 ---
 
-## 🎯 CURRENT FOCUS: PHASE 1 - TESTNET SETUP
+### **PHASE 1: Deploy Contracts to Testnet** (2-3 days)
+**Goal:** Get audit-approved contracts live on Kasplex testnet  
+**Dependencies:** ⬅️ Phase 0 complete
 
-**Next Steps**:
-1. Set up Kasplex zkEVM Testnet connection
+- [ ] **1.1** Deploy in Correct Order
+  - [ ] Deploy TokenFactory.sol first: `npx hardhat run scripts/deploy_factory.js --network kasplex_testnet`
+  - [ ] Deploy BondingCurvePool.sol via factory (or standalone for testing)
+  - [ ] Deploy GraduationController.sol with Kaspa Finance addresses:
+    - Factory: `0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8`
+    - NFT Position Manager: `0x4E25637cF39822364b877F81B18c5B6CF0eeF589`
+    - WKAS: `0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94`
+    - SwapRouter: `0xDf88D478aF51C0AB616aFBfDD933c874e142858c`
+    - QuoterV2: `0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B`
+
+- [ ] **1.2** Configure Contract Parameters
+  - [ ] Set treasury wallets (testnet addresses):
+    - Platform development wallet (30% anti-bot fees)
+    - Airdrop treasury (70% anti-bot fees)
+    - Platform fee collector (0.9%)
+    - Creator fee collector (0.1%)
+  - [ ] Set fee parameters: 1% total (90/10 split platform/creator)
+  - [ ] Configure graduation oracle address (backend service wallet)
+
+- [ ] **1.3** Verify on Explorer
+  - [ ] Verify TokenFactory: http://explorer.testnet.kasplextest.xyz/address/<factory_address>
+  - [ ] Verify BondingCurvePool template
+  - [ ] Verify GraduationController
+
+- [ ] **1.4** Save Deployed Addresses
+  - [ ] Create `deployed_addresses.json`:
+    ```json
+    {
+      "testnet": {
+        "TokenFactory": "0x...",
+        "BondingCurvePool": "0x...",
+        "GraduationController": "0x...",
+        "deployer": "0x...",
+        "timestamp": "2025-10-10T..."
+      }
+    }
+    ```
+  - [ ] Update `replit.md` with deployed addresses
+  - [ ] **CRITICAL**: These addresses required for Phase 2
+
+**Unlocks:** ✅ Phase 2 (backend needs contract addresses)
+
+---
+
+### **PHASE 2: Backend Web3 Layer** (3-4 days)
+**Goal:** Connect Flask backend to blockchain  
+**Dependencies:** ⬅️ Phase 1 (needs deployed contract addresses)
+
+- [ ] **2.1** Web3 Service (`services/web3_service.py`)
+  - [ ] Install: `pip install web3 eth-account`
+  - [ ] RPC provider connection (Kasplex testnet)
+  - [ ] Load contract ABIs from Hardhat artifacts
+  - [ ] Transaction signing with backend wallet
+  - [ ] Gas estimation functions
+
+- [ ] **2.2** Contract Interaction Layer
+  - [ ] `create_token()` → TokenFactory.createToken()
+  - [ ] `buy_tokens()` → BondingCurvePool.buyTokens()
+  - [ ] `sell_tokens()` → BondingCurvePool.sellTokens()
+  - [ ] `initiate_graduation()` → BondingCurvePool.initiateGraduation()
+  - [ ] `complete_graduation()` → GraduationController.completeGraduation()
+
+- [ ] **2.3** Graduation Monitor Service
+  - [ ] Hook existing KAS/USD oracle (`services/kas_oracle.py`)
+  - [ ] Monitor: `virtualKasReserve × kasPrice >= $70,000`
+  - [ ] Auto-trigger graduation when threshold met
+  - [ ] Celery task for background monitoring
+
+- [ ] **2.4** Event Indexer (Node.js + ethers.js)
+  - [ ] Install: `npm install ethers pg`
+  - [ ] Listen to events:
+    - TokensPurchased(buyer, kasAmount, tokensReceived, antiBotFee)
+    - TokensSold(seller, tokenAmount, kasReceived)
+    - Graduated(pool, kasLiquidity, tokenLiquidity)
+  - [ ] Store events in PostgreSQL
+  - [ ] Trigger Flask webhooks on new events
+
+- [ ] **2.5** Database Schema Updates
+  - [ ] Add to Token model:
+    - `contract_address` (string, indexed)
+    - `deployment_tx_hash` (string)
+    - `virtual_kas_reserve` (decimal)
+    - `virtual_token_reserve` (decimal)
+    - `is_graduated` (boolean)
+    - `graduation_tx_hash` (string, nullable)
+  - [ ] Create TradeEvent table (on-chain trade history)
+  - [ ] Run migration: `flask db migrate -m "Add blockchain fields"`
+
+**Unlocks:** ✅ Phase 3 (frontend needs API endpoints)
+
+---
+
+### **PHASE 3: Frontend & Wallet Integration** (2-3 days)
+**Goal:** Connect UI to real smart contracts  
+**Dependencies:** ⬅️ Phase 2 (needs backend APIs)
+
+- [ ] **3.1** Wallet Connection Updates
+  - [ ] Update `static/js/wallet.js`:
+    - Add Kasplex Testnet (Chain ID: 167012)
+    - Network switching prompt if wrong chain
+    - Display testnet KAS balance
+  - [ ] Test wallet connection flow
+
+- [ ] **3.2** Token Creation Flow
+  - [ ] Replace mock creation in `routes.py`
+  - [ ] API endpoint: `POST /api/token/create`
+    - Call `web3_service.create_token()`
+    - Return tx hash + contract address
+  - [ ] Frontend: Show deployment confirmation modal
+  - [ ] Display contract address after deployment
+
+- [ ] **3.3** Trading Interface
+  - [ ] Buy flow: `POST /api/trade/buy`
+    - Call `quoteBuy()` for preview
+    - Execute `buyTokens()` with auto-slippage
+    - Return tx hash
+  - [ ] Sell flow: `POST /api/trade/sell`
+    - Call `quoteSell()` for preview
+    - Execute `sellTokens()` with auto-slippage
+    - Return tx hash
+  - [ ] Real-time quote updates (debounce 300ms)
+  - [ ] Show fee breakdown (anti-bot/platform/creator)
+
+- [ ] **3.4** Graduation UI
+  - [ ] Progress bar: (virtualKasReserve × kasPrice) / $70,000
+  - [ ] Show "Graduating..." when threshold met
+  - [ ] Display Kaspa Finance DEX link post-graduation
+  - [ ] Auto-refresh graduation status
+
+**Unlocks:** ✅ Phase 4 (can now test real trading)
+
+---
+
+### **PHASE 4: Trading Enablement & QA** (3-5 days)
+**Goal:** Enable real trading with comprehensive testing  
+**Dependencies:** ⬅️ Phase 3 (needs live frontend)
+
+- [ ] **4.1** End-to-End Testing
+  - [ ] Create test token with Anti-Bot enabled
+  - [ ] Execute buy at t=0s (95% anti-bot fee)
+  - [ ] Execute buy at t=30s (~50% anti-bot fee)
+  - [ ] Execute buy at t=60s (1% anti-bot fee)
+  - [ ] Verify fee decay matches formula
+  - [ ] Test sell transactions
+  - [ ] Verify wallet balances (fees distributed correctly)
+
+- [ ] **4.2** Graduation Testing
+  - [ ] Buy enough to reach $70K market cap
+  - [ ] Verify backend triggers `initiateGraduation()`
+  - [ ] Verify `completeGraduation()` creates DEX pool
+  - [ ] Check NFT position ID stored
+  - [ ] Test post-graduation trading on DEX
+
+- [ ] **4.3** Security & Edge Cases
+  - [ ] Test wallet cap (attempt >10% purchase - should fail)
+  - [ ] Test transfer cooldown (5 min between transfers)
+  - [ ] Test slippage protection (high slippage warning/block)
+  - [ ] Test minimum trade (0.001 KAS enforcement)
+
+- [ ] **4.4** Monitoring Setup
+  - [ ] Set up transaction monitoring dashboard
+  - [ ] Alert on failed transactions
+  - [ ] Track gas usage metrics
+  - [ ] Monitor event indexer sync status
+
+- [ ] **4.5** Release Checklist
+  - [ ] All E2E tests passing ✅
+  - [ ] No critical bugs in issue tracker ✅
+  - [ ] Documentation updated (replit.md) ✅
+  - [ ] User acceptance testing complete ✅
+
+**Unlocks:** ✅ Production readiness (mainnet deployment)
+
+---
+
+## 🎯 CURRENT PHASE: Phase 0 - Preflight Readiness
+
+**Immediate Next Steps:**
+1. Install Hardhat: `npm install --save-dev hardhat`
 2. Get testnet KAS from faucet
+3. Configure `.env` with testnet credentials
 3. Deploy first test contract
 4. Begin Phase 2 contract development
 
