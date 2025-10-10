@@ -36,11 +36,20 @@ class WalletManager {
         
         // Check if there are multiple providers (EIP-6963)
         if (window.ethereum.providers?.length > 0) {
-            return window.ethereum.providers.find(p => p.isMetaMask) || null;
+            // Find actual MetaMask, not other wallets pretending to be MetaMask
+            const metaMaskProvider = window.ethereum.providers.find(p => {
+                // MetaMask has specific properties that other wallets don't
+                return p.isMetaMask && !p.isKasWare && !p.isKastle;
+            });
+            return metaMaskProvider || null;
         }
         
-        // Single provider - check if it's MetaMask
-        return window.ethereum.isMetaMask ? window.ethereum : null;
+        // Single provider - check if it's MetaMask (not KasWare/Kastle pretending)
+        if (window.ethereum.isMetaMask && !window.ethereum.isKasWare && !window.ethereum.isKastle) {
+            return window.ethereum;
+        }
+        
+        return null;
     }
     
     init() {
@@ -103,13 +112,30 @@ class WalletManager {
     }
     
     detectWallet(walletType) {
-        switch(walletType.toLowerCase()) {
+        const walletLower = walletType.toLowerCase();
+        console.log(`[WalletManager] Detecting ${walletLower}...`);
+        console.log(`[WalletManager] Available providers:`, {
+            kastle: typeof window.kastle !== 'undefined',
+            kasware: typeof window.kasware !== 'undefined',
+            ethereum: typeof window.ethereum !== 'undefined',
+            'ethereum.isMetaMask': window.ethereum?.isMetaMask,
+            'ethereum.isKasWare': window.ethereum?.isKasWare,
+            'ethereum.isKastle': window.ethereum?.isKastle
+        });
+        
+        switch(walletLower) {
             case 'kastle':
-                return typeof window.kastle !== 'undefined' || typeof window.kasware !== 'undefined';
+                const kastleDetected = typeof window.kastle !== 'undefined' || typeof window.kasware !== 'undefined';
+                console.log(`[WalletManager] Kastle detected: ${kastleDetected}`);
+                return kastleDetected;
             case 'kasware':
-                return typeof window.kasware !== 'undefined';
+                const kaswareDetected = typeof window.kasware !== 'undefined';
+                console.log(`[WalletManager] KasWare detected: ${kaswareDetected}`);
+                return kaswareDetected;
             case 'metamask':
-                return this.getMetaMaskProvider() !== null;
+                const metaMaskProvider = this.getMetaMaskProvider();
+                console.log(`[WalletManager] MetaMask detected: ${metaMaskProvider !== null}`);
+                return metaMaskProvider !== null;
             default:
                 return false;
         }
