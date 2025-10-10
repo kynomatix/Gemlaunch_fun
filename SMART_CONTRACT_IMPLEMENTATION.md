@@ -1910,7 +1910,7 @@ class DEXAutoSlippageCalculator:
             'tokenOut': token_out,
             'fee': 2500,
             'recipient': recipient,
-            'deadline': self.w3.eth.get_block('latest')['timestamp'] + 600,  # 10 min
+            'deadline': self.w3.eth.get_block('latest')['timestamp'] + 90,  # 90 seconds (realistic)
             'amountIn': amount_in,
             'amountOutMinimum': min_amount_out,
             'sqrtPriceLimitX96': 0

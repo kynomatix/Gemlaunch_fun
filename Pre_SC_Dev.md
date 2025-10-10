@@ -49,9 +49,9 @@
     - Suggest smaller trade or wait
     - [Go Back] button only
 - [ ] Automatic deadline calculation
-  - [ ] Bonding curve: 5min default
-  - [ ] DEX: 10min default (higher variability)
-  - [ ] Extend on retry: +2min per attempt
+  - [ ] Bonding curve: 60 seconds default
+  - [ ] DEX: 90 seconds default (higher variability)
+  - [ ] Extend on retry: +30 seconds per attempt
 
 **Files to Update:**
 - `static/js/auto_slippage.js` (NEW - slippage calculation engine)

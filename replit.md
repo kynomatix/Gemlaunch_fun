@@ -33,6 +33,7 @@ gemlaunch.fun is a web platform designed for creating and launching memecoins on
   - Post-grad implementation changed to **off-chain backend** (saves gas, no contract deployment)
   - Python service: `DEXAutoSlippageCalculator` with QuoterV2 integration (0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B confirmed)
   - Fixed: Internal calls (cheaper gas), retry logic with +1% per attempt (max 3), risk level detection
+  - Realistic deadlines: Bonding curve 60s, DEX 90s (+30s per retry) - nobody waits 10 minutes!
 
 ## October 9, 2025 (AM Update)
 - **Creator Fee Claim Portal UI Complete** (Section 8 from Pre_SC_Dev.md):
