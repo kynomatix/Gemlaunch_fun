@@ -36,16 +36,26 @@ class WalletManager {
         
         // Check if there are multiple providers (EIP-6963)
         if (window.ethereum.providers?.length > 0) {
-            // Find actual MetaMask, not other wallets pretending to be MetaMask
+            // Use EIP-6963 rdns for deterministic MetaMask detection
             const metaMaskProvider = window.ethereum.providers.find(p => {
-                // MetaMask has specific properties that other wallets don't
-                return p.isMetaMask && !p.isKasWare && !p.isKastle;
+                // EIP-6963 standard: MetaMask has rdns = 'io.metamask'
+                if (p.info?.rdns === 'io.metamask') {
+                    return true;
+                }
+                // Fallback: Check MetaMask-specific properties
+                return p.isMetaMask && p._metamask;
             });
             return metaMaskProvider || null;
         }
         
-        // Single provider - check if it's MetaMask (not KasWare/Kastle pretending)
-        if (window.ethereum.isMetaMask && !window.ethereum.isKasWare && !window.ethereum.isKastle) {
+        // Single provider - use strict MetaMask detection
+        // Check for MetaMask-specific properties (_metamask object)
+        if (window.ethereum.isMetaMask && window.ethereum._metamask) {
+            return window.ethereum;
+        }
+        
+        // EIP-6963 for single provider
+        if (window.ethereum.info?.rdns === 'io.metamask') {
             return window.ethereum;
         }
         
