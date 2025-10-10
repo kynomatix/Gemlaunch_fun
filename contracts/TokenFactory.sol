@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BondingCurvePool.sol";
 
@@ -59,7 +59,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         address _treasury,
         address _airdropTreasury,
         address _platformDevelopmentWallet
-    ) {
+    ) Ownable(msg.sender) {
         require(_graduationController != address(0), "Invalid graduation controller");
         require(_treasury != address(0), "Invalid treasury");
         require(_airdropTreasury != address(0), "Invalid airdrop treasury");

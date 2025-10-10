@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
@@ -92,7 +92,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         address _airdropTreasury,
         address _platformDevelopmentWallet,
         bool _antiBotEnabled
-    ) ERC20(name, symbol) {
+    ) ERC20(name, symbol) Ownable(msg.sender) {
         require(_creator != address(0), "Invalid creator");
         require(_treasury != address(0), "Invalid treasury");
         require(_airdropTreasury != address(0), "Invalid airdrop treasury");
@@ -428,17 +428,16 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         emit GraduationOracleUpdated(newOracle);
     }
 
-    // Override _transfer to enforce 10% wallet cap
-    function _transfer(address from, address to, uint256 amount) internal virtual override {
-        require(from != address(0), "Transfer from zero address");
-        require(to != address(0), "Transfer to zero address");
-        
+    // Override _update to enforce 10% wallet cap (OpenZeppelin v5)
+    function _update(address from, address to, uint256 amount) internal virtual override {
         // Enforce wallet cap with exemptions for:
         // 1. Contract itself (holds curve + LP supply)
         // 2. Airdrop treasury (holds vested allocations up to 25%)
         // 3. Graduated pools (no restrictions after DEX listing)
         // 4. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
-        if (to != address(this) && 
+        // 5. Minting/burning (from/to == address(0))
+        if (to != address(0) &&
+            to != address(this) && 
             to != airdropTreasury && 
             from != airdropTreasury &&
             !graduated) {
@@ -447,6 +446,6 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
             require(recipientBalance + amount <= maxWallet, "Exceeds max wallet");
         }
         
-        super._transfer(from, to, amount);
+        super._update(from, to, amount);
     }
 }

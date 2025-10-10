@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BondingCurvePool.sol";
 
@@ -81,7 +81,7 @@ contract GraduationController is Ownable, ReentrancyGuard {
         address _kaspaFinancePositionManager,
         address _kaspaFinanceWKAS,
         address _graduationOracle
-    ) {
+    ) Ownable(msg.sender) {
         require(_kaspaFinancePositionManager != address(0), "Invalid position manager");
         require(_kaspaFinanceWKAS != address(0), "Invalid WKAS");
         require(_graduationOracle != address(0), "Invalid oracle");
