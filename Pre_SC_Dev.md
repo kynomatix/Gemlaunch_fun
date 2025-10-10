@@ -1,8 +1,8 @@
-# Pre-Smart Contract Development Checklist
+# Platform Feature Implementation Roadmap
 
-**Purpose:** Track implementation of all missing platform features required before smart contract deployment.
+**Purpose:** Track implementation of all missing platform features in correct dependency order.
 
-**Last Updated:** October 9, 2025
+**Last Updated:** October 10, 2025
 
 ---
 
@@ -15,7 +15,33 @@
 
 ---
 
-## Phase 1: Critical Trading UX
+## 🔴 DEPENDENCY: Smart Contract Required
+
+**The following features REQUIRE deployed smart contracts and CANNOT be implemented with mock data:**
+- ✅ Auto-Slippage Protection (needs `calculateOptimalSlippage()`)
+- ✅ Real-Time Price Quotes (needs `quoteBuy()`/`quoteSell()`)
+- ✅ Fee Breakdown Display (needs `getEffectiveFeeBreakdown()`)
+- ✅ Anti-Bot Cooldown Timer (needs `getSecondsUntilNormalFees()`)
+- ✅ Wallet Cap Warning (needs contract balance checks)
+- ✅ Post-Graduation Trading (needs DEX integration)
+
+**Implementation Strategy:**
+1. ✅ Smart contract specs complete (SMART_CONTRACT_IMPLEMENTATION.md)
+2. ⏳ Deploy contracts to testnet (NEXT STEP)
+3. ⏳ Then implement these features with REAL data
+
+---
+
+## 🟢 CAN Build Now (No Smart Contract Needed)
+
+**UI/UX features that work standalone:**
+- Creator Fee Portal UI (display only, claim button disabled until graduation)
+- Registry Pagination (frontend pagination of token list)
+- Search/Filter improvements
+
+---
+
+## Phase 1: Critical Trading UX (⏳ BLOCKED - Awaiting Smart Contract Deployment)
 
 ### 1. ✅ Auto-Slippage Protection (Smart Optimization)
 **Smart Contract Parameters:** `minTokensOut`, `minKasOut`, `deadline`
