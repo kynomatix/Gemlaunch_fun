@@ -41,6 +41,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
 
     bool public graduated;
     bool public graduating; // Lock flag during graduation
+    bool public liquidityTransferred; // Track if KAS has been transferred to GraduationController
 
     // Additional state for access control
     address public admin;
@@ -80,6 +81,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     event Graduated(address indexed pool, uint256 kasLiquidity, uint256 tokenLiquidity);
     event GraduationCompleted(address indexed pool, uint256 kasLiquidity, uint256 tokenLiquidity);
     event GraduationInitiated(uint256 kasLiquidity, uint256 tokenLiquidity);
+    event GraduationCancelled(address indexed pool);
     event UnsoldTokensBurned(uint256 amount);
     event CreatorFeesWithdrawn(address indexed creator, uint256 amount);
     event GraduationOracleUpdated(address indexed newOracle);
@@ -93,7 +95,12 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         address _treasury,
         address _airdropTreasury,
         address _platformDevelopmentWallet,
-        bool _antiBotEnabled
+        bool _antiBotEnabled,
+        address _graduationOracle,
+        address _admin,
+        address _buybackReserve,
+        address _kaspaSupport,
+        address _communityRewards
     ) ERC20(name, symbol) Ownable(msg.sender) {
         require(_creator != address(0), "Invalid creator");
         require(_treasury != address(0), "Invalid treasury");
@@ -101,12 +108,22 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(_platformDevelopmentWallet != address(0), "Invalid platform wallet");
         require(_airdropTreasury != address(this), "Airdrop treasury cannot be self");
         require(_platformDevelopmentWallet != address(this), "Platform wallet cannot be self");
+        require(_graduationOracle != address(0), "Invalid graduation oracle");
+        require(_admin != address(0), "Invalid admin");
+        require(_buybackReserve != address(0), "Invalid buyback reserve");
+        require(_kaspaSupport != address(0), "Invalid kaspa support");
+        require(_communityRewards != address(0), "Invalid community rewards");
         
         creator = _creator;
         treasury = _treasury;
         airdropTreasury = _airdropTreasury;
         platformDevelopmentWallet = _platformDevelopmentWallet;
         antiBotEnabled = _antiBotEnabled;
+        graduationOracle = _graduationOracle;
+        admin = _admin;
+        buybackReserveWallet = _buybackReserve;
+        kaspaNetworkSupportWallet = _kaspaSupport;
+        communityRewardsWallet = _communityRewards;
         
         // AUDIT FIX: Only set deploymentTime if anti-bot enabled
         if (_antiBotEnabled) {
@@ -257,6 +274,12 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         
         uint256 elapsed = block.timestamp - deploymentTime;
         uint256 feePercent = 9500 - (9400 * elapsed / 60);
+        
+        // Overflow protection
+        if (kasAmount > type(uint256).max / feePercent) {
+            return type(uint256).max;
+        }
+        
         return kasAmount * feePercent / 10000;
     }
 
@@ -376,8 +399,10 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         _approve(address(this), graduationOracle, lpTokens);
         
         // Transfer actual KAS liquidity to GraduationController (excluding virtual seed)
+        require(virtualKasReserve >= INITIAL_VIRTUAL_KAS, "Invalid reserve state");
         uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
         _safeSend(graduationOracle, actualKasLiquidity);
+        liquidityTransferred = true; // Mark KAS as transferred - prevents cancellation after this point
         
         emit GraduationInitiated(virtualKasReserve, lpTokens);
         
@@ -404,6 +429,18 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         
         emit Graduated(address(this), virtualKasReserve, lpReserve);
         emit GraduationCompleted(address(this), virtualKasReserve, lpReserve);
+        
+        // Reset liquidity transfer flag after successful graduation
+        liquidityTransferred = false;
+    }
+
+    // Cancel graduation (only oracle or owner)
+    function cancelGraduation() external nonReentrant {
+        require(msg.sender == graduationOracle || msg.sender == owner(), "Unauthorized");
+        require(graduating && !graduated, "Cannot cancel");
+        require(!liquidityTransferred, "Cannot cancel after KAS transfer");
+        graduating = false;
+        emit GraduationCancelled(address(this));
     }
 
     // Creator claims accumulated fees

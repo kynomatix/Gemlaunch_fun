@@ -125,9 +125,14 @@ contract GraduationController is Ownable, ReentrancyGuard {
         
         // Get liquidity amounts (KAS was already transferred during initiation)
         uint256 kasLiquidity = address(this).balance; // Use actual KAS balance controller has
+        require(kasLiquidity > 0, "No KAS received");
+        
         uint256 tokenLiquidity = pool.totalSupply() * 25 / 100; // 25% of total supply
         
         // Transfer tokens from pool to this contract
+        uint256 allowance = IERC20(tokenAddress).allowance(address(pool), address(this));
+        require(allowance >= tokenLiquidity, "Insufficient approval");
+        
         IERC20(tokenAddress).transferFrom(address(pool), address(this), tokenLiquidity);
         
         // Wrap KAS to WKAS for Uniswap V3 pool

@@ -13,6 +13,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     address public treasury;
     address public airdropTreasury;
     address public platformDevelopmentWallet;
+    address public graduationOracle;
+    address public admin;
+    address public buybackReserveWallet;
+    address public kaspaNetworkSupportWallet;
+    address public communityRewardsWallet;
     
     // Token registry
     address[] public deployedTokens;
@@ -58,17 +63,32 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         address _graduationController,
         address _treasury,
         address _airdropTreasury,
-        address _platformDevelopmentWallet
+        address _platformDevelopmentWallet,
+        address _graduationOracle,
+        address _admin,
+        address _buybackReserve,
+        address _kaspaSupport,
+        address _communityRewards
     ) Ownable(msg.sender) {
         require(_graduationController != address(0), "Invalid graduation controller");
         require(_treasury != address(0), "Invalid treasury");
         require(_airdropTreasury != address(0), "Invalid airdrop treasury");
         require(_platformDevelopmentWallet != address(0), "Invalid platform wallet");
+        require(_graduationOracle != address(0), "Invalid graduation oracle");
+        require(_admin != address(0), "Invalid admin");
+        require(_buybackReserve != address(0), "Invalid buyback reserve");
+        require(_kaspaSupport != address(0), "Invalid kaspa support");
+        require(_communityRewards != address(0), "Invalid community rewards");
         
         graduationController = _graduationController;
         treasury = _treasury;
         airdropTreasury = _airdropTreasury;
         platformDevelopmentWallet = _platformDevelopmentWallet;
+        graduationOracle = _graduationOracle;
+        admin = _admin;
+        buybackReserveWallet = _buybackReserve;
+        kaspaNetworkSupportWallet = _kaspaSupport;
+        communityRewardsWallet = _communityRewards;
     }
 
     function createToken(
@@ -104,7 +124,12 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             treasury,
             airdropTreasury,
             platformDevelopmentWallet,
-            antiBotEnabled
+            antiBotEnabled,
+            graduationOracle,
+            admin,
+            buybackReserveWallet,
+            kaspaNetworkSupportWallet,
+            communityRewardsWallet
         );
         
         address poolAddress = address(pool);

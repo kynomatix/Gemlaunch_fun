@@ -6,7 +6,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 describe("BondingCurvePool", function () {
   // Deployment fixture for efficiency
   async function deployBondingCurvePoolFixture() {
-    const [owner, creator, treasury, airdropTreasury, platformDev, user1, user2, oracle] = await ethers.getSigners();
+    const [owner, creator, treasury, airdropTreasury, platformDev, user1, user2, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
 
     const BondingCurvePool = await ethers.getContractFactory("BondingCurvePool");
     
@@ -20,14 +20,16 @@ describe("BondingCurvePool", function () {
       treasury.address,
       airdropTreasury.address,
       platformDev.address,
-      false // antiBotEnabled = false
+      false, // antiBotEnabled = false
+      oracle.address,
+      admin.address,
+      buyback.address,
+      kaspa.address,
+      community.address
     );
     
     await pool.waitForDeployment();
     const poolAddress = await pool.getAddress();
-
-    // Set graduation oracle
-    await pool.connect(owner).setGraduationOracle(oracle.address);
 
     return { 
       pool, 
@@ -45,7 +47,7 @@ describe("BondingCurvePool", function () {
   }
 
   async function deployWithAntiBotFixture() {
-    const [owner, creator, treasury, airdropTreasury, platformDev, user1, user2, oracle] = await ethers.getSigners();
+    const [owner, creator, treasury, airdropTreasury, platformDev, user1, user2, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
 
     const BondingCurvePool = await ethers.getContractFactory("BondingCurvePool");
     
@@ -59,13 +61,16 @@ describe("BondingCurvePool", function () {
       treasury.address,
       airdropTreasury.address,
       platformDev.address,
-      true // antiBotEnabled = true
+      true, // antiBotEnabled = true
+      oracle.address,
+      admin.address,
+      buyback.address,
+      kaspa.address,
+      community.address
     );
     
     await pool.waitForDeployment();
     const poolAddress = await pool.getAddress();
-
-    await pool.connect(owner).setGraduationOracle(oracle.address);
 
     return { 
       pool, 
@@ -105,7 +110,7 @@ describe("BondingCurvePool", function () {
     });
 
     it("Should reject invalid constructor parameters", async function () {
-      const [owner, creator, treasury, airdropTreasury, platformDev] = await ethers.getSigners();
+      const [owner, creator, treasury, airdropTreasury, platformDev, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
       const BondingCurvePool = await ethers.getContractFactory("BondingCurvePool");
       const totalSupply = ethers.parseEther("1000000");
 
@@ -118,7 +123,12 @@ describe("BondingCurvePool", function () {
           treasury.address,
           airdropTreasury.address,
           platformDev.address,
-          false
+          false,
+          oracle.address,
+          admin.address,
+          buyback.address,
+          kaspa.address,
+          community.address
         )
       ).to.be.revertedWith("Invalid creator");
     });
@@ -674,6 +684,30 @@ describe("BondingCurvePool", function () {
       await expect(
         pool.connect(oracle).initiateGraduation()
       ).to.be.revertedWith("Already graduated or graduating");
+    });
+
+    it("Should prevent cancellation after KAS transfer (security fix)", async function () {
+      const { pool, oracle, user1 } = await loadFixture(deployBondingCurvePoolFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
+
+      // Initiate graduation - this transfers KAS to oracle
+      await pool.connect(oracle).initiateGraduation();
+
+      // Verify liquidityTransferred flag is set
+      expect(await pool.liquidityTransferred()).to.equal(true);
+
+      // Attempt to cancel graduation - should revert
+      await expect(
+        pool.connect(oracle).cancelGraduation()
+      ).to.be.revertedWith("Cannot cancel after KAS transfer");
+
+      // Verify pool is still in graduating state
+      expect(await pool.graduating()).to.equal(true);
+      expect(await pool.graduated()).to.equal(false);
     });
   });
 

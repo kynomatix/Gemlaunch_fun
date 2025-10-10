@@ -6,7 +6,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 describe("TokenFactory", function () {
   // Deployment fixture
   async function deployTokenFactoryFixture() {
-    const [owner, graduationController, treasury, airdropTreasury, platformDev, user1, user2] = await ethers.getSigners();
+    const [owner, graduationController, treasury, airdropTreasury, platformDev, user1, user2, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
 
     const TokenFactory = await ethers.getContractFactory("TokenFactory");
     
@@ -14,7 +14,12 @@ describe("TokenFactory", function () {
       graduationController.address,
       treasury.address,
       airdropTreasury.address,
-      platformDev.address
+      platformDev.address,
+      oracle.address,
+      admin.address,
+      buyback.address,
+      kaspa.address,
+      community.address
     );
     
     await factory.waitForDeployment();
@@ -45,7 +50,7 @@ describe("TokenFactory", function () {
     });
 
     it("Should reject invalid constructor parameters", async function () {
-      const [owner, graduationController, treasury, airdropTreasury, platformDev] = await ethers.getSigners();
+      const [owner, graduationController, treasury, airdropTreasury, platformDev, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
       const TokenFactory = await ethers.getContractFactory("TokenFactory");
 
       await expect(
@@ -53,7 +58,12 @@ describe("TokenFactory", function () {
           ethers.ZeroAddress, // Invalid graduation controller
           treasury.address,
           airdropTreasury.address,
-          platformDev.address
+          platformDev.address,
+          oracle.address,
+          admin.address,
+          buyback.address,
+          kaspa.address,
+          community.address
         )
       ).to.be.revertedWith("Invalid graduation controller");
 
@@ -62,7 +72,12 @@ describe("TokenFactory", function () {
           graduationController.address,
           ethers.ZeroAddress, // Invalid treasury
           airdropTreasury.address,
-          platformDev.address
+          platformDev.address,
+          oracle.address,
+          admin.address,
+          buyback.address,
+          kaspa.address,
+          community.address
         )
       ).to.be.revertedWith("Invalid treasury");
     });

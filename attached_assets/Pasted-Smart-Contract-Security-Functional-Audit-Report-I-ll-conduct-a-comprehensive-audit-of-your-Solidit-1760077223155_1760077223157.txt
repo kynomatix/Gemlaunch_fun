@@ -1,0 +1,286 @@
+Smart Contract Security & Functional Audit Report
+I'll conduct a comprehensive audit of your Solidity contracts. Let me break this down by contract and severity.
+🔴 CRITICAL ISSUES
+C-1: BondingCurvePool - Uninitialized graduationOracle
+Location: BondingCurvePool.sol constructor
+Issue: The graduationOracle address is never set in the constructor, leaving it at address(0). This means graduation will be permanently blocked until setGraduationOracle() is called.
+solidity// CURRENT - Missing initialization
+constructor(...) {
+    // graduationOracle is never set!
+}
+
+// RECOMMENDATION
+constructor(
+    ...,
+    address _graduationOracle
+) {
+    require(_graduationOracle != address(0), "Invalid oracle");
+    graduationOracle = _graduationOracle;
+    // ... rest of constructor
+}
+C-2: BondingCurvePool - Uninitialized admin and Distribution Wallets
+Location: State variables
+Issue: admin, buybackReserveWallet, kaspaNetworkSupportWallet, and communityRewardsWallet are declared but never initialized. distributeFees() will fail.
+solidity// RECOMMENDATION - Add to constructor
+constructor(
+    ...,
+    address _admin,
+    address _buybackReserve,
+    address _kaspaSupport,
+    address _communityRewards
+) {
+    require(_admin != address(0), "Invalid admin");
+    // ... validate all addresses
+    admin = _admin;
+    buybackReserveWallet = _buybackReserve;
+    kaspaNetworkSupportWallet = _kaspaSupport;
+    communityRewardsWallet = _communityRewards;
+}
+C-3: BondingCurvePool - Integer Underflow Risk in Graduation
+Location: initiateGraduation() line 522
+Issue: Subtracting INITIAL_VIRTUAL_KAS could underflow if virtualKasReserve is somehow less than INITIAL_VIRTUAL_KAS.
+solidity// CURRENT
+uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
+
+// RECOMMENDATION
+require(virtualKasReserve >= INITIAL_VIRTUAL_KAS, "Invalid reserve state");
+uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
+
+🟠 HIGH SEVERITY ISSUES
+H-1: GraduationController - Missing Balance Validation
+Location: completeGraduation() line 133
+Issue: The contract assumes it has received KAS but never validates the actual balance.
+solidity// CURRENT
+uint256 kasLiquidity = address(this).balance; // ❌ Unsafe assumption
+
+// RECOMMENDATION
+uint256 kasLiquidity = address(this).balance;
+require(kasLiquidity > 0, "No KAS received");
+// Validate against expected amount from pool
+H-2: GraduationController - No Approval Validation
+Location: completeGraduation() line 137
+Issue: Assumes the pool has given approval for token transfer without checking.
+solidity// RECOMMENDATION - Add before transferFrom
+uint256 allowance = IERC20(tokenAddress).allowance(address(pool), address(this));
+require(allowance >= tokenLiquidity, "Insufficient approval");
+H-3: BondingCurvePool - Weak Access Control in _update
+Location: _update() line 615-634
+Issue: The wallet cap exemption logic has a vulnerability - transfers FROM airdropTreasury bypass the cap entirely, allowing unlimited distributions.
+solidity// CURRENT - Too permissive
+if (from != airdropTreasury) {
+    // check wallet cap
+}
+
+// RECOMMENDATION - Add destination validation
+if (to != address(0) && 
+    to != address(this) && 
+    to != airdropTreasury && 
+    from != airdropTreasury &&
+    !graduated) {
+    // Cap check, BUT also verify recipient isn't getting >10% from airdrop
+    uint256 recipientBalance = balanceOf(to);
+    uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100;
+    require(recipientBalance + amount <= maxWallet, "Exceeds max wallet");
+}
+H-4: BondingCurvePool - Race Condition in Graduation
+Location: initiateGraduation() + completeGraduation()
+Issue: Two-step graduation process with no atomicity guarantees. If initiateGraduation() succeeds but completeGraduation() fails, the pool is permanently locked.
+Recommendation: Add a cancelGraduation() emergency function:
+solidityfunction cancelGraduation() external nonReentrant {
+    require(msg.sender == graduationOracle || msg.sender == owner(), "Unauthorized");
+    require(graduating && !graduated, "Cannot cancel");
+    graduating = false;
+    emit GraduationCancelled(address(this));
+}
+
+🟡 MEDIUM SEVERITY ISSUES
+M-1: BondingCurvePool - Overflow Risk in getCurrentAntiBotFee
+Location: Line 443
+Issue: For very large kasAmount values, kasAmount * feePercent could overflow.
+solidity// RECOMMENDATION
+function getCurrentAntiBotFee(uint256 kasAmount) public view returns (uint256) {
+    if (!antiBotEnabled) return 0;
+    if (block.timestamp >= deploymentTime + 60) return 0;
+    
+    uint256 elapsed = block.timestamp - deploymentTime;
+    uint256 feePercent = 9500 - (9400 * elapsed / 60);
+    
+    // Overflow protection
+    if (kasAmount > type(uint256).max / feePercent) {
+        return type(uint256).max; // Cap at max
+    }
+    
+    return kasAmount * feePercent / 10000;
+}
+M-2: BondingCurvePool - Gas Inefficiency in getMinTokensOutWithAutoSlippage
+Location: Line 503
+Issue: External call to this.getEffectiveFeeBreakdown() is expensive. Should be internal.
+solidity// CURRENT
+(uint256 antiBotFee, uint256 platformFee, uint256 creatorFee, uint256 tradeAmount) 
+    = this.getEffectiveFeeBreakdown(kasIn); // ❌ External call
+
+// RECOMMENDATION - Make getEffectiveFeeBreakdown internal
+function _getEffectiveFeeBreakdownInternal(uint256 kasAmount) internal view returns (...) {
+    // Same logic but internal
+}
+M-3: TokenFactory - No Contract Validation
+Location: Constructor
+Issue: graduationController, treasury, etc. are not validated as contracts. Could be set to EOAs.
+solidity// RECOMMENDATION
+function _isContract(address account) internal view returns (bool) {
+    return account.code.length > 0;
+}
+
+constructor(...) {
+    require(_isContract(_graduationController), "Controller must be contract");
+    // ... rest of validation
+}
+M-4: TokenFactory - Lack of Token Deactivation
+Issue: No way to disable/delist malicious tokens after deployment.
+Recommendation: Add a blacklist mechanism:
+soliditymapping(address => bool) public blacklistedTokens;
+
+function blacklistToken(address token) external onlyOwner {
+    blacklistedTokens[token] = true;
+    emit TokenBlacklisted(token);
+}
+M-5: GraduationController - Hardcoded Slippage and Deadline
+Location: completeGraduation() lines 156-157
+Issue: 5% slippage and 300-second deadline are hardcoded. Could be too restrictive or permissive depending on market conditions.
+solidity// RECOMMENDATION - Make configurable
+uint256 public defaultSlippageBps = 500; // 5%
+uint256 public defaultDeadlineSeconds = 300;
+
+function setDefaultSlippage(uint256 _slippageBps) external onlyOwner {
+    require(_slippageBps <= 1000, "Max 10%");
+    defaultSlippageBps = _slippageBps;
+}
+
+🔵 LOW SEVERITY & INFO
+L-1: Missing Events
+Multiple locations
+Issue: Many state-changing functions don't emit events:
+
+setGraduationOracle() - missing event ❌ (wait, it does have one ✅)
+Setting admin, buyback wallets, etc. - no events
+pause()/unpause() - should emit custom events
+
+L-2: Inconsistent Error Messages
+Multiple locations
+Some require statements use generic messages like "Invalid oracle" vs "Invalid graduation oracle". Standardize for better UX.
+L-3: Magic Numbers
+Multiple locations
+Hard-coded values should be constants:
+solidity// CURRENT
+if (elapsed >= 60) { ... } // Magic number
+
+// RECOMMENDATION
+uint256 public constant ANTI_BOT_DURATION = 60;
+if (elapsed >= ANTI_BOT_DURATION) { ... }
+L-4: Unused State Variable
+BondingCurvePool - deploymentTime is set but could be optimized:
+solidity// Only set if antiBotEnabled is true
+if (_antiBotEnabled) {
+    deploymentTime = block.timestamp;
+}
+This is actually already done correctly ✅
+L-5: Gas Optimization - Storage vs Memory
+Multiple locations
+Several functions read storage variables multiple times. Cache in memory:
+solidity// CURRENT
+function distributeFees() external {
+    _safeSend(platformDevelopmentWallet, devAmount);
+    _safeSend(buybackReserveWallet, buybackAmount);
+    // ... multiple SLOAD operations
+}
+
+// RECOMMENDATION
+function distributeFees() external {
+    address platDev = platformDevelopmentWallet; // Cache
+    address buyback = buybackReserveWallet;
+    // ... use cached values
+}
+
+✅ FUNCTIONAL CORRECTNESS REVIEW
+Bonding Curve Math ✅
+The constant product formula is correctly implemented:
+solidityk = virtualTokenReserve * virtualKasReserve
+tokensOut = virtualTokenReserve - (k / newKasReserve)
+Fee Calculation ✅
+The anti-bot → platform → creator fee cascade is correct:
+
+Anti-bot fee deducted first
+Platform/creator fees from remainder
+Trade amount is what's left
+
+Wallet Cap Logic ⚠️
+The exemption logic works but is complex. Test thoroughly:
+
+Contract can hold any amount ✅
+Airdrop treasury can hold any amount ✅
+Graduated pools have no restrictions ✅
+Transfers FROM airdrop treasury bypass cap ⚠️ (see H-3)
+
+Graduation Flow ⚠️
+Two-step process with potential failure points:
+
+initiateGraduation() locks pool
+completeGraduation() adds DEX liquidity
+If step 2 fails, pool is stuck ❌ (see H-4)
+
+
+📋 RECOMMENDATIONS SUMMARY
+Must Fix Before Testnet:
+
+✅ Initialize graduationOracle in constructor (C-1)
+✅ Initialize admin and distribution wallets (C-2)
+✅ Add underflow check in graduation (C-3)
+✅ Add balance validation in GraduationController (H-1, H-2)
+✅ Add graduation cancellation mechanism (H-4)
+
+Should Fix Before Mainnet:
+
+Review wallet cap exemption logic (H-3)
+Add overflow protection in fee calculations (M-1)
+Optimize gas usage (M-2)
+Add contract validation (M-3)
+Implement token blacklist (M-4)
+Make slippage/deadline configurable (M-5)
+
+Nice to Have:
+
+Add comprehensive events
+Standardize error messages
+Cache storage variables
+Add more documentation/NatSpec
+
+
+🧪 TESTING RECOMMENDATIONS
+Unit Tests Needed:
+javascriptdescribe("BondingCurvePool", () => {
+    it("Should initialize all state variables correctly");
+    it("Should handle anti-bot fee decay accurately over 60 seconds");
+    it("Should enforce wallet cap with all exemptions");
+    it("Should prevent graduation with insufficient balance");
+    it("Should handle graduation cancellation");
+    it("Should distribute fees to all 4 wallets correctly");
+});
+
+describe("GraduationController", () => {
+    it("Should validate KAS balance before completing graduation");
+    it("Should verify token approval before transferFrom");
+    it("Should handle token ordering correctly (token0 < token1)");
+    it("Should revert on failed mint");
+});
+Fuzzing Targets:
+
+Bonding curve math with random kas/token amounts
+Anti-bot fee calculation with random timestamps
+Wallet cap enforcement with random transfer amounts
+Fee distribution remainder calculation
+
+Would you like me to:
+
+Generate test cases for any specific vulnerability?
+Create a fixed version of the contracts?
+Deep-dive into any particular issue?

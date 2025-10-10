@@ -21,7 +21,7 @@ describe("GraduationController", function () {
   }
 
   async function deployGraduationControllerFixture() {
-    const [owner, oracle, treasury, airdropTreasury, platformDev, creator, user1] = await ethers.getSigners();
+    const [owner, oracle, treasury, airdropTreasury, platformDev, creator, user1, admin, buyback, kaspa, community] = await ethers.getSigners();
 
     // Deploy mocks
     const wkas = await deployMockWKAS();
@@ -51,12 +51,14 @@ describe("GraduationController", function () {
       treasury.address,
       airdropTreasury.address,
       platformDev.address,
-      false
+      false,
+      await controller.getAddress(),
+      admin.address,
+      buyback.address,
+      kaspa.address,
+      community.address
     );
     await pool.waitForDeployment();
-
-    // Set GraduationController as oracle on pool (not the signer)
-    await pool.setGraduationOracle(await controller.getAddress());
 
     return {
       controller,
