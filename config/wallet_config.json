@@ -1,0 +1,34 @@
+{
+  "testnet": {
+    "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "treasuries": {
+      "platform": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "airdrop": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "platformDev": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "buybackReserve": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "kaspaNetwork": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "communityRewards": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+    },
+    "graduationOracle": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "kaspaFinance": {
+      "factory": "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
+      "nftPositionManager": "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
+      "wkas": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+      "swapRouter": "0xDf88D478aF51C0AB616aFBfDD933c874e142858c",
+      "quoterV2": "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B"
+    }
+  },
+  "mainnet": {
+    "note": "DO NOT USE - Populate in Phase 5 with hardware wallet addresses",
+    "deployer": "TBD",
+    "treasuries": {
+      "platform": "TBD",
+      "airdrop": "TBD",
+      "platformDev": "TBD",
+      "buybackReserve": "TBD",
+      "kaspaNetwork": "TBD",
+      "communityRewards": "TBD"
+    },
+    "graduationOracle": "TBD"
+  }
+}

@@ -1,118 +1,5 @@
 # Overview
-gemlaunch.fun is a web platform designed for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution for memecoin creation, emphasizing fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. The project aims to democratize memecoin creation and foster a vibrant Kaspa ecosystem.
-
-# Recent Changes
-
-## October 9, 2025 (PM Update)
-- **QuoterV2 Address Confirmed**: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
-  - All 5/5 Kaspa Finance contract addresses now confirmed
-  - Updated SMART_CONTRACT_IMPLEMENTATION.md, Pre_SC_Dev.md, and replit.md
-- **Creator Fee Portal Integration Documentation Complete**:
-  - Added comprehensive integration section to SMART_CONTRACT_IMPLEMENTATION.md
-  - Documented connective path: UI → Smart Contract withdrawCreatorFees()
-  - Complete web3 integration code examples with ethers.js
-  - Data flow diagrams (mock → real on-chain data)
-  - Integration checklist with 3 phases (Prerequisites, Web3, Backend Support)
-  - Files: `SMART_CONTRACT_IMPLEMENTATION.md` lines 1735-1953
-- **Creator Fee Calculation Fixes**:
-  - Fixed USD/KAS conversion to use real-time oracle price
-  - Unified fee calculations between dashboard cards and modal popup
-  - Fees earned in KAS (2,000 KAS from 400 trades), USD value from oracle
-  - Laser Eyes updated to 400 trades as $200k volume example
-  - Volume display now calculated from KAS amount × oracle price
-- **Auto-Slippage Strategy Adopted**:
-  - Updated Pre_SC_Dev.md with auto-slippage optimization approach
-  - NO manual slippage controls - system calculates optimal slippage automatically
-  - Intelligent retry on failure: recalculates slippage and retries up to 3 times
-  - User alerts only when needed: silent <2%, warning 5-15%, block >15%
-  - Bonding curve: 0.5-1% base | DEX: 1-3% base (dynamic adjustments for volatility/liquidity)
-  - UX priority: 95% of trades execute silently without user intervention
-- **Auto-Slippage Audit & Fixes** (Claude Sonnet 4.5):
-  - Pre-grad functions integrated into BondingCurvePool.sol (lines 529-600)
-  - Added overflow protection, zero-division checks, graduated state validation
-  - Post-grad implementation changed to **off-chain backend** (saves gas, no contract deployment)
-  - Python service: `DEXAutoSlippageCalculator` with QuoterV2 integration (0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B confirmed)
-  - Fixed: Internal calls (cheaper gas), retry logic with +1% per attempt (max 3), risk level detection
-  - Realistic deadlines: Bonding curve 60s, DEX 90s (+30s per retry) - nobody waits 10 minutes!
-
-## October 9, 2025 (AM Update)
-- **Creator Fee Claim Portal UI Complete** (Section 8 from Pre_SC_Dev.md):
-  - Added fee stats display to each token card in "Your Created Tokens" dashboard section
-  - Created dedicated Creator Fee Modal (`creator_fee_modal.html`) showing:
-    - Accumulated fees (KAS + USD)
-    - Lifetime fees earned
-    - Platform vs Creator fee breakdown (0.9% vs 0.1%)
-    - Total trades and fee rate
-    - Claim status badge (graduation-aware)
-  - Implemented modal JavaScript (open/close, data population, graduation checks)
-  - Claim button disabled until token graduates ($70K market cap)
-  - Placeholder calculations ready for smart contract integration
-  - Files: `templates/app/dashboard.html`, `templates/app/partials/creator_fee_modal.html`
-- **Pre-Smart Contract Development Checklist Created** (Pre_SC_Dev.md):
-  - Comprehensive tracking document for all missing platform features before smart contract deployment
-  - 13 feature categories organized into 4 implementation phases
-  - 80+ granular checkboxes for systematic implementation tracking
-  - Smart contract function references for each feature
-  - Files to update listed for each section
-  - 4-week implementation timeline (Phase 1: Critical Trading UX → Phase 4: Safety Features)
-  - Definition of Done criteria and contract integration checklist
-  - Categories: Slippage Controls, Real-Time Quotes, Anti-Bot UI, Creator Fee Portal, Cooldown Timer, Wallet Cap Warning, Graduation Tracker, Post-Graduation Trading, Registry Pagination
-
-## October 8, 2025
-- **Fixed Dashboard Turbo Navigation Bug**: Resolved grid layout rendering issue when navigating from other pages. Added `data-turbo="false"` to Dashboard link and implemented View Transitions API for smooth page transitions without white flash.
-- **View Transitions API**: Added cross-fade animations for full page reloads, eliminating white screen between page loads while maintaining proper grid layout calculations.
-- **UI Refinements**: Adjusted hamburger menu and logo spacing in top bar for optimal visual balance.
-- **Smart Contract Progress Tracker**: Added comprehensive implementation checklist to SMART_CONTRACT_IMPLEMENTATION.md with 7 phases, starting with Testnet setup as Phase 1. Tracks all implementation milestones with checkboxes.
-- **SMART_CONTRACT_IMPLEMENTATION.md Restructuring** (AUDIT-SAFE): 
-  - Added "v4 CANONICAL IMPLEMENTATION" section consolidating all audit-approved code
-  - Finalized implementation decisions (treasury remainder pattern, anti-bot 70/30 split)
-  - Added Round 4 audit fix status cross-reference table
-  - Created visual barrier separating historical/superseded code from current implementation
-  - Updated Quick Reference with canonical line numbers
-  - All changes were copy-only (no code modifications) to preserve audit integrity
-- **BondingCurvePool.sol COMPLETE Specification** (Lines 220-748):
-  - Added graduation functions (initiateGraduation, completeGraduation) with oracle authorization
-  - Implemented creator fee claim portal (withdrawCreatorFees, getCreatorClaimableAmount)
-  - Added access control & security (receive blocker, pause/unpause, oracle management)
-  - Implemented 10% wallet cap enforcement via _transfer override
-  - Added complete contract structure with OpenZeppelin imports (ERC20, ReentrancyGuard, Pausable, Ownable)
-  - Comprehensive implementation checklist with line number references
-  - STATUS: ✅ AUDIT READY
-- **TokenFactory.sol COMPLETE Specification** (Lines 752-975):
-  - Full createToken() implementation with metadata storage (name, symbol, description, image, socials)
-  - Anti-spam controls: 60-second deployment cooldown per user (configurable 0-3600s)
-  - Input validation: name/symbol length, supply limits (1M-1B tokens), 280-char descriptions
-  - On-chain token registry with pagination (getDeployedTokens with offset/limit)
-  - Admin functions: pause/unpause, cooldown updates, graduation controller management
-  - View functions: canDeploy(), getSecondsUntilNextDeployment(), getTokenInfo()
-  - STATUS: ✅ AUDIT READY
-- **GraduationController.sol COMPLETE Specification** (Lines 979-1218):
-  - Two-step graduation flow: initiateGraduation() → completeGraduation()
-  - Kaspa Finance DEX integration (Uniswap V3 architecture, full-range positions, 0.25% fee tier)
-  - Backend oracle integration for USD market cap verification ($70K threshold)
-  - Liquidity transfer: virtualKasReserve + 25% token supply to DEX
-  - Emergency controls: graduation reversal, token recovery, oracle updates
-  - Position tracking: NFT position IDs, graduation timestamps
-  - STATUS: ✅ AUDIT READY
-- **v4 Canonical Implementation Complete**: All 3 core contracts (BondingCurvePool, TokenFactory, GraduationController) now have complete audit-ready specifications addressing all critical audit findings from Claude 4.5 review
-- **CRITICAL FIX: PRO Token Wallet Cap Conflict Resolved**:
-  - Issue: 10% wallet cap would block PRO token airdrop allocations (up to 25% of supply)
-  - Solution: Updated _transfer override with airdropTreasury exemptions
-  - Airdrop treasury can now hold 25% vested allocations
-  - Transfers FROM airdropTreasury exempt from 10% cap (allows >10% distributions to team/founders/vesting contracts)
-  - Line 621-641: Complete implementation with 4 exemption categories
-- **Post-Graduation DEX Trading Integration** (RESEARCH PHASE - Oct 9, 2025):
-  - Goal: Enable seamless trading on gemlaunch.fun AFTER graduation via Kaspa Finance DEX backend routing
-  - Confirmed: Kaspa Finance is Uniswap V3 fork with full EVM compatibility
-  - **Kaspa Finance Contract Addresses (Kasplex Testnet - Chain ID 167012)** - ✅ COMPLETE:
-    - ✅ Factory: 0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8 (Block 2.49M, May 2025)
-    - ✅ NonfungiblePositionManager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589 (Block 7.52M, Oct 2025)
-    - ✅ WKAS: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
-    - ✅ SwapRouter: 0xDf88D478aF51C0AB616aFBfDD933c874e142858c (Block 7.58M, Oct 2025)
-    - ✅ QuoterV2: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
-  - Architecture: TradeRouter service routes to bonding curve OR DEX based on graduation status
-  - UX: Same interface, backend handles routing (users don't notice switch)
-  - Benefits: Community stays on platform, chat/airdrops continue, better liquidity post-grad
+gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution, emphasizing fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. The project aims to democratize memecoin creation and foster a vibrant Kaspa ecosystem.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -140,20 +27,23 @@ A two-stage AI pipeline generates token images: OpenRouter Llama 3.1 70B for pro
 ### PRO Token Airdrop System
 A comprehensive airdrop management system with a 5% per day vesting schedule (20-day full unlock). Supports various distribution types: Random Raffle, Top Contributors, Active Chatters, Token Holders, and Early Supporters.
 
-### Anti-Bot System (GEM System) - AUDIT-APPROVED v4
-Optional premium feature for PRO tokens. Time-based KAS fee decay (95% → 1% over 60 seconds) prevents bot sniping while rewarding patient community members. **Audit Status: ✅ ALL CRITICAL ISSUES FIXED** - Corrected fee calculation order (anti-bot first, then platform/creator from remainder), proper treasury validation, view functions for UX. All anti-bot fees sent immediately to Airdrop Treasury, funding community rewards.
+### Anti-Bot System (GEM System)
+An optional premium feature for PRO tokens that uses time-based KAS fee decay (95% → 1% over 60 seconds) to prevent bot sniping. All anti-bot fees are sent immediately to the Airdrop Treasury.
 
 ### Token-Specific Community Points System
 Each PRO token has its own community points system to reward engagement, tracking points, messages, trades, polls, and holdings, configurable by token creators.
 
 ### Multi-Wallet Linking System
-Users can link multiple wallets via secure challenge-response authentication with cryptographic signature verification, preventing various forms of attack. A transfer request system allows merging accounts if a wallet is already primary for another user.
+Users can link multiple wallets via secure challenge-response authentication with cryptographic signature verification. A transfer request system allows merging accounts if a wallet is already primary for another user.
 
 ### Wallet Connection System
 A modal-based system supports Kastle, KasWare, and MetaMask, using challenge-response authentication and a `WalletManager` for provider abstraction.
 
 ### Enhanced Marketplace Search
 The marketplace features a comprehensive search system across token name, symbol, contract address, and creator information, with real-time, case-insensitive matching across all filter categories.
+
+## Smart Contract Architecture
+The core contracts include `BondingCurvePool.sol`, `TokenFactory.sol`, and `GraduationController.sol`. These manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures (wallet cap), and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The system incorporates an off-chain backend service for auto-slippage calculation to optimize trades.
 
 ## Design Patterns
 Adheres to an MVC pattern, separating templates (views), Flask routes (controllers), and models, with efficient static asset organization and component-based CSS.
@@ -174,8 +64,8 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 
 ## Blockchain Integration
 - **Kasplex zkEVM L2**: EVM-compatible Layer 2 on Kaspa for smart contract deployment.
-- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools.
-- **Smart Contract Stack**: Solidity ^0.8.20, Hardhat, OpenZeppelin, bonding curve token launches.
+- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools (Uniswap V3 architecture).
+- **Smart Contract Stack**: Solidity ^0.8.20, Hardhat, OpenZeppelin.
 
 ## External Services
 - **Telegram**: Community engagement.
