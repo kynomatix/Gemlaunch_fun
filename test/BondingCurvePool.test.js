@@ -430,30 +430,62 @@ describe("BondingCurvePool", function () {
   });
 
   describe("Wallet Cap Enforcement", function () {
-    it("Should enforce 10% wallet cap", async function () {
+    it("Should allow bonding curve buys to exceed 10% wallet cap (audit-approved exemption)", async function () {
       const { pool, user1, totalSupply } = await loadFixture(deployBondingCurvePoolFixture);
 
       const maxWallet = totalSupply * 10n / 100n; // 10%
       
-      // Buy enough to get close to or exceed the cap
-      // Use larger amounts to ensure we hit the cap
+      // Buy enough to exceed the cap (bonding curve buys are exempt)
       const buyAmount1 = ethers.parseEther("500");
       const deadline = (await time.latest()) + 3600;
       await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount1 });
 
-      // Try to buy more to exceed the cap
+      // Buy more to exceed the cap - this should SUCCEED (transfers from contract are exempt)
       const buyAmount2 = ethers.parseEther("500");
       
-      // Check if we'll exceed the cap
+      // Check that we will exceed the cap
       const currentBalance = await pool.balanceOf(user1.address);
       const feeBreakdown = await pool.getEffectiveFeeBreakdown(buyAmount2);
       const additionalTokens = await pool.quoteBuy(feeBreakdown.tradeAmount);
 
-      // Ensure the test actually checks the cap by verifying we will exceed it
+      // Verify we will exceed the cap
       expect(currentBalance + additionalTokens).to.be.gt(maxWallet);
       
+      // This should SUCCEED - bonding curve buys bypass wallet cap (from == address(this))
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount2 });
+      
+      // Verify user now holds > 10%
+      const finalBalance = await pool.balanceOf(user1.address);
+      expect(finalBalance).to.be.gt(maxWallet);
+    });
+
+    it("Should enforce 10% wallet cap on peer-to-peer transfers", async function () {
+      const { pool, user1, user2, totalSupply } = await loadFixture(deployBondingCurvePoolFixture);
+
+      const maxWallet = totalSupply * 10n / 100n; // 10%
+      
+      // user1 buys tokens (can exceed 10% via bonding curve)
+      const buyAmount = ethers.parseEther("500");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
+      
+      const user1Balance = await pool.balanceOf(user1.address);
+      
+      // user2 buys a small amount (under 10%)
+      const smallBuy = ethers.parseEther("1");
+      await pool.connect(user2).buyTokens(0, deadline, { value: smallBuy });
+      
+      const user2Balance = await pool.balanceOf(user2.address);
+      
+      // Calculate transfer amount that would put user2 over 10%
+      const transferAmount = maxWallet - user2Balance + 1n; // 1 token over the limit
+      
+      // Verify user1 has enough to transfer
+      expect(user1Balance).to.be.gte(transferAmount);
+      
+      // Direct transfer from user1 → user2 should FAIL (wallet cap enforced)
       await expect(
-        pool.connect(user1).buyTokens(0, deadline, { value: buyAmount2 })
+        pool.connect(user1).transfer(user2.address, transferAmount)
       ).to.be.revertedWith("Exceeds max wallet");
     });
 

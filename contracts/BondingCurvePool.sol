@@ -78,6 +78,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     );
 
     event Graduated(address indexed pool, uint256 kasLiquidity, uint256 tokenLiquidity);
+    event GraduationCompleted(address indexed pool, uint256 kasLiquidity, uint256 tokenLiquidity);
     event GraduationInitiated(uint256 kasLiquidity, uint256 tokenLiquidity);
     event UnsoldTokensBurned(uint256 amount);
     event CreatorFeesWithdrawn(address indexed creator, uint256 amount);
@@ -171,7 +172,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         accumulatedPlatformFees += platformFee;
         accumulatedCreatorFees += creatorFee;
         
-        // Step 5: Transfer tokens (wallet cap enforced in _transfer override)
+        // Step 5: Transfer tokens (wallet cap enforced in _update override)
         _transfer(address(this), msg.sender, tokensOut);
         
         emit TokensPurchased(msg.sender, tokensOut, tradeAmount, platformFee, creatorFee, antiBotFee);
@@ -227,9 +228,15 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         
         // Constant product: (virtualTokenReserve - tokensOut) * (virtualKasReserve + kasIn) = k
         uint256 newKasReserve = virtualKasReserve + kasIn;
+        
+        // Prevent overflow and unreasonably large inputs that would drain the pool
+        require(newKasReserve > virtualKasReserve, "Invalid input");
+        require(kasIn <= virtualKasReserve * 1000000, "Invalid output");
+        
         uint256 newTokenReserve = k / newKasReserve;
         tokensOut = virtualTokenReserve - newTokenReserve;
         
+        // Basic output validation - ensures positive output
         require(tokensOut > 0 && tokensOut < virtualTokenReserve, "Invalid output");
     }
 
@@ -365,6 +372,13 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // Calculate liquidity: virtualKasReserve + 25% token supply
         uint256 lpTokens = totalSupply() * LP_SUPPLY_PCT / 100; // 25%
         
+        // Approve GraduationController to transfer LP tokens for DEX liquidity
+        _approve(address(this), graduationOracle, lpTokens);
+        
+        // Transfer actual KAS liquidity to GraduationController (excluding virtual seed)
+        uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
+        _safeSend(graduationOracle, actualKasLiquidity);
+        
         emit GraduationInitiated(virtualKasReserve, lpTokens);
         
         // Note: Actual DEX migration handled by GraduationController
@@ -389,6 +403,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         }
         
         emit Graduated(address(this), virtualKasReserve, lpReserve);
+        emit GraduationCompleted(address(this), virtualKasReserve, lpReserve);
     }
 
     // Creator claims accumulated fees
@@ -436,14 +451,16 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // 1. Contract itself (holds curve + LP supply)
         // 2. Airdrop treasury (holds vested allocations up to 25%)
         // 3. Graduation oracle (receives LP tokens for DEX)
-        // 4. Graduated pools (no restrictions after DEX listing)
-        // 5. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
-        // 6. Transfers FROM contract (buy operations must work regardless of wallet cap)
-        // 7. Minting/burning (from/to == address(0))
+        // 4. Owner (emergency operations and administrative actions)
+        // 5. Graduated pools (no restrictions after DEX listing)
+        // 6. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
+        // 7. Transfers FROM contract (buy operations bypass cap due to bonding curve pricing)
+        // 8. Minting/burning (from/to == address(0))
         if (to != address(0) &&
             to != address(this) && 
             to != airdropTreasury && 
             to != graduationOracle &&
+            to != owner() &&
             from != airdropTreasury &&
             from != address(this) &&
             !graduated) {

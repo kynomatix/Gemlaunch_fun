@@ -91,6 +91,9 @@ contract GraduationController is Ownable, ReentrancyGuard {
         graduationOracle = _graduationOracle;
     }
 
+    // Allow contract to receive KAS for graduation liquidity
+    receive() external payable {}
+
     // Step 1: Initiate graduation (called by backend oracle when USD threshold reached)
     function initiateGraduation(address tokenAddress) external nonReentrant {
         require(msg.sender == graduationOracle, "Only oracle can initiate");
@@ -120,14 +123,11 @@ contract GraduationController is Ownable, ReentrancyGuard {
         BondingCurvePool pool = BondingCurvePool(payable(tokenAddress));
         require(pool.graduating(), "Graduation not initiated");
         
-        // Get liquidity amounts
-        uint256 kasLiquidity = pool.virtualKasReserve();
+        // Get liquidity amounts (KAS was already transferred during initiation)
+        uint256 kasLiquidity = address(this).balance; // Use actual KAS balance controller has
         uint256 tokenLiquidity = pool.totalSupply() * 25 / 100; // 25% of total supply
         
-        // Transfer KAS and tokens from pool to this contract
-        require(address(pool).balance >= kasLiquidity, "Insufficient KAS in pool");
-        
-        // Transfer tokens to this contract
+        // Transfer tokens from pool to this contract
         IERC20(tokenAddress).transferFrom(address(pool), address(this), tokenLiquidity);
         
         // Wrap KAS to WKAS for Uniswap V3 pool
