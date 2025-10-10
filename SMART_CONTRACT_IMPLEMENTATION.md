@@ -41,27 +41,29 @@
 **Goal:** Prepare deployment tools and testnet environment  
 **Dependencies:** NONE → This unblocks everything
 
-- [ ] **0.1** Install Deployment Tools
-  - [ ] Install Hardhat: `npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox`
-  - [ ] Initialize Hardhat project: `npx hardhat init`
-  - [ ] Install OpenZeppelin contracts: `npm install @openzeppelin/contracts`
+- [x] **0.1** Install Deployment Tools ✅ COMPLETE
+  - [x] Install Hardhat: `npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox`
+  - [x] Initialize Hardhat project: Created project structure (contracts/, scripts/, test/, ignition/)
+  - [x] Install OpenZeppelin contracts: `npm install @openzeppelin/contracts`
 
-- [ ] **0.2** Testnet Wallet Setup
-  - [ ] Create testnet deployer wallet (MetaMask/Kastle)
-  - [ ] Get Kasplex testnet KAS from faucet: https://app.kaspafinance.io/faucets?chain=kasplexTestnet
-  - [ ] Configure wallet to Kasplex Testnet (Chain ID: 167012, RPC: https://rpc.kasplextest.xyz)
+- [x] **0.2** Testnet Wallet Setup ✅ COMPLETE
+  - [x] Create testnet deployer wallet: 0xe281e4776FB5De20817D0bbC72B0C4b955565619
+  - [x] Get Kasplex testnet KAS from faucet: ✅ 100 KAS funded
+  - [x] Configure wallet to Kasplex Testnet (Chain ID: 167012, RPC: https://rpc.kasplextest.xyz)
 
-- [ ] **0.3** Environment Configuration
-  - [ ] Create `.env` file with:
-    - `TESTNET_RPC_URL=https://rpc.kasplextest.xyz`
-    - `TESTNET_PRIVATE_KEY=<deployer_wallet_key>`
-    - `BLOCK_EXPLORER_URL=http://explorer.testnet.kasplextest.xyz`
-  - [ ] Lock in audit v4 contracts (NO MORE EDITS to BondingCurvePool.sol, TokenFactory.sol, GraduationController.sol)
+- [x] **0.3** Environment Configuration ✅ COMPLETE
+  - [x] Create `.env` file with:
+    - `TESTNET_RPC_URL=https://rpc.kasplextest.xyz` ✅
+    - `DEPLOYER_PRIVATE_KEY=<deployer_wallet_key>` ✅ (in Replit Secrets)
+    - `BLOCK_EXPLORER_URL=http://explorer.testnet.kasplextest.xyz` ✅
+  - [x] Created hardhat.config.js with testnet network configuration
+  - [x] Created config/wallet_config.json with treasury addresses
+  - [ ] Lock in audit v4 contracts (pending - contracts not created yet)
 
 - [ ] **0.4** Pre-Deployment Verification
   - [ ] Run Hardhat test suite: `npx hardhat test`
   - [ ] Ensure 100% test pass rate
-  - [ ] Verify testnet KAS balance sufficient for deployments (~0.5 KAS)
+  - [x] Verify testnet KAS balance sufficient for deployments: ✅ 100 KAS available
 
 **Unlocks:** ✅ Phase 1 (contract deployment)
 
@@ -324,13 +326,20 @@
 
 ---
 
-## 🎯 CURRENT PHASE: Phase 0 - Preflight Readiness
+## 🎯 CURRENT PHASE: Phase 0 - Preflight Readiness (90% Complete)
 
-**Immediate Next Steps:**
-1. Install Hardhat: `npm install --save-dev hardhat`
-2. Get testnet KAS from faucet
-3. Configure `.env` with testnet credentials
-4. Run test suite and deploy to testnet
+**✅ Completed:**
+- Hardhat & OpenZeppelin installed (Node.js 22.17.0)
+- Testnet wallet configured: 0xe281e4776FB5De20817D0bbC72B0C4b955565619
+- 100 testnet KAS funded and verified
+- Environment files created (hardhat.config.js, config/wallet_config.json, .env.example)
+
+**⏭️ Next Steps to Complete Phase 0:**
+1. Create smart contract files (BondingCurvePool.sol, TokenFactory.sol, GraduationController.sol)
+2. Write unit tests
+3. Run test suite: `npx hardhat test`
+
+**🚀 Phase 1 Preview:** Once Phase 0 complete, deploy contracts to Kasplex testnet
 
 **Last Updated**: October 10, 2025
 
