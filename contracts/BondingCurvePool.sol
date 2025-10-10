@@ -114,6 +114,11 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(_kaspaSupport != address(0), "Invalid kaspa support");
         require(_communityRewards != address(0), "Invalid community rewards");
         
+        // L-2 FIX: Duplicate address validation
+        require(_treasury != _admin, "Treasury cannot be admin");
+        require(_treasury != _graduationOracle, "Treasury cannot be oracle");
+        require(_airdropTreasury != _platformDevelopmentWallet, "Duplicate wallets");
+        
         creator = _creator;
         treasury = _treasury;
         airdropTreasury = _airdropTreasury;
@@ -304,6 +309,20 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         tradeAmount = remaining - platformFee - creatorFee;
     }
 
+    // Internal version for gas efficiency (M-2 Fix)
+    function _getEffectiveFeeBreakdownInternal(uint256 kasAmount) internal view returns (
+        uint256 antiBotFee,
+        uint256 platformFee,
+        uint256 creatorFee,
+        uint256 tradeAmount
+    ) {
+        antiBotFee = getCurrentAntiBotFee(kasAmount);
+        uint256 remaining = kasAmount - antiBotFee;
+        platformFee = remaining * 90 / 10000;
+        creatorFee = remaining * 10 / 10000;
+        tradeAmount = remaining - platformFee - creatorFee;
+    }
+
     function calculateOptimalSlippage(uint256 kasAmount) public view returns (uint256 optimalSlippageBps) {
         require(!graduated, "Use DEX slippage calculation post-graduation");
         
@@ -337,9 +356,9 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     function getMinTokensOutWithAutoSlippage(uint256 kasIn) external view returns (uint256 minTokensOut) {
         require(!graduated, "Token graduated, use DEX");
         
-        // AUDIT FIX: Internal call instead of external (cheaper gas)
+        // M-2 FIX: Use internal version for gas efficiency
         (uint256 antiBotFee, uint256 platformFee, uint256 creatorFee, uint256 tradeAmount) 
-            = this.getEffectiveFeeBreakdown(kasIn);
+            = _getEffectiveFeeBreakdownInternal(kasIn);
         
         uint256 expectedTokens = quoteBuy(tradeAmount);
         
@@ -361,14 +380,17 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     function distributeFees() external nonReentrant {
         require(msg.sender == treasury || msg.sender == admin, "Unauthorized");
         
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No fees to distribute");
+        uint256 platformFeesToDistribute = accumulatedPlatformFees;
+        require(platformFeesToDistribute > 0, "No fees to distribute");
         
-        // Calculate shares (avoiding 10% loss via remainder pattern)
-        uint256 devAmount = balance * 40 / 100;      // 40%
-        uint256 buybackAmount = balance * 30 / 100;  // 30%
-        uint256 kaspaAmount = balance * 15 / 100;    // 15%
-        uint256 communityAmount = balance - devAmount - buybackAmount - kaspaAmount; // 15% (remainder)
+        // Reset accumulated fees FIRST (CEI pattern)
+        accumulatedPlatformFees = 0;
+        
+        // Calculate shares from ONLY platform fees
+        uint256 devAmount = platformFeesToDistribute * 40 / 100;      // 40%
+        uint256 buybackAmount = platformFeesToDistribute * 30 / 100;  // 30%
+        uint256 kaspaAmount = platformFeesToDistribute * 15 / 100;    // 15%
+        uint256 communityAmount = platformFeesToDistribute - devAmount - buybackAmount - kaspaAmount; // 15%
         
         // Send to designated wallets
         _safeSend(platformDevelopmentWallet, devAmount);

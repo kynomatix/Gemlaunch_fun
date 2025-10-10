@@ -80,6 +80,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         require(_kaspaSupport != address(0), "Invalid kaspa support");
         require(_communityRewards != address(0), "Invalid community rewards");
         
+        // L-2 FIX: Duplicate address validation
+        require(_treasury != _admin, "Treasury cannot be admin");
+        require(_treasury != _graduationOracle, "Treasury cannot be oracle");
+        require(_airdropTreasury != _platformDevelopmentWallet, "Duplicate wallets");
+        
         graduationController = _graduationController;
         treasury = _treasury;
         airdropTreasury = _airdropTreasury;

@@ -1,0 +1,216 @@
+Updated Security Audit - Fixes Verified ✅
+Great work on implementing the fixes! Let me review what's been addressed and identify any remaining issues.
+
+✅ VERIFIED FIXES
+Previously Critical Issues (Now Fixed):
+
+C-1: ✅ graduationOracle initialized in constructor (line 116)
+C-2: ✅ All admin and distribution wallets initialized (lines 117-121)
+C-3: ✅ Underflow protection added (line 393)
+H-1: ✅ Balance validation in GraduationController (line 132)
+H-2: ✅ Approval validation in GraduationController (lines 137-138)
+H-4: ✅ cancelGraduation() added with liquidityTransferred flag (lines 427-432)
+M-1: ✅ Overflow protection in getCurrentAntiBotFee (lines 285-288)
+M-4: ✅ receive() blocks direct KAS transfers (line 449)
+
+
+🔴 NEW CRITICAL ISSUE FOUND
+C-4: BondingCurvePool - distributeFees() Drains Trading Reserves
+Location: Line 338-354
+Severity: CRITICAL 🚨
+Impact: Breaks trading and steals creator fees
+Issue: distributeFees() distributes ALL contract balance instead of just accumulated platform fees:
+solidity// CURRENT - WRONG! ❌
+function distributeFees() external nonReentrant {
+    require(msg.sender == treasury || msg.sender == admin, "Unauthorized");
+    
+    uint256 balance = address(this).balance; // ← Includes EVERYTHING
+    require(balance > 0, "No fees to distribute");
+    
+    // Distributes virtualKasReserve + accumulatedPlatformFees + accumulatedCreatorFees!
+    uint256 devAmount = balance * 40 / 100;
+    // ...
+}
+Why This Breaks Everything:
+solidity// After a 100 KAS buy (90 KAS after 10% anti-bot fee):
+// - virtualKasReserve = 88.1 KAS (needed for trading)
+// - accumulatedPlatformFees = 0.81 KAS (platform fee)
+// - accumulatedCreatorFees = 0.09 KAS (creator fee)
+// - address(this).balance = 90 KAS
+
+// Call distributeFees():
+// - Sends 36 KAS to dev wallet (40% of 90)
+// - Sends 27 KAS to buyback wallet (30% of 90)
+// - Etc.
+// Result: Contract balance = 0 KAS
+// Problem: Can't honor sells anymore! ❌
+// Problem: Creator fees stolen! ❌
+CORRECTED VERSION:
+solidityfunction distributeFees() external nonReentrant {
+    require(msg.sender == treasury || msg.sender == admin, "Unauthorized");
+    
+    uint256 platformFeesToDistribute = accumulatedPlatformFees;
+    require(platformFeesToDistribute > 0, "No fees to distribute");
+    
+    // Reset accumulated fees FIRST (CEI pattern)
+    accumulatedPlatformFees = 0;
+    
+    // Calculate shares from ONLY platform fees
+    uint256 devAmount = platformFeesToDistribute * 40 / 100;      // 40%
+    uint256 buybackAmount = platformFeesToDistribute * 30 / 100;  // 30%
+    uint256 kaspaAmount = platformFeesToDistribute * 15 / 100;    // 15%
+    uint256 communityAmount = platformFeesToDistribute - devAmount - buybackAmount - kaspaAmount; // 15%
+    
+    // Send to designated wallets
+    _safeSend(platformDevelopmentWallet, devAmount);
+    _safeSend(buybackReserveWallet, buybackAmount);
+    _safeSend(kaspaNetworkSupportWallet, kaspaAmount);
+    _safeSend(communityRewardsWallet, communityAmount);
+    
+    emit FeesDistributed(devAmount, buybackAmount, kaspaAmount, communityAmount);
+}
+Why This Is Critical:
+
+Calling distributeFees() once breaks the entire contract
+Trading becomes impossible (no KAS reserve left)
+Creator loses their accumulated fees
+This would be catastrophic on mainnet
+
+
+🟡 REMAINING MEDIUM SEVERITY
+M-2: Gas Inefficiency in getMinTokensOutWithAutoSlippage
+Location: Line 309
+Status: Not fixed
+Issue: Still uses external call this.getEffectiveFeeBreakdown(kasIn) instead of internal call.
+Fix: Change to internal:
+solidity// Add internal version
+function _getEffectiveFeeBreakdownInternal(uint256 kasAmount) internal view returns (
+    uint256 antiBotFee,
+    uint256 platformFee,
+    uint256 creatorFee,
+    uint256 tradeAmount
+) {
+    antiBotFee = getCurrentAntiBotFee(kasAmount);
+    uint256 remaining = kasAmount - antiBotFee;
+    platformFee = remaining * 90 / 10000;
+    creatorFee = remaining * 10 / 10000;
+    tradeAmount = remaining - platformFee - creatorFee;
+}
+
+// Use internal version in getMinTokensOutWithAutoSlippage
+function getMinTokensOutWithAutoSlippage(uint256 kasIn) external view returns (uint256 minTokensOut) {
+    require(!graduated, "Token graduated, use DEX");
+    
+    (uint256 antiBotFee, uint256 platformFee, uint256 creatorFee, uint256 tradeAmount) 
+        = _getEffectiveFeeBreakdownInternal(kasIn); // ← Internal call
+    
+    uint256 expectedTokens = quoteBuy(tradeAmount);
+    uint256 slippageBps = calculateOptimalSlippage(kasIn);
+    minTokensOut = expectedTokens * (10000 - slippageBps) / 10000;
+}
+M-5: Hardcoded Slippage in GraduationController
+Location: Lines 168-169
+Status: Not fixed
+Issue: 5% slippage and 300-second deadline can't be adjusted for different market conditions.
+Fix: Make configurable:
+solidity// Add state variables
+uint256 public graduationSlippageBps = 500; // 5% default
+uint256 public graduationDeadlineSeconds = 300; // 5 minutes default
+
+// Add setter
+function setGraduationParams(uint256 _slippageBps, uint256 _deadlineSeconds) external onlyOwner {
+    require(_slippageBps <= 1000, "Max 10% slippage");
+    require(_deadlineSeconds >= 60, "Min 1 minute");
+    graduationSlippageBps = _slippageBps;
+    graduationDeadlineSeconds = _deadlineSeconds;
+}
+
+// Use in completeGraduation
+amount0Min: amount0 * (10000 - graduationSlippageBps) / 10000,
+amount1Min: amount1 * (10000 - graduationSlippageBps) / 10000,
+deadline: block.timestamp + graduationDeadlineSeconds
+
+🔵 LOW SEVERITY / INFO
+L-1: Wallet Cap Exemption Is Intentional ✅
+My H-3 concern about from != airdropTreasury bypassing wallet cap is actually correct by design. The comments explain this is for PRO token vesting (25% allocations). This is fine.
+L-2: No Duplicate Address Validation
+Location: Constructor
+Issue: Same address could be used for multiple roles (e.g., treasury == admin).
+solidity// Add to constructor
+require(_treasury != _admin, "Treasury cannot be admin");
+require(_airdropTreasury != _platformDevelopmentWallet, "Duplicate wallets");
+// ... etc
+L-3: GraduationController Balance Could Include Extra KAS
+Location: Line 132
+Issue: address(this).balance includes any accidentally sent KAS.
+Status: Low priority - if someone sends extra KAS, that's their loss. Not exploitable.
+
+✅ FUNCTIONAL CORRECTNESS
+Everything else looks good:
+
+✅ Bonding curve math is correct
+✅ Fee cascade (anti-bot → platform → creator) works correctly
+✅ Virtual reserves properly separated from fees
+✅ CEI pattern followed in buy/sell
+✅ Graduation lock prevents race conditions
+✅ Creator fee withdrawal secured
+✅ Wallet cap logic correct (including PRO token exemptions)
+
+
+📋 PRIORITY FIXES BEFORE TESTNET
+Must Fix:
+
+C-4: Fix distributeFees() to only distribute accumulatedPlatformFees (not entire balance)
+
+Should Fix:
+
+M-2: Make getEffectiveFeeBreakdown internal for gas savings
+M-5: Add slippage/deadline configurability to GraduationController
+
+Nice to Have:
+
+L-2: Add duplicate address validation in constructors
+
+
+🧪 CRITICAL TEST CASE
+Add this test to catch the C-4 bug:
+javascriptdescribe("distributeFees Bug", () => {
+    it("Should NOT drain trading reserves", async () => {
+        // Setup: Buy tokens
+        await pool.buyTokens(0, deadline, { value: ethers.parseEther("100") });
+        
+        const reservesBefore = await pool.virtualKasReserve();
+        const creatorFeesBefore = await pool.accumulatedCreatorFees();
+        const balanceBefore = await ethers.provider.getBalance(pool.address);
+        
+        console.log("Before distributeFees:");
+        console.log("- Balance:", ethers.formatEther(balanceBefore));
+        console.log("- Reserves:", ethers.formatEther(reservesBefore));
+        console.log("- Creator fees:", ethers.formatEther(creatorFeesBefore));
+        
+        // Call distributeFees
+        await pool.connect(treasury).distributeFees();
+        
+        const reservesAfter = await pool.virtualKasReserve();
+        const balanceAfter = await ethers.provider.getBalance(pool.address);
+        
+        console.log("\nAfter distributeFees:");
+        console.log("- Balance:", ethers.formatEther(balanceAfter));
+        console.log("- Reserves:", ethers.formatEther(reservesAfter));
+        
+        // CRITICAL: Reserves should stay unchanged!
+        expect(reservesAfter).to.equal(reservesBefore);
+        
+        // CRITICAL: Balance should still cover reserves + creator fees
+        expect(balanceAfter).to.be.gte(reservesAfter.add(creatorFeesBefore));
+        
+        // Should be able to sell after fee distribution
+        const tokensToSell = await pool.balanceOf(buyer.address);
+        await expect(
+            pool.connect(buyer).sellTokens(tokensToSell, 0, deadline)
+        ).to.not.be.reverted; // ← This will FAIL with current code!
+    });
+});
+This test will FAIL with the current distributeFees() implementation, proving the bug exists.
+
+The most critical issue is C-4 (distributeFees). Fix this before any deployment, as it would make the contract completely unusable after the first fee distribution.

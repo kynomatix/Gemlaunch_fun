@@ -824,4 +824,40 @@ describe("BondingCurvePool", function () {
       expect(riskLevel).to.be.lte(2); // 0, 1, or 2
     });
   });
+
+  describe("Fee Distribution", function () {
+    it("Should NOT drain trading reserves when distributing fees", async function () {
+      const { pool, treasury, user1 } = await loadFixture(deployBondingCurvePoolFixture);
+
+      // Buy tokens to accumulate fees
+      const buyAmount = ethers.parseEther("100");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
+      
+      const reservesBefore = await pool.virtualKasReserve();
+      const creatorFeesBefore = await pool.accumulatedCreatorFees();
+      const poolAddress = await pool.getAddress();
+      
+      // Distribute platform fees
+      await pool.connect(treasury).distributeFees();
+      
+      const reservesAfter = await pool.virtualKasReserve();
+      const balanceAfter = await ethers.provider.getBalance(poolAddress);
+      
+      // CRITICAL: Reserves must stay unchanged
+      expect(reservesAfter).to.equal(reservesBefore);
+      
+      // Balance must still cover actual reserves + creator fees
+      // Note: virtualKasReserve includes 0.001 ether virtual seed (not real KAS)
+      const INITIAL_VIRTUAL_KAS = ethers.parseEther("0.001");
+      const actualReserves = reservesAfter - INITIAL_VIRTUAL_KAS;
+      expect(balanceAfter).to.be.gte(actualReserves + creatorFeesBefore);
+      
+      // Should be able to sell after fee distribution
+      const tokensToSell = await pool.balanceOf(user1.address);
+      await expect(
+        pool.connect(user1).sellTokens(tokensToSell, 0, deadline)
+      ).to.not.be.reverted;
+    });
+  });
 });

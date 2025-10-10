@@ -53,6 +53,10 @@ contract GraduationController is Ownable, ReentrancyGuard {
     int24 public constant FULL_RANGE_TICK_LOWER = -887220; // Full range position
     int24 public constant FULL_RANGE_TICK_UPPER = 887220;
     
+    // M-5 FIX: Configurable graduation parameters
+    uint256 public graduationSlippageBps = 500; // 5% default
+    uint256 public graduationDeadlineSeconds = 300; // 5 minutes default
+    
     // Events
     event GraduationInitiated(
         address indexed tokenAddress,
@@ -76,6 +80,7 @@ contract GraduationController is Ownable, ReentrancyGuard {
     );
     
     event OracleUpdated(address indexed newOracle);
+    event GraduationParamsUpdated(uint256 slippageBps, uint256 deadlineSeconds);
 
     constructor(
         address _kaspaFinancePositionManager,
@@ -85,6 +90,10 @@ contract GraduationController is Ownable, ReentrancyGuard {
         require(_kaspaFinancePositionManager != address(0), "Invalid position manager");
         require(_kaspaFinanceWKAS != address(0), "Invalid WKAS");
         require(_graduationOracle != address(0), "Invalid oracle");
+        
+        // L-2 FIX: Duplicate address validation
+        require(_kaspaFinancePositionManager != _kaspaFinanceWKAS, "Duplicate addresses");
+        require(_graduationOracle != msg.sender, "Oracle cannot be owner");
         
         kaspaFinancePositionManager = _kaspaFinancePositionManager;
         kaspaFinanceWKAS = _kaspaFinanceWKAS;
@@ -161,10 +170,10 @@ contract GraduationController is Ownable, ReentrancyGuard {
             tickUpper: FULL_RANGE_TICK_UPPER,
             amount0Desired: amount0,
             amount1Desired: amount1,
-            amount0Min: amount0 * 95 / 100, // 5% slippage tolerance
-            amount1Min: amount1 * 95 / 100,
+            amount0Min: amount0 * (10000 - graduationSlippageBps) / 10000,
+            amount1Min: amount1 * (10000 - graduationSlippageBps) / 10000,
             recipient: address(this), // Controller holds the LP NFT
-            deadline: block.timestamp + 300 // 5 minute deadline
+            deadline: block.timestamp + graduationDeadlineSeconds
         });
         
         (uint256 positionId, , uint256 actualAmount0, uint256 actualAmount1) = 
@@ -192,6 +201,15 @@ contract GraduationController is Ownable, ReentrancyGuard {
         require(newOracle != address(0), "Invalid oracle");
         graduationOracle = newOracle;
         emit OracleUpdated(newOracle);
+    }
+
+    // M-5 FIX: Set graduation parameters
+    function setGraduationParams(uint256 _slippageBps, uint256 _deadlineSeconds) external onlyOwner {
+        require(_slippageBps <= 1000, "Max 10% slippage");
+        require(_deadlineSeconds >= 60, "Min 1 minute");
+        graduationSlippageBps = _slippageBps;
+        graduationDeadlineSeconds = _deadlineSeconds;
+        emit GraduationParamsUpdated(_slippageBps, _deadlineSeconds);
     }
 
     // Emergency: Reverse failed graduation (only if DEX liquidity not added)
