@@ -242,7 +242,85 @@
   - [ ] Documentation updated (replit.md) ✅
   - [ ] User acceptance testing complete ✅
 
-**Unlocks:** ✅ Production readiness (mainnet deployment)
+**Unlocks:** ✅ Phase 5 (mainnet preparation)
+
+---
+
+### **PHASE 5: Mainnet Preparation** (1-2 weeks)
+**Goal:** Prepare for production deployment  
+**Dependencies:** ⬅️ Phase 4 (testnet fully tested)
+
+- [ ] **5.1** Final Security Audit
+  - [ ] Run static analysis (Slither, MythX)
+  - [ ] Complete professional security audit (optional but recommended)
+  - [ ] Fix any remaining issues from testnet
+  - [ ] Get community/peer review of contracts
+  - [ ] Update contract code if critical issues found
+
+- [ ] **5.2** Mainnet Environment Setup
+  - [ ] Configure mainnet RPC: `https://evmrpc.kasplex.org` (Chain ID: 202555)
+  - [ ] Set up SECURE mainnet deployment wallet (hardware wallet recommended)
+  - [ ] Configure production treasury addresses:
+    - Platform development wallet (30% anti-bot fees)
+    - Airdrop treasury (70% anti-bot fees)  
+    - Platform fee collector (0.9%)
+    - Creator fee collector (0.1%)
+  - [ ] Fund deployment wallet with mainnet KAS
+  - [ ] Set up mainnet monitoring & alerting infrastructure
+
+- [ ] **5.3** Mainnet Deployment
+  - [ ] Deploy TokenFactory.sol to mainnet
+  - [ ] Deploy BondingCurvePool template
+  - [ ] Deploy GraduationController.sol with Kaspa Finance mainnet addresses
+  - [ ] Verify all contracts on mainnet explorer
+  - [ ] Test initial contract interactions
+  - [ ] Update frontend to use mainnet contracts
+
+- [ ] **5.4** Pre-Launch Checklist
+  - [ ] All security audits passed ✅
+  - [ ] Mainnet contracts verified ✅
+  - [ ] Treasury wallets configured ✅
+  - [ ] Monitoring infrastructure live ✅
+  - [ ] Emergency procedures documented ✅
+  - [ ] Support team briefed ✅
+
+**Unlocks:** ✅ Phase 6 (production launch)
+
+---
+
+### **PHASE 6: Post-Launch Monitoring & Analytics** (Ongoing)
+**Goal:** Monitor production operations and optimize  
+**Dependencies:** ⬅️ Phase 5 (mainnet deployed)
+
+- [ ] **6.1** Transaction Monitoring
+  - [ ] Set up real-time transaction monitoring dashboard
+  - [ ] Monitor contract events (buys/sells/graduations)
+  - [ ] Track gas usage and optimization opportunities
+  - [ ] Monitor fee collection and distribution
+  - [ ] Alert on failed transactions or anomalies
+
+- [ ] **6.2** Platform Analytics
+  - [ ] Track Total Value Locked (TVL)
+  - [ ] Monitor graduation rate and timing
+  - [ ] Analyze anti-bot system effectiveness
+  - [ ] Track platform revenue (fee collection)
+  - [ ] Generate financial reports for stakeholders
+
+- [ ] **6.3** Performance Optimization
+  - [ ] Identify gas optimization opportunities
+  - [ ] Monitor DEX integration performance
+  - [ ] Track event indexer sync latency
+  - [ ] Optimize RPC provider costs
+  - [ ] Scale infrastructure as needed
+
+- [ ] **6.4** Continuous Improvement
+  - [ ] Gather user feedback on trading experience
+  - [ ] Analyze anti-bot fee effectiveness
+  - [ ] Monitor for potential exploits or edge cases
+  - [ ] Plan contract upgrades (if needed)
+  - [ ] Community governance integration (future)
+
+**Unlocks:** ✅ Platform maturity & scaling
 
 ---
 
@@ -252,10 +330,9 @@
 1. Install Hardhat: `npm install --save-dev hardhat`
 2. Get testnet KAS from faucet
 3. Configure `.env` with testnet credentials
-3. Deploy first test contract
-4. Begin Phase 2 contract development
+4. Run test suite and deploy to testnet
 
-**Last Updated**: October 8, 2025
+**Last Updated**: October 10, 2025
 
 ---
 
