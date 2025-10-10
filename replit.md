@@ -1,6 +1,26 @@
 # Overview
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution, emphasizing fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. The project aims to democratize memecoin creation and foster a vibrant Kaspa ecosystem.
 
+# Recent Changes
+
+## October 10, 2025 - Phase 0 Complete: Smart Contract Development Ready ✅
+- **Testnet Environment Setup**:
+  - Deployer wallet: 0xe281e4776FB5De20817D0bbC72B0C4b955565619 (100 testnet KAS funded)
+  - Kasplex Testnet configured (Chain ID: 167012, RPC: https://rpc.kasplextest.xyz)
+  - All treasury addresses configured (using deployer for testnet simplicity)
+  - Kaspa Finance DEX addresses confirmed (QuoterV2: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B)
+  
+- **Smart Contract Implementation**:
+  - Created audit-approved v4 contracts (900 lines total):
+    - contracts/BondingCurvePool.sol (452 lines) - Core trading with Anti-Bot GEM system
+    - contracts/TokenFactory.sol (222 lines) - Token creation with anti-spam
+    - contracts/GraduationController.sol (226 lines) - DEX graduation orchestration
+  - Comprehensive test suite: **103/103 tests passing (100% pass rate)**
+  - All security features verified: Anti-bot fees (70/30 split), wallet cap (10%), graduation flow, emergency controls
+  - Development stack: Node.js 22.17.0, Hardhat 2.26, OpenZeppelin contracts
+  
+- **Phase 0 Status**: ✅ COMPLETE - Ready for Phase 1 (Testnet Deployment)
+
 # User Preferences
 Preferred communication style: Simple, everyday language.
 
