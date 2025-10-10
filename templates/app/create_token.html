@@ -1665,8 +1665,9 @@
                 document.getElementById('description').value = quill.root.innerHTML;
             });
             
-            // Store instance for later cleanup if needed
+            // Store instance globally and on the element for later access
             window.quillInstance = quill;
+            editorEl.__quill = quill;
         }
         
         // Wait for both DOM and Quill to load
@@ -2209,10 +2210,33 @@
             }
             
             if (description) {
-                // Try to fill description in Quill editor if available
-                if (window.quillInstance) {
-                    window.quillInstance.setText(description);
+                // Try to fill description in Quill editor
+                // First check if quillInstance exists, if not try to find it
+                let quillEditor = window.quillInstance;
+                
+                if (!quillEditor) {
+                    // Try to get Quill instance from the editor element
+                    const editorEl = document.getElementById('description-editor');
+                    if (editorEl && editorEl.__quill) {
+                        quillEditor = editorEl.__quill;
+                    } else if (editorEl && editorEl.querySelector('.ql-editor')) {
+                        // Editor exists but instance not stored, try to access Quill
+                        const qlEditor = editorEl.querySelector('.ql-editor');
+                        if (qlEditor && qlEditor.parentElement.__quill) {
+                            quillEditor = qlEditor.parentElement.__quill;
+                        }
+                    }
+                }
+                
+                if (quillEditor) {
+                    quillEditor.setText(description);
+                    // Update hidden field
+                    const descField = document.getElementById('description');
+                    if (descField) {
+                        descField.value = description;
+                    }
                 } else {
+                    // Fallback to hidden field
                     const descField = document.getElementById('description');
                     if (descField) {
                         descField.value = description;
