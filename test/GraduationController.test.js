@@ -55,8 +55,8 @@ describe("GraduationController", function () {
     );
     await pool.waitForDeployment();
 
-    // Set oracle on pool
-    await pool.setGraduationOracle(oracle.address);
+    // Set GraduationController as oracle on pool (not the signer)
+    await pool.setGraduationOracle(await controller.getAddress());
 
     return {
       controller,
@@ -136,7 +136,12 @@ describe("GraduationController", function () {
 
   describe("Graduation Initiation", function () {
     it("Should allow oracle to initiate graduation", async function () {
-      const { controller, pool, oracle } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -158,7 +163,12 @@ describe("GraduationController", function () {
     });
 
     it("Should prevent initiating graduation twice", async function () {
-      const { controller, pool, oracle } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -166,11 +176,16 @@ describe("GraduationController", function () {
 
       await expect(
         controller.connect(oracle).initiateGraduation(poolAddress)
-      ).to.be.revertedWith("Already graduated");
+      ).to.be.revertedWith("Already graduated or graduating");
     });
 
     it("Should emit GraduationFailed on pool revert", async function () {
-      const { controller, pool, oracle } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -198,22 +213,20 @@ describe("GraduationController", function () {
       // Initiate graduation
       await controller.connect(oracle).initiateGraduation(poolAddress);
 
-      // For testing, we need to manually transfer tokens to controller
-      // In real scenario, this happens in completeGraduation
-      const tokenLiquidity = (await pool.totalSupply()) * 25n / 100n;
-      
-      // Transfer tokens from pool to controller for the mock
-      await pool.transfer(await controller.getAddress(), tokenLiquidity);
-
-      // Complete graduation - this will fail in tests due to mock limitations
-      // but we can test the auth and state
+      // Complete graduation - in a real scenario, this would interact with the DEX
+      // For testing, we verify it doesn't revert on auth/state checks
       await expect(
         controller.connect(oracle).completeGraduation(poolAddress)
-      ).to.be.reverted; // Will fail on transferFrom in real implementation
+      ).to.emit(pool, "GraduationCompleted");
     });
 
     it("Should prevent non-oracle from completing graduation", async function () {
       const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -235,7 +248,12 @@ describe("GraduationController", function () {
     });
 
     it("Should mark token as graduated", async function () {
-      const { controller, pool, oracle } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -279,7 +297,12 @@ describe("GraduationController", function () {
 
   describe("Emergency Controls", function () {
     it("Should allow owner to reverse graduation", async function () {
-      const { controller, pool, oracle, owner } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, owner, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -302,6 +325,11 @@ describe("GraduationController", function () {
     it("Should prevent non-owner from emergency reversal", async function () {
       const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
 
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
+
       const poolAddress = await pool.getAddress();
 
       await controller.connect(oracle).initiateGraduation(poolAddress);
@@ -314,15 +342,20 @@ describe("GraduationController", function () {
     it("Should allow owner to withdraw stuck tokens", async function () {
       const { controller, pool, owner, user1 } = await loadFixture(deployGraduationControllerFixture);
 
-      // Send some tokens to controller
+      // User1 buys tokens first
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
+
+      // Send some tokens to controller from user1
       const controllerAddress = await controller.getAddress();
-      const amount = ethers.parseEther("100");
-      await pool.transfer(controllerAddress, amount);
+      const user1Balance = await pool.balanceOf(user1.address);
+      await pool.connect(user1).transfer(controllerAddress, user1Balance);
 
       const poolAddress = await pool.getAddress();
 
       await expect(
-        controller.connect(owner).emergencyWithdraw(poolAddress, amount)
+        controller.connect(owner).emergencyWithdraw(poolAddress, user1Balance)
       ).to.not.be.reverted;
     });
 
@@ -339,7 +372,12 @@ describe("GraduationController", function () {
 
   describe("Query Functions", function () {
     it("Should return correct graduation status", async function () {
-      const { controller, pool, oracle } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 
@@ -352,7 +390,12 @@ describe("GraduationController", function () {
     });
 
     it("Should return graduation info", async function () {
-      const { controller, pool, oracle } = await loadFixture(deployGraduationControllerFixture);
+      const { controller, pool, oracle, user1 } = await loadFixture(deployGraduationControllerFixture);
+
+      // Buy tokens first to add KAS to pool
+      const buyAmount = ethers.parseEther("1");
+      const deadline = (await time.latest()) + 3600;
+      await pool.connect(user1).buyTokens(0, deadline, { value: buyAmount });
 
       const poolAddress = await pool.getAddress();
 

@@ -219,4 +219,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         }
         return nextDeploymentTime - block.timestamp;
     }
+
+    // Allow factory to receive KAS (for emergency recovery scenarios)
+    receive() external payable {}
 }

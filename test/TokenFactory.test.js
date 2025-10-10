@@ -652,9 +652,14 @@ describe("TokenFactory", function () {
 
       const token = await ethers.getContractAt("BondingCurvePool", tokenAddress);
       
+      // First, buy some tokens so user has a balance (small amount to avoid wallet cap)
+      const buyAmount = ethers.parseEther("0.01");
+      const deadline = (await time.latest()) + 3600;
+      await token.connect(user1).buyTokens(0, deadline, { value: buyAmount });
+      
       // Send some tokens to factory (simulate accident)
       const amount = ethers.parseEther("100");
-      await token.connect(owner).transfer(await factory.getAddress(), amount);
+      await token.connect(user1).transfer(await factory.getAddress(), amount);
 
       await expect(
         factory.connect(owner).emergencyWithdrawToken(tokenAddress, amount)

@@ -19,6 +19,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     address public graduationOracle; // Backend oracle address authorized to trigger graduation
 
     uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // Minimum trade size
+    uint256 public constant INITIAL_VIRTUAL_KAS = 0.001 ether; // Initial virtual seed (not actual KAS)
 
     address public treasury; // Gemlaunch treasury contract
     address public airdropTreasury; // Airdrop Treasury for anti-bot fees (70% of anti-bot fees)
@@ -117,12 +118,12 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // CRITICAL: Initialize virtual reserves to prevent division by zero
         uint256 curveSupply = totalSupply * CURVE_SUPPLY_PCT / 100; // 75%
         virtualTokenReserve = curveSupply;
-        virtualKasReserve = 0.001 ether; // 0.001 KAS virtual seed for initial pricing
+        virtualKasReserve = INITIAL_VIRTUAL_KAS; // Virtual seed for initial pricing (not actual KAS)
         
         // LP tokens (25%) stay in contract, not in virtualTokenReserve
     }
 
-    function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant {
+    function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant whenNotPaused {
         require(!graduated && !graduating, "Token graduated or graduating");
         require(block.timestamp <= deadline, "Transaction expired");
         require(msg.value >= MIN_TRADE_AMOUNT, "Below minimum trade");
@@ -354,8 +355,9 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(!graduated && !graduating, "Already graduated or graduating");
         
         // Verify sufficient balance for DEX liquidity
+        // Note: Subtract initial virtual seed since it was never actual KAS
         uint256 kasBalance = address(this).balance;
-        uint256 requiredKas = virtualKasReserve + accumulatedPlatformFees + accumulatedCreatorFees;
+        uint256 requiredKas = (virtualKasReserve - INITIAL_VIRTUAL_KAS) + accumulatedPlatformFees + accumulatedCreatorFees;
         require(kasBalance >= requiredKas, "Insufficient KAS balance");
         
         graduating = true; // Lock trading during graduation
@@ -433,13 +435,17 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // Enforce wallet cap with exemptions for:
         // 1. Contract itself (holds curve + LP supply)
         // 2. Airdrop treasury (holds vested allocations up to 25%)
-        // 3. Graduated pools (no restrictions after DEX listing)
-        // 4. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
-        // 5. Minting/burning (from/to == address(0))
+        // 3. Graduation oracle (receives LP tokens for DEX)
+        // 4. Graduated pools (no restrictions after DEX listing)
+        // 5. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
+        // 6. Transfers FROM contract (buy operations must work regardless of wallet cap)
+        // 7. Minting/burning (from/to == address(0))
         if (to != address(0) &&
             to != address(this) && 
             to != airdropTreasury && 
+            to != graduationOracle &&
             from != airdropTreasury &&
+            from != address(this) &&
             !graduated) {
             uint256 recipientBalance = balanceOf(to);
             uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100; // 10%
