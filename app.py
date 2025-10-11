@@ -3511,6 +3511,163 @@ def api_trade_sell():
         logging.error(f"Error in trade/sell: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to execute sell trade'}), 500
 
+@app.route('/api/token/<address>/claim-creator-fees', methods=['POST'])
+@csrf.exempt
+def api_claim_creator_fees(address):
+    """
+    Claim accumulated creator fees - builds unsigned tx or relays signed tx
+    
+    Request JSON (Step 1 - Get Unsigned TX):
+    {
+        "action": "build_tx",
+        "creator_address": "0x..."
+    }
+    
+    Response (Step 1):
+    {
+        "success": true,
+        "unsigned_tx": {
+            "from": "0x...",
+            "to": "0x...",
+            "data": "0x...",
+            "value": "0x0",
+            "gas": "0x...",
+            "gasPrice": "0x...",
+            "nonce": "0x...",
+            "chainId": 167012
+        },
+        "claimable_amount": "1.234",
+        "claimable_amount_wei": "1234000000000000000"
+    }
+    
+    Request JSON (Step 2 - Relay Signed TX):
+    {
+        "action": "relay_tx",
+        "signed_tx": "0x..."
+    }
+    
+    Response (Step 2):
+    {
+        "success": true,
+        "tx_hash": "0x...",
+        "status": "pending"
+    }
+    
+    Example curl (build_tx):
+    curl -X POST http://localhost:5000/api/token/0x.../claim-creator-fees \
+      -H "Content-Type: application/json" \
+      -d '{"action": "build_tx", "creator_address": "0x..."}'
+    
+    Example curl (relay_tx):
+    curl -X POST http://localhost:5000/api/token/0x.../claim-creator-fees \
+      -H "Content-Type: application/json" \
+      -d '{"action": "relay_tx", "signed_tx": "0x..."}'
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        action = data.get('action', '').strip()
+        
+        if action == 'build_tx':
+            creator_address = data.get('creator_address', '').strip()
+            
+            if not creator_address:
+                return jsonify({'success': False, 'error': 'creator_address is required'}), 400
+            
+            if not address:
+                return jsonify({'success': False, 'error': 'Token address is required'}), 400
+            
+            try:
+                creator_address = Web3.to_checksum_address(creator_address)
+                pool_address = Web3.to_checksum_address(address)
+            except Exception:
+                return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+            
+            token = Token.query.filter_by(contract_address=pool_address).first()
+            if not token:
+                return jsonify({'success': False, 'error': 'Token not found'}), 404
+            
+            if token.deployment_status != 'deployed':
+                return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+            
+            if not token.creator:
+                return jsonify({'success': False, 'error': 'Token creator not found'}), 404
+            
+            if creator_address.lower() != token.creator.wallet_address.lower():
+                return jsonify({
+                    'success': False,
+                    'error': 'Only token creator can claim fees'
+                }), 403
+            
+            web3_service = get_web3_service()
+            
+            claimable_wei = web3_service.get_creator_claimable(pool_address)
+            
+            if claimable_wei == 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'No fees available to claim'
+                }), 400
+            
+            claimable_kas = float(Web3.from_wei(claimable_wei, 'ether'))
+            
+            unsigned_tx = web3_service.withdraw_creator_fees_tx_data(
+                creator_address,
+                pool_address
+            )
+            
+            unsigned_tx_formatted = {
+                'from': unsigned_tx['from'],
+                'to': unsigned_tx['to'],
+                'data': unsigned_tx['data'],
+                'value': hex(unsigned_tx['value']),
+                'gas': hex(unsigned_tx['gas']),
+                'gasPrice': hex(unsigned_tx['gasPrice']),
+                'nonce': hex(unsigned_tx['nonce']),
+                'chainId': 167012
+            }
+            
+            logging.info(f"Built claim fees tx for {creator_address} - Claimable: {claimable_kas} KAS")
+            
+            return jsonify({
+                'success': True,
+                'unsigned_tx': unsigned_tx_formatted,
+                'claimable_amount': str(claimable_kas),
+                'claimable_amount_wei': str(claimable_wei)
+            })
+        
+        elif action == 'relay_tx':
+            signed_tx = data.get('signed_tx', '').strip()
+            
+            if not signed_tx:
+                return jsonify({'success': False, 'error': 'signed_tx is required'}), 400
+            
+            if not isinstance(signed_tx, str) or not signed_tx.startswith('0x'):
+                return jsonify({'success': False, 'error': 'signed_tx must be a hex string starting with 0x'}), 400
+            
+            web3_service = get_web3_service()
+            tx_hash = web3_service.relay_signed_transaction(signed_tx)
+            
+            logging.info(f"Relayed claim fees tx: {tx_hash}")
+            
+            return jsonify({
+                'success': True,
+                'tx_hash': tx_hash,
+                'status': 'pending'
+            })
+        
+        else:
+            return jsonify({'success': False, 'error': 'Invalid action. Must be "build_tx" or "relay_tx"'}), 400
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in claim-creator-fees: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in claim-creator-fees: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to claim creator fees'}), 500
+
 @app.route('/api/generate-token-image', methods=['POST'])
 def generate_token_image_api():
     """Generate token image using AI (OpenRouter Llama + Replicate FLUX)"""
