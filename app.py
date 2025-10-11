@@ -1,9 +1,12 @@
 import os
 import logging
 import secrets
+import json
+import time
+import atexit
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
@@ -11,11 +14,13 @@ from sqlalchemy.orm import joinedload, selectinload
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from apscheduler.schedulers.background import BackgroundScheduler
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
 from services.web3_service import get_web3_service
+from services.tx_monitor import get_tx_monitor
 from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 from web3 import Web3
 
@@ -152,6 +157,33 @@ def ratelimit_handler(e):
         'error': 'Too many authentication attempts. Please wait a moment before trying again.',
         'retry_after': getattr(e.description, 'retry_after', 60)
     }), 429
+
+# Initialize transaction monitor and scheduler
+tx_monitor = get_tx_monitor()
+scheduler = BackgroundScheduler()
+
+# Wrapper function to run check_pending_transactions in app context
+def check_pending_with_context():
+    with app.app_context():
+        tx_monitor.check_pending_transactions()
+
+# Add monitoring job - runs every 10 seconds
+scheduler.add_job(
+    func=check_pending_with_context,
+    trigger='interval',
+    seconds=10,
+    id='tx_monitor',
+    name='Monitor pending transactions',
+    replace_existing=True
+)
+
+# Start scheduler
+scheduler.start()
+
+# Ensure graceful shutdown
+atexit.register(lambda: scheduler.shutdown())
+
+logging.info("Transaction monitor scheduler started - checking every 10 seconds")
 
 def get_current_user():
     """Get current user from session - only if wallet is verified"""
@@ -383,6 +415,94 @@ def check_session():
             'wallet_type': session.get('wallet_type', 'unknown')
         })
     return jsonify({'authenticated': False})
+
+# Transaction Monitoring API
+@app.route('/api/tx/<tx_hash>/status', methods=['GET'])
+def api_tx_status(tx_hash):
+    """Get transaction status - monitors pending transactions
+    
+    Returns transaction status from database or directly from blockchain.
+    Frontend can poll this endpoint to get real-time transaction updates.
+    
+    Response:
+    {
+        "success": true,
+        "status": "pending|confirmed|failed",
+        "tx_hash": "0x...",
+        "tx_type": "buy|sell|claim_fees|distribute_fees|deploy_token",
+        "user_address": "0x...",
+        "token_id": 123,
+        "created_at": "2025-10-11T...",
+        "confirmed_at": "2025-10-11T...",
+        "block_number": 12345,
+        "gas_used": 50000,
+        "error_message": "Transaction reverted"
+    }
+    """
+    from services.tx_monitor import get_tx_monitor
+    
+    try:
+        tx_monitor = get_tx_monitor()
+        result = tx_monitor.get_transaction_status(tx_hash)
+        
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logging.error(f"Error getting transaction status for {tx_hash}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get transaction status'
+        }), 500
+
+@app.route('/api/tx/<tx_hash>/stream')
+def stream_tx_status(tx_hash):
+    """
+    Server-Sent Events endpoint for real-time transaction status updates
+    
+    Usage (client-side):
+    const eventSource = new EventSource('/api/tx/0x.../stream');
+    eventSource.onmessage = (event) => {
+        const status = JSON.parse(event.data);
+        console.log(status);
+        if (status.status === 'confirmed' || status.status === 'failed') {
+            eventSource.close();
+        }
+    };
+    """
+    def generate():
+        try:
+            with app.app_context():
+                tx_monitor = get_tx_monitor()
+                max_checks = 300  # 5 minutes (2s interval * 300 = 600s)
+                
+                for _ in range(max_checks):
+                    status = tx_monitor.get_transaction_status(tx_hash)
+                    
+                    # Send update to client
+                    yield f"data: {json.dumps(status)}\n\n"
+                    
+                    # Stop if terminal state reached
+                    if status.get('status') in ['confirmed', 'failed']:
+                        break
+                    
+                    time.sleep(2)  # Check every 2 seconds
+            
+        except Exception as e:
+            logging.error(f"SSE stream error for {tx_hash}: {str(e)}")
+            error_data = {'success': False, 'error': str(e)}
+            yield f"data: {json.dumps(error_data)}\n\n"
+    
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'  # Disable nginx buffering
+        }
+    )
 
 # Multi-wallet linking API
 @app.route('/api/wallet/request-link', methods=['POST'])
@@ -3312,6 +3432,15 @@ def api_trade_buy():
             web3_service = get_web3_service()
             tx_hash = web3_service.relay_signed_transaction(signed_tx)
             
+            # Add to monitoring queue
+            tx_monitor = get_tx_monitor()
+            tx_monitor.add_pending_transaction(
+                tx_hash=tx_hash,
+                tx_type='buy',
+                user_address=data.get('user_address'),
+                token_id=None  # Get from context if available
+            )
+            
             return jsonify({
                 'success': True,
                 'tx_hash': tx_hash,
@@ -3496,6 +3625,15 @@ def api_trade_sell():
             web3_service = get_web3_service()
             tx_hash = web3_service.relay_signed_transaction(signed_tx)
             
+            # Add to monitoring queue
+            tx_monitor = get_tx_monitor()
+            tx_monitor.add_pending_transaction(
+                tx_hash=tx_hash,
+                tx_type='sell',
+                user_address=data.get('user_address'),
+                token_id=None  # Get from context if available
+            )
+            
             return jsonify({
                 'success': True,
                 'tx_hash': tx_hash,
@@ -3650,6 +3788,15 @@ def api_claim_creator_fees(address):
             
             web3_service = get_web3_service()
             tx_hash = web3_service.relay_signed_transaction(signed_tx)
+            
+            # Add to monitoring queue
+            tx_monitor = get_tx_monitor()
+            tx_monitor.add_pending_transaction(
+                tx_hash=tx_hash,
+                tx_type='claim_fees',
+                user_address=data.get('creator_address'),
+                token_id=None  # Get from context if available
+            )
             
             logging.info(f"Relayed claim fees tx: {tx_hash}")
             
@@ -3966,6 +4113,15 @@ def api_distribute_platform_fees():
             
             web3_service = get_web3_service()
             tx_hash = web3_service.relay_signed_transaction(signed_tx)
+            
+            # Add to monitoring queue
+            tx_monitor = get_tx_monitor()
+            tx_monitor.add_pending_transaction(
+                tx_hash=tx_hash,
+                tx_type='distribute_fees',
+                user_address=data.get('admin_address'),
+                token_id=None  # Get from context if available
+            )
             
             logging.info(f"Relayed distribute platform fees tx: {tx_hash}")
             

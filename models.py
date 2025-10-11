@@ -891,3 +891,38 @@ class AntiBotFeeTracker(db.Model):
     
     def __repr__(self):
         return f'<AntiBotFeeTracker {self.total_anti_bot_fee} KAS - 70/30 split>'
+
+class PendingTransaction(db.Model):
+    """Pending blockchain transactions for monitoring"""
+    __tablename__ = 'pending_transaction'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Transaction details
+    tx_hash = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    tx_type = db.Column(db.String(50))  # 'buy', 'sell', 'claim_fees', 'distribute_fees', 'deploy_token'
+    user_address = db.Column(db.String(128), index=True)
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=True, index=True)
+    
+    # Transaction status
+    status = db.Column(db.String(20), default='pending', index=True)  # 'pending', 'confirmed', 'failed'
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    confirmed_at = db.Column(db.DateTime)
+    
+    # Blockchain confirmation details
+    block_number = db.Column(db.Integer)
+    gas_used = db.Column(db.Integer)
+    error_message = db.Column(db.Text)
+    
+    # Relationships
+    token = db.relationship('Token', backref='pending_transactions')
+    
+    # Composite index for efficient queries
+    __table_args__ = (
+        db.Index('idx_pending_tx_status_time', 'status', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<PendingTransaction {self.tx_hash[:10]}... ({self.status})>'
