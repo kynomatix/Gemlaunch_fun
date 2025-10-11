@@ -1,0 +1,12 @@
+{
+  "network": "kasplex_testnet",
+  "chainId": 167012,
+  "tokenFactory": "0x348640F6e87a0226e8E4CdB5e068282B5D0b2F60",
+  "graduationController": "0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e",
+  "previousGraduationController": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "linkedBy": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "linkingTx": "0x78d5bc4bc87eded7ba9a754253a58829ea1402d7a6c3485d55520bddc41cd3e7",
+  "blockNumber": 7768384,
+  "gasUsed": "29998",
+  "timestamp": "2025-10-11T05:15:57.946Z"
+}

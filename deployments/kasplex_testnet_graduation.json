@@ -1,0 +1,42 @@
+{
+  "network": "kasplex_testnet",
+  "chainId": 167012,
+  "graduationController": "0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e",
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "wallets": {
+    "primary": {
+      "address": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "roles": [
+        "owner"
+      ]
+    },
+    "secondary": {
+      "address": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+      "roles": [
+        "graduationOracle"
+      ],
+      "controlled": true,
+      "derivedFromDeployer": true
+    }
+  },
+  "kaspaFinanceIntegration": {
+    "nftPositionManager": "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
+    "wkas": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+    "factory": "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
+    "swapRouter": "0xDf88D478aF51C0AB616aFBfDD933c874e142858c",
+    "quoterV2": "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B"
+  },
+  "constructorParams": {
+    "kaspaFinancePositionManager": "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
+    "kaspaFinanceWKAS": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+    "graduationOracle": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E"
+  },
+  "deploymentTx": "0xcf516197a019329ba6c6e8262f67efb652bff9410bf02fa3fecd8d34c2770ca0",
+  "timestamp": "2025-10-11T05:14:29.870Z",
+  "blockNumber": 7768289,
+  "configuration": {
+    "poolFeeTier": 2500,
+    "slippageBps": 500,
+    "deadlineSeconds": 300
+  }
+}
