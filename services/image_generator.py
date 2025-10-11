@@ -1,7 +1,6 @@
 """
 AI-Powered Token Image Generator
 Uses OpenRouter Llama for prompt enhancement and Replicate FLUX for image generation
-Uploads generated images to IPFS via Pinata for permanent storage
 """
 
 import os
@@ -176,22 +175,18 @@ def generate_token_image(token_name, symbol, description):
         description: Basic description of the token
     
     Returns:
-        dict: {"success": True, "image_url": url, "gateway_url": url, "enhanced_prompt": prompt} or {"success": False, "error": message}
+        dict: {"success": True, "image_url": url, "enhanced_prompt": prompt} or {"success": False, "error": message}
     """
     try:
         logging.info(f"Starting image generation for token: {token_name} ({symbol})")
         
         enhanced_prompt = enhance_prompt_with_llama(token_name, symbol, description)
         
-        replicate_url = generate_image_with_replicate(enhanced_prompt)
-        
-        # Upload to IPFS for permanent storage
-        ipfs_data = upload_to_ipfs(replicate_url)
+        image_url = generate_image_with_replicate(enhanced_prompt)
         
         return {
             "success": True,
-            "image_url": ipfs_data["ipfs_url"],
-            "gateway_url": ipfs_data["gateway_url"],
+            "image_url": image_url,
             "enhanced_prompt": enhanced_prompt
         }
         
