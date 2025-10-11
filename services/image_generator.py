@@ -1,6 +1,7 @@
 """
 AI-Powered Token Image Generator
 Uses OpenRouter Llama for prompt enhancement and Replicate FLUX for image generation
+Uploads generated images to IPFS via Pinata for permanent storage
 """
 
 import os
@@ -100,6 +101,71 @@ def generate_image_with_replicate(prompt):
         logging.error(f"Error generating image with Replicate: {str(e)}")
         raise
 
+def upload_to_ipfs(image_url):
+    """
+    Upload an image to IPFS via Pinata for permanent storage
+    
+    Args:
+        image_url: URL of the image to upload (e.g., from Replicate)
+    
+    Returns:
+        dict: {"ipfs_url": "ipfs://hash", "gateway_url": "https://gateway.pinata.cloud/ipfs/hash"}
+    """
+    try:
+        api_token = os.environ.get('PINATA_JWT')
+        if not api_token:
+            raise Exception("Pinata JWT token not found")
+        
+        logging.debug(f"Downloading image from: {image_url}")
+        
+        # Download the image from Replicate with timeout
+        image_response = requests.get(image_url, timeout=60)
+        image_response.raise_for_status()
+        
+        if not image_response.content:
+            raise Exception("Downloaded image is empty")
+        
+        logging.debug(f"Image downloaded, size: {len(image_response.content)} bytes")
+        
+        # Prepare the file for upload
+        files = {
+            'file': ('token_image.webp', image_response.content, 'image/webp')
+        }
+        
+        # Upload to Pinata IPFS
+        logging.debug("Uploading to Pinata IPFS...")
+        pinata_response = requests.post(
+            'https://api.pinata.cloud/pinning/pinFileToIPFS',
+            headers={
+                'Authorization': f'Bearer {api_token}'
+            },
+            files=files,
+            timeout=120
+        )
+        
+        pinata_response.raise_for_status()
+        result = pinata_response.json()
+        
+        # Validate Pinata response
+        if 'IpfsHash' not in result:
+            raise Exception(f"Invalid Pinata response: {result}")
+        
+        ipfs_hash = result['IpfsHash']
+        ipfs_url = f"ipfs://{ipfs_hash}"
+        gateway_url = f"https://gateway.pinata.cloud/ipfs/{ipfs_hash}"
+        
+        logging.info(f"Image uploaded to IPFS: {ipfs_url}")
+        logging.info(f"Gateway URL: {gateway_url}")
+        
+        return {
+            "ipfs_url": ipfs_url,
+            "gateway_url": gateway_url
+        }
+        
+    except Exception as e:
+        logging.error(f"Error uploading to IPFS: {str(e)}")
+        raise
+
 def generate_token_image(token_name, symbol, description):
     """
     Main function to generate a token image with AI
@@ -110,18 +176,22 @@ def generate_token_image(token_name, symbol, description):
         description: Basic description of the token
     
     Returns:
-        dict: {"success": True, "image_url": url, "enhanced_prompt": prompt} or {"success": False, "error": message}
+        dict: {"success": True, "image_url": url, "gateway_url": url, "enhanced_prompt": prompt} or {"success": False, "error": message}
     """
     try:
         logging.info(f"Starting image generation for token: {token_name} ({symbol})")
         
         enhanced_prompt = enhance_prompt_with_llama(token_name, symbol, description)
         
-        image_url = generate_image_with_replicate(enhanced_prompt)
+        replicate_url = generate_image_with_replicate(enhanced_prompt)
+        
+        # Upload to IPFS for permanent storage
+        ipfs_data = upload_to_ipfs(replicate_url)
         
         return {
             "success": True,
-            "image_url": image_url,
+            "image_url": ipfs_data["ipfs_url"],
+            "gateway_url": ipfs_data["gateway_url"],
             "enhanced_prompt": enhanced_prompt
         }
         
