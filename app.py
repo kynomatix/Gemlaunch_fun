@@ -1792,6 +1792,149 @@ def create_airdrop(contract_address):
         db.session.rollback()
         return jsonify({'error': f'Failed to create airdrop: {str(e)}'}), 500
 
+# Post-Graduation DEX Integration Endpoints
+@app.route('/api/token/<address>/dex-pool', methods=['GET'])
+def api_token_dex_pool(address):
+    """
+    Get DEX pool information for graduated token
+    
+    Response for graduated tokens:
+    {
+        "success": true,
+        "is_graduated": true,
+        "dex_pool": {
+            "pool_address": "0x...",
+            "nft_position_id": 123,
+            "dex_name": "Kaspa Finance",
+            "dex_url": "https://kaspa.finance/pool/0x...",
+            "liquidity": "N/A",
+            "price": "0.000123",
+            "volume_24h": "N/A"
+        }
+    }
+    
+    Response for non-graduated tokens:
+    {
+        "success": true,
+        "is_graduated": false,
+        "message": "Token has not graduated yet"
+    }
+    """
+    try:
+        # Normalize address (lowercase, strip whitespace)
+        address_normalized = address.strip().lower()
+        
+        # Flexible validation: Accept various formats
+        # - EVM format: 0x... (42 chars)
+        # - Kaspa native format: kas:... or other prefixes
+        # - Just check it's not empty and reasonable length
+        if not address_normalized or len(address_normalized) < 10:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        # Case-insensitive lookup - let DB determine if valid
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == address_normalized
+        ).first()
+        
+        if not token:
+            logging.debug(f"Token not found: {address}")
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Check if token has graduated
+        if not token.is_graduated:
+            return jsonify({
+                'success': True,
+                'is_graduated': False,
+                'message': 'Token has not graduated yet'
+            })
+        
+        # Get web3 service (for potential future blockchain data fetching)
+        web3_service = get_web3_service()
+        
+        # Basic pool data from database
+        pool_data = {
+            'pool_address': token.liquidity_pool_address,
+            'nft_position_id': token.nft_position_id,
+            'dex_name': 'Kaspa Finance',
+            'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}'
+        }
+        
+        # Add price data from token if available
+        if token.current_price:
+            pool_data['price'] = str(token.current_price)
+        else:
+            pool_data['price'] = 'N/A'
+        
+        # Liquidity and volume require pool contract integration (not in scope)
+        pool_data['liquidity'] = 'N/A'
+        pool_data['volume_24h'] = 'N/A'
+        
+        # Try to fetch live pool data from blockchain if needed in the future
+        try:
+            # Placeholder for future pool contract integration
+            # pool_contract = web3_service.get_contract(token.liquidity_pool_address, POOL_ABI)
+            # reserves = pool_contract.functions.getReserves().call()
+            # pool_data['liquidity'] = calculate_liquidity(reserves)
+            pass
+        except Exception as e:
+            logging.debug(f"Could not fetch live pool data: {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'is_graduated': True,
+            'dex_pool': pool_data
+        })
+        
+    except ValueError as e:
+        logging.error(f"Invalid address format: {address}, error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+    except Exception as e:
+        logging.error(f"Error fetching DEX pool data for {address}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch DEX pool data'}), 500
+
+@app.route('/token/<address>/trade')
+def redirect_to_dex(address):
+    """Redirect to Kaspa Finance DEX for graduated tokens"""
+    try:
+        # Normalize address (lowercase, strip whitespace)
+        address_normalized = address.strip().lower()
+        
+        # Flexible validation: Accept various formats
+        # - EVM format: 0x... (42 chars)
+        # - Kaspa native format: kas:... or other prefixes
+        # - Just check it's not empty and reasonable length
+        if not address_normalized or len(address_normalized) < 10:
+            flash('Invalid token address', 'error')
+            return redirect(url_for('index'))
+        
+        # Case-insensitive lookup - let DB determine if valid
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == address_normalized
+        ).first()
+        
+        if not token:
+            flash('Token not found', 'error')
+            return redirect(url_for('index'))
+        
+        # Check if token has graduated and has pool address
+        if not token.is_graduated or not token.liquidity_pool_address:
+            flash('Token has not graduated yet', 'info')
+            return redirect(url_for('token_detail', contract_address=address))
+        
+        # Redirect to Kaspa Finance DEX
+        dex_url = f'https://kaspa.finance/pool/{token.liquidity_pool_address}'
+        logging.info(f"Redirecting to Kaspa Finance DEX: {dex_url}")
+        return redirect(dex_url)
+        
+    except ValueError as e:
+        logging.error(f"Invalid address format for trade redirect: {address}, error: {str(e)}")
+        flash('Invalid token address', 'error')
+        return redirect(url_for('index'))
+    except Exception as e:
+        logging.error(f"Error redirecting to DEX for {address}: {str(e)}")
+        flash('Failed to redirect to DEX', 'error')
+        return redirect(url_for('index'))
+
 # Leaderboard routes
 @app.route('/app/leaderboard')
 @wallet_optional
