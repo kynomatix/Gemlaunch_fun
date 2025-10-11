@@ -3705,6 +3705,163 @@ def generate_token_image_api():
             'error': f'Failed to generate image: {str(e)}'
         }), 500
 
+@app.route('/api/admin/distribute-platform-fees', methods=['POST'])
+@csrf.exempt
+def api_distribute_platform_fees():
+    """
+    Distribute accumulated platform fees to treasury wallets (ADMIN ONLY)
+    
+    This endpoint allows treasury or admin to distribute platform fees from a pool.
+    Platform fees are split:
+    - 40% → Platform Development Wallet
+    - 30% → Buyback Reserve Wallet
+    - 15% → Kaspa Network Support Wallet
+    - 15% → Community Rewards Wallet
+    
+    Request JSON (Step 1 - Get Unsigned TX):
+    {
+        "action": "build_tx",
+        "admin_address": "0x...",
+        "token_address": "0x..."
+    }
+    
+    Response (Step 1):
+    {
+        "success": true,
+        "unsigned_tx": {
+            "from": "0x...",
+            "to": "0x...",
+            "data": "0x...",
+            "value": "0x0",
+            "gas": "0x...",
+            "gasPrice": "0x...",
+            "nonce": "0x...",
+            "chainId": 167012
+        },
+        "claimable_amount": "1.234",
+        "claimable_amount_wei": "1234000000000000000"
+    }
+    
+    Request JSON (Step 2 - Relay Signed TX):
+    {
+        "action": "relay_tx",
+        "signed_tx": "0x..."
+    }
+    
+    Response (Step 2):
+    {
+        "success": true,
+        "tx_hash": "0x...",
+        "status": "pending"
+    }
+    
+    Example curl (build_tx):
+    curl -X POST http://localhost:5000/api/admin/distribute-platform-fees \
+      -H "Content-Type: application/json" \
+      -d '{"action": "build_tx", "admin_address": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E", "token_address": "0x..."}'
+    
+    Example curl (relay_tx):
+    curl -X POST http://localhost:5000/api/admin/distribute-platform-fees \
+      -H "Content-Type: application/json" \
+      -d '{"action": "relay_tx", "signed_tx": "0x..."}'
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        action = data.get('action', '').strip()
+        
+        if action == 'build_tx':
+            admin_address = data.get('admin_address', '').strip()
+            token_address = data.get('token_address', '').strip()
+            
+            if not admin_address:
+                return jsonify({'success': False, 'error': 'admin_address is required'}), 400
+            
+            if not token_address:
+                return jsonify({'success': False, 'error': 'token_address is required'}), 400
+            
+            try:
+                admin_address = Web3.to_checksum_address(admin_address)
+                pool_address = Web3.to_checksum_address(token_address)
+            except Exception:
+                return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+            
+            token = Token.query.filter_by(contract_address=pool_address).first()
+            if not token:
+                return jsonify({'success': False, 'error': 'Token not found'}), 404
+            
+            if token.deployment_status != 'deployed':
+                return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+            
+            web3_service = get_web3_service()
+            
+            claimable_wei = web3_service.get_platform_claimable(pool_address)
+            
+            if claimable_wei == 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'No platform fees available to distribute'
+                }), 400
+            
+            claimable_kas = float(Web3.from_wei(claimable_wei, 'ether'))
+            
+            unsigned_tx = web3_service.distribute_platform_fees_tx_data(
+                admin_address,
+                pool_address
+            )
+            
+            unsigned_tx_formatted = {
+                'from': unsigned_tx['from'],
+                'to': unsigned_tx['to'],
+                'data': unsigned_tx['data'],
+                'value': hex(unsigned_tx['value']),
+                'gas': hex(unsigned_tx['gas']),
+                'gasPrice': hex(unsigned_tx['gasPrice']),
+                'nonce': hex(unsigned_tx['nonce']),
+                'chainId': 167012
+            }
+            
+            logging.info(f"Built distribute platform fees tx for {admin_address} - Claimable: {claimable_kas} KAS")
+            
+            return jsonify({
+                'success': True,
+                'unsigned_tx': unsigned_tx_formatted,
+                'claimable_amount': str(claimable_kas),
+                'claimable_amount_wei': str(claimable_wei)
+            })
+        
+        elif action == 'relay_tx':
+            signed_tx = data.get('signed_tx', '').strip()
+            
+            if not signed_tx:
+                return jsonify({'success': False, 'error': 'signed_tx is required'}), 400
+            
+            if not isinstance(signed_tx, str) or not signed_tx.startswith('0x'):
+                return jsonify({'success': False, 'error': 'signed_tx must be a hex string starting with 0x'}), 400
+            
+            web3_service = get_web3_service()
+            tx_hash = web3_service.relay_signed_transaction(signed_tx)
+            
+            logging.info(f"Relayed distribute platform fees tx: {tx_hash}")
+            
+            return jsonify({
+                'success': True,
+                'tx_hash': tx_hash,
+                'status': 'pending'
+            })
+        
+        else:
+            return jsonify({'success': False, 'error': 'Invalid action. Must be "build_tx" or "relay_tx"'}), 400
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in distribute-platform-fees: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in distribute-platform-fees: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to distribute platform fees'}), 500
+
 # Initialize database when app starts
 init_database()
 

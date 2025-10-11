@@ -696,6 +696,80 @@ class Web3Service:
             raise
     
     # =========================
+    # Task 2.7.2 - Platform Fee Distribution (Admin Only)
+    # =========================
+    
+    def get_platform_claimable(self, pool_address):
+        """
+        Get claimable platform fees from pool
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            int: Claimable platform fees (in wei)
+        """
+        try:
+            logging.debug(f"Getting platform claimable for pool {pool_address}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            claimable = pool.functions.accumulatedPlatformFees().call()
+            
+            logging.debug(f"Platform claimable: {claimable} wei ({self.w3.from_wei(claimable, 'ether')} KAS)")
+            return claimable
+            
+        except Exception as e:
+            logging.error(f"Failed to get platform claimable for pool {pool_address}: {str(e)}")
+            raise
+    
+    def distribute_platform_fees_tx_data(self, admin_address, pool_address):
+        """
+        Build transaction data for pool.distributeFees() - ADMIN TRANSACTION
+        
+        This distributes accumulated platform fees to treasury wallets:
+        - 40% → Platform Development Wallet
+        - 30% → Buyback Reserve Wallet
+        - 15% → Kaspa Network Support Wallet
+        - 15% → Community Rewards Wallet
+        
+        Args:
+            admin_address (str): Admin's wallet address (must be treasury or admin)
+            pool_address (str): Pool contract address
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building distributeFees tx for admin {admin_address} - Pool: {pool_address}")
+            
+            # Build contract call
+            pool = self.get_bonding_pool_contract(pool_address)
+            tx_data = pool.functions.distributeFees().build_transaction({
+                'from': Web3.to_checksum_address(admin_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(admin_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"distributeFees tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build distributeFees tx: {str(e)}")
+            raise
+    
+    # =========================
     # Task 2.2.3 - GraduationController Interactions (Oracle Only)
     # =========================
     
