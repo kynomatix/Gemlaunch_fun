@@ -42,6 +42,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     bool public graduated;
     bool public graduating; // Lock flag during graduation
     bool public liquidityTransferred; // Track if KAS has been transferred to GraduationController
+    bool public reserveDistributed; // Track if creator has claimed reserve tokens (one-time only)
 
     // Additional state for access control
     address public admin;
@@ -86,6 +87,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     event CreatorFeesWithdrawn(address indexed creator, uint256 amount);
     event GraduationOracleUpdated(address indexed newOracle);
     event FeesDistributed(uint256 dev, uint256 buyback, uint256 kaspa, uint256 community);
+    event ReserveDistributed(address indexed creator, address[] recipients, uint256[] amounts, uint256 totalDistributed);
 
     constructor(
         string memory name,
@@ -481,6 +483,54 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     // View function for creator to check claimable amount
     function getCreatorClaimableAmount() external view returns (uint256) {
         return accumulatedCreatorFees;
+    }
+
+    // Creator distributes reserve tokens (one-time only, for team/marketing/airdrops)
+    function distributeReserve(address[] calldata recipients, uint256[] calldata amounts) external nonReentrant {
+        require(msg.sender == creator, "Only creator can distribute");
+        require(!reserveDistributed, "Reserve already distributed");
+        require(!graduated && !graduating, "Cannot distribute after graduation");
+        require(recipients.length == amounts.length, "Length mismatch");
+        require(recipients.length > 0, "Empty recipients");
+        
+        // Calculate total distribution amount
+        uint256 totalDistribution = 0;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            require(recipients[i] != address(0), "Invalid recipient");
+            require(amounts[i] > 0, "Invalid amount");
+            totalDistribution += amounts[i];
+        }
+        
+        // Available reserve = contract balance - virtual token reserve
+        uint256 availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+        require(totalDistribution <= availableReserve, "Exceeds available reserve");
+        
+        // Mark as distributed before transfers (CEI pattern)
+        reserveDistributed = true;
+        
+        // Transfer tokens to recipients
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _transfer(address(this), recipients[i], amounts[i]);
+        }
+        
+        emit ReserveDistributed(creator, recipients, amounts, totalDistribution);
+    }
+
+    // View function to check reserve distribution status
+    function getReserveStatus() external view returns (
+        bool distributed,
+        uint256 availableReserve,
+        uint256 totalReserve
+    ) {
+        distributed = reserveDistributed;
+        totalReserve = totalSupply() * LP_SUPPLY_PCT / 100; // 25% of total supply
+        
+        // Available reserve = contract balance - virtual token reserve
+        if (!graduated && !graduating) {
+            availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+        } else {
+            availableReserve = 0; // No reserve available after graduation starts
+        }
     }
 
     // M-4 Fix: Prevent direct KAS transfers (force use of buyTokens)
