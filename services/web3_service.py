@@ -363,6 +363,405 @@ class Web3Service:
         except Exception as e:
             logging.error(f"Error getting transaction status for {tx_hash}: {str(e)}")
             raise
+    
+    # =========================
+    # Task 2.2.1 - TokenFactory Interactions
+    # =========================
+    
+    def create_token_tx_data(self, user_address, name, symbol, total_supply, description, 
+                             image_url, twitter_url, telegram_url, website_url, anti_bot_enabled):
+        """
+        Build transaction data for TokenFactory.createToken() - USER TRANSACTION
+        
+        Args:
+            user_address (str): User's wallet address
+            name (str): Token name
+            symbol (str): Token symbol
+            total_supply (int): Total supply in wei
+            description (str): Token description
+            image_url (str): Token image URL
+            twitter_url (str): Twitter URL
+            telegram_url (str): Telegram URL
+            website_url (str): Website URL
+            anti_bot_enabled (bool): Enable anti-bot protection
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building createToken tx for user {user_address} - Token: {name} ({symbol})")
+            
+            # Build contract call
+            contract = self.contracts['TokenFactory']
+            tx_data = contract.functions.createToken(
+                name,
+                symbol,
+                total_supply,
+                description,
+                image_url,
+                twitter_url,
+                telegram_url,
+                website_url,
+                anti_bot_enabled
+            ).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"createToken tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build createToken tx: {str(e)}")
+            raise
+    
+    # =========================
+    # Task 2.2.2 - BondingCurvePool Interactions
+    # =========================
+    
+    def get_buy_quote(self, pool_address, kas_amount):
+        """
+        Get buy quote from bonding curve pool
+        
+        Args:
+            pool_address (str): Pool contract address
+            kas_amount (int): KAS amount in wei
+        
+        Returns:
+            int: Tokens out (in wei)
+        """
+        try:
+            logging.debug(f"Getting buy quote for pool {pool_address} - KAS: {kas_amount}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            tokens_out = pool.functions.quoteBuy(kas_amount).call()
+            
+            logging.debug(f"Buy quote: {kas_amount} wei KAS → {tokens_out} wei tokens")
+            return tokens_out
+            
+        except Exception as e:
+            logging.error(f"Failed to get buy quote for pool {pool_address}: {str(e)}")
+            raise
+    
+    def get_sell_quote(self, pool_address, token_amount):
+        """
+        Get sell quote from bonding curve pool
+        
+        Args:
+            pool_address (str): Pool contract address
+            token_amount (int): Token amount in wei
+        
+        Returns:
+            int: KAS out (in wei)
+        """
+        try:
+            logging.debug(f"Getting sell quote for pool {pool_address} - Tokens: {token_amount}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            kas_out = pool.functions.quoteSell(token_amount).call()
+            
+            logging.debug(f"Sell quote: {token_amount} wei tokens → {kas_out} wei KAS")
+            return kas_out
+            
+        except Exception as e:
+            logging.error(f"Failed to get sell quote for pool {pool_address}: {str(e)}")
+            raise
+    
+    def get_auto_slippage(self, pool_address, kas_amount):
+        """
+        Get minimum tokens out with auto-calculated slippage
+        
+        Args:
+            pool_address (str): Pool contract address
+            kas_amount (int): KAS amount in wei
+        
+        Returns:
+            int: Minimum tokens out with auto slippage (in wei)
+        """
+        try:
+            logging.debug(f"Getting auto slippage for pool {pool_address} - KAS: {kas_amount}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            min_tokens_out = pool.functions.getMinTokensOutWithAutoSlippage(kas_amount).call()
+            
+            logging.debug(f"Auto slippage: {kas_amount} wei KAS → min {min_tokens_out} wei tokens")
+            return min_tokens_out
+            
+        except Exception as e:
+            logging.error(f"Failed to get auto slippage for pool {pool_address}: {str(e)}")
+            raise
+    
+    def buy_tokens_tx_data(self, user_address, pool_address, kas_amount, min_tokens_out, deadline):
+        """
+        Build transaction data for pool.buyTokens() - USER TRANSACTION (PAYABLE)
+        
+        Args:
+            user_address (str): User's wallet address
+            pool_address (str): Pool contract address
+            kas_amount (int): KAS amount to send (in wei)
+            min_tokens_out (int): Minimum tokens to receive (in wei)
+            deadline (int): Transaction deadline (unix timestamp)
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building buyTokens tx for user {user_address} - Pool: {pool_address}, KAS: {kas_amount}")
+            
+            # Build contract call
+            pool = self.get_bonding_pool_contract(pool_address)
+            tx_data = pool.functions.buyTokens(
+                min_tokens_out,
+                deadline
+            ).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': kas_amount,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"buyTokens tx built - Gas: {gas_estimate['gas']}, Total cost: {self.w3.from_wei(kas_amount + gas_estimate['cost_wei'], 'ether')} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build buyTokens tx: {str(e)}")
+            raise
+    
+    def sell_tokens_tx_data(self, user_address, pool_address, token_amount, min_kas_out, deadline):
+        """
+        Build transaction data for pool.sellTokens() - USER TRANSACTION
+        
+        Args:
+            user_address (str): User's wallet address
+            pool_address (str): Pool contract address
+            token_amount (int): Token amount to sell (in wei)
+            min_kas_out (int): Minimum KAS to receive (in wei)
+            deadline (int): Transaction deadline (unix timestamp)
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building sellTokens tx for user {user_address} - Pool: {pool_address}, Tokens: {token_amount}")
+            
+            # Build contract call
+            pool = self.get_bonding_pool_contract(pool_address)
+            tx_data = pool.functions.sellTokens(
+                token_amount,
+                min_kas_out,
+                deadline
+            ).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"sellTokens tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build sellTokens tx: {str(e)}")
+            raise
+    
+    def get_creator_claimable(self, pool_address):
+        """
+        Get claimable creator fees from pool
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            int: Claimable amount (in wei)
+        """
+        try:
+            logging.debug(f"Getting creator claimable for pool {pool_address}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            claimable = pool.functions.getCreatorClaimableAmount().call()
+            
+            logging.debug(f"Creator claimable: {claimable} wei ({self.w3.from_wei(claimable, 'ether')} KAS)")
+            return claimable
+            
+        except Exception as e:
+            logging.error(f"Failed to get creator claimable for pool {pool_address}: {str(e)}")
+            raise
+    
+    def withdraw_creator_fees_tx_data(self, user_address, pool_address):
+        """
+        Build transaction data for pool.withdrawCreatorFees() - USER TRANSACTION
+        
+        Args:
+            user_address (str): User's wallet address (must be creator)
+            pool_address (str): Pool contract address
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building withdrawCreatorFees tx for user {user_address} - Pool: {pool_address}")
+            
+            # Build contract call
+            pool = self.get_bonding_pool_contract(pool_address)
+            tx_data = pool.functions.withdrawCreatorFees().build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"withdrawCreatorFees tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build withdrawCreatorFees tx: {str(e)}")
+            raise
+    
+    # =========================
+    # Task 2.2.3 - GraduationController Interactions (Oracle Only)
+    # =========================
+    
+    def initiate_graduation_oracle(self, token_address):
+        """
+        Oracle signs and relays GraduationController.initiateGraduation() - ORACLE TRANSACTION
+        
+        Args:
+            token_address (str): Token/pool address to graduate
+        
+        Returns:
+            str: Transaction hash
+        """
+        try:
+            logging.info(f"Oracle initiating graduation for token {token_address}")
+            
+            # Build contract call
+            contract = self.contracts['GraduationController']
+            tx_data = contract.functions.initiateGraduation(
+                Web3.to_checksum_address(token_address)
+            ).build_transaction({
+                'from': self.oracle_account.address,
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(self.oracle_account.address)
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            # Sign transaction with oracle account
+            signed_txn = self.sign_transaction(tx_data)
+            
+            # Relay transaction
+            tx_hash = self.relay_transaction(signed_txn)
+            
+            logging.info(f"Graduation initiated by oracle - Token: {token_address}, TX: {tx_hash}")
+            return tx_hash
+            
+        except Exception as e:
+            logging.error(f"Failed to initiate graduation for {token_address}: {str(e)}")
+            raise
+    
+    def complete_graduation_oracle(self, token_address):
+        """
+        Oracle signs and relays GraduationController.completeGraduation() - ORACLE TRANSACTION
+        
+        Args:
+            token_address (str): Token/pool address to complete graduation
+        
+        Returns:
+            str: Transaction hash
+        """
+        try:
+            logging.info(f"Oracle completing graduation for token {token_address}")
+            
+            # Build contract call
+            contract = self.contracts['GraduationController']
+            tx_data = contract.functions.completeGraduation(
+                Web3.to_checksum_address(token_address)
+            ).build_transaction({
+                'from': self.oracle_account.address,
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(self.oracle_account.address)
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            # Sign transaction with oracle account
+            signed_txn = self.sign_transaction(tx_data)
+            
+            # Relay transaction
+            tx_hash = self.relay_transaction(signed_txn)
+            
+            logging.info(f"Graduation completed by oracle - Token: {token_address}, TX: {tx_hash}")
+            return tx_hash
+            
+        except Exception as e:
+            logging.error(f"Failed to complete graduation for {token_address}: {str(e)}")
+            raise
 
 
 # Global Web3 service instance
