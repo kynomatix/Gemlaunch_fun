@@ -64,3 +64,64 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 - **4chan /biz/**: Real-time meme trend scraping.
 - **Reddit CryptoMoonShots**: Community-validated meme trends.
 - **Pinata**: IPFS pinning service for permanent image storage.
+- **web3.py**: Python library for Ethereum/EVM blockchain interaction (v7.13.0).
+- **eth-account**: Ethereum account management for transaction signing.
+
+# Phase 2 Integration Progress
+
+## Blockchain Integration Foundation (COMPLETE ✅)
+**Date Completed:** October 11, 2025
+
+### Web3 Service Layer (Tasks 2.1.1-2.1.6)
+- ✅ **RPC Connection**: Connected to Kasplex Testnet (https://rpc.kasplextest.xyz, Chain ID: 167012)
+- ✅ **Oracle Wallet**: Derived secondary wallet from DEPLOYER_PRIVATE_KEY using keccak256("GEMLAUNCH_SECONDARY_WALLET" + deployer_key)
+  - Oracle Address: 0x5f837F62744D4d80Fc79C3A5346B4A228956914E
+- ✅ **Contract Loading**: ABIs loaded from Hardhat artifacts
+  - TokenFactory: 0x348640F6e87a0226e8E4CdB5e068282B5D0b2F60
+  - GraduationController: 0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e
+  - BondingCurvePool: Dynamic loading for each token
+- ✅ **Transaction Utilities**: Gas estimation (20% buffer), signing, relay, status polling
+- ✅ **POA Middleware**: ExtraDataToPOAMiddleware for Kasplex compatibility
+
+### Contract Interaction Layer (Tasks 2.2.1-2.2.3)
+- ✅ **TokenFactory Interactions**:
+  - create_token_tx_data() - Build unsigned tx for user to sign
+- ✅ **BondingCurvePool Interactions**:
+  - get_buy_quote(), get_sell_quote() - Price quotes
+  - get_auto_slippage() - Auto-calculated slippage protection
+  - buy_tokens_tx_data(), sell_tokens_tx_data() - Build unsigned txs
+  - get_creator_claimable(), withdraw_creator_fees_tx_data() - Fee management
+- ✅ **GraduationController Interactions**:
+  - initiate_graduation_oracle() - Oracle signs and relays
+  - complete_graduation_oracle() - Oracle signs and relays
+
+### Database Schema (Tasks 2.5.1-2.5.3)
+- ✅ **Token Model Updates** (4 new fields):
+  - creator_fees_accumulated (Numeric 20,8) - Track claimable creator fees
+  - deployment_block_number (Integer) - Blockchain block number
+  - nft_position_id (Integer) - Kaspa Finance NFT position after graduation
+  - liquidity_pool_address (String 128) - Kaspa Finance pool address
+- ✅ **TradeEvent Model** (13 fields):
+  - Stores blockchain trade events from BondingCurvePool
+  - Indexes: token_id, user_wallet_address, tx_hash (unique), block_number
+- ✅ **AntiBotFeeTracker Model** (9 fields):
+  - Tracks 70/30 anti-bot fee split (Airdrop Treasury / Platform Dev)
+  - Relationships to Token and TradeEvent
+- ✅ **Migration Complete**: All columns added, application running successfully
+
+### Transaction Flow Architecture
+**USER Transactions** (Frontend → User Wallet → Blockchain):
+- Users sign transactions in their wallet
+- Backend builds unsigned tx dicts with gas estimates
+- Frontend sends signed tx to backend for relay
+
+**ORACLE Transactions** (Backend → Blockchain):
+- Backend signs with oracle_account (0x5f83...914E)
+- Used for graduation triggers and automated operations
+- No user interaction required
+
+### Next Steps
+- Implement token deployment flow (connect frontend to createToken)
+- Implement buy/sell trading flow (connect frontend to buy/sell functions)
+- Build blockchain event indexer (listen for trades, update database)
+- Implement graduation monitoring (check market cap, trigger graduation)
