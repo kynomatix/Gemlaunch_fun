@@ -271,9 +271,41 @@ class Web3Service:
             logging.error(f"Transaction relay failed: {str(e)}")
             raise
     
+    def relay_signed_transaction(self, signed_tx):
+        """
+        Relay a user-signed transaction to the blockchain
+        
+        Args:
+            signed_tx (str): Signed transaction hex string (e.g., "0x...")
+        
+        Returns:
+            str: Transaction hash (hex string)
+        
+        Raises:
+            Exception: If transaction relay fails
+        """
+        try:
+            # Validate hex format
+            if not isinstance(signed_tx, str) or not signed_tx.startswith('0x'):
+                raise ValueError("signed_tx must be a hex string starting with '0x'")
+            
+            # Send raw transaction
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx)
+            tx_hash_hex = tx_hash.hex()
+            
+            logging.info(f"User transaction relayed: {tx_hash_hex}")
+            return tx_hash_hex
+            
+        except ValueError as e:
+            logging.error(f"Invalid transaction format: {str(e)}")
+            raise
+        except Exception as e:
+            logging.error(f"Failed to relay user transaction: {str(e)}")
+            raise
+    
     def validate_and_relay_signed_tx(self, raw_signed_tx):
         """
-        Validate and relay a user-signed transaction
+        Validate and relay a user-signed transaction (legacy method)
         
         Args:
             raw_signed_tx: Raw signed transaction bytes (from frontend)
