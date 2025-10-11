@@ -1,15 +1,50 @@
 {
-  "testnet": {
-    "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-    "treasuries": {
-      "platform": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-      "airdrop": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-      "platformDev": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-      "buybackReserve": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-      "kaspaNetwork": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-      "communityRewards": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+  "kasplex_testnet": {
+    "note": "Testnet deployment uses 2 controlled wallets to satisfy TokenFactory constraints",
+    "wallets": {
+      "primary": {
+        "description": "Main deployer wallet - controls most treasury functions",
+        "address": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+        "envVar": "DEPLOYER_PRIVATE_KEY",
+        "roles": [
+          "treasury",
+          "platformDevelopmentWallet",
+          "buybackReserveWallet",
+          "kaspaNetworkSupportWallet",
+          "communityRewardsWallet",
+          "graduationController (temporary - update after GraduationController deployed)"
+        ]
+      },
+      "secondary": {
+        "description": "Secondary wallet - controls admin and oracle roles (must differ from treasury per contract validation)",
+        "address": "USE_ENV_VAR_OR_DERIVE",
+        "envVar": "SECONDARY_PRIVATE_KEY",
+        "derivation": "If SECONDARY_PRIVATE_KEY not set, derive from deployer using m/44'/60'/0'/0/1",
+        "roles": [
+          "admin",
+          "graduationOracle",
+          "airdropTreasury"
+        ]
+      }
     },
-    "graduationOracle": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "roleAssignments": {
+      "graduationController": "primary (temporary placeholder)",
+      "treasury": "primary",
+      "airdropTreasury": "secondary",
+      "platformDevelopmentWallet": "primary",
+      "graduationOracle": "secondary",
+      "admin": "secondary",
+      "buybackReserveWallet": "primary",
+      "kaspaNetworkSupportWallet": "primary",
+      "communityRewardsWallet": "primary"
+    },
+    "validationConstraints": {
+      "satisfied": [
+        "treasury (primary) != admin (secondary) ✓",
+        "treasury (primary) != graduationOracle (secondary) ✓",
+        "airdropTreasury (secondary) != platformDevelopmentWallet (primary) ✓"
+      ]
+    },
     "kaspaFinance": {
       "factory": "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
       "nftPositionManager": "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
@@ -18,17 +53,42 @@
       "quoterV2": "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B"
     }
   },
-  "mainnet": {
+  "kasplex_mainnet": {
     "note": "DO NOT USE - Populate in Phase 5 with hardware wallet addresses",
-    "deployer": "TBD",
-    "treasuries": {
-      "platform": "TBD",
-      "airdrop": "TBD",
-      "platformDev": "TBD",
-      "buybackReserve": "TBD",
-      "kaspaNetwork": "TBD",
-      "communityRewards": "TBD"
+    "wallets": {
+      "primary": {
+        "description": "Main deployer wallet - use hardware wallet",
+        "address": "TBD",
+        "envVar": "MAINNET_PRIVATE_KEY",
+        "roles": [
+          "treasury",
+          "platformDevelopmentWallet",
+          "buybackReserveWallet",
+          "kaspaNetworkSupportWallet",
+          "communityRewardsWallet"
+        ]
+      },
+      "secondary": {
+        "description": "Secondary wallet - use separate hardware wallet",
+        "address": "TBD",
+        "envVar": "MAINNET_SECONDARY_PRIVATE_KEY",
+        "roles": [
+          "admin",
+          "graduationOracle",
+          "airdropTreasury"
+        ]
+      }
     },
-    "graduationOracle": "TBD"
+    "roleAssignments": {
+      "graduationController": "TBD (deploy GraduationController first)",
+      "treasury": "primary",
+      "airdropTreasury": "secondary",
+      "platformDevelopmentWallet": "primary",
+      "graduationOracle": "secondary",
+      "admin": "secondary",
+      "buybackReserveWallet": "primary",
+      "kaspaNetworkSupportWallet": "primary",
+      "communityRewardsWallet": "primary"
+    }
   }
 }

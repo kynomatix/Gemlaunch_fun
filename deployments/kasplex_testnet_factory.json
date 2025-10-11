@@ -1,0 +1,20 @@
+{
+  "network": "kasplex_testnet",
+  "chainId": 167012,
+  "tokenFactory": "0xCe8C99b4DF2E0675986e8d21a827fA58d554A302",
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "constructorParams": {
+    "graduationController": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "treasury": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "airdropTreasury": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "platformDevelopmentWallet": "0xA45E230fBD52DBa3cC104F04Ea8D14436c7e9246",
+    "graduationOracle": "0x0cE6Cd1352DaaE88f172a0ed7E4e686dBfB03a98",
+    "admin": "0x579a4e16545a7E8AFE962BC2AF8b381604f811e4",
+    "buybackReserveWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "kaspaNetworkSupportWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "communityRewardsWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+  },
+  "deploymentTx": "0xae003b29c20d0cf298f890f1946df55659131b98e9172a1c50820b7d70aae831",
+  "timestamp": "2025-10-11T04:56:13.708Z",
+  "blockNumber": 7767059
+}

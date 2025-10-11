@@ -84,8 +84,13 @@
 **Goal:** Get audit-approved contracts live on Kasplex testnet  
 **Dependencies:** ⬅️ Phase 0 complete
 
-- [ ] **1.1** Deploy in Correct Order
-  - [ ] Deploy TokenFactory.sol first: `npx hardhat run scripts/deploy_factory.js --network kasplex_testnet`
+- [x] **1.1** Deploy in Correct Order
+  - [x] Deploy TokenFactory.sol first: ✅ **DEPLOYED**
+    - **Contract Address**: `0xCe8C99b4DF2E0675986e8d21a827fA58d554A302`
+    - **Deployment Tx**: `0xae003b29c20d0cf298f890f1946df55659131b98e9172a1c50820b7d70aae831`
+    - **Deployment Script**: `scripts/deploy_factory.js`
+    - **Deployment Info**: `deployments/kasplex_testnet_factory.json`
+    - **Block**: 7767059 | **Cost**: ~24.39 KAS
   - [ ] Deploy BondingCurvePool.sol via factory (or standalone for testing)
   - [ ] Deploy GraduationController.sol with Kaspa Finance addresses:
     - Factory: `0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8`
