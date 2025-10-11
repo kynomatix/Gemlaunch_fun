@@ -8,19 +8,17 @@ class PinataService:
     """Service for uploading files and metadata to IPFS via Pinata"""
     
     def __init__(self):
-        self.api_key = os.environ.get('PINATA_API_KEY')
-        self.api_secret = os.environ.get('PINATA_API_SECRET')
+        self.jwt = os.environ.get('PINATA_JWT')
         self.base_url = 'https://api.pinata.cloud'
         
-        if not self.api_key or not self.api_secret:
-            logging.warning("Pinata credentials not found")
+        if not self.jwt:
+            logging.warning("Pinata JWT not found - IPFS uploads will not work")
     
     def upload_file(self, file_path: str, name: str) -> Optional[str]:
         """Upload file to IPFS via Pinata, returns IPFS hash"""
         url = f'{self.base_url}/pinning/pinFileToIPFS'
         headers = {
-            'pinata_api_key': self.api_key,
-            'pinata_secret_api_key': self.api_secret
+            'Authorization': f'Bearer {self.jwt}'
         }
         
         try:
@@ -50,8 +48,7 @@ class PinataService:
         url = f'{self.base_url}/pinning/pinJSONToIPFS'
         headers = {
             'Content-Type': 'application/json',
-            'pinata_api_key': self.api_key,
-            'pinata_secret_api_key': self.api_secret
+            'Authorization': f'Bearer {self.jwt}'
         }
         
         try:

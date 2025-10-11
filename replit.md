@@ -185,7 +185,7 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 - ✅ **Get Metadata Endpoint**: GET /api/token/<address>/metadata
   - Returns IPFS URL if metadata exists
   - Generates on-the-fly metadata as fallback
-- ✅ **Environment Variables**: PINATA_API_KEY, PINATA_API_SECRET
+- ✅ **Environment Variables**: PINATA_JWT (Bearer token authentication)
 
 ## Phase 2 Status: COMPLETE ✅
 **Total Tasks:** 12/12 completed
