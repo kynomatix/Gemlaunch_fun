@@ -146,6 +146,20 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
   - No hardcoded format restrictions (0x prefix, length checks)
   - Database-driven validation (404 for unknown addresses)
 
+### Gas & Network Validation (Task 2.10) (COMPLETE ✅)
+- ✅ **Gas Estimation Endpoint**: POST /api/gas/estimate
+  - Returns gas_estimate, gas_with_buffer (+20%), gas_price, estimated_cost_kas
+  - Placeholder for estimated_cost_usd (future KAS/USD integration)
+- ✅ **Network Status Endpoint**: GET /api/network/status
+  - Returns connected, chain_id, block_number, gas_price_gwei, network_name
+- ✅ **Chain ID Validation**: validate_chain_id() middleware
+  - Verifies Chain ID 167012 (Kasplex Testnet) on critical endpoints
+  - Applied to buy, sell, claim-creator-fees endpoints
+- ✅ **RPC Fallback Mechanism**: get_web3_with_fallback()
+  - Web3Service now uses fallback-enabled initialization
+  - Tries RPC endpoints in order with POA middleware
+  - Logging for each RPC attempt, raises ConnectionError if all fail
+  - Ready for multiple fallback RPCs when available
+
 ### Next Steps
-- Task 2.10: Gas & Network Validation - Gas estimation display, chain ID check, RPC fallback
 - Task 2.11: Image Storage & Metadata - IPFS upload workflow via Pinata

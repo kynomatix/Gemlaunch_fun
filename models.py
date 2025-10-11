@@ -170,6 +170,12 @@ class Token(db.Model):
     nft_position_id = db.Column(db.Integer, nullable=True)
     liquidity_pool_address = db.Column(db.String(128), nullable=True)
     
+    # IPFS storage
+    ipfs_image_hash = db.Column(db.String(128))
+    ipfs_metadata_hash = db.Column(db.String(128))
+    ipfs_image_url = db.Column(db.String(256))
+    ipfs_metadata_url = db.Column(db.String(256))
+    
     # Metadata
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

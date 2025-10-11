@@ -4199,6 +4199,156 @@ def api_token_fee_stats(address):
         logging.error(f"Error in fee-stats: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to get fee stats'}), 500
 
+@app.route('/api/token/<address>/upload-image', methods=['POST'])
+def api_token_upload_image(address):
+    """Upload token image to IPFS via Pinata"""
+    try:
+        from services import PinataService
+        
+        # Get token
+        token = Token.query.filter_by(contract_address=address).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Check if file provided
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'error': 'No image file'}), 400
+        
+        file = request.files['image']
+        if not file.filename:
+            return jsonify({'success': False, 'error': 'Empty filename'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
+        filename = secure_filename(file.filename.lower())
+        if '.' not in filename or filename.rsplit('.', 1)[1] not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'Invalid file type. Please upload PNG, JPG, JPEG, or WebP files.'}), 400
+        
+        # Save temp file
+        temp_path = f'/tmp/{token.symbol}_image.webp'
+        file.save(temp_path)
+        
+        # Upload to Pinata
+        pinata = PinataService()
+        ipfs_hash = pinata.upload_file(temp_path, f'{token.symbol}_image')
+        
+        if not ipfs_hash:
+            # Clean up temp file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            return jsonify({'success': False, 'error': 'IPFS upload failed'}), 500
+        
+        # Update token
+        token.ipfs_image_hash = ipfs_hash
+        token.ipfs_image_url = pinata.get_ipfs_url(ipfs_hash)
+        db.session.commit()
+        
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        return jsonify({
+            'success': True,
+            'ipfs_hash': ipfs_hash,
+            'ipfs_url': token.ipfs_image_url
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error uploading image: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<address>/generate-metadata', methods=['POST'])
+def api_token_generate_metadata(address):
+    """Generate and upload token metadata to IPFS"""
+    try:
+        from services import PinataService
+        
+        # Get token
+        token = Token.query.filter_by(contract_address=address).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Check if image is on IPFS
+        if not token.ipfs_image_url:
+            return jsonify({'success': False, 'error': 'Upload image first'}), 400
+        
+        # Generate metadata (ERC-721/ERC-1155 standard)
+        metadata = {
+            'name': token.name,
+            'symbol': token.symbol,
+            'description': token.description or f'{token.name} token on Gemlaunch.fun',
+            'image': token.ipfs_image_url,
+            'external_url': f'https://gemlaunch.fun/token/{token.contract_address}',
+            'attributes': [
+                {'trait_type': 'Creator', 'value': token.creator.wallet_address if token.creator else 'Unknown'},
+                {'trait_type': 'Total Supply', 'value': str(token.total_supply)},
+                {'trait_type': 'Is Graduated', 'value': 'Yes' if token.is_graduated else 'No'}
+            ]
+        }
+        
+        # Upload metadata to IPFS
+        pinata = PinataService()
+        ipfs_hash = pinata.upload_json(metadata, f'{token.symbol}_metadata')
+        
+        if not ipfs_hash:
+            return jsonify({'success': False, 'error': 'Metadata upload failed'}), 500
+        
+        # Update token
+        token.ipfs_metadata_hash = ipfs_hash
+        token.ipfs_metadata_url = pinata.get_ipfs_url(ipfs_hash)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'ipfs_hash': ipfs_hash,
+            'ipfs_url': token.ipfs_metadata_url,
+            'metadata': metadata
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error generating metadata: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<address>/metadata', methods=['GET'])
+def api_token_metadata(address):
+    """Get token metadata from IPFS or generate on-the-fly"""
+    try:
+        token = Token.query.filter_by(contract_address=address).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # If metadata exists on IPFS, return URL
+        if token.ipfs_metadata_url:
+            return jsonify({
+                'success': True,
+                'ipfs_url': token.ipfs_metadata_url,
+                'ipfs_hash': token.ipfs_metadata_hash
+            })
+        
+        # Otherwise, generate metadata on-the-fly (not on IPFS)
+        metadata = {
+            'name': token.name,
+            'symbol': token.symbol,
+            'description': token.description or f'{token.name} token',
+            'image': token.image_url or token.ipfs_image_url,
+            'attributes': [
+                {'trait_type': 'Creator', 'value': token.creator.wallet_address if token.creator else 'Unknown'},
+                {'trait_type': 'Total Supply', 'value': str(token.total_supply)}
+            ]
+        }
+        
+        return jsonify({
+            'success': True,
+            'metadata': metadata,
+            'note': 'Metadata not on IPFS yet'
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching metadata: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/generate-token-image', methods=['POST'])
 def generate_token_image_api():
     """Generate token image using AI (OpenRouter Llama + Replicate FLUX)"""
