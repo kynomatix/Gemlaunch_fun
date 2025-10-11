@@ -164,6 +164,12 @@ class Token(db.Model):
     graduation_tx = db.Column(db.String(128))
     graduated_at = db.Column(db.DateTime)
     
+    # Additional blockchain fields for Phase 2 integration
+    creator_fees_accumulated = db.Column(db.Numeric(precision=20, scale=8), default=0)
+    deployment_block_number = db.Column(db.Integer, nullable=True)
+    nft_position_id = db.Column(db.Integer, nullable=True)
+    liquidity_pool_address = db.Column(db.String(128), nullable=True)
+    
     # Metadata
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -825,3 +831,63 @@ class TransferRequest(db.Model):
     
     def __repr__(self):
         return f'<TransferRequest {self.wallet_address[:10]}... ({self.status})>'
+
+class TradeEvent(db.Model):
+    """Blockchain trade events from BondingCurvePool smart contract"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Trade details
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False, index=True)
+    user_wallet_address = db.Column(db.String(128), nullable=False, index=True)
+    trade_type = db.Column(db.String(16), nullable=False)
+    
+    # Amounts
+    kas_amount = db.Column(db.Numeric(precision=20, scale=8), nullable=False)
+    token_amount = db.Column(db.Numeric(precision=30, scale=0), nullable=False)
+    
+    # Fees
+    platform_fee = db.Column(db.Numeric(precision=20, scale=8), default=0)
+    creator_fee = db.Column(db.Numeric(precision=20, scale=8), default=0)
+    anti_bot_fee = db.Column(db.Numeric(precision=20, scale=8), default=0)
+    
+    # Blockchain info
+    tx_hash = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    block_number = db.Column(db.Integer, nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    
+    # Indexing metadata
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    token = db.relationship('Token', backref='trade_events')
+    
+    def __repr__(self):
+        return f'<TradeEvent {self.trade_type} {self.token_amount} tokens for {self.kas_amount} KAS>'
+
+class AntiBotFeeTracker(db.Model):
+    """Track anti-bot fee distribution (70% Airdrop Treasury, 30% Platform Dev)"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # References
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False, index=True)
+    trade_event_id = db.Column(db.Integer, db.ForeignKey('trade_event.id'), nullable=False)
+    
+    # Fee breakdown
+    total_anti_bot_fee = db.Column(db.Numeric(precision=20, scale=8), nullable=False)
+    airdrop_treasury_amount = db.Column(db.Numeric(precision=20, scale=8), nullable=False)
+    platform_dev_amount = db.Column(db.Numeric(precision=20, scale=8), nullable=False)
+    
+    # Blockchain info
+    tx_hash = db.Column(db.String(128), nullable=False, index=True)
+    block_number = db.Column(db.Integer, nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    
+    # Indexing metadata
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    token = db.relationship('Token', backref='anti_bot_fees')
+    trade_event = db.relationship('TradeEvent', backref='anti_bot_fee_split')
+    
+    def __repr__(self):
+        return f'<AntiBotFeeTracker {self.total_anti_bot_fee} KAS - 70/30 split>'
