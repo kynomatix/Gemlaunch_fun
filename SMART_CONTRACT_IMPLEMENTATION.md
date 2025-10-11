@@ -138,12 +138,35 @@
 **Goal:** Connect Flask backend to blockchain  
 **Dependencies:** ⬅️ Phase 1 (needs deployed contract addresses)
 
+- [ ] **2.0** Transaction Relay & Authorization Model (FOUNDATIONAL)
+  - [ ] **User Transaction Flow** (for buy/sell trades):
+    - Frontend builds unsigned transaction data
+    - User signs transaction with wallet (MetaMask/Kastle/KasWare)
+    - Frontend sends signed transaction to backend
+    - Backend validates signature, relays to blockchain via RPC
+    - Backend returns tx hash, monitors confirmation
+  - [ ] **Privileged Action Flow** (for fee claims, reserve distribution):
+    - Endpoint validates wallet ownership via existing challenge-response system
+    - Check if caller's wallet matches creator/admin address from database
+    - Require fresh signature (nonce timestamp within 5 minutes)
+    - Backend constructs transaction, user signs, backend relays
+  - [ ] **Oracle Actions Flow** (for graduation):
+    - Backend oracle (secondary wallet) directly signs & sends graduation txs
+    - No user interaction required
+    - Monitor market cap, auto-trigger when threshold met
+  - [ ] **Security Requirements**:
+    - Never store private keys for user wallets (only oracle wallet)
+    - Validate all transaction parameters before relay
+    - Rate limit transaction submissions per wallet (10/min)
+    - Log all transaction attempts for audit trail
+
 - [ ] **2.1** Web3 Service (`services/web3_service.py`)
   - [ ] Install: `pip install web3 eth-account`
   - [ ] RPC provider connection (Kasplex testnet)
   - [ ] Load contract ABIs from Hardhat artifacts
-  - [ ] Transaction signing with backend wallet
+  - [ ] Transaction signing with backend wallet (oracle only)
   - [ ] Gas estimation functions
+  - [ ] Transaction relay function (validates, broadcasts, returns tx hash)
 
 - [ ] **2.2** Contract Interaction Layer
   - [ ] `create_token()` → TokenFactory.createToken()
@@ -176,7 +199,133 @@
     - `is_graduated` (boolean)
     - `graduation_tx_hash` (string, nullable)
   - [ ] Create TradeEvent table (on-chain trade history)
+  - [ ] Create AntiBotFeeTracker table (accumulated fees per token)
+  - [ ] Add `nft_position_id` to Token model (post-graduation)
   - [ ] Run migration: `flask db migrate -m "Add blockchain fields"`
+
+- [ ] **2.6** Backend Trading APIs (CRITICAL - Uses Task 2.0 Flow)
+  - [ ] `POST /api/trade/quote-buy` - Get price quote for buy
+    - Call contract `quoteBuy(kasAmount)` (read-only)
+    - Return: tokens out, fees breakdown, effective price
+  - [ ] `POST /api/trade/quote-sell` - Get price quote for sell
+    - Call contract `quoteSell(tokenAmount)` (read-only)
+    - Return: KAS out, fees breakdown, effective price
+  - [ ] `POST /api/trade/buy` - Execute buy transaction
+    - Frontend: Build unsigned tx, user signs with wallet
+    - Backend: Receive signed tx from frontend
+    - Backend: Validate signature matches authenticated user
+    - Backend: Validate parameters (amount, slippage, deadline)
+    - Backend: Relay signed tx to blockchain via Web3 service
+    - Return tx hash, monitor confirmation, update database
+  - [ ] `POST /api/trade/sell` - Execute sell transaction
+    - Frontend: Build unsigned tx, user signs with wallet
+    - Backend: Receive signed tx from frontend
+    - Backend: Validate signature matches authenticated user
+    - Backend: Validate parameters (tokenAmount, minKasOut, deadline)
+    - Backend: Relay signed tx to blockchain via Web3 service
+    - Return tx hash, monitor confirmation, update database
+  - [ ] Auto-slippage calculation service
+    - Calculate safe slippage based on pool liquidity
+    - Adaptive slippage (0.5%-5% based on trade size)
+    - Dynamic warnings for high-impact trades
+
+- [ ] **2.7** Fee Management Routes (Uses Task 2.0 Privileged Flow)
+  - [ ] `POST /api/token/<address>/claim-creator-fees` - Creator claims fees
+    - Verify wallet ownership via challenge-response (Task 2.0)
+    - Check if caller's wallet == token.creator.wallet_address
+    - Require fresh signature (nonce within 5 min)
+    - Backend builds tx, user signs, backend relays
+    - Call `BondingCurvePool.withdrawCreatorFees()`
+    - Return tx hash, update claimable amount display
+  - [ ] `POST /api/admin/distribute-platform-fees/<address>` - Admin distributes fees
+    - Verify wallet ownership via challenge-response (Task 2.0)
+    - Check if caller's wallet == admin wallet (0x5f83...914E)
+    - Require fresh signature (nonce within 5 min)
+    - Backend builds tx, admin signs, backend relays
+    - Call `BondingCurvePool.distributeFees()` (40/30/15/15 split)
+    - Log distribution to database for transparency
+  - [ ] `GET /api/token/<address>/fee-stats` - Get fee statistics
+    - Query `accumulatedPlatformFees`, `accumulatedCreatorFees`
+    - Query `totalAntiBotFeesCollected` from contract
+    - Display claimable amounts and distribution history
+  - [ ] Anti-bot fee tracking dashboard
+    - Database table to track anti-bot fees per token
+    - Admin view showing 70/30 split verification
+    - Track airdrop treasury balance for leaderboard rewards
+
+- [ ] **2.8** Transaction Monitoring Service
+  - [ ] Poll pending transactions and update database
+    - Background service to check tx status every 5 seconds
+    - Update Trade.tx_status when confirmed/failed
+    - Update Token market data when trade confirmed
+  - [ ] WebSocket or Server-Sent Events for tx status updates
+    - Real-time notifications to frontend when tx confirms
+    - Show success/failure messages to user
+    - Auto-refresh balances and market data
+  - [ ] Failed transaction handling
+    - Retry logic with exponential backoff (max 3 retries)
+    - Increase slippage by 1% on retry for slippage failures
+    - Show detailed error messages (insufficient funds, slippage, wallet cap, etc.)
+  - [ ] Transaction queue management
+    - Prevent duplicate pending txs from same user
+    - Show pending tx count in UI
+    - Cancel/replace pending transactions
+
+- [ ] **2.9** Post-Graduation Features (Depends on 2.4-2.5 Event Indexer)
+  - [ ] **PREREQUISITE**: Event indexer must capture NFT position ID from Graduated event
+    - GraduationController emits: `Graduated(poolAddress, nftPositionId, kasLiquidity, tokenLiquidity)`
+    - Event indexer stores nftPositionId in Token.nft_position_id field
+    - This must be working before post-graduation features can display data
+  - [ ] Fetch Kaspa Finance DEX pool data
+    - Use captured nftPositionId to query NFT Position Manager
+    - Query Uniswap V3 pool contract for reserves
+    - Calculate DEX price, APR, 24h volume
+    - Display liquidity depth and swap fees
+  - [ ] Display DEX link and trading stats
+    - Link to Kaspa Finance pool page using nftPositionId
+    - Show NFT position ID for LP tracking
+    - "Trade on DEX" button redirecting to Kaspa Finance
+  - [ ] Redirect users to DEX after graduation
+    - Auto-redirect on graduated token page
+    - Show migration notice with DEX link
+    - Keep historical bonding curve data for reference
+
+- [ ] **2.10** Gas & Network Validation
+  - [ ] Gas estimation for all transactions
+    - Estimate gas before user confirms
+    - Display KAS cost to user (gas × gas price)
+    - Add 20% buffer for safety
+  - [ ] Network validation (Chain ID check)
+    - Verify transactions on Kasplex Testnet (167012)
+    - Show "Wrong Network" modal if on different chain
+    - Prompt user to switch to correct network
+  - [ ] RPC fallback mechanism
+    - Primary RPC: https://rpc.kasplextest.xyz
+    - Fallback RPCs for redundancy
+    - Auto-switch on RPC failure
+
+- [ ] **2.11** Image Storage & Metadata (CRITICAL FIX)
+  - [ ] PROBLEM: Replicate URLs are temporary (expire after 24-48h)
+  - [ ] SOLUTION: Implement permanent storage:
+    - Option A: Upload to IPFS via Pinata/Web3.Storage
+    - Option B: Download and store in `static/uploaded_tokens/`
+    - Option C: Store as on-chain metadata URI
+  - [ ] Update TokenFactory to accept metadata URI
+  - [ ] Create metadata JSON: `{"name": "...", "symbol": "...", "image": "ipfs://..."}`
+  - [ ] Store metadata hash on-chain for decentralization
+
+- [ ] **2.12** Reserve Token Distribution (PRO Tokens - Uses Task 2.0 Privileged Flow)
+  - [ ] `POST /api/token/<address>/distribute-reserve` - Distribute team/marketing allocations
+    - Verify wallet ownership via challenge-response (Task 2.0)
+    - Check if caller's wallet == token.creator.wallet_address
+    - Require fresh signature (nonce within 5 min)
+    - Backend builds distribution tx, creator signs, backend relays
+    - Pull reserve tokens from contract (25% of supply)
+    - Split according to allocations: team%, marketing%, airdrops%
+    - Transfer to designated wallets
+  - [ ] Track distribution history in database
+  - [ ] Show reserve allocation dashboard for creators
+  - [ ] Enforce one-time distribution (can't re-distribute)
 
 **Unlocks:** ✅ Phase 3 (frontend needs API endpoints)
 

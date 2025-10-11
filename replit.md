@@ -64,7 +64,39 @@ gemlaunch.fun is a web platform for creating and launching memecoins on the Kasp
   - WKAS: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
   - QuoterV2: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
 
-- **Phase 1 Status**: ✅ COMPLETE - Ready for Phase 2 (Frontend Integration & Testing)
+- **Phase 1 Status**: ✅ COMPLETE - Ready for Phase 2 (Backend Web3 Integration)
+
+## October 11, 2025 - Phase 2 Planning: COMPLETE ✅
+- **Comprehensive Backend Integration Audit**:
+  - Identified 13 major task sections for blockchain integration (2.0-2.12)
+  - Platform currently uses mock data (tokens, trades, users) - ready for sunset
+  - Critical fixes identified: temporary image URLs, missing fee claim routes, tx monitoring
+  
+- **Phase 2 Final Scope** (Tasks 2.0-2.12):
+  - **2.0**: Transaction relay & authorization model (FOUNDATIONAL) 🔐
+    - 3 distinct flows: User transactions, Privileged actions, Oracle actions
+    - Security: No user key custody, signature validation, rate limiting, audit logs
+  - **2.1-2.5**: Core Web3 infrastructure (RPC, ABIs, event indexer, database)
+  - **2.6**: Trading APIs (quote-buy, quote-sell, buy, sell, auto-slippage) 🚨 CRITICAL
+  - **2.7**: Fee management (creator claims, platform distribution, anti-bot tracking)
+  - **2.8**: Transaction monitoring (status polling, retries, websockets, queue management)
+  - **2.9**: Post-graduation DEX integration (pool data, redirects, NFT positions)
+    - Dependency: Requires event indexer (2.4) capturing NFT position ID first
+  - **2.10**: Gas estimation & network validation (Chain ID checks, RPC fallback)
+  - **2.11**: Permanent image storage (IPFS/Pinata vs temporary Replicate URLs) 🚨 CRITICAL
+  - **2.12**: Reserve token distribution for PRO tokens (team/marketing allocations)
+
+- **Integration Strategy**:
+  - Connect platform piece-by-piece to deployed contracts
+  - Mock data will be sunset after integration (users/tokens/trades cleaned later)
+  - Focus on blockchain connection first, database cleanup deferred
+  - Testnet wallet: ~63 KAS remaining for integration testing
+  
+- **Phase 2 Planning Status**: ✅ COMPLETE - Ready for implementation
+  - All transaction relay flows defined
+  - Wallet authorization model clarified
+  - Sequencing dependencies documented
+  - Architect-reviewed and approved
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
