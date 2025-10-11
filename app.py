@@ -1,6 +1,7 @@
 import os
 import logging
 import secrets
+from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -3667,6 +3668,128 @@ def api_claim_creator_fees(address):
     except Exception as e:
         logging.error(f"Error in claim-creator-fees: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to claim creator fees'}), 500
+
+@app.route('/api/token/<address>/fee-stats', methods=['GET'])
+def api_token_fee_stats(address):
+    """
+    Get comprehensive fee statistics for a token
+    
+    Response:
+    {
+        "success": true,
+        "token_address": "0x...",
+        "token_name": "MyToken",
+        "token_symbol": "MTK",
+        "deployment_status": "deployed",
+        "graduation_status": "bonding_curve",
+        "creator_fees": {
+            "total_accumulated": "10.0",
+            "claimed": "3.0",
+            "available": "7.0"
+        },
+        "platform_fees": {
+            "total_accumulated": "9.0",
+            "distributed": "2.0",
+            "available": "7.0"
+        },
+        "total_fees_generated": "19.0"
+    }
+    
+    Example curl:
+    curl -X GET http://localhost:5000/api/token/0x.../fee-stats
+    """
+    try:
+        pool_address = Web3.to_checksum_address(address)
+        
+        from sqlalchemy import func
+        token = Token.query.filter(func.lower(Token.contract_address) == pool_address.lower()).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        creator_fees_db = token.creator_fees_accumulated or Decimal('0')
+        
+        graduation_status = "graduated" if token.is_graduated else "bonding_curve"
+        
+        stats = {
+            'success': True,
+            'token_address': pool_address,
+            'token_name': token.name,
+            'token_symbol': token.symbol,
+            'deployment_status': token.deployment_status,
+            'graduation_status': graduation_status
+        }
+        
+        if token.deployment_status == 'deployed':
+            web3_service = get_web3_service()
+            
+            try:
+                from models import TradeEvent
+                from sqlalchemy import func
+                
+                creator_available_wei = web3_service.get_creator_claimable(pool_address)
+                platform_available_wei = web3_service.get_platform_claimable(pool_address)
+                
+                creator_total_db = token.creator_fees_accumulated or Decimal('0')
+                creator_total_wei = Web3.to_wei(creator_total_db, 'ether')
+                creator_claimed_wei = max(0, creator_total_wei - creator_available_wei)
+                
+                platform_total_result = db.session.query(
+                    func.coalesce(func.sum(TradeEvent.platform_fee), 0)
+                ).filter(TradeEvent.token_id == token.id).scalar()
+                platform_total_db = Decimal(str(platform_total_result)) if platform_total_result else Decimal('0')
+                platform_total_wei = Web3.to_wei(platform_total_db, 'ether')
+                platform_distributed_wei = max(0, platform_total_wei - platform_available_wei)
+                
+                total_fees_wei = creator_total_wei + platform_total_wei
+                
+                stats['creator_fees'] = {
+                    'total_accumulated': str(Web3.from_wei(creator_total_wei, 'ether')),
+                    'claimed': str(Web3.from_wei(creator_claimed_wei, 'ether')),
+                    'available': str(Web3.from_wei(creator_available_wei, 'ether'))
+                }
+                
+                stats['platform_fees'] = {
+                    'total_accumulated': str(Web3.from_wei(platform_total_wei, 'ether')),
+                    'distributed': str(Web3.from_wei(platform_distributed_wei, 'ether')),
+                    'available': str(Web3.from_wei(platform_available_wei, 'ether'))
+                }
+                
+                stats['total_fees_generated'] = str(Web3.from_wei(total_fees_wei, 'ether'))
+                
+            except Exception as e:
+                logging.error(f"Blockchain fee lookup failed: {str(e)}")
+                stats['creator_fees'] = {
+                    'total_accumulated': str(creator_fees_db),
+                    'claimed': 'N/A',
+                    'available': 'N/A'
+                }
+                stats['platform_fees'] = {
+                    'total_accumulated': 'N/A',
+                    'distributed': 'N/A',
+                    'available': 'N/A'
+                }
+                stats['total_fees_generated'] = str(creator_fees_db)
+        else:
+            stats['creator_fees'] = {
+                'total_accumulated': '0',
+                'claimed': '0',
+                'available': '0'
+            }
+            stats['platform_fees'] = {
+                'total_accumulated': '0',
+                'distributed': '0',
+                'available': '0'
+            }
+            stats['total_fees_generated'] = '0'
+        
+        return jsonify(stats)
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in fee-stats: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in fee-stats: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to get fee stats'}), 500
 
 @app.route('/api/generate-token-image', methods=['POST'])
 def generate_token_image_api():

@@ -722,6 +722,54 @@ class Web3Service:
             logging.error(f"Failed to get platform claimable for pool {pool_address}: {str(e)}")
             raise
     
+    def get_creator_total_accumulated(self, pool_address):
+        """
+        Get total accumulated creator fees from pool
+        Note: accumulatedCreatorFees resets on withdrawal, so this represents current available
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            int: Accumulated creator fees (in wei)
+        """
+        try:
+            logging.debug(f"Getting creator accumulated fees for pool {pool_address}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            accumulated = pool.functions.accumulatedCreatorFees().call()
+            
+            logging.debug(f"Creator accumulated: {accumulated} wei ({self.w3.from_wei(accumulated, 'ether')} KAS)")
+            return accumulated
+            
+        except Exception as e:
+            logging.error(f"Failed to get creator accumulated for pool {pool_address}: {str(e)}")
+            raise
+    
+    def get_platform_total_accumulated(self, pool_address):
+        """
+        Get total accumulated platform fees from pool
+        Note: accumulatedPlatformFees resets on distribution, so this represents current available
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            int: Accumulated platform fees (in wei)
+        """
+        try:
+            logging.debug(f"Getting platform accumulated fees for pool {pool_address}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            accumulated = pool.functions.accumulatedPlatformFees().call()
+            
+            logging.debug(f"Platform accumulated: {accumulated} wei ({self.w3.from_wei(accumulated, 'ether')} KAS)")
+            return accumulated
+            
+        except Exception as e:
+            logging.error(f"Failed to get platform accumulated for pool {pool_address}: {str(e)}")
+            raise
+    
     def distribute_platform_fees_tx_data(self, admin_address, pool_address):
         """
         Build transaction data for pool.distributeFees() - ADMIN TRANSACTION
