@@ -15,7 +15,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from apscheduler.schedulers.background import BackgroundScheduler
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -4198,6 +4198,172 @@ def api_token_fee_stats(address):
     except Exception as e:
         logging.error(f"Error in fee-stats: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to get fee stats'}), 500
+
+@app.route('/api/token/<address>/distribute-reserve', methods=['POST'])
+def api_distribute_reserve(address):
+    """
+    POST /api/token/<address>/distribute-reserve
+    
+    Distribute reserve tokens to recipients (team, marketing, airdrops) - PRO tokens only
+    Creator-only endpoint, one-time distribution enforced by smart contract
+    
+    Request body:
+    {
+        "recipients": ["0x...", "0x...", "0x..."],
+        "amounts": ["1000000000", "500000000", "500000000"],
+        "allocation_types": ["team", "marketing", "airdrop"]
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tx_data": {...},
+        "gas_estimate": {...}
+    }
+    """
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
+        from sqlalchemy import func
+        pool_address = Web3.to_checksum_address(address)
+        token = Token.query.filter(func.lower(Token.contract_address) == pool_address.lower()).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        if token.creator.wallet_address.lower() != user.wallet_address.lower():
+            return jsonify({'success': False, 'error': 'Only token creator can distribute reserve'}), 403
+        
+        data = request.get_json()
+        recipients = data.get('recipients', [])
+        amounts = data.get('amounts', [])
+        allocation_types = data.get('allocation_types', [])
+        
+        if not recipients or not amounts or not allocation_types:
+            return jsonify({'success': False, 'error': 'recipients, amounts, and allocation_types are required'}), 400
+        
+        if len(recipients) != len(amounts) or len(recipients) != len(allocation_types):
+            return jsonify({'success': False, 'error': 'recipients, amounts, and allocation_types must have same length'}), 400
+        
+        amounts_int = [int(amt) for amt in amounts]
+        
+        web3_service = get_web3_service()
+        tx_data = web3_service.distribute_reserve_tx_data(
+            user_address=user.wallet_address,
+            pool_address=pool_address,
+            recipients=recipients,
+            amounts=amounts_int
+        )
+        
+        for i, recipient in enumerate(recipients):
+            distribution = ReserveDistribution(
+                token_id=token.id,
+                recipient_wallet=recipient.lower(),
+                allocation_type=allocation_types[i],
+                amount=amounts_int[i],
+                tx_hash=None,
+                distributed_at=None
+            )
+            db.session.add(distribution)
+        
+        db.session.commit()
+        
+        logging.info(f"Reserve distribution prepared for token {token.symbol} by {user.wallet_address}")
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'gas_estimate': {
+                'gas': tx_data['gas'],
+                'gas_price': tx_data['gasPrice'],
+                'cost_kas': Web3.from_wei(tx_data['gas'] * tx_data['gasPrice'], 'ether')
+            }
+        })
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in distribute-reserve: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in distribute-reserve: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to prepare reserve distribution'}), 500
+
+@app.route('/api/token/<address>/reserve-status', methods=['GET'])
+def api_reserve_status(address):
+    """
+    GET /api/token/<address>/reserve-status
+    
+    Get reserve distribution status for a token
+    
+    Response:
+    {
+        "success": true,
+        "distributed": false,
+        "total_reserve": 250000000,
+        "available_reserve": 250000000,
+        "distribution_history": [],
+        "can_distribute": true,
+        "allocations": {
+            "team": 34.0,
+            "marketing": 33.0,
+            "airdrops": 33.0
+        }
+    }
+    """
+    try:
+        from sqlalchemy import func
+        pool_address = Web3.to_checksum_address(address)
+        token = Token.query.filter(func.lower(Token.contract_address) == pool_address.lower()).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        web3_service = get_web3_service()
+        reserve_status = web3_service.get_reserve_status(pool_address)
+        
+        distribution_history = []
+        distributions = ReserveDistribution.query.filter_by(token_id=token.id).all()
+        
+        for dist in distributions:
+            distribution_history.append({
+                'id': dist.id,
+                'recipient_wallet': dist.recipient_wallet,
+                'allocation_type': dist.allocation_type,
+                'amount': str(dist.amount),
+                'tx_hash': dist.tx_hash,
+                'distributed_at': dist.distributed_at.isoformat() if dist.distributed_at else None,
+                'created_at': dist.created_at.isoformat() if dist.created_at else None
+            })
+        
+        user = get_current_user()
+        can_distribute = (
+            not reserve_status['distributed'] and 
+            user and 
+            token.creator and 
+            user.wallet_address.lower() == token.creator.wallet_address.lower()
+        )
+        
+        return jsonify({
+            'success': True,
+            'distributed': reserve_status['distributed'],
+            'total_reserve': reserve_status['total_reserve'],
+            'available_reserve': reserve_status['available_reserve'],
+            'distribution_history': distribution_history,
+            'can_distribute': can_distribute,
+            'allocations': {
+                'team': token.team_allocation,
+                'marketing': token.marketing_allocation,
+                'airdrops': token.airdrops_allocation
+            }
+        })
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in reserve-status: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in reserve-status: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to get reserve status'}), 500
 
 @app.route('/api/token/<address>/upload-image', methods=['POST'])
 def api_token_upload_image(address):

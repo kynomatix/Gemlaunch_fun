@@ -827,6 +827,100 @@ class Web3Service:
             raise
     
     # =========================
+    # Task 2.12 - Reserve Token Distribution (PRO Tokens)
+    # =========================
+    
+    def distribute_reserve_tx_data(self, user_address, pool_address, recipients, amounts):
+        """
+        Build transaction data for pool.distributeReserve() - CREATOR TRANSACTION
+        
+        Distributes reserve tokens to specified recipients (team, marketing, airdrops).
+        This is a one-time operation per pool enforced by smart contract.
+        
+        Args:
+            user_address (str): Creator's wallet address (must be pool creator)
+            pool_address (str): Pool contract address
+            recipients (list): List of recipient wallet addresses
+            amounts (list): List of token amounts (in wei) corresponding to recipients
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building distributeReserve tx for user {user_address} - Pool: {pool_address}")
+            logging.info(f"Recipients: {recipients}, Amounts: {amounts}")
+            
+            # Convert recipients to checksum addresses
+            recipients_checksum = [Web3.to_checksum_address(addr) for addr in recipients]
+            
+            # Build contract call
+            pool = self.get_bonding_pool_contract(pool_address)
+            tx_data = pool.functions.distributeReserve(
+                recipients_checksum,
+                amounts
+            ).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"distributeReserve tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build distributeReserve tx: {str(e)}")
+            raise
+    
+    def get_reserve_status(self, pool_address):
+        """
+        Get reserve distribution status from pool
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            dict: {
+                'distributed': bool,
+                'available_reserve': int (in wei),
+                'total_reserve': int (in wei)
+            }
+        """
+        try:
+            logging.debug(f"Getting reserve status for pool {pool_address}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            result = pool.functions.getReserveStatus().call()
+            
+            # Result is tuple: (bool distributed, uint256 availableReserve, uint256 totalReserve)
+            status = {
+                'distributed': result[0],
+                'available_reserve': result[1],
+                'total_reserve': result[2]
+            }
+            
+            logging.debug(f"Reserve status: distributed={status['distributed']}, "
+                         f"available={self.w3.from_wei(status['available_reserve'], 'ether')} tokens, "
+                         f"total={self.w3.from_wei(status['total_reserve'], 'ether')} tokens")
+            
+            return status
+            
+        except Exception as e:
+            logging.error(f"Failed to get reserve status for pool {pool_address}: {str(e)}")
+            raise
+    
+    # =========================
     # Task 2.2.3 - GraduationController Interactions (Oracle Only)
     # =========================
     

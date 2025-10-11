@@ -189,6 +189,7 @@ class Token(db.Model):
     # Relationships
     trades = db.relationship('Trade', backref='token', lazy='dynamic')
     holdings = db.relationship('Holding', backref='token', lazy='dynamic')
+    reserve_distributions = db.relationship('ReserveDistribution', backref='token', lazy='dynamic')
     
     @property
     def graduation_threshold(self):
@@ -228,6 +229,30 @@ class Token(db.Model):
     
     def __repr__(self):
         return f'<Token {self.symbol}>'
+
+class ReserveDistribution(db.Model):
+    """Reserve token distribution tracking (PRO tokens only)"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Token reference
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False)
+    
+    # Recipient details
+    recipient_wallet = db.Column(db.String(128), nullable=False, index=True)
+    allocation_type = db.Column(db.String(32), nullable=False)
+    
+    # Amount distributed
+    amount = db.Column(db.Numeric(precision=30, scale=0), nullable=False)
+    
+    # Blockchain tracking
+    tx_hash = db.Column(db.String(128), nullable=True)
+    
+    # Timestamps
+    distributed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f'<ReserveDistribution {self.allocation_type} {self.amount} tokens to {self.recipient_wallet[:10]}...>'
 
 class Trade(db.Model):
     """Trade model for bonding curve transactions"""
