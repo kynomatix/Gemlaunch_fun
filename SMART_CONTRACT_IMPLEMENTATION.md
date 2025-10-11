@@ -138,42 +138,42 @@
 **Goal:** Connect Flask backend to blockchain  
 **Dependencies:** ⬅️ Phase 1 (needs deployed contract addresses)
 
-- [ ] **2.0** Transaction Relay & Authorization Model (FOUNDATIONAL)
-  - [ ] **User Transaction Flow** (for buy/sell trades):
+- [x] **2.0** Transaction Relay & Authorization Model (FOUNDATIONAL) ✅ **COMPLETE**
+  - [x] **User Transaction Flow** (for buy/sell trades):
     - Frontend builds unsigned transaction data
     - User signs transaction with wallet (MetaMask/Kastle/KasWare)
     - Frontend sends signed transaction to backend
     - Backend validates signature, relays to blockchain via RPC
     - Backend returns tx hash, monitors confirmation
-  - [ ] **Privileged Action Flow** (for fee claims, reserve distribution):
+  - [x] **Privileged Action Flow** (for fee claims, reserve distribution):
     - Endpoint validates wallet ownership via existing challenge-response system
     - Check if caller's wallet matches creator/admin address from database
     - Require fresh signature (nonce timestamp within 5 minutes)
     - Backend constructs transaction, user signs, backend relays
-  - [ ] **Oracle Actions Flow** (for graduation):
+  - [x] **Oracle Actions Flow** (for graduation):
     - Backend oracle (secondary wallet) directly signs & sends graduation txs
     - No user interaction required
     - Monitor market cap, auto-trigger when threshold met
-  - [ ] **Security Requirements**:
+  - [x] **Security Requirements**:
     - Never store private keys for user wallets (only oracle wallet)
     - Validate all transaction parameters before relay
     - Rate limit transaction submissions per wallet (10/min)
     - Log all transaction attempts for audit trail
 
-- [ ] **2.1** Web3 Service (`services/web3_service.py`)
-  - [ ] Install: `pip install web3 eth-account`
-  - [ ] RPC provider connection (Kasplex testnet)
-  - [ ] Load contract ABIs from Hardhat artifacts
-  - [ ] Transaction signing with backend wallet (oracle only)
-  - [ ] Gas estimation functions
-  - [ ] Transaction relay function (validates, broadcasts, returns tx hash)
+- [x] **2.1** Web3 Service (`services/web3_service.py`) ✅ **COMPLETE**
+  - [x] Install: `pip install web3 eth-account` ✅ web3==7.13.0 installed
+  - [x] RPC provider connection (Kasplex testnet) ✅ Connected to https://rpc.kasplextest.xyz, Chain ID: 167012
+  - [x] Load contract ABIs from Hardhat artifacts ✅ TokenFactory, GraduationController, BondingCurvePool ABIs loaded
+  - [x] Transaction signing with backend wallet (oracle only) ✅ Oracle wallet derived: 0x5f837F62744D4d80Fc79C3A5346B4A228956914E
+  - [x] Gas estimation functions ✅ estimate_gas() with 20% buffer
+  - [x] Transaction relay function (validates, broadcasts, returns tx hash) ✅ relay_transaction(), wait_for_transaction_receipt(), get_transaction_status()
 
-- [ ] **2.2** Contract Interaction Layer
-  - [ ] `create_token()` → TokenFactory.createToken()
-  - [ ] `buy_tokens()` → BondingCurvePool.buyTokens()
-  - [ ] `sell_tokens()` → BondingCurvePool.sellTokens()
-  - [ ] `initiate_graduation()` → BondingCurvePool.initiateGraduation()
-  - [ ] `complete_graduation()` → GraduationController.completeGraduation()
+- [x] **2.2** Contract Interaction Layer ✅ **COMPLETE**
+  - [x] `create_token()` → TokenFactory.createToken() ✅ create_token_tx_data() implemented
+  - [x] `buy_tokens()` → BondingCurvePool.buyTokens() ✅ buy_tokens_tx_data(), get_buy_quote(), get_auto_slippage()
+  - [x] `sell_tokens()` → BondingCurvePool.sellTokens() ✅ sell_tokens_tx_data(), get_sell_quote()
+  - [x] `initiate_graduation()` → BondingCurvePool.initiateGraduation() ✅ initiate_graduation_oracle() (oracle signs & relays)
+  - [x] `complete_graduation()` → GraduationController.completeGraduation() ✅ complete_graduation_oracle() (oracle signs & relays)
 
 - [ ] **2.3** Graduation Monitor Service
   - [ ] Hook existing KAS/USD oracle (`services/kas_oracle.py`)
@@ -190,18 +190,21 @@
   - [ ] Store events in PostgreSQL
   - [ ] Trigger Flask webhooks on new events
 
-- [ ] **2.5** Database Schema Updates
-  - [ ] Add to Token model:
-    - `contract_address` (string, indexed)
-    - `deployment_tx_hash` (string)
-    - `virtual_kas_reserve` (decimal)
-    - `virtual_token_reserve` (decimal)
-    - `is_graduated` (boolean)
-    - `graduation_tx_hash` (string, nullable)
-  - [ ] Create TradeEvent table (on-chain trade history)
-  - [ ] Create AntiBotFeeTracker table (accumulated fees per token)
-  - [ ] Add `nft_position_id` to Token model (post-graduation)
-  - [ ] Run migration: `flask db migrate -m "Add blockchain fields"`
+- [x] **2.5** Database Schema Updates ✅ **COMPLETE**
+  - [x] Add to Token model:
+    - `contract_address` (string, indexed) ✅ Already existed
+    - `deployment_tx_hash` (string) ✅ Already existed as deployment_tx
+    - `virtual_kas_reserve` (decimal) ✅ Already existed as kas_reserve
+    - `virtual_token_reserve` (decimal) ✅ Already existed as token_reserve
+    - `is_graduated` (boolean) ✅ Already existed
+    - `graduation_tx_hash` (string, nullable) ✅ Already existed as graduation_tx
+    - `creator_fees_accumulated` (Numeric 20,8) ✅ ADDED - tracks claimable creator fees
+    - `deployment_block_number` (Integer) ✅ ADDED - blockchain block number
+    - `nft_position_id` (Integer) ✅ ADDED - Kaspa Finance NFT position after graduation
+    - `liquidity_pool_address` (String 128) ✅ ADDED - Kaspa Finance pool address
+  - [x] Create TradeEvent table (on-chain trade history) ✅ 13 fields: token_id, user_wallet_address, trade_type, kas_amount, token_amount, platform_fee, creator_fee, anti_bot_fee, tx_hash (unique, indexed), block_number (indexed), timestamp, created_at
+  - [x] Create AntiBotFeeTracker table (accumulated fees per token) ✅ 9 fields: token_id, trade_event_id, total_anti_bot_fee, airdrop_treasury_amount (70%), platform_dev_amount (30%), tx_hash, block_number, timestamp, created_at
+  - [x] Run migration: ✅ ALTER TABLE added 4 new columns, tables created via db.create_all(), application running successfully
 
 - [ ] **2.6** Backend Trading APIs (CRITICAL - Uses Task 2.0 Flow)
   - [ ] `POST /api/trade/quote-buy` - Get price quote for buy
