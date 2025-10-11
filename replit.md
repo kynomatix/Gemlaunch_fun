@@ -31,6 +31,41 @@ gemlaunch.fun is a web platform for creating and launching memecoins on the Kasp
   
 - **Phase 0 Status**: ✅ COMPLETE - Ready for Phase 1 (Testnet Deployment)
 
+## October 11, 2025 - Phase 1 Complete: Testnet Deployment Live ✅
+- **Deployed Contracts (Kasplex Testnet - Chain ID: 167012)**:
+  - **TokenFactory**: 0x348640F6e87a0226e8E4CdB5e068282B5D0b2F60
+    - Transaction: 0x7528b202ce5c0484cb30d9db231a470078a6e6f10e945ae407068e5b60874943
+    - Block: 7767989
+    - Gas: ~4.9M (~24.39 KAS)
+  - **GraduationController**: 0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e
+    - Transaction: 0xcf516197a019329ba6c6e8262f67efb652bff9410bf02fa3fecd8d34c2770ca0
+    - Block: 7768289
+    - Gas: ~1.3M (~2.59 KAS)
+  - **Contracts Linked**: TokenFactory → GraduationController verified ✅
+    - Linking Tx: 0x78d5bc4bc87eded7ba9a754253a58829ea1402d7a6c3485d55520bddc41cd3e7
+
+- **Wallet Control Architecture**:
+  - **Primary Wallet** (0xe281e4776FB5De20817D0bbC72B0C4b955565619):
+    - Controls: Owner, Treasury, Platform Dev, Buyback, Kaspa Support, Community Rewards
+    - Env: DEPLOYER_PRIVATE_KEY
+  - **Secondary Wallet** (0x5f837F62744D4d80Fc79C3A5346B4A228956914E):
+    - Controls: Admin, Graduation Oracle, Airdrop Treasury
+    - Derived from deployer (m/44'/60'/0'/0/1) - fully controlled & recoverable
+  - All validation constraints satisfied (treasury ≠ admin, treasury ≠ oracle, airdropTreasury ≠ platformDev) ✅
+
+- **Deployment Infrastructure**:
+  - Created resilient deployment scripts with controlled-address validation
+  - Automated linking script with permission enforcement
+  - Comprehensive deployment summary: `deployments/PHASE_1_DEPLOYMENT_SUMMARY.md`
+  - All verification commands validated against constructor ABIs
+
+- **Kaspa Finance Integration Configured**:
+  - NFT Position Manager: 0x4E25637cF39822364b877F81B18c5B6CF0eeF589
+  - WKAS: 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+  - QuoterV2: 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
+
+- **Phase 1 Status**: ✅ COMPLETE - Ready for Phase 2 (Frontend Integration & Testing)
+
 # User Preferences
 Preferred communication style: Simple, everyday language.
 
