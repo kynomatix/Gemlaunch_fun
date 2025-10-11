@@ -161,5 +161,41 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
   - Logging for each RPC attempt, raises ConnectionError if all fail
   - Ready for multiple fallback RPCs when available
 
-### Next Steps
-- Task 2.11: Image Storage & Metadata - IPFS upload workflow via Pinata
+### Image Storage & Metadata (Task 2.11) (COMPLETE ✅)
+**Date Completed:** October 11, 2025
+
+- ✅ **PinataService**: IPFS upload service for images and JSON metadata
+  - upload_file() - Uploads images to IPFS via Pinata
+  - upload_json() - Uploads JSON metadata to IPFS
+  - get_ipfs_url() - Generates public gateway URLs
+- ✅ **Database Schema**: 4 new IPFS fields added to Token model
+  - ipfs_image_hash (VARCHAR 128) - IPFS hash of token image
+  - ipfs_metadata_hash (VARCHAR 128) - IPFS hash of token metadata
+  - ipfs_image_url (VARCHAR 256) - Full IPFS URL for image
+  - ipfs_metadata_url (VARCHAR 256) - Full IPFS URL for metadata
+- ✅ **Upload Image Endpoint**: POST /api/token/<address>/upload-image
+  - Validates file types (PNG, JPG, JPEG, WebP)
+  - Uploads to IPFS, stores hash/URL in database
+  - Automatic temp file cleanup
+- ✅ **Generate Metadata Endpoint**: POST /api/token/<address>/generate-metadata
+  - ERC-721/ERC-1155 standard metadata structure
+  - Requires image to be uploaded first
+  - Uploads JSON metadata to IPFS
+  - Includes creator, supply, graduation status attributes
+- ✅ **Get Metadata Endpoint**: GET /api/token/<address>/metadata
+  - Returns IPFS URL if metadata exists
+  - Generates on-the-fly metadata as fallback
+- ✅ **Environment Variables**: PINATA_API_KEY, PINATA_API_SECRET
+
+## Phase 2 Status: COMPLETE ✅
+**Total Tasks:** 12/12 completed
+**Completion Date:** October 11, 2025
+
+All blockchain integration features are implemented, architect-approved, and production-ready:
+- ✅ Web3 Service Layer & Contract Interactions
+- ✅ Database Schema (8 blockchain fields + 2 new models)
+- ✅ Trading & Fee Management APIs
+- ✅ Transaction Monitoring (APScheduler + SSE streaming)
+- ✅ Post-Graduation Features (DEX integration)
+- ✅ Gas & Network Validation (RPC fallback active)
+- ✅ Image Storage & Metadata (IPFS via Pinata)
