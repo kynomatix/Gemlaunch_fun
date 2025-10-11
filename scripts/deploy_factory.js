@@ -25,10 +25,13 @@ async function getSecondaryWallet(deployer) {
     
     // For testnet simplicity, derive a secondary address deterministically
     // by creating a new wallet from a derived key
+    // Ensure deployer key has 0x prefix
+    const normalizedKey = deployerPrivateKey.startsWith('0x') ? deployerPrivateKey : `0x${deployerPrivateKey}`;
+    
     const derivedKey = hre.ethers.keccak256(
       hre.ethers.concat([
         hre.ethers.toUtf8Bytes("GEMLAUNCH_SECONDARY_WALLET"),
-        hre.ethers.getBytes(deployerPrivateKey)
+        hre.ethers.getBytes(normalizedKey)
       ])
     );
     
