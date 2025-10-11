@@ -120,8 +120,32 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 - Used for graduation triggers and automated operations
 - No user interaction required
 
+### Trading & Fee Management (Tasks 2.6-2.7) (COMPLETE ✅)
+- ✅ **Quote Endpoints**: GET /api/trade/quote-buy, quote-sell with auto-slippage
+- ✅ **Trade Endpoints**: POST /api/trade/buy, sell with unsigned tx building
+- ✅ **Creator Fee Claiming**: POST /api/token/<address>/claim-creator-fees
+- ✅ **Platform Fee Distribution**: POST /api/admin/distribute-platform-fees (4-way split: 40% dev/30% buyback/15% Kaspa/15% community)
+- ✅ **Fee Statistics**: GET /api/token/<address>/fee-stats with hybrid DB/blockchain tracking
+
+### Transaction Monitoring (Task 2.8) (COMPLETE ✅)
+- ✅ **APScheduler Background Polling**: Checks pending txs every 10 seconds
+- ✅ **SSE Streaming**: GET /api/tx/<hash>/stream with 2-second updates, 5-minute timeout
+- ✅ **Relay Integration**: All relay endpoints enqueue txs for monitoring
+- ✅ **Graceful Shutdown**: Handles worker reloads without orphaned jobs
+
+### Post-Graduation Features (Task 2.9) (COMPLETE ✅)
+- ✅ **DEX Pool Data Endpoint**: GET /api/token/<address>/dex-pool
+  - Returns pool_address, nft_position_id, dex_url for graduated tokens
+  - Returns is_graduated: false for non-graduated tokens
+  - Placeholders for liquidity/volume_24h (future enhancement)
+- ✅ **DEX Redirect Endpoint**: GET /token/<address>/trade
+  - Redirects to https://kaspa.finance/pool/{pool_address} for graduated tokens
+  - Redirects to token detail with flash message for non-graduated tokens
+- ✅ **Flexible Address Validation**: Accepts EVM (0x...) and Kaspa-native formats
+  - Normalization via lowercase + case-insensitive DB lookup
+  - No hardcoded format restrictions (0x prefix, length checks)
+  - Database-driven validation (404 for unknown addresses)
+
 ### Next Steps
-- Implement token deployment flow (connect frontend to createToken)
-- Implement buy/sell trading flow (connect frontend to buy/sell functions)
-- Build blockchain event indexer (listen for trades, update database)
-- Implement graduation monitoring (check market cap, trigger graduation)
+- Task 2.10: Gas & Network Validation - Gas estimation display, chain ID check, RPC fallback
+- Task 2.11: Image Storage & Metadata - IPFS upload workflow via Pinata

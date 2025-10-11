@@ -3138,6 +3138,106 @@ def get_kas_price():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def validate_chain_id():
+    """Ensure we're connected to Kasplex Testnet (167012)"""
+    web3_service = get_web3_service()
+    current_chain_id = web3_service.w3.eth.chain_id
+    
+    if current_chain_id != 167012:
+        raise ValueError(f"Wrong network! Expected 167012, got {current_chain_id}")
+
+@app.route('/api/gas/estimate', methods=['POST'])
+@csrf.exempt
+def api_gas_estimate():
+    """
+    Estimate gas for a transaction with breakdown
+    
+    Request:
+    {
+        "to": "0x...",
+        "from": "0x...",
+        "data": "0x...",
+        "value": "0x0"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "gas_estimate": 123456,
+        "gas_with_buffer": 148147,
+        "gas_price_wei": "1000000000",
+        "gas_price_gwei": "1.0",
+        "estimated_cost_kas": "0.000148147",
+        "estimated_cost_usd": null
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Request data required'}), 400
+        
+        # Build transaction for estimation
+        tx = {
+            'to': data.get('to'),
+            'from': data.get('from'),
+            'data': data.get('data', '0x'),
+            'value': data.get('value', '0x0')
+        }
+        
+        # Validate required fields
+        if not tx['to'] or not tx['from']:
+            return jsonify({'success': False, 'error': 'to and from addresses required'}), 400
+        
+        # Get Web3Service
+        web3_service = get_web3_service()
+        
+        # Estimate gas
+        gas_estimate = web3_service.w3.eth.estimate_gas(tx)
+        gas_with_buffer = int(gas_estimate * 1.2)
+        
+        # Get current gas price
+        gas_price = web3_service.w3.eth.gas_price
+        gas_price_gwei = web3_service.w3.from_wei(gas_price, 'gwei')
+        
+        # Calculate cost
+        cost_wei = gas_with_buffer * gas_price
+        cost_kas = web3_service.w3.from_wei(cost_wei, 'ether')
+        
+        return jsonify({
+            'success': True,
+            'gas_estimate': gas_estimate,
+            'gas_with_buffer': gas_with_buffer,
+            'gas_price_wei': str(gas_price),
+            'gas_price_gwei': str(gas_price_gwei),
+            'estimated_cost_kas': str(cost_kas),
+            'estimated_cost_usd': None
+        })
+    except Exception as e:
+        logging.error(f"Gas estimation failed: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/network/status', methods=['GET'])
+def api_network_status():
+    """Get current network status and connection info"""
+    try:
+        web3_service = get_web3_service()
+        
+        return jsonify({
+            'success': True,
+            'connected': web3_service.w3.is_connected(),
+            'chain_id': web3_service.w3.eth.chain_id,
+            'block_number': web3_service.w3.eth.block_number,
+            'gas_price_gwei': str(web3_service.w3.from_wei(web3_service.w3.eth.gas_price, 'gwei')),
+            'network_name': 'Kasplex Testnet'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'connected': False,
+            'error': str(e)
+        }), 500
+
 def calculate_anti_bot_fee(kas_amount_wei, token):
     """
     Calculate anti-bot fee for a token purchase
@@ -3474,6 +3574,9 @@ def api_trade_buy():
         action = data.get('action', '').strip()
         
         if action == 'build_tx':
+            # Validate chain ID
+            validate_chain_id()
+            
             user_address = data.get('user_address', '').strip()
             token_address = data.get('token_address', '').strip()
             kas_amount = data.get('kas_amount')
@@ -3564,6 +3667,9 @@ def api_trade_buy():
             })
         
         elif action == 'relay_tx':
+            # Validate chain ID
+            validate_chain_id()
+            
             signed_tx = data.get('signed_tx', '').strip()
             
             if not signed_tx:
@@ -3666,6 +3772,9 @@ def api_trade_sell():
         action = data.get('action', '').strip()
         
         if action == 'build_tx':
+            # Validate chain ID
+            validate_chain_id()
+            
             user_address = data.get('user_address', '').strip()
             token_address = data.get('token_address', '').strip()
             token_amount = data.get('token_amount')
@@ -3757,6 +3866,9 @@ def api_trade_sell():
             })
         
         elif action == 'relay_tx':
+            # Validate chain ID
+            validate_chain_id()
+            
             signed_tx = data.get('signed_tx', '').strip()
             
             if not signed_tx:
@@ -3853,6 +3965,9 @@ def api_claim_creator_fees(address):
         action = data.get('action', '').strip()
         
         if action == 'build_tx':
+            # Validate chain ID
+            validate_chain_id()
+            
             creator_address = data.get('creator_address', '').strip()
             
             if not creator_address:
@@ -3921,6 +4036,9 @@ def api_claim_creator_fees(address):
             })
         
         elif action == 'relay_tx':
+            # Validate chain ID
+            validate_chain_id()
+            
             signed_tx = data.get('signed_tx', '').strip()
             
             if not signed_tx:

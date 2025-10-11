@@ -16,6 +16,12 @@ from eth_account.messages import encode_defunct
 KASPLEX_TESTNET_RPC = "https://rpc.kasplextest.xyz"
 KASPLEX_TESTNET_CHAIN_ID = 167012
 
+# RPC Fallback Endpoints (add more when available)
+RPC_ENDPOINTS = [
+    'https://rpc.kasplextest.xyz',
+    # Add fallback RPCs here when available
+]
+
 # Deployed Contract Addresses (from Phase 1)
 TOKEN_FACTORY_ADDRESS = "0x348640F6e87a0226e8E4CdB5e068282B5D0b2F60"
 GRADUATION_CONTROLLER_ADDRESS = "0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e"
@@ -27,8 +33,11 @@ class Web3Service:
     """Main service for Web3 blockchain interactions"""
     
     def __init__(self):
-        """Initialize Web3 connection and load contracts"""
-        self.w3 = self._init_web3()
+        """Initialize Web3Service with RPC fallback support"""
+        # Use fallback mechanism instead of single RPC
+        self.w3 = get_web3_with_fallback()
+        
+        # Rest of initialization
         self.oracle_account = self._init_oracle_account()
         self.contracts = self._load_contracts()
         logging.info(f"Web3Service initialized - Chain ID: {self.w3.eth.chain_id}")
@@ -917,6 +926,26 @@ class Web3Service:
             logging.error(f"Failed to complete graduation for {token_address}: {str(e)}")
             raise
 
+
+def get_web3_with_fallback():
+    """Try RPC endpoints in order until one works"""
+    for rpc_url in RPC_ENDPOINTS:
+        try:
+            w3 = Web3(Web3.HTTPProvider(rpc_url))
+            
+            # Add POA middleware immediately after connection
+            w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+            
+            # Test connection
+            if w3.is_connected():
+                chain_id = w3.eth.chain_id
+                logging.info(f"Connected to RPC: {rpc_url} - Chain ID: {chain_id}")
+                return w3
+        except Exception as e:
+            logging.warning(f"RPC {rpc_url} failed: {str(e)}")
+            continue
+    
+    raise ConnectionError("All RPC endpoints failed")
 
 # Global Web3 service instance
 web3_service = None
