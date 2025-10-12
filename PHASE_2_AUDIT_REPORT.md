@@ -72,17 +72,20 @@ Gas estimation uses 20% buffer, but doesn't account for:
 **Finding:**
 Event indexer polls from `last_indexed_block`, but no handling for:
 - Chain reorganizations (reorgs)
-- Missed blocks during downtime
 - Race conditions between indexer and transaction submission
 
 **Risk:** Database may have incomplete trade history, affecting analytics and fee tracking.
 
 **Recommendation:**
 - Add block confirmation depth (wait 3-5 blocks before considering final)
-- Implement gap detection and backfill logic
 - Add reconciliation checks comparing contract state vs. database
 
-**Priority:** High - Critical for accurate fee tracking
+**Status:** ✅ **PARTIALLY ADDRESSED**
+- Added sanity check warning when indexer is >100 blocks behind (lines 641-645)
+- Logs warning on startup if service was down during blockchain activity
+- Simple, low-complexity solution avoiding "nightmare" gap backfill mechanisms
+
+**Priority:** Medium - Monitor in production
 
 ---
 

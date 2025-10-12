@@ -635,6 +635,12 @@ def index_all_events(from_block=None, to_block='latest'):
         if to_block == 'latest':
             to_block = w3.eth.block_number
         
+        # Sanity check: Warn if indexer is significantly behind
+        blocks_behind = to_block - from_block
+        if blocks_behind > 100:  # ~15 minutes at 6 sec blocks (Kasplex)
+            logger.warning(f"⚠️ Event indexer {blocks_behind} blocks behind")
+            logger.warning("Possible missed events during downtime - check manually if needed")
+        
         logger.info(f"🔍 Indexing events from block {from_block} to {to_block}")
         
         if from_block > to_block:

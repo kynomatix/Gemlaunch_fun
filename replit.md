@@ -132,6 +132,7 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 - ✅ **SSE Streaming**: GET /api/tx/<hash>/stream with 2-second updates, 5-minute timeout
 - ✅ **Relay Integration**: All relay endpoints enqueue txs for monitoring
 - ✅ **Graceful Shutdown**: Handles worker reloads without orphaned jobs
+- ✅ **Event Indexer Sanity Check**: Warns if >100 blocks behind on startup (simple gap detection)
 
 ### Post-Graduation Features (Task 2.9) (COMPLETE ✅)
 - ✅ **DEX Pool Data Endpoint**: GET /api/token/<address>/dex-pool
