@@ -75,3 +75,97 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - **4chan /biz/**: Real-time meme trend scraping.
 - **Reddit CryptoMoonShots**: Community-validated meme trends.
 - **Pinata**: IPFS pinning service for permanent image storage.
+
+---
+
+# Phase 3 Security Audits
+
+## Third Security Audit & Final Fixes ✅
+**Date:** October 12, 2025  
+**Auditor:** Claude Opus (Final Security Review)
+
+### Assessment
+> "The plan is 95% there! Just fix the critical approval bug (CB-1) and implement the missing helper functions."
+
+### Critical Bug Found & Fixed
+
+#### CB-1: Sell Approval Logic Fundamentally Wrong (CRITICAL) ✅ FIXED
+- **Issue:** Code tried to call `poolContract.token()` but BondingCurvePool doesn't have that function
+- **Root Cause:** Misunderstood contract architecture - BondingCurvePool IS the ERC20 token (inherits from ERC20)
+- **Fix:** Removed incorrect token() call, now correctly recognizes:
+  1. BondingCurvePool inherits from ERC20 - it IS the token
+  2. window.tokenContractAddress is the token address (not a separate contract)
+  3. Approval: tokenContract.approve(window.tokenContractAddress, amount)
+  4. This allows sellTokens() to call transferFrom(user, pool, amount)
+
+### High Severity Fixes
+
+#### H-5: AbortController Signal Not Propagated ✅ FIXED
+- Added `signal` parameter to getQuote() method
+- Properly passes signal to fetch options
+- Enables request cancellation for in-flight quotes
+
+#### H-6: Loading State Functions Missing ✅ FIXED
+- Added all 6 missing helper functions:
+  - showQuoteLoading() / hideQuoteLoading()
+  - clearFeeBreakdown()
+  - showQuoteError(errorMessage)
+  - showTradeStatus(message) / hideTradeStatus()
+- Added complete CSS for loading animations and spinner
+
+### Medium Severity Fixes
+
+#### M-5: Gas Estimation Method ✅ FIXED
+- Added estimate_trade_gas() to web3_service.py
+- Estimates gas for buy/sell transactions
+- Returns gas units needed
+
+#### M-6: Quote Methods Implementation ✅ FIXED
+- Added get_buy_quote() to web3_service.py
+- Added get_sell_quote() to web3_service.py
+- Both return: tokens/kas_out, fee breakdown, auto_slippage, price_impact
+
+#### M-7: Deployment Modal Functions ✅ FIXED
+- Added showDeploymentModal()
+- Added hideDeploymentModal()
+- Added updateDeploymentStatus(message)
+
+---
+
+## Fourth Security Audit & Final Data Flow Fixes ✅
+**Date:** October 12, 2025  
+**Auditor:** Claude Opus (Final Data Flow Review)
+
+### Assessment
+> "Great progress! The critical bug (CB-1) is now properly fixed. However, I found 2 medium severity issues that will cause runtime problems."
+
+### Medium Severity Fixes
+
+#### M-8: Quote Data Structure Mismatch (CRITICAL DATA FLOW) ✅ FIXED
+- **Issue:** Quote stored in nested structure but accessed directly
+  - Stored: `window.lastQuote = { data: quote, timestamp, mode }`
+  - Accessed: `window.lastQuote?.auto_slippage_bps` (undefined!)
+- **Result:** Slippage always defaulted to 50 bps instead of using smart contract's calculated value
+- **Fix:** Changed to flat structure using spread operator
+  - Now: `window.lastQuote = { ...quote, timestamp, mode }`
+  - Allows direct access: `window.lastQuote?.auto_slippage_bps` ✅
+
+#### M-9: Sell Quote Uses Wrong Input Parameter ✅ FIXED
+- **Issue:** Sell quotes need `token_amount` but code passed `kas_amount` for both modes
+- **Result:** Sell quote requests would fail with "invalid parameter" error
+- **Fix:** Implemented mode-based parameter selection
+  - BUY mode: User enters KAS → passes `kas_amount` parameter ✅
+  - SELL mode: User enters tokens → passes `token_amount` parameter ✅
+  - Updates correct output field based on mode
+  - USD value calculation works for both modes
+
+### Architect Assessment
+> "The M-8 and M-9 fixes satisfy audit requirements with no blocking defects. Quote persistence now flattens the response object, aligning structure with all access sites. updateTokenAmount() dynamically selects correct parameters, restores sell-quote backend compatibility. No regressions in surrounding logic."
+
+**Verification:**
+- ✅ No stale `lastQuote.data` references found
+- ✅ Flat structure consistent with all slippage calculations
+- ✅ Buy/sell parameter handling verified correct
+- ✅ Output field updates work for both modes
+
+**Status:** Phase 3 plan is **100% complete** after 4 security audits. All critical, high, and medium issues resolved. Planning document ready for implementation.
