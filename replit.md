@@ -75,3 +75,64 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - **4chan /biz/**: Real-time meme trend scraping.
 - **Reddit CryptoMoonShots**: Community-validated meme trends.
 - **Pinata**: IPFS pinning service for permanent image storage.
+
+# Phase 3: Frontend & Wallet Integration
+
+## External Security Audit & Critical Corrections ✅
+**Date:** October 12, 2025  
+**Auditor:** Claude (External Security Review)
+
+### Critical Architectural Flaws Found & Fixed
+
+#### C-1: MetaMask Relay Architecture (CRITICAL) ✅ FIXED
+- **Flaw:** Original plan showed MetaMask transactions needing backend relay
+- **Reality:** MetaMask's `eth_sendTransaction` signs AND broadcasts in one step
+- **Fix:** Sections 3.0 & 3.1 rewritten with wallet-specific branching
+  - MetaMask: Sign (auto-broadcasts) → Monitor
+  - Other wallets: Sign → Relay (backend) → Monitor
+
+#### C-2: Token Ownership Model (CRITICAL) ✅ FIXED
+- **Flaw:** Users deploying tokens become contract owners, platform loses admin control
+- **Reality:** If user calls TokenFactory.createToken(), they become owner (can pause/unpause)
+- **Fix:** Section 3.2 completely rewritten
+  - **Backend oracle wallet deploys tokens** (user is creator, not owner)
+  - Platform retains ownership and admin controls
+  - Added IPFS upload integration
+
+#### C-3: Sell Transaction Parameters (CRITICAL) ✅ FIXED
+- **Flaw:** Sell transactions used wrong parameter name (`kas_amount`)
+- **Reality:** Buy and sell have different parameter structures
+- **Fix:** Section 3.3 corrected
+  - Buy: `{kas_amount, min_tokens_out, deadline}`
+  - Sell: `{token_amount, min_kas_out, deadline}`
+
+#### High Severity Issues Fixed
+- **H-1:** Added slippage protection to all trades (min_out + deadline)
+- **H-2:** Added IPFS upload integration to token creation
+- **H-3:** Documented ABI loading in web3_service
+- **H-4:** Fixed contract method: `graduated()` (not `isGraduated()`)
+
+### Architect Review: PASSED ✅
+> **"Pass – Phase 3 plan corrections align with audit requirements and are ready for implementation."**
+
+### Corrected Architecture
+
+**Transaction Flow:**
+```
+MetaMask: Quote → Build → Sign (eth_sendTransaction) → Monitor
+Others:   Quote → Build → Sign → Relay (backend) → Monitor
+```
+
+**Token Creation:**
+```
+OLD (Wrong): User deploys → User is owner ❌
+NEW (Correct): Backend deploys → User is creator ✅
+```
+
+**Trade Parameters:**
+```
+Buy:  {kas_amount, min_tokens_out, deadline} ✅
+Sell: {token_amount, min_kas_out, deadline} ✅
+```
+
+**Status:** Phase 3 plan is security-audited, architect-approved, and ready for implementation.
