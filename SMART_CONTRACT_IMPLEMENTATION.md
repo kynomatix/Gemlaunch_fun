@@ -1064,12 +1064,36 @@ window.TransactionManager = TransactionManager;
   let quoteAbortController = null;  // ⚠️ M-2 FIX: Add AbortController for canceling in-flight requests
   
   async function updateTokenAmount() {
-      const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+      const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
       
-      if (kasAmount <= 0) {
-          document.getElementById('tokenAmount').value = 0;
-          clearFeeBreakdown();
-          return;
+      // ⚠️ M-9 FIX: Get appropriate input amount based on mode
+      let params = {
+          token_address: window.tokenContractAddress
+      };
+      
+      if (action === 'buy') {
+          // BUY: User enters KAS, gets token amount
+          const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+          
+          if (kasAmount <= 0) {
+              document.getElementById('tokenAmount').value = 0;
+              clearFeeBreakdown();
+              return;
+          }
+          
+          params.kas_amount = kasAmount;  // ✅ Buy needs kas_amount
+          
+      } else { // sell
+          // SELL: User enters tokens, gets KAS amount
+          const tokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
+          
+          if (tokenAmount <= 0) {
+              document.getElementById('kasAmount').value = 0;
+              clearFeeBreakdown();
+              return;
+          }
+          
+          params.token_amount = tokenAmount;  // ✅ Sell needs token_amount
       }
       
       // ⚠️ M-2 FIX: Cancel previous request if still pending
@@ -1085,18 +1109,22 @@ window.TransactionManager = TransactionManager;
               showQuoteLoading();
               
               const quote = await window.txManager.getQuote(
-                  TokenDetail.currentTradeMode, // 'buy' or 'sell'
-                  {
-                      token_address: window.tokenContractAddress,
-                      kas_amount: kasAmount
-                  },
+                  action,
+                  params,  // ✅ Now has correct parameter for each mode
                   quoteAbortController.signal  // ⚠️ M-2 FIX: Pass abort signal
               );
               
               if (quote.success) {
-                  // Update token amount
-                  document.getElementById('tokenAmount').value = 
-                      Math.floor(quote.tokens_out);
+                  // ⚠️ M-9 FIX: Update the OUTPUT field based on mode
+                  if (action === 'buy') {
+                      // Show tokens user will receive
+                      document.getElementById('tokenAmount').value = 
+                          Math.floor(quote.tokens_out);
+                  } else { // sell
+                      // Show KAS user will receive
+                      document.getElementById('kasAmount').value = 
+                          quote.kas_out.toFixed(6);
+                  }
                   
                   // Display fee breakdown
                   displayFeeBreakdown({
@@ -1106,8 +1134,11 @@ window.TransactionManager = TransactionManager;
                       priceImpact: quote.price_impact_percent || 0
                   });
                   
-                  // Update USD value
-                  const usdAmount = kasAmount * TokenDetail.kasToUsd;
+                  // ⚠️ M-9 FIX: Update USD value (works for both modes)
+                  const kasValue = action === 'buy' 
+                      ? params.kas_amount 
+                      : quote.kas_out;
+                  const usdAmount = kasValue * TokenDetail.kasToUsd;
                   document.querySelector('.input-addon').textContent = 
                       `$${usdAmount.toFixed(2)} USD`;
               }
@@ -1363,8 +1394,10 @@ window.TransactionManager = TransactionManager;
       // ... existing code ...
       
       if (quote.success) {
+          // ⚠️ M-8 FIX: Use flat structure (spread quote properties at top level)
+          // This allows direct access to quote.auto_slippage_bps, etc.
           window.lastQuote = {
-              data: quote,
+              ...quote,  // ✅ Flatten - spread all quote properties
               timestamp: Date.now(),
               mode: TokenDetail.currentTradeMode  // 'buy' or 'sell'
           };
