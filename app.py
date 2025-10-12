@@ -4522,6 +4522,234 @@ def generate_token_image_api():
             'error': f'Failed to generate image: {str(e)}'
         }), 500
 
+@app.route('/api/token/create', methods=['POST'])
+@csrf.exempt
+def api_create_token():
+    """
+    Create token with wallet signing (decentralized approach)
+    
+    Request Format:
+    {
+        "name": "MyToken",
+        "symbol": "MTK",
+        "description": "My awesome token",
+        "total_supply": "1000000000",
+        "reserved_percentage": "10",
+        "anti_bot_enabled": true,
+        "image_file": "<base64>",  // OR
+        "ipfs_hash": "Qm...",  // if already uploaded
+        "website": "https://...",
+        "twitter": "https://twitter.com/...",
+        "telegram": "https://t.me/..."
+    }
+    
+    Response Format (Success):
+    {
+        "success": true,
+        "tx_data": {
+            "to": "0x...",
+            "value": "0x0",
+            "data": "0x...",
+            "gas": "0x..."
+        },
+        "estimated_gas": 500000,
+        "token_id": 123
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        # Validate chain ID
+        validate_chain_id()
+        
+        # Get user_address from session or request
+        user_address = session.get('wallet_address')
+        if not user_address:
+            user_address = (data.get('user_address') or '').strip()
+        
+        if not user_address:
+            return jsonify({'success': False, 'error': 'Wallet connection required'}), 400
+        
+        # Validate required fields
+        name = (data.get('name') or '').strip()
+        symbol = (data.get('symbol') or '').strip().upper()
+        description = (data.get('description') or '').strip()
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'Token name is required'}), 400
+        
+        if not symbol:
+            return jsonify({'success': False, 'error': 'Token symbol is required'}), 400
+        
+        # Validate total_supply
+        try:
+            total_supply = int(data.get('total_supply', 1000000000))
+            if total_supply <= 0:
+                return jsonify({'success': False, 'error': 'Total supply must be greater than 0'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid total_supply format'}), 400
+        
+        # Validate reserved_percentage
+        try:
+            reserved_percentage = float(data.get('reserved_percentage', 0))
+            if reserved_percentage < 0 or reserved_percentage > 25:
+                return jsonify({'success': False, 'error': 'Reserved percentage must be between 0 and 25'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid reserved_percentage format'}), 400
+        
+        # Check name/symbol uniqueness
+        existing_by_name = Token.query.filter(db.func.lower(Token.name) == name.lower()).first()
+        if existing_by_name:
+            return jsonify({'success': False, 'error': f'Token name "{name}" already exists'}), 400
+        
+        existing_by_symbol = Token.query.filter(db.func.lower(Token.symbol) == symbol.lower()).first()
+        if existing_by_symbol:
+            return jsonify({'success': False, 'error': f'Token symbol "{symbol}" already exists'}), 400
+        
+        # Handle IPFS image upload/hash
+        ipfs_hash = (data.get('ipfs_hash') or '').strip()
+        image_file_base64 = (data.get('image_file') or '').strip()
+        ipfs_image_url = None
+        
+        if not ipfs_hash and not image_file_base64:
+            return jsonify({'success': False, 'error': 'Either ipfs_hash or image_file is required'}), 400
+        
+        # If image_file provided, upload to IPFS
+        if image_file_base64 and not ipfs_hash:
+            try:
+                from services.pinata_service import PinataService
+                import base64
+                import tempfile
+                
+                pinata = PinataService()
+                
+                # Decode base64 image
+                image_data = base64.b64decode(image_file_base64)
+                
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                    tmp_file.write(image_data)
+                    tmp_file_path = tmp_file.name
+                
+                # Upload to IPFS
+                ipfs_hash = pinata.upload_file(tmp_file_path, f"{symbol}_image")
+                
+                # Clean up temp file
+                os.remove(tmp_file_path)
+                
+                if not ipfs_hash:
+                    return jsonify({'success': False, 'error': 'Failed to upload image to IPFS'}), 500
+                
+            except Exception as e:
+                logging.error(f"Error uploading image to IPFS: {str(e)}")
+                return jsonify({'success': False, 'error': f'IPFS upload failed: {str(e)}'}), 500
+        
+        # Generate IPFS URL
+        if ipfs_hash:
+            from services.pinata_service import PinataService
+            pinata = PinataService()
+            ipfs_image_url = pinata.get_ipfs_url(ipfs_hash)
+        
+        # Get or create user
+        user = User.get_or_create_by_wallet(user_address)
+        
+        # Create database record with status='pending'
+        new_token = Token()
+        new_token.name = name
+        new_token.symbol = symbol
+        new_token.description = description
+        new_token.total_supply = total_supply
+        new_token.reserved_percentage = reserved_percentage
+        new_token.anti_bot_enabled = bool(data.get('anti_bot_enabled', False))
+        
+        # Calculate reserved tokens
+        if reserved_percentage > 0:
+            new_token.reserved_tokens = int(total_supply * (reserved_percentage / 100))
+        else:
+            new_token.reserved_tokens = 0
+        
+        # Social links
+        new_token.website = (data.get('website') or '').strip()
+        new_token.twitter = (data.get('twitter') or '').strip()
+        new_token.telegram = (data.get('telegram') or '').strip()
+        
+        # IPFS data
+        new_token.ipfs_image_hash = ipfs_hash
+        new_token.ipfs_image_url = ipfs_image_url
+        new_token.image_url = ipfs_image_url
+        
+        # Set creator and status
+        new_token.creator_id = user.id
+        new_token.deployment_status = 'pending'
+        new_token.circulating_supply = 0
+        new_token.current_price = 0.001
+        new_token.current_market_cap = 1000
+        
+        # Add to database and flush to get ID
+        db.session.add(new_token)
+        db.session.flush()
+        
+        token_id = new_token.id
+        
+        # Create default token settings
+        from models_extended import TokenSettings
+        token_settings = TokenSettings(token_id=token_id)
+        db.session.add(token_settings)
+        
+        # Commit to database
+        db.session.commit()
+        
+        logging.info(f"Token database record created - ID: {token_id}, Name: {name}, Symbol: {symbol}")
+        
+        # Build unsigned transaction
+        try:
+            user_address_checksum = Web3.to_checksum_address(user_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid wallet address format'}), 400
+        
+        web3_service = get_web3_service()
+        
+        # Convert total_supply to wei (assuming 18 decimals)
+        total_supply_wei = total_supply * (10 ** 18)
+        
+        unsigned_tx = web3_service.create_token_tx_data(
+            user_address_checksum,
+            name,
+            symbol,
+            total_supply_wei,
+            description or f"{name} token",
+            ipfs_image_url or "",
+            new_token.twitter or "",
+            new_token.telegram or "",
+            new_token.website or "",
+            new_token.anti_bot_enabled
+        )
+        
+        # Format response for frontend
+        tx_data = {
+            'to': unsigned_tx['to'],
+            'value': hex(unsigned_tx['value']),
+            'data': unsigned_tx['data'],
+            'gas': hex(unsigned_tx['gas'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'estimated_gas': unsigned_tx['gas'],
+            'token_id': token_id
+        })
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in token/create: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in token/create: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Failed to create token: {str(e)}'}), 500
+
 @app.route('/api/admin/distribute-platform-fees', methods=['POST'])
 @csrf.exempt
 def api_distribute_platform_fees():
