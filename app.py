@@ -3326,7 +3326,8 @@ def api_quote_buy():
         except Exception:
             return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
         
-        token = Token.query.filter_by(contract_address=token_address).first()
+        # Case-insensitive query (database stores lowercase addresses)
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
@@ -3452,7 +3453,8 @@ def api_quote_sell():
         except Exception:
             return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
         
-        token = Token.query.filter_by(contract_address=token_address).first()
+        # Case-insensitive query (database stores lowercase addresses)
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
@@ -3780,7 +3782,8 @@ def api_estimate_gas(action):
         except Exception:
             return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
         
-        token = Token.query.filter_by(contract_address=token_address).first()
+        # Case-insensitive query (database stores lowercase addresses)
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
