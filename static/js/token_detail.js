@@ -475,12 +475,39 @@
         },
         
         displayFeeBreakdown: function(fees) {
-            // Placeholder - will be implemented in Phase 3.6
-            console.log('Fee breakdown:', fees);
+            const feeBreakdown = document.getElementById('feeBreakdown');
+            if (!feeBreakdown) return;
+            
+            // Show breakdown
+            feeBreakdown.style.display = 'block';
+            
+            // Update fee values (convert from wei to KAS if needed)
+            const platformFee = fees.platform_fee_kas || 0;
+            const creatorFee = fees.creator_fee_kas || 0;
+            const protocolFee = fees.protocol_fee_kas || 0;
+            const totalFees = fees.total_fees_kas || 0;
+            const slippageBps = fees.auto_slippage_bps || 50;
+            
+            document.getElementById('feePlatform').textContent = `${platformFee.toFixed(6)} KAS`;
+            document.getElementById('feeCreator').textContent = `${creatorFee.toFixed(6)} KAS`;
+            document.getElementById('feeProtocol').textContent = `${protocolFee.toFixed(6)} KAS`;
+            document.getElementById('feeTotal').textContent = `${totalFees.toFixed(6)} KAS`;
+            document.getElementById('feeSlippage').textContent = `${(slippageBps / 100).toFixed(2)}%`;
         },
         
         clearFeeBreakdown: function() {
-            // Placeholder - will be implemented in Phase 3.6
+            const feeBreakdown = document.getElementById('feeBreakdown');
+            if (!feeBreakdown) return;
+            
+            // Hide breakdown
+            feeBreakdown.style.display = 'none';
+            
+            // Reset values to 0
+            document.getElementById('feePlatform').textContent = '0 KAS';
+            document.getElementById('feeCreator').textContent = '0 KAS';
+            document.getElementById('feeProtocol').textContent = '0 KAS';
+            document.getElementById('feeTotal').textContent = '0 KAS';
+            document.getElementById('feeSlippage').textContent = '0.50%';
         },
         
         showQuoteError: function(message) {

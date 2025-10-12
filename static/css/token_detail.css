@@ -775,6 +775,36 @@
     box-shadow: 0 8px 25px rgba(32, 178, 170, 0.5);
 }
 
+.fee-breakdown {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 16px 0;
+}
+
+.fee-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+
+.fee-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    color: #d1d5db;
+}
+
+.fee-item.total {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 6px;
+    padding-top: 10px;
+    font-weight: 600;
+    color: #fff;
+}
+
 .chat-panel {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(32, 178, 170, 0.2);
