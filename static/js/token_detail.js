@@ -50,6 +50,9 @@
         quoteTimeout: null,
         quoteAbortController: null,
         
+        // Graduation polling interval
+        graduationPollingInterval: null,
+        
         // Initialize the module with data from server
         init: function(config) {
             this.tokenPrice = config.tokenPrice;
@@ -80,6 +83,26 @@
             setTimeout(() => {
                 this.initializeChatState();
             }, 100);
+            
+            // Initialize graduation status polling
+            this.fetchGraduationStatus();
+            
+            // Clear existing interval if any
+            if (this.graduationPollingInterval) {
+                clearInterval(this.graduationPollingInterval);
+            }
+            
+            // Poll graduation status every 30 seconds
+            this.graduationPollingInterval = setInterval(() => {
+                this.fetchGraduationStatus();
+            }, 30000);
+            
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', () => {
+                if (this.graduationPollingInterval) {
+                    clearInterval(this.graduationPollingInterval);
+                }
+            });
         },
         
         // Number formatting function
@@ -2118,6 +2141,85 @@
                 console.error('Failed to create spotlight:', error);
                 this.showNotification('❌ Error', 'Failed to create spotlight message', 'error');
             }
+        },
+        
+        fetchGraduationStatus: async function() {
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/graduation-status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.is_graduated) {
+                        this.updateGraduationProgress({
+                            marketCap: 70000,
+                            graduationThreshold: 70000,
+                            isGraduated: true,
+                            dexPoolAddress: data.dex_pool?.pool_address
+                        });
+                    } else {
+                        this.updateGraduationProgress({
+                            marketCap: data.current_market_cap,
+                            graduationThreshold: data.graduation_threshold || 70000,
+                            isGraduated: false,
+                            progressPercent: data.progress_percent
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch graduation status:', error);
+            }
+        },
+        
+        updateGraduationProgress: function(data) {
+            const progressPercent = data.progressPercent || (data.marketCap / data.graduationThreshold) * 100;
+            const progressBar = document.querySelector('.progress-fill');
+            
+            if (progressBar) {
+                progressBar.style.width = `${Math.min(progressPercent, 100)}%`;
+            }
+            
+            const marketCapElement = document.getElementById('marketCapValue');
+            if (marketCapElement) {
+                marketCapElement.textContent = 
+                    `$${data.marketCap.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            }
+            
+            if (data.isGraduated) {
+                this.showGraduatedStatus(data.dexPoolAddress);
+            } else if (progressPercent >= 100) {
+                this.showGraduatingStatus();
+            }
+        },
+        
+        showGraduatedStatus: function(poolAddress) {
+            const container = document.getElementById('graduationStatus');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div style="background: linear-gradient(135deg, #4CAF50, #45a049); 
+                            padding: 1rem; border-radius: 10px; text-align: center;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">🎓 Graduated to Kaspa Finance DEX</h3>
+                    <a href="https://kaspa.finance/pool/${poolAddress}" 
+                       target="_blank" 
+                       class="btn btn-primary" 
+                       style="margin-top: 0.5rem; display: inline-block; padding: 0.5rem 1rem; background: #fff; color: #4CAF50; text-decoration: none; border-radius: 5px; font-weight: 600;">
+                        Trade on DEX →
+                    </a>
+                </div>
+            `;
+        },
+        
+        showGraduatingStatus: function() {
+            const container = document.getElementById('graduationStatus');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div style="background: linear-gradient(135deg, #FFA500, #FF8C00); 
+                            padding: 1rem; border-radius: 10px; text-align: center;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">🚀 Graduating to DEX...</h3>
+                    <p style="margin: 0; color: #fff; font-size: 0.9rem;">Market cap reached $70,000! Liquidity pool deploying...</p>
+                </div>
+            `;
         }
     };
     
