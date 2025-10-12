@@ -436,6 +436,16 @@ class TransactionManager {
     constructor(walletManager) {
         this.walletManager = walletManager;
         this.activeTransactions = new Map(); // Track pending txs
+        
+        // ⚠️ NC-2 FIX: Cleanup SSE connections on page unload
+        window.addEventListener('beforeunload', () => {
+            this.closeAllConnections();
+        });
+        
+        // Also cleanup on navigation (for SPAs)
+        window.addEventListener('popstate', () => {
+            this.closeAllConnections();
+        });
     }
     
     // ===== PHASE 1: GET QUOTE =====
@@ -617,6 +627,53 @@ class TransactionManager {
         this.activeTransactions.set(txHash, eventSource);
     }
     
+    // ⚠️ H-2 FIX: Network Validation
+    async validateNetwork() {
+        const provider = this.walletManager.getMetaMaskProvider();
+        const chainId = await provider.request({method: 'eth_chainId'});
+        
+        const KASPLEX_TESTNET_CHAIN_ID = '0x28C9C'; // 167012 in hex
+        
+        if (chainId !== KASPLEX_TESTNET_CHAIN_ID) {
+            const switchRequested = await ModalManager.confirm(
+                'Wrong Network',
+                'Please switch to Kasplex Testnet (Chain ID: 167012)',
+                'Switch Network'
+            );
+            
+            if (!switchRequested) {
+                throw new Error('User cancelled network switch');
+            }
+            
+            try {
+                await provider.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{chainId: KASPLEX_TESTNET_CHAIN_ID}]
+                });
+            } catch (switchError) {
+                // Chain not added to wallet yet
+                if (switchError.code === 4902) {
+                    await provider.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: KASPLEX_TESTNET_CHAIN_ID,
+                            chainName: 'Kasplex zkEVM Testnet',
+                            nativeCurrency: {
+                                name: 'KAS',
+                                symbol: 'KAS',
+                                decimals: 18
+                            },
+                            rpcUrls: ['https://rpc.kasplextest.xyz'],
+                            blockExplorerUrls: ['http://explorer.testnet.kasplextest.xyz']
+                        }]
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+    }
+    
     // ===== COMPLETE FLOW (Wallet-aware execution) =====
     async executeTransaction(txType, params, callbacks) {
         /*
@@ -635,6 +692,9 @@ class TransactionManager {
         });
         */
         try {
+            // ⚠️ H-2 FIX: Validate network before transaction
+            await this.validateNetwork();
+            
             // Phase 2: Build unsigned tx
             callbacks.onUpdate({status: 'building', message: 'Preparing transaction...'});
             const buildResult = await this.buildTransaction(txType, params);
@@ -744,8 +804,10 @@ window.TransactionManager = TransactionManager;
               ipfsHash = await uploadImageToIPFS(imageFile);
               updateDeploymentStatus(`Image uploaded: ${ipfsHash}`);
           } catch (error) {
-              ModalManager.alert('Upload Failed', 'Failed to upload image to IPFS', 'error');
-              return;
+              // ⚠️ M-1 FIX: Abort deployment on IPFS failure instead of continuing
+              hideDeploymentModal();
+              ModalManager.alert('Upload Failed', 'Failed to upload image to IPFS. Please try again.', 'error');
+              return;  // ABORT instead of continuing with ipfsHash = null
           }
       }
       
@@ -898,6 +960,44 @@ window.TransactionManager = TransactionManager;
           'contract_address': contract_address
       }
   ```
+  
+  **⚠️ H-1 FIX: TokenFactory Contract Initialization**
+  ```python
+  # In services/web3_service.py __init__
+  class Web3Service:
+      def __init__(self):
+          self.w3 = Web3(Web3.HTTPProvider(config.RPC_URL))
+          
+          # Load deployed contract addresses
+          self.token_factory_address = config.TOKEN_FACTORY_ADDRESS
+          self.graduation_controller_address = config.GRADUATION_CONTROLLER_ADDRESS
+          
+          # Load ABIs
+          import json, os
+          abi_dir = os.path.join(os.path.dirname(__file__), '../contracts/abis')
+          
+          with open(os.path.join(abi_dir, 'TokenFactory.json')) as f:
+              factory_abi = json.load(f)['abi']
+          
+          # Initialize contract instances
+          self.token_factory_contract = self.w3.eth.contract(
+              address=Web3.to_checksum_address(self.token_factory_address),
+              abi=factory_abi
+          )
+          
+          # Initialize oracle account
+          self.oracle_account = self.w3.eth.account.from_key(
+              config.ORACLE_PRIVATE_KEY
+          )
+  ```
+  
+  **Also add config settings:**
+  ```python
+  # In config.py (add these)
+  TOKEN_FACTORY_ADDRESS = os.getenv('TOKEN_FACTORY_ADDRESS')
+  GRADUATION_CONTROLLER_ADDRESS = os.getenv('GRADUATION_CONTROLLER_ADDRESS')
+  ORACLE_PRIVATE_KEY = os.getenv('ORACLE_PRIVATE_KEY')  # Secure storage!
+  ```
 
 - [ ] **Step 3: Add deployment status modal**
   ```html
@@ -934,6 +1034,7 @@ window.TransactionManager = TransactionManager;
   ```javascript
   // In token_detail.js, replace updateTokenAmount()
   let quoteTimeout = null;
+  let quoteAbortController = null;  // ⚠️ M-2 FIX: Add AbortController for canceling in-flight requests
   
   async function updateTokenAmount() {
       const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
@@ -943,6 +1044,12 @@ window.TransactionManager = TransactionManager;
           clearFeeBreakdown();
           return;
       }
+      
+      // ⚠️ M-2 FIX: Cancel previous request if still pending
+      if (quoteAbortController) {
+          quoteAbortController.abort();
+      }
+      quoteAbortController = new AbortController();
       
       // Debounce API calls (300ms)
       clearTimeout(quoteTimeout);
@@ -955,7 +1062,8 @@ window.TransactionManager = TransactionManager;
                   {
                       token_address: window.tokenContractAddress,
                       kas_amount: kasAmount
-                  }
+                  },
+                  quoteAbortController.signal  // ⚠️ M-2 FIX: Pass abort signal
               );
               
               if (quote.success) {
@@ -978,6 +1086,10 @@ window.TransactionManager = TransactionManager;
               }
               
           } catch (error) {
+              // ⚠️ M-2 FIX: Ignore aborted requests
+              if (error.name === 'AbortError') {
+                  return; // Request cancelled, ignore
+              }
               console.error('Quote failed:', error);
               showQuoteError(error.message);
           } finally {
@@ -1040,6 +1152,17 @@ window.TransactionManager = TransactionManager;
           return;
       }
       
+      // ⚠️ NC-3 FIX: Validate quote freshness
+      if (!isQuoteFresh()) {
+          ModalManager.alert(
+              'Quote Expired',
+              'Please wait for updated quote...',
+              'warning'
+          );
+          await updateTokenAmount();  // Refresh quote
+          return;
+      }
+      
       const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
       
       // Build parameters based on trade type
@@ -1050,6 +1173,27 @@ window.TransactionManager = TransactionManager;
           
           if (kasAmount <= 0) {
               ModalManager.alert('Invalid Amount', 'Please enter a valid KAS amount.', 'error');
+              return;
+          }
+          
+          // ⚠️ H-3 FIX: Check KAS balance before buy
+          const wallet = window.walletManager.getConnectedWallet();
+          const provider = window.walletManager.getMetaMaskProvider();
+          
+          const balance = await provider.request({
+              method: 'eth_getBalance',
+              params: [wallet.address, 'latest']
+          });
+          
+          const balanceKAS = parseFloat(Web3.utils.fromWei(balance, 'ether'));
+          const requiredKAS = kasAmount * 1.01; // Add 1% for gas
+          
+          if (balanceKAS < requiredKAS) {
+              ModalManager.alert(
+                  'Insufficient Balance',
+                  `You need ${requiredKAS.toFixed(4)} KAS (including gas) but only have ${balanceKAS.toFixed(4)} KAS`,
+                  'error'
+              );
               return;
           }
           
@@ -1064,11 +1208,17 @@ window.TransactionManager = TransactionManager;
               deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
           };
           
-          // Confirmation modal
+          // ⚠️ H-4 FIX: Get gas estimate and display before confirmation
+          const gasEstimate = await estimateTradeGas(action, params);
+          const gasCostKAS = Web3.utils.fromWei(gasEstimate.toString(), 'ether');
+          const gasCostUSD = (parseFloat(gasCostKAS) * TokenDetail.kasToUsd).toFixed(2);
+          
+          // Enhanced confirmation modal with gas estimate
           const confirmed = await ModalManager.confirm(
               'Confirm BUY Order',
               `Buy ${expectedTokens.toLocaleString()} ${TokenDetail.tokenSymbol} for ${kasAmount} KAS?<br>
-               <small>Min tokens: ${minTokensOut.toLocaleString()} (slippage protected)</small>`,
+               <small>Min tokens: ${minTokensOut.toLocaleString()} (slippage protected)</small><br>
+               <small>Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})</small>`,
               'Buy'
           );
           if (!confirmed) return;
@@ -1082,6 +1232,56 @@ window.TransactionManager = TransactionManager;
               return;
           }
           
+          // ⚠️ NC-1 FIX: CHECK ERC20 APPROVAL FIRST
+          const wallet = window.walletManager.getConnectedWallet();
+          const provider = window.walletManager.getMetaMaskProvider();
+          
+          // Get token address from pool contract
+          const poolContract = new ethers.Contract(
+              window.tokenContractAddress,  // BondingCurvePool address
+              ['function token() view returns (address)'],
+              provider
+          );
+          const tokenAddress = await poolContract.token();
+          
+          // Create ERC20 token contract instance
+          const tokenContract = new ethers.Contract(
+              tokenAddress,  // ✅ FIXED: Use actual token ERC20 address
+              ['function allowance(address,address) view returns (uint256)',
+               'function approve(address,uint256) returns (bool)'],
+              provider.getSigner()
+          );
+          
+          const currentAllowance = await tokenContract.allowance(
+              wallet.address,
+              window.tokenContractAddress  // ✅ FIXED: Approve BondingCurvePool as spender
+          );
+          
+          const tokenAmountWei = ethers.utils.parseEther(tokenAmount.toString());
+          
+          // If insufficient allowance, request approval first
+          if (currentAllowance.lt(tokenAmountWei)) {
+              const approveConfirmed = await ModalManager.confirm(
+                  'Approval Required',
+                  `You need to approve the contract to spend your ${TokenDetail.tokenSymbol} tokens.<br>
+                   <small>This is a one-time approval per token.</small>`,
+                  'Approve'
+              );
+              
+              if (!approveConfirmed) return;
+              
+              // Execute approval transaction
+              showTradeStatus('Requesting token approval...');
+              const approveTx = await tokenContract.approve(
+                  window.tokenContractAddress,  // ✅ FIXED: Approve BondingCurvePool (not token itself)
+                  ethers.constants.MaxUint256  // Approve infinite (standard practice)
+              );
+              
+              showTradeStatus('Waiting for approval confirmation...');
+              await approveTx.wait();
+              showTradeStatus('Approval confirmed! Proceeding with sell...');
+          }
+          
           // Calculate slippage protection
           const slippageBps = window.lastQuote?.auto_slippage_bps || 50;
           const minKasOut = expectedKas * (10000 - slippageBps) / 10000;
@@ -1093,11 +1293,17 @@ window.TransactionManager = TransactionManager;
               deadline: Math.floor(Date.now() / 1000) + 300
           };
           
-          // Confirmation modal
+          // ⚠️ H-4 FIX: Get gas estimate and display before confirmation
+          const gasEstimate = await estimateTradeGas(action, params);
+          const gasCostKAS = Web3.utils.fromWei(gasEstimate.toString(), 'ether');
+          const gasCostUSD = (parseFloat(gasCostKAS) * TokenDetail.kasToUsd).toFixed(2);
+          
+          // Enhanced confirmation modal with gas estimate
           const confirmed = await ModalManager.confirm(
               'Confirm SELL Order',
               `Sell ${tokenAmount.toLocaleString()} ${TokenDetail.tokenSymbol} for ${expectedKas.toFixed(4)} KAS?<br>
-               <small>Min KAS: ${minKasOut.toFixed(4)} (slippage protected)</small>`,
+               <small>Min KAS: ${minKasOut.toFixed(4)} (slippage protected)</small><br>
+               <small>Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})</small>`,
               'Sell'
           );
           if (!confirmed) return;
@@ -1125,15 +1331,40 @@ window.TransactionManager = TransactionManager;
       });
   }
   
-  // Helper: Store last quote for slippage calculation
+  // ⚠️ NC-3 FIX: Store quote with timestamp and mode
   async function updateTokenAmount() {
       // ... existing code ...
       
       if (quote.success) {
-          window.lastQuote = quote; // Store for slippage calculation
+          window.lastQuote = {
+              data: quote,
+              timestamp: Date.now(),
+              mode: TokenDetail.currentTradeMode  // 'buy' or 'sell'
+          };
           
           // ... rest of existing code ...
       }
+  }
+  
+  // ⚠️ NC-3 FIX: Validate quote freshness
+  function isQuoteFresh(maxAgeSeconds = 30) {
+      if (!window.lastQuote) return false;
+      
+      const age = (Date.now() - window.lastQuote.timestamp) / 1000;
+      const correctMode = window.lastQuote.mode === TokenDetail.currentTradeMode;
+      
+      return age < maxAgeSeconds && correctMode;
+  }
+  
+  // ⚠️ H-4 FIX: Gas estimation helper function
+  async function estimateTradeGas(action, params) {
+      const response = await fetch(`/api/trade/${action}/estimate-gas`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(params)
+      });
+      const data = await response.json();
+      return data.gas_estimate;
   }
   ```
 
@@ -1142,6 +1373,77 @@ window.TransactionManager = TransactionManager;
   - Confirm `POST /api/trade/sell` returns unsigned tx data
   - Test quote endpoints return fee breakdown
   - Verify SSE stream `/api/tx/{hash}/stream` works
+
+- [ ] **⚠️ M-3 FIX: Backend API Endpoints Implementation**
+  ```python
+  # In app.py - Add these endpoints
+  
+  @app.route('/api/trade/quote-buy', methods=['POST'])
+  def api_quote_buy():
+      data = request.get_json()
+      
+      # Call smart contract for quote
+      quote = web3_service.get_buy_quote(
+          token_address=data['token_address'],
+          kas_amount=data['kas_amount']
+      )
+      
+      return jsonify({
+          'success': True,
+          'tokens_out': quote['tokens_out'],
+          'fees': {
+              'anti_bot': quote['anti_bot_fee'],
+              'platform': quote['platform_fee'],
+              'creator': quote['creator_fee']
+          },
+          'auto_slippage_bps': quote['auto_slippage'],
+          'price_impact_percent': quote['price_impact']
+      })
+  
+  @app.route('/api/trade/quote-sell', methods=['POST'])
+  def api_quote_sell():
+      data = request.get_json()
+      
+      # Call smart contract for quote
+      quote = web3_service.get_sell_quote(
+          token_address=data['token_address'],
+          token_amount=data['token_amount']
+      )
+      
+      return jsonify({
+          'success': True,
+          'kas_out': quote['kas_out'],
+          'fees': {
+              'anti_bot': quote['anti_bot_fee'],
+              'platform': quote['platform_fee'],
+              'creator': quote['creator_fee']
+          },
+          'auto_slippage_bps': quote['auto_slippage'],
+          'price_impact_percent': quote['price_impact']
+      })
+  
+  @app.route('/api/trade/<action>/estimate-gas', methods=['POST'])
+  def api_estimate_gas(action):
+      data = request.get_json()
+      
+      # Estimate gas for the transaction
+      gas_estimate = web3_service.estimate_trade_gas(
+          action=action,  # 'buy' or 'sell'
+          token_address=data['token_address'],
+          params=data
+      )
+      
+      return jsonify({
+          'success': True,
+          'gas_estimate': gas_estimate,
+          'gas_with_buffer': int(gas_estimate * 1.2),  # 20% buffer
+          'gas_price': web3_service.w3.eth.gas_price,
+          'estimated_cost_kas': web3_service.w3.from_wei(
+              gas_estimate * web3_service.w3.eth.gas_price, 
+              'ether'
+          )
+      })
+  ```
 
 ---
 
@@ -1337,6 +1639,38 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 - [ ] Add balance refresh after each transaction
   - Call `updateWalletBalance()` in transaction `onConfirm` callback
+
+- [ ] **⚠️ M-4 FIX: Wallet Disconnection Handler**
+  ```javascript
+  // In wallet_manager.js initialization (add to wallet setup)
+  if (window.ethereum) {
+      // Handle account changes (disconnect/switch)
+      window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts.length === 0) {
+              // Wallet disconnected
+              if (window.txManager) {
+                  window.txManager.closeAllConnections();
+              }
+              ModalManager.alert(
+                  'Wallet Disconnected',
+                  'Your wallet has been disconnected. Please reconnect to continue.',
+                  'warning'
+              );
+              // Clear connected wallet state
+              window.walletManager.disconnect();
+          } else {
+              // Account switched - reload to update state
+              window.location.reload();
+          }
+      });
+      
+      // Handle network changes
+      window.ethereum.on('chainChanged', () => {
+          // Network changed - reload page to ensure consistency
+          window.location.reload();
+      });
+  }
+  ```
 
 ---
 
