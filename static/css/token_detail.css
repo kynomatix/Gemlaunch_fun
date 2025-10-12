@@ -805,6 +805,81 @@
     color: #fff;
 }
 
+/* Loading state for input fields */
+.input-group input.loading {
+    position: relative;
+    background-image: 
+        linear-gradient(90deg, 
+            transparent, 
+            rgba(255,255,255,0.1), 
+            transparent
+        );
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Quote error styling */
+.quote-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 13px;
+}
+
+.quote-error i {
+    color: #dc2626;
+}
+
+/* Trade status animation */
+#tradeStatus {
+    padding: 12px;
+    margin: 16px 0;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    color: #60a5fa;
+    font-size: 14px;
+    text-align: center;
+}
+
+.status-fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading spinner for inputs (optional enhancement) */
+.input-group input.loading::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+}
+
 .chat-panel {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(32, 178, 170, 0.2);

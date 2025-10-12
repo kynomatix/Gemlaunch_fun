@@ -459,19 +459,62 @@
             this.updateTokenAmount();
         },
         
-        // Helper functions for quote UI (placeholders - will be enhanced in Phase 3.6)
+        // Helper functions for quote UI - Phase 3.6 Enhanced
         showQuoteLoading: function() {
             const tokenAmountInput = document.getElementById('tokenAmount');
             const kasAmountInput = document.getElementById('kasAmount');
-            if (tokenAmountInput) tokenAmountInput.style.opacity = '0.5';
-            if (kasAmountInput) kasAmountInput.style.opacity = '0.5';
+            
+            // ⚠️ FIX: Apply loading to INPUT field (what user is editing)
+            if (this.currentTradeMode === 'buy') {
+                // BUY mode: User edits KAS (input), tokens are output
+                if (kasAmountInput) {
+                    kasAmountInput.classList.add('loading');
+                    kasAmountInput.disabled = true;
+                }
+                // Dim the output field
+                if (tokenAmountInput) {
+                    tokenAmountInput.style.opacity = '0.5';
+                }
+            } else { // sell
+                // SELL mode: User edits tokens (input), KAS is output  
+                if (tokenAmountInput) {
+                    tokenAmountInput.classList.add('loading');
+                    tokenAmountInput.disabled = true;
+                }
+                // Dim the output field
+                if (kasAmountInput) {
+                    kasAmountInput.style.opacity = '0.5';
+                }
+            }
+            
+            // Fade fee breakdown while loading
+            const feeBreakdown = document.getElementById('feeBreakdown');
+            if (feeBreakdown) {
+                feeBreakdown.style.opacity = '0.5';
+            }
         },
         
         hideQuoteLoading: function() {
             const tokenAmountInput = document.getElementById('tokenAmount');
             const kasAmountInput = document.getElementById('kasAmount');
-            if (tokenAmountInput) tokenAmountInput.style.opacity = '1';
-            if (kasAmountInput) kasAmountInput.style.opacity = '1';
+            
+            // Remove loading class from both fields
+            if (tokenAmountInput) {
+                tokenAmountInput.classList.remove('loading');
+                tokenAmountInput.disabled = false;
+                tokenAmountInput.style.opacity = '1';
+            }
+            if (kasAmountInput) {
+                kasAmountInput.classList.remove('loading');
+                kasAmountInput.disabled = false;
+                kasAmountInput.style.opacity = '1';
+            }
+            
+            // Restore fee breakdown opacity
+            const feeBreakdown = document.getElementById('feeBreakdown');
+            if (feeBreakdown) {
+                feeBreakdown.style.opacity = '1';
+            }
         },
         
         displayFeeBreakdown: function(fees) {
@@ -512,6 +555,18 @@
         
         showQuoteError: function(message) {
             console.error('Quote error:', message);
+            
+            // Show error in fee breakdown area
+            const feeBreakdown = document.getElementById('feeBreakdown');
+            if (feeBreakdown) {
+                feeBreakdown.innerHTML = `
+                    <div class="quote-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${message}
+                    </div>
+                `;
+                feeBreakdown.style.display = 'block';
+            }
         },
         
         // PHASE 3 AUDITED IMPLEMENTATION - All 5 audit fixes applied
@@ -673,14 +728,23 @@
             }
         },
         
-        // Trade status display helper
+        // Trade status display helper - Phase 3.6 Enhanced
         showTradeStatus: function(message) {
             console.log('🔄 Trade Status:', message);
-            // Display status in UI if there's a status element
+            
             const statusEl = document.getElementById('tradeStatus');
             if (statusEl) {
                 statusEl.textContent = message;
                 statusEl.style.display = 'block';
+                statusEl.classList.add('status-fade-in');
+            }
+        },
+        
+        hideTradeStatus: function() {
+            const statusEl = document.getElementById('tradeStatus');
+            if (statusEl) {
+                statusEl.style.display = 'none';
+                statusEl.textContent = '';
             }
         },
         
