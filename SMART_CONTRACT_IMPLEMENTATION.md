@@ -365,7 +365,9 @@
 **Problem:** Current UI is mock - `executeTrade()` doesn't call real APIs, token creation says "UI demo only"  
 **Solution:** Implement wallet-driven transaction lifecycle that bridges frontend ↔ backend ↔ blockchain
 
-**Complete Transaction Lifecycle:**
+**⚠️ CORRECTED FLOW** (Previous version had architectural errors - see audit findings)
+
+**Complete Transaction Lifecycle (MetaMask):**
 ```
 USER CLICKS "BUY" BUTTON
     ↓
@@ -376,24 +378,29 @@ USER CLICKS "BUY" BUTTON
    - Frontend: Display quote + fees to user for confirmation
     ↓
 2. BUILD PHASE (Frontend → Backend)
-   - Frontend: Call POST /api/trade/buy with {token_address, kas_amount}
+   - Frontend: Call POST /api/trade/buy with {token_address, kas_amount, min_tokens_out, deadline}
    - Backend: Builds unsigned transaction via buy_tokens_tx_data()
    - Returns: {tx_data: {to, value, data, gas}, estimated_gas}
    - Frontend: Has unsigned tx ready for signing
     ↓
-3. SIGN PHASE (Frontend → Wallet)
-   - Frontend: Use WalletManager to detect wallet type (MetaMask/Kastle/KasWare)
-   - Frontend: Call wallet.signTransaction() with tx_data
-   - User: Approves in wallet popup
-   - Returns: {signed_tx: '0x...', tx_hash: '0x...'}
+3. SIGN & SUBMIT PHASE (Frontend → Wallet → Blockchain)
+   - Frontend: Detect wallet type via WalletManager
+   
+   FOR METAMASK:
+     - Call ethereum.request({method: 'eth_sendTransaction', params: [txParams]})
+     - MetaMask signs AND broadcasts in ONE STEP (no separate relay needed)
+     - Returns: tx_hash
+     - Jump directly to Phase 4 (Monitor)
+   
+   FOR KASTLE/KASWARE (if they support raw signing):
+     - Call wallet-specific signing method
+     - Returns: {signed_tx: '0x...'}
+     - Frontend sends to backend relay: POST /api/relay/transaction
+     - Backend calls relay_transaction()
+     - Returns: tx_hash
+     - Continue to Phase 4 (Monitor)
     ↓
-4. RELAY PHASE (Frontend → Backend → Blockchain)
-   - Frontend: Send signed_tx to backend relay endpoint
-   - Backend: Validates signature, calls relay_transaction()
-   - Blockchain: Transaction submitted, returns tx_hash
-   - Backend: Enqueues tx in PendingTransaction table for monitoring
-    ↓
-5. MONITOR PHASE (Frontend ← Backend via SSE)
+4. MONITOR PHASE (Frontend ← Backend via SSE)
    - Frontend: Opens SSE stream GET /api/tx/{hash}/stream
    - Backend: Polls blockchain every 2 seconds via TransactionMonitor
    - Backend: Streams updates {status: 'pending'|'confirmed'|'failed', ...}
@@ -402,10 +409,15 @@ USER CLICKS "BUY" BUTTON
 TRANSACTION CONFIRMED ✅
 ```
 
+**Key Architecture Corrections:**
+1. **No Relay for MetaMask:** `eth_sendTransaction` signs AND submits - transaction is already on blockchain after user approval
+2. **Wallet-Specific Branching:** Flow diverges at signing based on wallet capabilities
+3. **Slippage Parameters Required:** All trades must include `min_tokens_out`/`min_kas_out` and `deadline` for protection
+
 **Why This Matters:**
 - **Security:** User signs in their wallet (frontend never sees private keys)
 - **UX:** Real-time status updates via SSE (users see "Confirming..." → "Success!")
-- **Reliability:** Backend monitors completion, retries if needed
+- **Reliability:** Backend monitors completion, proper wallet detection prevents errors
 
 ---
 
@@ -482,12 +494,13 @@ class TransactionManager {
         return await response.json();
     }
     
-    // ===== PHASE 3: SIGN WITH WALLET =====
-    async signTransaction(txData) {
+    // ===== PHASE 3: SIGN & SUBMIT WITH WALLET =====
+    async signAndSubmitTransaction(txData) {
         /*
         txData: {to, value, data, gas} from backend
         
-        Returns: {signed_tx: '0x...', tx_hash: '0x...'}
+        Returns: {tx_hash: '0x...', needs_relay: false} for MetaMask
+                 {signed_tx: '0x...', needs_relay: true} for wallets that support raw signing
         */
         if (!this.walletManager.isConnected()) {
             throw new Error('Wallet not connected. Please connect your wallet first.');
@@ -496,7 +509,7 @@ class TransactionManager {
         const wallet = this.walletManager.getConnectedWallet();
         const walletType = wallet.wallet_type; // 'metamask' | 'kastle' | 'kasware'
         
-        // Use wallet-specific signing method
+        // Use wallet-specific method
         switch(walletType) {
             case 'metamask':
                 return await this._signWithMetaMask(txData);
@@ -509,6 +522,9 @@ class TransactionManager {
     }
     
     async _signWithMetaMask(txData) {
+        /*
+        MetaMask signs AND broadcasts in one step - no relay needed
+        */
         const provider = this.walletManager.getMetaMaskProvider();
         const accounts = await provider.request({method: 'eth_accounts'});
         
@@ -520,31 +536,48 @@ class TransactionManager {
             gas: txData.gas
         };
         
+        // eth_sendTransaction signs AND submits to blockchain
         const txHash = await provider.request({
             method: 'eth_sendTransaction',
             params: [txParams]
         });
         
-        return {signed_tx: txHash, tx_hash: txHash};
+        return {
+            tx_hash: txHash,
+            needs_relay: false  // Already on blockchain
+        };
     }
     
     async _signWithKaspa(txData, walletType) {
-        // Kaspa wallets (Kastle/KasWare) sign differently
-        // Implementation depends on wallet API
-        throw new Error('Kaspa wallet signing not yet implemented');
+        /*
+        Kaspa wallets (Kastle/KasWare) may support raw signing
+        Returns signed transaction that needs backend relay
+        */
+        // TODO: Implement when Kastle/KasWare APIs are documented
+        // For now, fall back to MetaMask-like behavior
+        throw new Error(`${walletType} wallet signing not yet implemented. Please use MetaMask.`);
+        
+        // Future implementation:
+        // const signedTx = await wallet.signTransaction(txData);
+        // return {
+        //     signed_tx: signedTx,
+        //     needs_relay: true  // Needs backend to submit
+        // };
     }
     
-    // ===== PHASE 4: RELAY TO BLOCKCHAIN =====
+    // ===== PHASE 4: RELAY TO BLOCKCHAIN (Only for wallets that need it) =====
     async relayTransaction(signedTx) {
         /*
-        signedTx: {signed_tx: '0x...', tx_hash: '0x...'}
+        Only called if wallet returns needs_relay: true
+        MetaMask transactions skip this phase entirely
         
+        signedTx: {signed_tx: '0x...'} 
         Returns: {success: true, tx_hash: '0x...'}
         */
         const response = await fetch('/api/relay/transaction', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(signedTx)
+            body: JSON.stringify({signed_tx: signedTx})
         });
         
         return await response.json();
@@ -584,15 +617,17 @@ class TransactionManager {
         this.activeTransactions.set(txHash, eventSource);
     }
     
-    // ===== COMPLETE FLOW (All 5 phases) =====
+    // ===== COMPLETE FLOW (Wallet-aware execution) =====
     async executeTransaction(txType, params, callbacks) {
         /*
-        Complete transaction flow from build → sign → relay → monitor
+        Complete transaction flow with wallet-specific branching
         
         Example usage:
         await txManager.executeTransaction('buy', {
             token_address: '0x...',
-            kas_amount: 10.5
+            kas_amount: 10.5,
+            min_tokens_out: 950000,  // Slippage protection
+            deadline: Math.floor(Date.now()/1000) + 300  // 5 min
         }, {
             onUpdate: (status) => showSpinner(status),
             onConfirm: (receipt) => showSuccess(receipt),
@@ -608,25 +643,39 @@ class TransactionManager {
                 throw new Error(buildResult.error);
             }
             
-            // Phase 3: Sign with wallet
+            // Phase 3: Sign & Submit (wallet-specific)
             callbacks.onUpdate({status: 'signing', message: 'Please sign in your wallet...'});
-            const signedTx = await this.signTransaction(buildResult.tx_data);
+            const signResult = await this.signAndSubmitTransaction(buildResult.tx_data);
             
-            // Phase 4: Relay to blockchain
-            callbacks.onUpdate({status: 'relaying', message: 'Submitting to blockchain...'});
-            const relayResult = await this.relayTransaction(signedTx);
+            let txHash;
             
-            if (!relayResult.success) {
-                throw new Error(relayResult.error);
+            // Phase 4: Relay (only if wallet needs it)
+            if (signResult.needs_relay) {
+                callbacks.onUpdate({status: 'relaying', message: 'Submitting to blockchain...'});
+                const relayResult = await this.relayTransaction(signResult.signed_tx);
+                
+                if (!relayResult.success) {
+                    throw new Error(relayResult.error);
+                }
+                txHash = relayResult.tx_hash;
+            } else {
+                // MetaMask already submitted - go straight to monitoring
+                txHash = signResult.tx_hash;
             }
             
             // Phase 5: Monitor confirmation
             callbacks.onUpdate({status: 'pending', message: 'Waiting for confirmation...'});
-            await this.monitorTransaction(relayResult.tx_hash, callbacks);
+            await this.monitorTransaction(txHash, callbacks);
             
         } catch (error) {
             callbacks.onError(error.message);
         }
+    }
+    
+    // Cleanup on page unload
+    closeAllConnections() {
+        this.activeTransactions.forEach(eventSource => eventSource.close());
+        this.activeTransactions.clear();
     }
 }
 
@@ -642,31 +691,68 @@ window.TransactionManager = TransactionManager;
 
 ---
 
-#### **3.2 Token Creation Flow** (Uses TransactionManager)
+#### **3.2 Token Creation Flow** (Backend-Deployed via Oracle)
 
-**Current Problem:** Token creation in `app.py` line 1106 is MOCK ("UI demo - no blockchain deployment")
+**⚠️ CRITICAL ARCHITECTURE FIX:** Previous version had users deploy tokens - this breaks ownership model!
+
+**Problem:** If users call TokenFactory.createToken(), they become contract owner (OpenZeppelin Ownable), stripping platform of pause/oracle controls. Users also pay deployment gas (~0.5-1 KAS).
+
+**Solution:** Backend deploys via oracle wallet. User is recorded as `creator` (not owner). Platform retains admin control.
 
 **Files to Update:**
-1. `templates/app/create_token.html` - Wire form to blockchain
-2. `static/js/create_token.js` (if exists) OR add to page inline
+1. `templates/app/create_token.html` - Form submission (NO wallet signing needed)
+2. `app.py` - Backend deployment endpoint
 
 **Integration Steps:**
 
-- [ ] **Step 1: Update form submission handler**
+- [ ] **Step 1: Frontend - Upload image to IPFS, submit form to backend**
   ```javascript
   // In create_token.html or create_token.js
+  
+  async function uploadImageToIPFS(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/ipfs/upload', {
+          method: 'POST',
+          body: formData
+      });
+      
+      const data = await response.json();
+      return data.ipfs_hash; // Returns 'Qm...'
+  }
+  
   document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // Check wallet connection
+      // Check wallet connection (for creator address only)
       if (!window.walletManager.isConnected()) {
-          ModalManager.alert('Wallet Required', 'Please connect your wallet to create a token', 'error');
+          ModalManager.alert('Wallet Required', 'Please connect your wallet to verify you as the creator', 'error');
           window.walletManager.openWalletModal();
           return;
       }
       
-      // Collect form data
+      // Show deployment progress modal
+      showDeploymentModal();
+      updateDeploymentStatus('Uploading image to IPFS...');
+      
+      // Step 1: Upload image to IPFS
+      const imageFile = document.getElementById('tokenImage').files[0];
+      let ipfsHash = null;
+      if (imageFile) {
+          try {
+              ipfsHash = await uploadImageToIPFS(imageFile);
+              updateDeploymentStatus(`Image uploaded: ${ipfsHash}`);
+          } catch (error) {
+              ModalManager.alert('Upload Failed', 'Failed to upload image to IPFS', 'error');
+              return;
+          }
+      }
+      
+      // Step 2: Collect form data
+      const wallet = window.walletManager.getConnectedWallet();
       const formData = {
+          creator_wallet: wallet.address,  // User is creator
           name: document.getElementById('tokenName').value,
           symbol: document.getElementById('tokenSymbol').value,
           description: document.getElementById('description').value,
@@ -676,68 +762,142 @@ window.TransactionManager = TransactionManager;
           total_supply: document.getElementById('totalSupply').value,
           reserved_percentage: document.getElementById('reservedPercentage').value,
           anti_bot_enabled: document.getElementById('antiBotEnabled').checked,
-          // Add image upload handling if applicable
+          image_ipfs_hash: ipfsHash,
+          image_url: ipfsHash ? `https://gateway.pinata.cloud/ipfs/${ipfsHash}` : null
       };
       
-      // Show confirmation modal with fee estimate
-      const confirmed = await ModalManager.confirm(
-          'Deploy Token to Blockchain',
-          `Deploy ${formData.name} (${formData.symbol}) to Kasplex Testnet?<br>
-           <small>Estimated gas: ~0.5 KAS</small>`,
-          'Deploy'
-      );
+      // Step 3: Backend deploys token (no user signing needed)
+      updateDeploymentStatus('Deploying token to blockchain...');
       
-      if (!confirmed) return;
-      
-      // Execute transaction via TransactionManager
-      await window.txManager.executeTransaction('create_token', formData, {
-          onUpdate: (status) => {
-              // Show status in UI (e.g., progress modal)
-              updateDeploymentStatus(status.message);
-          },
-          onConfirm: (receipt) => {
-              ModalManager.alert(
-                  'Token Deployed! 🚀',
-                  `Contract Address: ${receipt.contract_address}<br>
-                   Transaction: ${receipt.tx_hash}`,
-                  'success',
-                  () => {
-                      // Redirect to token detail page
-                      window.location.href = `/token/${receipt.contract_address}`;
+      try {
+          const response = await fetch('/api/token/create', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(formData)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+              // Step 4: Monitor deployment via SSE
+              updateDeploymentStatus('Waiting for blockchain confirmation...');
+              
+              const eventSource = new EventSource(`/api/tx/${result.tx_hash}/stream`);
+              
+              eventSource.onmessage = (event) => {
+                  const data = JSON.parse(event.data);
+                  
+                  if (data.status === 'confirmed') {
+                      eventSource.close();
+                      ModalManager.alert(
+                          'Token Deployed! 🚀',
+                          `Contract Address: ${result.contract_address}<br>
+                           Transaction: ${result.tx_hash}`,
+                          'success',
+                          () => {
+                              window.location.href = `/token/${result.contract_address}`;
+                          }
+                      );
+                  } else if (data.status === 'failed') {
+                      eventSource.close();
+                      ModalManager.alert('Deployment Failed', data.error, 'error');
                   }
-              );
-          },
-          onError: (error) => {
-              ModalManager.alert('Deployment Failed', error, 'error');
+              };
+          } else {
+              ModalManager.alert('Deployment Failed', result.error, 'error');
           }
-      });
+      } catch (error) {
+          ModalManager.alert('Deployment Failed', error.message, 'error');
+      }
   });
   ```
 
-- [ ] **Step 2: Backend endpoint verification**
-  - Verify `POST /api/token/create` exists in `app.py`
-  - Endpoint should:
-    1. Validate form data
-    2. Call `web3_service.create_token_tx_data(...)` to build unsigned tx
-    3. Return `{success: true, tx_data: {...}, estimated_gas: 150000}`
-  - If endpoint missing, add following to `app.py`:
-    ```python
-    @app.route('/api/token/create', methods=['POST'])
-    def api_create_token():
-        data = request.get_json()
-        # Build unsigned transaction
-        tx_data = web3_service.create_token_tx_data(
-            name=data['name'],
-            symbol=data['symbol'],
-            total_supply=data['total_supply'],
-            # ... other params
-        )
-        return jsonify({
-            'success': True,
-            'tx_data': tx_data,
-            'estimated_gas': tx_data['gas']
-        })
-    ```
+- [ ] **Step 2: Backend - Oracle wallet deploys via TokenFactory**
+  ```python
+  # In app.py
+  @app.route('/api/token/create', methods=['POST'])
+  def api_create_token():
+      data = request.get_json()
+      
+      try:
+          # Validate inputs
+          if not data.get('creator_wallet'):
+              return jsonify({'success': False, 'error': 'Creator wallet required'}), 400
+          
+          # Oracle wallet calls TokenFactory.createToken()
+          # Platform becomes owner, user is recorded as creator
+          result = web3_service.deploy_token_via_factory(
+              name=data['name'],
+              symbol=data['symbol'],
+              total_supply=int(data['total_supply']),
+              creator=data['creator_wallet'],  # User is creator
+              reserved_percentage=int(data.get('reserved_percentage', 0)),
+              anti_bot_enabled=data.get('anti_bot_enabled', False),
+              image_url=data.get('image_url'),
+              description=data.get('description', ''),
+              website=data.get('website', ''),
+              twitter=data.get('twitter', ''),
+              telegram=data.get('telegram', '')
+          )
+          
+          # Oracle signs and relays transaction
+          tx_hash = web3_service.relay_transaction(result['tx_data'])
+          
+          # Store in database as pending
+          token = Token(
+              name=data['name'],
+              symbol=data['symbol'],
+              creator_wallet=data['creator_wallet'],
+              contract_address=result['contract_address'],  # Predicted address
+              deployment_tx_hash=tx_hash,
+              # ... other fields
+          )
+          db.session.add(token)
+          db.session.commit()
+          
+          return jsonify({
+              'success': True,
+              'contract_address': result['contract_address'],
+              'tx_hash': tx_hash
+          })
+          
+      except Exception as e:
+          app.logger.error(f"Token deployment failed: {e}")
+          return jsonify({'success': False, 'error': str(e)}), 500
+  ```
+
+- [ ] **Step 3: Web3Service - Add deploy_token_via_factory() method**
+  ```python
+  # In services/web3_service.py
+  def deploy_token_via_factory(self, name, symbol, total_supply, creator, **kwargs):
+      """
+      Oracle wallet deploys token via TokenFactory
+      Platform becomes owner, user is creator
+      """
+      # Build transaction
+      tx = self.token_factory_contract.functions.createToken(
+          name=name,
+          symbol=symbol,
+          totalSupply=Web3.to_wei(total_supply, 'ether'),
+          creator=Web3.to_checksum_address(creator),
+          reservedPercentage=kwargs.get('reserved_percentage', 0),
+          antiBotEnabled=kwargs.get('anti_bot_enabled', False),
+          # ... other params
+      ).build_transaction({
+          'from': self.oracle_account.address,
+          'nonce': self.w3.eth.get_transaction_count(self.oracle_account.address),
+          'gas': 2000000,  # Estimate
+          'gasPrice': self.w3.eth.gas_price
+      })
+      
+      # Predict contract address
+      contract_address = self._predict_create2_address(...)
+      
+      return {
+          'tx_data': tx,
+          'contract_address': contract_address
+      }
+  ```
 
 - [ ] **Step 3: Add deployment status modal**
   ```html
@@ -869,17 +1029,10 @@ window.TransactionManager = TransactionManager;
   }
   ```
 
-- [ ] **Step 3: Real trade execution**
+- [ ] **Step 3: Real trade execution with slippage protection**
   ```javascript
   // In token_detail.js, replace executeTrade()
   async function executeTrade() {
-      const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
-      
-      if (kasAmount <= 0) {
-          ModalManager.alert('Invalid Amount', 'Please enter a valid amount to trade.', 'error');
-          return;
-      }
-      
       // Check wallet connection
       if (!window.walletManager.isConnected()) {
           ModalManager.alert('Wallet Required', 'Please connect your wallet to trade.', 'error');
@@ -888,23 +1041,70 @@ window.TransactionManager = TransactionManager;
       }
       
       const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
-      const tokenAmount = document.getElementById('tokenAmount').value;
       
-      // Confirmation modal
-      const confirmed = await ModalManager.confirm(
-          `Confirm ${action.toUpperCase()} Order`,
-          `${action === 'buy' ? 'Buy' : 'Sell'} ${tokenAmount} ${TokenDetail.tokenSymbol} 
-           for ${kasAmount} KAS?`,
-          action === 'buy' ? 'Buy' : 'Sell'
-      );
-      
-      if (!confirmed) return;
+      // Build parameters based on trade type
+      let params;
+      if (action === 'buy') {
+          const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+          const expectedTokens = parseFloat(document.getElementById('tokenAmount').value) || 0;
+          
+          if (kasAmount <= 0) {
+              ModalManager.alert('Invalid Amount', 'Please enter a valid KAS amount.', 'error');
+              return;
+          }
+          
+          // Calculate slippage protection (use auto_slippage from quote)
+          const slippageBps = window.lastQuote?.auto_slippage_bps || 50; // 0.5% default
+          const minTokensOut = Math.floor(expectedTokens * (10000 - slippageBps) / 10000);
+          
+          params = {
+              token_address: window.tokenContractAddress,
+              kas_amount: kasAmount,
+              min_tokens_out: minTokensOut,
+              deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
+          };
+          
+          // Confirmation modal
+          const confirmed = await ModalManager.confirm(
+              'Confirm BUY Order',
+              `Buy ${expectedTokens.toLocaleString()} ${TokenDetail.tokenSymbol} for ${kasAmount} KAS?<br>
+               <small>Min tokens: ${minTokensOut.toLocaleString()} (slippage protected)</small>`,
+              'Buy'
+          );
+          if (!confirmed) return;
+          
+      } else { // sell
+          const tokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
+          const expectedKas = parseFloat(document.getElementById('kasAmount').value) || 0;
+          
+          if (tokenAmount <= 0) {
+              ModalManager.alert('Invalid Amount', 'Please enter a valid token amount.', 'error');
+              return;
+          }
+          
+          // Calculate slippage protection
+          const slippageBps = window.lastQuote?.auto_slippage_bps || 50;
+          const minKasOut = expectedKas * (10000 - slippageBps) / 10000;
+          
+          params = {
+              token_address: window.tokenContractAddress,
+              token_amount: tokenAmount,  // ⚠️ CRITICAL: Use token_amount (not kas_amount) for sell
+              min_kas_out: minKasOut,
+              deadline: Math.floor(Date.now() / 1000) + 300
+          };
+          
+          // Confirmation modal
+          const confirmed = await ModalManager.confirm(
+              'Confirm SELL Order',
+              `Sell ${tokenAmount.toLocaleString()} ${TokenDetail.tokenSymbol} for ${expectedKas.toFixed(4)} KAS?<br>
+               <small>Min KAS: ${minKasOut.toFixed(4)} (slippage protected)</small>`,
+              'Sell'
+          );
+          if (!confirmed) return;
+      }
       
       // Execute via TransactionManager
-      await window.txManager.executeTransaction(action, {
-          token_address: window.tokenContractAddress,
-          kas_amount: kasAmount
-      }, {
+      await window.txManager.executeTransaction(action, params, {
           onUpdate: (status) => {
               showTradeStatus(status.message);
           },
@@ -923,6 +1123,17 @@ window.TransactionManager = TransactionManager;
               ModalManager.alert('Trade Failed', error, 'error');
           }
       });
+  }
+  
+  // Helper: Store last quote for slippage calculation
+  async function updateTokenAmount() {
+      // ... existing code ...
+      
+      if (quote.success) {
+          window.lastQuote = quote; // Store for slippage calculation
+          
+          // ... rest of existing code ...
+      }
   }
   ```
 
@@ -1061,6 +1272,19 @@ window.TransactionManager = TransactionManager;
 - [ ] **Step 5: Add web3_service.get_pool_data() method**
   ```python
   # In services/web3_service.py
+  def __init__(self):
+      # Load contract ABIs during initialization
+      import json
+      import os
+      
+      abi_dir = os.path.join(os.path.dirname(__file__), '../contracts/abis')
+      with open(os.path.join(abi_dir, 'BondingCurvePool.json')) as f:
+          self.bonding_curve_abi = json.load(f)['abi']
+      with open(os.path.join(abi_dir, 'TokenFactory.json')) as f:
+          self.token_factory_abi = json.load(f)['abi']
+      with open(os.path.join(abi_dir, 'GraduationController.json')) as f:
+          self.graduation_controller_abi = json.load(f)['abi']
+  
   def get_pool_data(self, pool_address: str) -> Dict:
       """Fetch live pool data from BondingCurvePool contract"""
       pool_contract = self.w3.eth.contract(
@@ -1070,7 +1294,8 @@ window.TransactionManager = TransactionManager;
       
       virtual_kas = pool_contract.functions.virtualKasReserve().call()
       virtual_token = pool_contract.functions.virtualTokenReserve().call()
-      is_graduated = pool_contract.functions.isGraduated().call()
+      # ⚠️ CORRECTED: Public state variable 'graduated' (not isGraduated function)
+      is_graduated = pool_contract.functions.graduated().call()
       
       return {
           'virtualKasReserve': Web3.from_wei(virtual_kas, 'ether'),
@@ -1078,6 +1303,15 @@ window.TransactionManager = TransactionManager;
           'isGraduated': is_graduated
       }
   ```
+
+**Note on ABI Loading:** ABIs must be exported from Hardhat artifacts after compilation:
+```bash
+# After npx hardhat compile
+mkdir -p contracts/abis
+cp artifacts/contracts/BondingCurvePool.sol/BondingCurvePool.json contracts/abis/
+cp artifacts/contracts/TokenFactory.sol/TokenFactory.json contracts/abis/
+cp artifacts/contracts/GraduationController.sol/GraduationController.json contracts/abis/
+```
 
 ---
 
