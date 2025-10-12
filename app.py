@@ -1793,6 +1793,151 @@ def create_airdrop(contract_address):
         return jsonify({'error': f'Failed to create airdrop: {str(e)}'}), 500
 
 # Post-Graduation DEX Integration Endpoints
+@app.route('/api/token/<address>/graduation-status', methods=['GET'])
+def api_token_graduation_status(address):
+    """
+    Get graduation status for a token
+    
+    Response for non-graduated tokens:
+    {
+        "success": true,
+        "is_graduated": false,
+        "current_market_cap": 45000.00,
+        "graduation_threshold": 70000,
+        "progress_percent": 64.29,
+        "message": "Token has not graduated yet"
+    }
+    
+    Response for graduated tokens:
+    {
+        "success": true,
+        "is_graduated": true,
+        "dex_pool": {
+            "pool_address": "0x...",
+            "nft_position_id": 123,
+            "dex_name": "Kaspa Finance",
+            "dex_url": "https://kaspa.finance/pool/0x...",
+            "liquidity": "N/A",
+            "price": "0.000123",
+            "volume_24h": "N/A"
+        }
+    }
+    """
+    try:
+        # Normalize address (lowercase, strip whitespace)
+        address_normalized = address.strip().lower()
+        
+        # Flexible validation: Accept various formats
+        if not address_normalized or len(address_normalized) < 10:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        # Case-insensitive lookup
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == address_normalized
+        ).first()
+        
+        if not token:
+            logging.debug(f"Token not found: {address}")
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Check if token has graduated
+        if not token.is_graduated:
+            # Get real-time market cap from blockchain
+            from services.web3_service import get_web3_service
+            from services.kas_oracle import oracle as kas_oracle
+            
+            web3_service = get_web3_service()
+            current_market_cap = None
+            
+            try:
+                # Validate contract address exists
+                if not token.contract_address:
+                    app.logger.warning(f"Token {token.symbol} has no contract_address set - using DB value")
+                    current_market_cap = float(token.current_market_cap) if token.current_market_cap else 0
+                else:
+                    # Check if contract exists on blockchain
+                    contract_code = web3_service.w3.eth.get_code(
+                        web3_service.w3.to_checksum_address(token.contract_address)
+                    )
+                    
+                    if len(contract_code) <= 2:  # '0x' means no contract
+                        app.logger.warning(
+                            f"No contract deployed at {token.contract_address} for token {token.symbol} "
+                            f"(likely test data) - using DB value ${token.current_market_cap}"
+                        )
+                        current_market_cap = float(token.current_market_cap) if token.current_market_cap else 0
+                    else:
+                        # Contract exists - read real-time virtualKasReserve
+                        app.logger.info(f"Reading virtualKasReserve from BondingCurvePool at {token.contract_address}")
+                        kas_reserve_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+                        
+                        # Get current KAS/USD price
+                        kas_price_usd = kas_oracle.get_kas_price()
+                        
+                        # Calculate real-time market cap
+                        kas_amount = kas_reserve_wei / 10**18
+                        current_market_cap = kas_amount * kas_price_usd
+                        
+                        app.logger.info(
+                            f"✅ Real-time market cap for {token.symbol}: ${current_market_cap:.2f} "
+                            f"(virtualKasReserve: {kas_amount:.8f} KAS)"
+                        )
+                
+            except Exception as e:
+                app.logger.error(
+                    f"❌ Failed to get real-time market cap for {token.contract_address}: "
+                    f"{type(e).__name__}: {str(e)} - Falling back to DB value"
+                )
+                # Fallback to database value if blockchain call fails
+                current_market_cap = float(token.current_market_cap) if token.current_market_cap else 0
+            
+            # Use 70000 as default threshold if null
+            graduation_threshold = token.graduation_threshold if token.graduation_threshold else 70000
+            
+            # Calculate progress
+            progress_percent = (current_market_cap / graduation_threshold) * 100 if graduation_threshold else 0
+            
+            return jsonify({
+                'success': True,
+                'is_graduated': False,
+                'current_market_cap': round(current_market_cap, 2),
+                'graduation_threshold': graduation_threshold,
+                'progress_percent': round(progress_percent, 2),
+                'message': 'Token has not graduated yet'
+            })
+        
+        # Token has graduated - return DEX pool data
+        # Basic pool data from database
+        pool_data = {
+            'pool_address': token.liquidity_pool_address,
+            'nft_position_id': token.nft_position_id,
+            'dex_name': 'Kaspa Finance',
+            'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}'
+        }
+        
+        # Add price data from token if available
+        if token.current_price:
+            pool_data['price'] = str(token.current_price)
+        else:
+            pool_data['price'] = 'N/A'
+        
+        # Liquidity and volume require pool contract integration (not in scope)
+        pool_data['liquidity'] = 'N/A'
+        pool_data['volume_24h'] = 'N/A'
+        
+        return jsonify({
+            'success': True,
+            'is_graduated': True,
+            'dex_pool': pool_data
+        })
+        
+    except ValueError as e:
+        logging.error(f"Invalid address format: {address}, error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+    except Exception as e:
+        logging.error(f"Error fetching graduation status for {address}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch graduation status'}), 500
+
 @app.route('/api/token/<address>/dex-pool', methods=['GET'])
 def api_token_dex_pool(address):
     """
