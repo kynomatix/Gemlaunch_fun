@@ -548,24 +548,39 @@
         },
         
         displayFeeBreakdown: function(fees) {
+            // Phase 3.3 Step 2: Spec-compliant fee breakdown display
             const feeBreakdown = document.getElementById('feeBreakdown');
             if (!feeBreakdown) return;
             
+            // Update Anti-Bot Fee
+            const antiBotFee = fees.antiBotFee || fees.anti_bot || 0;
+            document.getElementById('antiBotFeeDisplay').textContent = 
+                `${antiBotFee.toFixed(4)} KAS`;
+            
+            // Update Platform Fee (0.9%)
+            const platformFee = fees.platformFee || fees.platform || 0;
+            document.getElementById('platformFeeDisplay').textContent = 
+                `${platformFee.toFixed(4)} KAS`;
+            
+            // Update Creator Fee (0.1%)
+            const creatorFee = fees.creatorFee || fees.creator || 0;
+            document.getElementById('creatorFeeDisplay').textContent = 
+                `${creatorFee.toFixed(4)} KAS`;
+            
+            // Update Price Impact with color coding
+            const priceImpact = fees.priceImpact || fees.price_impact_percent || 0;
+            const impactColor = priceImpact > 5 ? '#FF5252' : 
+                               priceImpact > 2 ? '#FFA500' : '#4CAF50';
+            document.getElementById('priceImpactDisplay').innerHTML = 
+                `<span style="color: ${impactColor}">${priceImpact.toFixed(2)}%</span>`;
+            
+            // Update Auto Slippage
+            const slippageBps = fees.auto_slippage_bps || 50;
+            document.getElementById('autoSlippageDisplay').textContent = 
+                `${(slippageBps / 100).toFixed(2)}%`;
+            
             // Show breakdown
             feeBreakdown.style.display = 'block';
-            
-            // Update fee values (convert from wei to KAS if needed)
-            const platformFee = fees.platform_fee_kas || 0;
-            const creatorFee = fees.creator_fee_kas || 0;
-            const protocolFee = fees.protocol_fee_kas || 0;
-            const totalFees = fees.total_fees_kas || 0;
-            const slippageBps = fees.auto_slippage_bps || 50;
-            
-            document.getElementById('feePlatform').textContent = `${platformFee.toFixed(6)} KAS`;
-            document.getElementById('feeCreator').textContent = `${creatorFee.toFixed(6)} KAS`;
-            document.getElementById('feeProtocol').textContent = `${protocolFee.toFixed(6)} KAS`;
-            document.getElementById('feeTotal').textContent = `${totalFees.toFixed(6)} KAS`;
-            document.getElementById('feeSlippage').textContent = `${(slippageBps / 100).toFixed(2)}%`;
         },
         
         clearFeeBreakdown: function() {
@@ -574,13 +589,6 @@
             
             // Hide breakdown
             feeBreakdown.style.display = 'none';
-            
-            // Reset values to 0
-            document.getElementById('feePlatform').textContent = '0 KAS';
-            document.getElementById('feeCreator').textContent = '0 KAS';
-            document.getElementById('feeProtocol').textContent = '0 KAS';
-            document.getElementById('feeTotal').textContent = '0 KAS';
-            document.getElementById('feeSlippage').textContent = '0.50%';
         },
         
         showQuoteError: function(message) {

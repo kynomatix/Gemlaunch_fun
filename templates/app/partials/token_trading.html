@@ -24,28 +24,28 @@
             <input type="number" id="tokenAmount" placeholder="0" readonly>
         </div>
         
-        <!-- Fee Breakdown Section -->
+        <!-- Fee Breakdown Section (Phase 3.3 Step 2 - Spec Compliant) -->
         <div id="feeBreakdown" class="fee-breakdown" style="display: none;">
             <div class="fee-header">Fee Breakdown</div>
             <div class="fee-item">
-                <span>Platform Fee (1%)</span>
-                <span id="feePlatform">0 KAS</span>
+                <span>Anti-Bot Fee:</span>
+                <span id="antiBotFeeDisplay">0 KAS</span>
             </div>
             <div class="fee-item">
-                <span>Creator Fee (1%)</span>
-                <span id="feeCreator">0 KAS</span>
+                <span>Platform Fee (0.9%):</span>
+                <span id="platformFeeDisplay">0 KAS</span>
             </div>
             <div class="fee-item">
-                <span>Protocol Fee (1%)</span>
-                <span id="feeProtocol">0 KAS</span>
+                <span>Creator Fee (0.1%):</span>
+                <span id="creatorFeeDisplay">0 KAS</span>
             </div>
-            <div class="fee-item total">
-                <span>Total Fees</span>
-                <span id="feeTotal">0 KAS</span>
+            <div class="fee-item fee-impact">
+                <span>Price Impact:</span>
+                <span id="priceImpactDisplay">0%</span>
             </div>
             <div class="fee-item">
-                <span>Slippage Protection</span>
-                <span id="feeSlippage">0.50%</span>
+                <span>Auto Slippage:</span>
+                <span id="autoSlippageDisplay">0.50%</span>
             </div>
         </div>
         
