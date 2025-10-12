@@ -46,6 +46,10 @@
             messagesData: {}  // Store message data for reply lookups
         },
         
+        // Quote management - M-2 FIX: AbortController for request cancellation
+        quoteTimeout: null,
+        quoteAbortController: null,
+        
         // Initialize the module with data from server
         init: function(config) {
             this.tokenPrice = config.tokenPrice;
@@ -455,16 +459,150 @@
             this.updateTokenAmount();
         },
         
+        // Helper functions for quote UI (placeholders - will be enhanced in Phase 3.6)
+        showQuoteLoading: function() {
+            const tokenAmountInput = document.getElementById('tokenAmount');
+            const kasAmountInput = document.getElementById('kasAmount');
+            if (tokenAmountInput) tokenAmountInput.style.opacity = '0.5';
+            if (kasAmountInput) kasAmountInput.style.opacity = '0.5';
+        },
+        
+        hideQuoteLoading: function() {
+            const tokenAmountInput = document.getElementById('tokenAmount');
+            const kasAmountInput = document.getElementById('kasAmount');
+            if (tokenAmountInput) tokenAmountInput.style.opacity = '1';
+            if (kasAmountInput) kasAmountInput.style.opacity = '1';
+        },
+        
+        displayFeeBreakdown: function(fees) {
+            // Placeholder - will be implemented in Phase 3.6
+            console.log('Fee breakdown:', fees);
+        },
+        
+        clearFeeBreakdown: function() {
+            // Placeholder - will be implemented in Phase 3.6
+        },
+        
+        showQuoteError: function(message) {
+            console.error('Quote error:', message);
+        },
+        
+        // PHASE 3 AUDITED IMPLEMENTATION - All 5 audit fixes applied
         updateTokenAmount: function() {
-            const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
-            const tokenAmount = kasAmount / this.tokenPrice;
-            document.getElementById('tokenAmount').value = Math.floor(tokenAmount);
+            const action = this.currentTradeMode; // 'buy' or 'sell'
             
-            const usdAmount = kasAmount * this.kasToUsd;
-            const inputAddon = document.querySelector('.input-addon');
-            if (inputAddon) {
-                inputAddon.textContent = `$${usdAmount.toFixed(2)} USD`;
+            // ⚠️ CRITICAL FIX: Cancel previous work FIRST, before any early returns
+            // This ensures stale quotes don't update UI when user clears input
+            if (this.quoteAbortController) {
+                this.quoteAbortController.abort();
+                this.quoteAbortController = null;  // ✅ FIX 1: Reset to null after abort
             }
+            clearTimeout(this.quoteTimeout);
+            
+            // M-9 FIX: Get appropriate input based on mode
+            let params = {
+                token_address: window.tokenContractAddress
+            };
+            
+            if (action === 'buy') {
+                // BUY: User enters KAS, gets token amount
+                const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                
+                if (kasAmount <= 0) {
+                    document.getElementById('tokenAmount').value = 0;
+                    this.clearFeeBreakdown();
+                    return;  // ✅ Now safe to return - already cancelled pending work
+                }
+                
+                params.kas_amount = kasAmount;  // ✅ Buy needs kas_amount
+                
+            } else { // sell
+                // SELL: User enters tokens, gets KAS amount
+                const tokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
+                
+                if (tokenAmount <= 0) {
+                    document.getElementById('kasAmount').value = 0;
+                    this.clearFeeBreakdown();
+                    return;  // ✅ Now safe to return - already cancelled pending work
+                }
+                
+                params.token_amount = tokenAmount;  // ✅ Sell needs token_amount
+            }
+            
+            // Create NEW AbortController for this request
+            this.quoteAbortController = new AbortController();
+            
+            // Debounce API calls (300ms)
+            this.quoteTimeout = setTimeout(async () => {
+                try {
+                    // ✅ FIX 2: Re-validate inputs before fetching quote (prevent stale updates)
+                    const currentKasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                    const currentTokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
+                    
+                    if (action === 'buy' && currentKasAmount <= 0) {
+                        return;  // Input was cleared, don't fetch quote
+                    }
+                    if (action === 'sell' && currentTokenAmount <= 0) {
+                        return;  // Input was cleared, don't fetch quote
+                    }
+                    
+                    this.showQuoteLoading();
+                    
+                    const quote = await window.txManager.getQuote(
+                        action,
+                        params,  // ✅ Now has correct parameter for each mode
+                        this.quoteAbortController?.signal  // H-5 FIX: Pass abort signal with optional chaining
+                    );
+                    
+                    if (quote.success) {
+                        // M-9 FIX: Update the OUTPUT field based on mode
+                        if (action === 'buy') {
+                            // Show tokens user will receive
+                            document.getElementById('tokenAmount').value = 
+                                Math.floor(quote.tokens_out);
+                        } else { // sell
+                            // Show KAS user will receive
+                            document.getElementById('kasAmount').value = 
+                                quote.kas_out.toFixed(6);
+                        }
+                        
+                        // Display fee breakdown
+                        this.displayFeeBreakdown({
+                            antiBotFee: quote.fees?.anti_bot || 0,
+                            platformFee: quote.fees?.platform || 0,
+                            creatorFee: quote.fees?.creator || 0,
+                            priceImpact: quote.price_impact_percent || 0
+                        });
+                        
+                        // CD-1 + M-8 FIX: Store quote with flat structure INSIDE function
+                        window.lastQuote = {
+                            ...quote,              // Spread all quote properties (M-8 fix)
+                            timestamp: Date.now(),
+                            mode: action           // 'buy' or 'sell'
+                        };
+                        
+                        // M-9 FIX: Update USD value (works for both modes)
+                        const kasValue = action === 'buy' 
+                            ? params.kas_amount 
+                            : quote.kas_out;
+                        const usdAmount = kasValue * this.kasToUsd;
+                        const inputAddon = document.querySelector('.input-addon');
+                        if (inputAddon) {
+                            inputAddon.textContent = `$${usdAmount.toFixed(2)} USD`;
+                        }
+                    }
+                    
+                } catch (error) {
+                    // M-2 FIX: Ignore aborted requests
+                    if (error.name === 'AbortError') {
+                        return; // Request cancelled, ignore
+                    }
+                    console.error('Quote failed:', error);
+                    this.showQuoteError(error.message);
+                } finally {
+                    this.hideQuoteLoading();
+                }
+            }, 300);
         },
         
         executeTrade: function() {
