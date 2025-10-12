@@ -6,6 +6,7 @@ Handles RPC connections, contract interactions, and transaction relay
 import os
 import json
 import logging
+import time
 from pathlib import Path
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
@@ -218,6 +219,69 @@ class Web3Service:
             
         except Exception as e:
             logging.error(f"Gas estimation failed: {str(e)}")
+            raise
+    
+    def estimate_trade_gas(self, action, params):
+        """
+        Estimate gas for buy/sell transaction with safety buffer
+        
+        Args:
+            action (str): 'buy' or 'sell'
+            params (dict): {
+                'pool_address': str,
+                'kas_amount': int (for buy) or 'token_amount': int (for sell),
+                'from_address': str (optional, defaults to oracle),
+                'min_tokens_out': int (optional, for buy),
+                'min_kas_out': int (optional, for sell),
+                'deadline': int (optional, unix timestamp)
+            }
+        
+        Returns:
+            dict: {'gas': int, 'gas_price': int, 'cost_wei': int, 'cost_kas': float}
+        """
+        try:
+            pool_address = params['pool_address']
+            from_address = params.get('from_address', self.oracle_account.address)
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            
+            deadline = params.get('deadline', int(time.time()) + 300)
+            
+            if action == 'buy':
+                kas_amount = params['kas_amount']
+                min_tokens_out = params.get('min_tokens_out', 0)
+                tx_data = pool.functions.buyTokens(min_tokens_out, deadline).build_transaction({
+                    'from': Web3.to_checksum_address(from_address),
+                    'value': kas_amount
+                })
+                tx = {
+                    'from': tx_data['from'],
+                    'to': tx_data['to'],
+                    'value': tx_data['value'],
+                    'data': tx_data['data']
+                }
+                
+            elif action == 'sell':
+                token_amount = params['token_amount']
+                min_kas_out = params.get('min_kas_out', 0)
+                tx_data = pool.functions.sellTokens(token_amount, min_kas_out, deadline).build_transaction({
+                    'from': Web3.to_checksum_address(from_address),
+                    'value': 0
+                })
+                tx = {
+                    'from': tx_data['from'],
+                    'to': tx_data['to'],
+                    'value': tx_data['value'],
+                    'data': tx_data['data']
+                }
+                
+            else:
+                raise ValueError(f"Invalid action: {action}. Must be 'buy' or 'sell'")
+            
+            return self.estimate_gas(tx)
+            
+        except Exception as e:
+            logging.error(f"Failed to estimate trade gas for {action}: {str(e)}")
             raise
     
     def sign_transaction(self, transaction, private_key=None):
@@ -475,23 +539,59 @@ class Web3Service:
     
     def get_buy_quote(self, pool_address, kas_amount):
         """
-        Get buy quote from bonding curve pool
+        Get comprehensive buy quote from bonding curve pool
         
         Args:
             pool_address (str): Pool contract address
             kas_amount (int): KAS amount in wei
         
         Returns:
-            int: Tokens out (in wei)
+            dict: {
+                'tokens_out': int (in wei),
+                'fees': {
+                    'anti_bot': int (in wei),
+                    'platform': int (in wei),
+                    'creator': int (in wei)
+                },
+                'auto_slippage_bps': int,
+                'price_impact_percent': float
+            }
         """
         try:
             logging.debug(f"Getting buy quote for pool {pool_address} - KAS: {kas_amount}")
             
             pool = self.get_bonding_pool_contract(pool_address)
+            
             tokens_out = pool.functions.quoteBuy(kas_amount).call()
             
-            logging.debug(f"Buy quote: {kas_amount} wei KAS → {tokens_out} wei tokens")
-            return tokens_out
+            fee_breakdown = pool.functions.getEffectiveFeeBreakdown(kas_amount).call()
+            anti_bot_fee_wei = fee_breakdown[0]
+            platform_fee_wei = fee_breakdown[1]
+            creator_fee_wei = fee_breakdown[2]
+            
+            auto_slippage_bps = pool.functions.calculateOptimalSlippage(kas_amount).call()
+            
+            virtual_kas_reserve = pool.functions.virtualKasReserve().call()
+            price_impact_percent = 0.0
+            if virtual_kas_reserve > 0:
+                kas_amount_kas = kas_amount / 10**18
+                virtual_kas_reserve_kas = virtual_kas_reserve / 10**18
+                price_impact_percent = (kas_amount_kas / virtual_kas_reserve_kas) * 100
+                price_impact_percent = round(price_impact_percent, 2)
+            
+            result = {
+                'tokens_out': tokens_out,
+                'fees': {
+                    'anti_bot': anti_bot_fee_wei,
+                    'platform': platform_fee_wei,
+                    'creator': creator_fee_wei
+                },
+                'auto_slippage_bps': auto_slippage_bps,
+                'price_impact_percent': price_impact_percent
+            }
+            
+            logging.debug(f"Buy quote: {kas_amount} wei KAS → {tokens_out} wei tokens, fees (wei): anti_bot={anti_bot_fee_wei}, platform={platform_fee_wei}, creator={creator_fee_wei}, slippage: {auto_slippage_bps} bps, impact: {price_impact_percent}%")
+            return result
             
         except Exception as e:
             logging.error(f"Failed to get buy quote for pool {pool_address}: {str(e)}")
@@ -499,23 +599,72 @@ class Web3Service:
     
     def get_sell_quote(self, pool_address, token_amount):
         """
-        Get sell quote from bonding curve pool
+        Get comprehensive sell quote from bonding curve pool
         
         Args:
             pool_address (str): Pool contract address
             token_amount (int): Token amount in wei
         
         Returns:
-            int: KAS out (in wei)
+            dict: {
+                'kas_out': int (in wei, NET amount user receives),
+                'fees': {
+                    'anti_bot': int (in wei, always 0 for sell),
+                    'platform': int (in wei),
+                    'creator': int (in wei)
+                },
+                'auto_slippage_bps': int,
+                'price_impact_percent': float
+            }
         """
         try:
             logging.debug(f"Getting sell quote for pool {pool_address} - Tokens: {token_amount}")
             
             pool = self.get_bonding_pool_contract(pool_address)
-            kas_out = pool.functions.quoteSell(token_amount).call()
             
-            logging.debug(f"Sell quote: {token_amount} wei tokens → {kas_out} wei KAS")
-            return kas_out
+            # quoteSell() returns GROSS KAS (AMM output BEFORE fees)
+            # See BondingCurvePool.sol line 220: uint256 kasGross = quoteSell(tokenAmount);
+            kas_gross = pool.functions.quoteSell(token_amount).call()
+            
+            # Sells have NO anti-bot fees, only 1% total (0.9% platform + 0.1% creator)
+            # See BondingCurvePool.sol lines 223-225
+            TOTAL_FEE_BPS = 100  # 1%
+            PLATFORM_FEE_BPS = 90  # 0.9%
+            CREATOR_FEE_BPS = 10  # 0.1%
+            
+            # Calculate fees from GROSS amount
+            total_fees = kas_gross * TOTAL_FEE_BPS // 10000
+            platform_fee_wei = kas_gross * PLATFORM_FEE_BPS // 10000
+            creator_fee_wei = kas_gross * CREATOR_FEE_BPS // 10000
+            anti_bot_fee_wei = 0  # No anti-bot fees on sells
+            
+            # NET is what user actually receives (GROSS - fees)
+            kas_net = kas_gross - total_fees
+            
+            # Calculate auto slippage on NET amount
+            auto_slippage_bps = pool.functions.calculateOptimalSlippage(kas_net).call()
+            
+            virtual_token_reserve = pool.functions.virtualTokenReserve().call()
+            price_impact_percent = 0.0
+            if virtual_token_reserve > 0:
+                token_amount_tokens = token_amount / 10**18
+                virtual_token_reserve_tokens = virtual_token_reserve / 10**18
+                price_impact_percent = (token_amount_tokens / virtual_token_reserve_tokens) * 100
+                price_impact_percent = round(price_impact_percent, 2)
+            
+            result = {
+                'kas_out': kas_net,  # NET amount user receives
+                'fees': {
+                    'anti_bot': anti_bot_fee_wei,  # Always 0 for sells
+                    'platform': platform_fee_wei,
+                    'creator': creator_fee_wei
+                },
+                'auto_slippage_bps': auto_slippage_bps,
+                'price_impact_percent': price_impact_percent
+            }
+            
+            logging.debug(f"Sell quote: {token_amount} wei tokens → {kas_net} wei KAS (net), fees (wei): platform={platform_fee_wei}, creator={creator_fee_wei}, slippage: {auto_slippage_bps} bps, impact: {price_impact_percent}%")
+            return result
             
         except Exception as e:
             logging.error(f"Failed to get sell quote for pool {pool_address}: {str(e)}")
