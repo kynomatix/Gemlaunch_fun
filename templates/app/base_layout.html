@@ -29,6 +29,9 @@
     <!-- Wallet Manager -->
     <script src="{{ url_for('static', filename='js/wallet_manager.js') }}"></script>
     
+    <!-- Transaction Manager -->
+    <script src="{{ url_for('static', filename='js/transaction_manager.js') }}"></script>
+    
     {% block extra_head %}{% endblock %}
     <style>
         /* View Transitions API - Smooth page transitions */
@@ -599,6 +602,12 @@
         // Initialize WalletManager (singleton pattern - only create if not exists)
         if (!window.walletManager) {
             window.walletManager = new WalletManager();
+        }
+        
+        // Initialize transaction manager
+        if (window.TransactionManager && window.walletManager) {
+            window.txManager = new TransactionManager(window.walletManager);
+            console.log('✅ Transaction Manager initialized');
         }
         
         // Preserve scroll position during Turbo navigation
