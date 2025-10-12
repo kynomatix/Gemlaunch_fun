@@ -632,48 +632,254 @@
             }, 300);
         },
         
-        executeTrade: function() {
-            const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
-            if (kasAmount <= 0) {
+        // NC-3 FIX: Quote freshness validation
+        isQuoteFresh: function(maxAgeSeconds = 30) {
+            if (!window.lastQuote) return false;
+            
+            const age = (Date.now() - window.lastQuote.timestamp) / 1000;
+            const correctMode = window.lastQuote.mode === this.currentTradeMode;
+            
+            return age < maxAgeSeconds && correctMode;
+        },
+        
+        // H-4 FIX: Gas estimation with error handling
+        estimateTradeGas: async function(action, params) {
+            try {
+                const response = await fetch(`/api/trade/${action}/estimate-gas`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(params)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Gas estimation failed: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.gas_estimate) {
+                    throw new Error('Invalid gas estimate response');
+                }
+                
+                return data.gas_estimate;
+            } catch (error) {
+                console.error('Gas estimation error:', error);
                 ModalManager.alert(
-                    'Invalid Amount',
-                    'Please enter a valid amount to trade.',
+                    'Gas Estimation Failed',
+                    'Unable to estimate gas cost. Please try again.',
+                    'error'
+                );
+                throw error;  // Re-throw to stop trade flow
+            }
+        },
+        
+        // Trade status display helper
+        showTradeStatus: function(message) {
+            console.log('🔄 Trade Status:', message);
+            // Display status in UI if there's a status element
+            const statusEl = document.getElementById('tradeStatus');
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.style.display = 'block';
+            }
+        },
+        
+        // Phase 3.5: executeTrade() with all audit fixes
+        executeTrade: async function() {
+            // Check wallet connection
+            if (!window.walletManager.isConnected()) {
+                ModalManager.alert('Wallet Required', 'Please connect your wallet to trade.', 'error');
+                window.walletManager.openWalletModal();
+                return;
+            }
+            
+            // ⚠️ FIX #1: NETWORK VALIDATION
+            const provider = window.walletManager.getMetaMaskProvider();
+            const chainId = await provider.request({ method: 'eth_chainId' });
+            const chainIdDecimal = parseInt(chainId, 16);
+            
+            if (chainIdDecimal !== 167012) {
+                ModalManager.alert(
+                    'Wrong Network',
+                    `Please switch to Kasplex Testnet (Chain ID: 167012). Currently on: ${chainIdDecimal}`,
                     'error'
                 );
                 return;
             }
             
-            const action = this.currentTradeMode === 'buy' ? 'Buy' : 'Sell';
-            const actionColor = this.currentTradeMode === 'buy' ? '#4CAF50' : '#FF5252';
-            const tokenAmount = document.getElementById('tokenAmount').value;
+            // NC-3 FIX: Validate quote freshness
+            if (!this.isQuoteFresh()) {
+                ModalManager.alert('Quote Expired', 'Please wait for updated quote...', 'warning');
+                await this.updateTokenAmount();  // Refresh quote
+                return;
+            }
             
-            ModalManager.confirm(
-                `<i class="fas fa-exchange-alt"></i> Confirm ${action} Order`,
-                `<div style="text-align: center; padding: 1rem;">
-                    <div style="font-size: 1.2rem; margin-bottom: 1rem;">
-                        <strong style="color: ${actionColor}">${action}</strong>
-                        <span style="color: #20B2AA; font-weight: bold;">${this.formatNumber(tokenAmount)} $${this.tokenSymbol}</span>
-                    </div>
-                    <div style="font-size: 1rem; color: #AAA;">
-                        for <span style="color: #FFD700; font-weight: bold;">${this.formatNumber(kasAmount)} KAS</span>
-                    </div>
-                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(32, 178, 170, 0.1);
-                                border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px;">
-                        <small style="color: #999;">Rate: 1 KAS = ${(tokenAmount/kasAmount).toFixed(4)} $${this.tokenSymbol}</small>
-                    </div>
-                </div>`,
-                function() {
-                    console.log(`Executing ${action} order:`, {tokens: tokenAmount, kas: kasAmount});
+            const action = this.currentTradeMode; // 'buy' or 'sell'
+            
+            // Build parameters based on trade type
+            let params;
+            if (action === 'buy') {
+                // BUY FLOW
+                const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                const expectedTokens = parseFloat(document.getElementById('tokenAmount').value) || 0;
+                
+                if (kasAmount <= 0) {
+                    ModalManager.alert('Invalid Amount', 'Please enter a valid KAS amount.', 'error');
+                    return;
+                }
+                
+                // H-3 FIX: Check KAS balance before buy
+                const wallet = window.walletManager.getConnectedWallet();
+                const provider = window.walletManager.getMetaMaskProvider();
+                
+                const balance = await provider.request({
+                    method: 'eth_getBalance',
+                    params: [wallet.address, 'latest']
+                });
+                
+                const balanceKAS = parseFloat(ethers.utils.formatEther(balance));
+                const requiredKAS = kasAmount * 1.01; // Add 1% for gas
+                
+                if (balanceKAS < requiredKAS) {
                     ModalManager.alert(
-                        'Trade Submitted',
-                        `Your ${action.toLowerCase()} order has been submitted successfully!`,
-                        'success'
+                        'Insufficient Balance',
+                        `You need ${requiredKAS.toFixed(4)} KAS (including gas) but only have ${balanceKAS.toFixed(4)} KAS`,
+                        'error'
+                    );
+                    return;
+                }
+                
+                // Calculate slippage protection
+                const slippageBps = window.lastQuote?.auto_slippage_bps || 50;
+                const minTokensOut = Math.floor(expectedTokens * (10000 - slippageBps) / 10000);
+                
+                params = {
+                    token_address: window.tokenContractAddress,
+                    kas_amount: kasAmount,
+                    min_tokens_out: minTokensOut,
+                    deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
+                };
+                
+                // H-4 FIX: Get gas estimate and display
+                const gasEstimate = await this.estimateTradeGas(action, params);
+                const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
+                const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
+                
+                // Enhanced confirmation with gas
+                const confirmed = await ModalManager.confirm(
+                    'Confirm BUY Order',
+                    `Buy ${expectedTokens.toLocaleString()} ${this.tokenSymbol} for ${kasAmount} KAS?<br>
+                     <small>Min tokens: ${minTokensOut.toLocaleString()} (slippage protected)</small><br>
+                     <small>Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})</small>`,
+                    'Buy'
+                );
+                if (!confirmed) return;
+                
+            } else { // sell
+                // SELL FLOW
+                const tokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
+                const expectedKas = parseFloat(document.getElementById('kasAmount').value) || 0;
+                
+                if (tokenAmount <= 0) {
+                    ModalManager.alert('Invalid Amount', 'Please enter a valid token amount.', 'error');
+                    return;
+                }
+                
+                // CB-1 FIX: CHECK ERC20 APPROVAL
+                const wallet = window.walletManager.getConnectedWallet();
+                const provider = window.walletManager.getMetaMaskProvider();
+                
+                // ⚠️ FIX #2: Token and Pool are SEPARATE contracts
+                // Token is at window.tokenContractAddress
+                // Pool needs approval to spend user's tokens
+                const tokenContract = new ethers.Contract(
+                    window.tokenContractAddress,  // This IS the token
+                    [
+                        'function allowance(address,address) view returns (uint256)',
+                        'function approve(address,uint256) returns (bool)',
+                        'function balanceOf(address) view returns (uint256)'
+                    ],
+                    provider.getSigner()
+                );
+                
+                // Check if pool has allowance to spend user's tokens
+                const currentAllowance = await tokenContract.allowance(
+                    wallet.address,
+                    window.poolContractAddress  // ⚠️ CRITICAL: Approve POOL, not token itself
+                );
+                
+                const tokenAmountWei = ethers.utils.parseEther(tokenAmount.toString());
+                
+                // If insufficient allowance, request approval
+                if (currentAllowance.lt(tokenAmountWei)) {
+                    const approveConfirmed = await ModalManager.confirm(
+                        'Approval Required',
+                        `You need to approve the pool to spend your ${this.tokenSymbol} tokens.<br>
+                         <small>This is a one-time approval per token.</small>`,
+                        'Approve'
+                    );
+                    
+                    if (!approveConfirmed) return;
+                    
+                    this.showTradeStatus('Requesting token approval...');
+                    
+                    // ⚠️ FIX #2: Approve POOL to spend tokens from token contract
+                    const approveTx = await tokenContract.approve(
+                        window.poolContractAddress,  // Pool address (NOT token address)
+                        ethers.constants.MaxUint256
+                    );
+                    
+                    this.showTradeStatus('Waiting for approval confirmation...');
+                    await approveTx.wait();
+                    this.showTradeStatus('Approval confirmed! Proceeding with sell...');
+                }
+                
+                // Calculate slippage protection
+                const slippageBps = window.lastQuote?.auto_slippage_bps || 50;
+                const minKasOut = expectedKas * (10000 - slippageBps) / 10000;
+                
+                params = {
+                    token_address: window.tokenContractAddress,
+                    token_amount: tokenAmount,
+                    min_kas_out: minKasOut,
+                    deadline: Math.floor(Date.now() / 1000) + 300
+                };
+                
+                // H-4 FIX: Get gas estimate and display
+                const gasEstimate = await this.estimateTradeGas(action, params);
+                const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
+                const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
+                
+                // Enhanced confirmation with gas
+                const confirmed = await ModalManager.confirm(
+                    'Confirm SELL Order',
+                    `Sell ${tokenAmount.toLocaleString()} ${this.tokenSymbol} for ${expectedKas.toFixed(4)} KAS?<br>
+                     <small>Min KAS: ${minKasOut.toFixed(4)} (slippage protected)</small><br>
+                     <small>Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})</small>`,
+                    'Sell'
+                );
+                if (!confirmed) return;
+            }
+            
+            // Execute via TransactionManager
+            await window.txManager.executeTransaction(action, params, {
+                onUpdate: (status) => {
+                    this.showTradeStatus(status.message);
+                },
+                onConfirm: (receipt) => {
+                    ModalManager.alert(
+                        'Trade Successful! ✅',
+                        `Transaction: ${receipt.tx_hash}`,
+                        'success',
+                        () => {
+                            location.reload();
+                        }
                     );
                 },
-                function() {
-                    console.log('Trade cancelled');
+                onError: (error) => {
+                    ModalManager.alert('Trade Failed', error, 'error');
                 }
-            );
+            });
         },
         
         // Chat functions

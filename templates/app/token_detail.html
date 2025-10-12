@@ -118,6 +118,7 @@
     <script>
         // Pass server-side data to JavaScript module
         window.tokenContractAddress = '{{ token.contract_address }}';
+        window.poolContractAddress = '{{ token.contract_address }}';  // Pool address (same as token in this architecture)
         window.tokenCreatorAddress = '{{ token.creator.wallet_address }}';
         window.isProToken = {{ 'true' if is_pro_token else 'false' }};
         
