@@ -3401,10 +3401,12 @@ def calculate_anti_bot_fee(kas_amount_wei, token):
     if not token.anti_bot_enabled:
         return {'fee_wei': 0, 'fee_kas': 0.0, 'elapsed_seconds': 0}
     
+    created_at_utc = token.created_at.replace(tzinfo=timezone.utc) if token.created_at.tzinfo is None else token.created_at
+    
     if not token.deployment_block_number:
-        elapsed_seconds = int((datetime.now(timezone.utc) - token.created_at).total_seconds())
+        elapsed_seconds = int((datetime.now(timezone.utc) - created_at_utc).total_seconds())
     else:
-        elapsed_seconds = int((datetime.now(timezone.utc) - token.created_at).total_seconds())
+        elapsed_seconds = int((datetime.now(timezone.utc) - created_at_utc).total_seconds())
     
     if elapsed_seconds >= 60:
         fee_percent = 100
@@ -3492,14 +3494,10 @@ def api_quote_buy():
         creator_fee_wei = remaining_kas_wei * 10 // 10000
         trade_amount_wei = remaining_kas_wei - platform_fee_wei - creator_fee_wei
         
-        tokens_out_wei = web3_service.get_buy_quote(token.contract_address, trade_amount_wei)
-        
-        try:
-            min_tokens_out_wei = web3_service.get_auto_slippage(token.contract_address, trade_amount_wei)
-            slippage_bps = int((1 - (min_tokens_out_wei / tokens_out_wei)) * 10000) if tokens_out_wei > 0 else 50
-        except Exception as e:
-            logging.debug(f"Auto-slippage failed: {str(e)}, using default 0.5%")
-            slippage_bps = 50
+        # get_buy_quote returns a dict with tokens_out, fees, etc.
+        quote_result = web3_service.get_buy_quote(token.contract_address, trade_amount_wei)
+        tokens_out_wei = quote_result['tokens_out']  # tokens user will receive
+        slippage_bps = quote_result.get('auto_slippage_bps', 50)
         
         # Convert wei to ether for calculations (preserve precision where needed)
         tokens_out = float(Web3.from_wei(tokens_out_wei, 'ether'))
@@ -3608,14 +3606,17 @@ def api_quote_sell():
         
         web3_service = get_web3_service()
         
-        kas_gross_wei = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
+        # get_sell_quote returns a dict with kas_out (net), fees, etc.
+        quote_result = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
+        kas_net_wei = quote_result['kas_out']  # NET amount user receives
+        platform_fee_wei = quote_result['fees']['platform']
+        creator_fee_wei = quote_result['fees']['creator']
         
-        total_fees_wei = kas_gross_wei * 100 // 10000
-        creator_fee_wei = total_fees_wei * 10 // 100
-        platform_fee_wei = total_fees_wei - creator_fee_wei
-        kas_net_wei = kas_gross_wei - total_fees_wei
+        # Calculate gross for display
+        kas_gross_wei = kas_net_wei + platform_fee_wei + creator_fee_wei
+        total_fees_wei = platform_fee_wei + creator_fee_wei
         
-        slippage_bps = 50
+        slippage_bps = quote_result.get('auto_slippage_bps', 50)
         
         kas_gross = float(Web3.from_wei(kas_gross_wei, 'ether'))
         kas_net = float(Web3.from_wei(kas_net_wei, 'ether'))
@@ -3718,7 +3719,8 @@ def api_trade_buy():
         except Exception:
             return jsonify({'success': False, 'error': 'Invalid address format'}), 400
         
-        token = Token.query.filter_by(contract_address=token_address).first()
+        # Case-insensitive query (database stores lowercase addresses)
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
@@ -3838,7 +3840,8 @@ def api_trade_sell():
         except Exception:
             return jsonify({'success': False, 'error': 'Invalid address format'}), 400
         
-        token = Token.query.filter_by(contract_address=token_address).first()
+        # Case-insensitive query (database stores lowercase addresses)
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
@@ -3936,9 +3939,13 @@ def api_estimate_gas(action):
         
         # Build params for estimate_trade_gas
         params = {
-            'pool_address': token.contract_address,
-            'from_address': data.get('from_address', session.get('wallet_address'))
+            'pool_address': token.contract_address
         }
+        
+        # Only add from_address if provided (web3_service will default to oracle)
+        from_address = data.get('from_address') or session.get('wallet_address')
+        if from_address:
+            params['from_address'] = from_address
         
         if action == 'buy':
             kas_amount = data.get('kas_amount', 1.0)  # Default 1 KAS for estimation

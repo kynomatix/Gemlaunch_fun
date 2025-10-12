@@ -39,6 +39,7 @@ class Web3Service:
         self.w3 = get_web3_with_fallback()
         
         # Rest of initialization
+        self.deployer_account = self._init_deployer_account()
         self.oracle_account = self._init_oracle_account()
         self.contracts = self._load_contracts()
         logging.info(f"Web3Service initialized - Chain ID: {self.w3.eth.chain_id}")
@@ -96,6 +97,30 @@ class Web3Service:
             
         except Exception as e:
             logging.error(f"Failed to derive secondary wallet: {str(e)}")
+            raise
+    
+    def _init_deployer_account(self):
+        """Initialize deployer account (main wallet with funds)"""
+        try:
+            deployer_private_key = os.environ.get('DEPLOYER_PRIVATE_KEY')
+            if not deployer_private_key:
+                raise Exception("DEPLOYER_PRIVATE_KEY not found in environment")
+            
+            # Normalize private key (ensure 0x prefix)
+            if not deployer_private_key.startswith('0x'):
+                deployer_private_key = f'0x{deployer_private_key}'
+            
+            deployer_account = Account.from_key(deployer_private_key)
+            
+            # Check balance
+            balance = self.w3.eth.get_balance(deployer_account.address)
+            balance_kas = self.w3.from_wei(balance, 'ether')
+            logging.info(f"Deployer wallet {deployer_account.address} - Balance: {balance_kas} KAS")
+            
+            return deployer_account
+            
+        except Exception as e:
+            logging.error(f"Failed to initialize deployer account: {str(e)}")
             raise
     
     def _init_oracle_account(self):
@@ -230,7 +255,7 @@ class Web3Service:
             params (dict): {
                 'pool_address': str,
                 'kas_amount': int (for buy) or 'token_amount': int (for sell),
-                'from_address': str (optional, defaults to oracle),
+                'from_address': str (optional, defaults to deployer for buy, oracle for sell),
                 'min_tokens_out': int (optional, for buy),
                 'min_kas_out': int (optional, for sell),
                 'deadline': int (optional, unix timestamp)
@@ -241,7 +266,12 @@ class Web3Service:
         """
         try:
             pool_address = params['pool_address']
-            from_address = params.get('from_address', self.oracle_account.address)
+            # Use deployer (has KAS) for buy, oracle (has tokens) for sell estimation
+            # If from_address not provided, choose based on action
+            if 'from_address' not in params or not params['from_address']:
+                from_address = self.deployer_account.address if action == 'buy' else self.oracle_account.address
+            else:
+                from_address = params['from_address']
             
             pool = self.get_bonding_pool_contract(pool_address)
             
@@ -264,6 +294,32 @@ class Web3Service:
             elif action == 'sell':
                 token_amount = params['token_amount']
                 min_kas_out = params.get('min_kas_out', 0)
+                
+                # VALIDATION CHECK 1: Validate minimum trade
+                try:
+                    min_trade = pool.functions.MINIMUM_TRADE().call()
+                    if token_amount < min_trade:
+                        raise ValueError(f"Amount {token_amount} below minimum trade {min_trade}")
+                except AttributeError:
+                    # Contract doesn't have MINIMUM_TRADE constant, skip this check
+                    pass
+                except Exception as e:
+                    # Only raise if it's our ValueError, otherwise log and continue
+                    if "below minimum trade" in str(e):
+                        raise
+                    logging.debug(f"Could not check MINIMUM_TRADE: {str(e)}")
+                
+                # VALIDATION CHECK 2: Validate wallet balance
+                try:
+                    balance = pool.functions.balanceOf(from_address).call()
+                    if token_amount > balance:
+                        raise ValueError(f"Insufficient balance. Need {token_amount}, have {balance}")
+                except Exception as e:
+                    # Only raise if it's our ValueError, otherwise log and continue
+                    if "Insufficient balance" in str(e):
+                        raise
+                    logging.debug(f"Could not check balance: {str(e)}")
+                
                 tx_data = pool.functions.sellTokens(token_amount, min_kas_out, deadline).build_transaction({
                     'from': Web3.to_checksum_address(from_address),
                     'value': 0
@@ -280,9 +336,19 @@ class Web3Service:
             
             return self.estimate_gas(tx)
             
-        except Exception as e:
-            logging.error(f"Failed to estimate trade gas for {action}: {str(e)}")
+        except ValueError as e:
+            # Re-raise ValueError for proper 400 error handling in endpoint
             raise
+        except Exception as e:
+            # Check if this is a contract revert with known validation errors
+            error_message = str(e)
+            if "Below minimum trade" in error_message:
+                raise ValueError("Amount below minimum trade requirement")
+            elif "Insufficient balance" in error_message or "ERC20: burn amount exceeds balance" in error_message:
+                raise ValueError("Insufficient token balance for this transaction")
+            else:
+                logging.error(f"Failed to estimate trade gas for {action}: {str(e)}")
+                raise
     
     def sign_transaction(self, transaction, private_key=None):
         """
