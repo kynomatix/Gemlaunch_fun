@@ -1134,6 +1134,14 @@ window.TransactionManager = TransactionManager;
                       priceImpact: quote.price_impact_percent || 0
                   });
                   
+                  // ⚠️ CD-1 FIX: Store quote for later use in executeTrade()
+                  // Use flat structure (spread quote properties) - M-8 fix
+                  window.lastQuote = {
+                      ...quote,              // Spread all quote properties
+                      timestamp: Date.now(),
+                      mode: action           // 'buy' or 'sell'
+                  };
+                  
                   // ⚠️ M-9 FIX: Update USD value (works for both modes)
                   const kasValue = action === 'buy' 
                       ? params.kas_amount 
@@ -1389,23 +1397,6 @@ window.TransactionManager = TransactionManager;
       });
   }
   
-  // ⚠️ NC-3 FIX: Store quote with timestamp and mode
-  async function updateTokenAmount() {
-      // ... existing code ...
-      
-      if (quote.success) {
-          // ⚠️ M-8 FIX: Use flat structure (spread quote properties at top level)
-          // This allows direct access to quote.auto_slippage_bps, etc.
-          window.lastQuote = {
-              ...quote,  // ✅ Flatten - spread all quote properties
-              timestamp: Date.now(),
-              mode: TokenDetail.currentTradeMode  // 'buy' or 'sell'
-          };
-          
-          // ... rest of existing code ...
-      }
-  }
-  
   // ⚠️ NC-3 FIX: Validate quote freshness
   function isQuoteFresh(maxAgeSeconds = 30) {
       if (!window.lastQuote) return false;
@@ -1557,7 +1548,60 @@ window.TransactionManager = TransactionManager;
   }
   ```
 
-- [ ] **Step 6: Verify backend endpoints**
+- [ ] **Step 6: Add Input Event Listeners**
+  
+  **⚠️ M-10 FIX: Set up event listeners for real-time quote updates**
+  
+  ```javascript
+  // At the bottom of token_detail.js initialization
+  
+  // ===== INPUT EVENT LISTENERS =====
+  // Set up listeners for both buy and sell modes
+  // updateTokenAmount() intelligently handles which input to read based on mode
+  
+  document.getElementById('kasAmount').addEventListener('input', () => {
+      // Only update if in buy mode (kasAmount is input in buy mode)
+      if (TokenDetail.currentTradeMode === 'buy') {
+          updateTokenAmount();
+      }
+  });
+  
+  document.getElementById('tokenAmount').addEventListener('input', () => {
+      // Only update if in sell mode (tokenAmount is input in sell mode)
+      if (TokenDetail.currentTradeMode === 'sell') {
+          updateTokenAmount();
+      }
+  });
+  
+  // ===== MODE SWITCHING =====
+  function switchTradeMode(newMode) {
+      TokenDetail.currentTradeMode = newMode;
+      
+      if (newMode === 'buy') {
+          // In buy mode: kasAmount is input, tokenAmount is output
+          document.getElementById('tokenAmount').value = '';
+          document.getElementById('tokenAmount').readOnly = true;
+          document.getElementById('kasAmount').readOnly = false;
+          
+          // Update UI to show buy mode active
+          document.querySelector('[data-mode="buy"]').classList.add('active');
+          document.querySelector('[data-mode="sell"]').classList.remove('active');
+      } else {
+          // In sell mode: tokenAmount is input, kasAmount is output
+          document.getElementById('kasAmount').value = '';
+          document.getElementById('kasAmount').readOnly = true;
+          document.getElementById('tokenAmount').readOnly = false;
+          
+          // Update UI to show sell mode active
+          document.querySelector('[data-mode="sell"]').classList.add('active');
+          document.querySelector('[data-mode="buy"]').classList.remove('active');
+      }
+      
+      clearFeeBreakdown();
+  }
+  ```
+
+- [ ] **Step 7: Verify backend endpoints**
   - Confirm `POST /api/trade/buy` returns unsigned tx data
   - Confirm `POST /api/trade/sell` returns unsigned tx data
   - Test quote endpoints return fee breakdown
