@@ -57,6 +57,37 @@
         </div>
     </div>
 
+    <!-- RPC Network Status -->
+    <div class="rpc-section">
+        <h2><i class="fas fa-network-wired"></i> RPC Network Status</h2>
+        <div class="rpc-card">
+            <div class="rpc-main">
+                <div class="rpc-status-indicator">
+                    <div class="status-dot" id="rpc-status-dot"></div>
+                    <div class="status-text" id="rpc-status-text">Checking...</div>
+                </div>
+                <div class="rpc-details">
+                    <div class="rpc-detail">
+                        <span class="detail-label">Block Height</span>
+                        <span class="detail-value" id="rpc-block-number">-</span>
+                    </div>
+                    <div class="rpc-detail">
+                        <span class="detail-label">Gas Price</span>
+                        <span class="detail-value" id="rpc-gas-price">-</span>
+                    </div>
+                    <div class="rpc-detail">
+                        <span class="detail-label">Chain ID</span>
+                        <span class="detail-value" id="rpc-chain-id">-</span>
+                    </div>
+                    <div class="rpc-detail">
+                        <span class="detail-label">Last Check</span>
+                        <span class="detail-value" id="rpc-last-check">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- System Stats -->
     <div class="stats-grid">
         <div class="stat-card">
@@ -172,6 +203,97 @@
     border-radius: 15px;
     padding: 2rem;
     margin-bottom: 2rem;
+}
+
+/* RPC Section Styles */
+.rpc-section {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 86, 179, 0.05));
+    border: 2px solid rgba(0, 123, 255, 0.4);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.rpc-section h2 {
+    color: #007BFF;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rpc-card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.rpc-main {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+}
+
+.rpc-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.status-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #6c757d;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.online {
+    background: #28a745;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.6);
+}
+
+.status-dot.offline {
+    background: #dc3545;
+    box-shadow: 0 0 10px rgba(220, 53, 69, 0.6);
+    animation: none;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.status-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #FFF;
+}
+
+.rpc-details {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    flex: 1;
+}
+
+.rpc-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-label {
+    color: #888;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    color: #FFF;
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
 .oracle-section h2 {
@@ -442,6 +564,7 @@
 <script>
 // Auto-refresh oracle price
 let autoRefreshInterval = null;
+let rpcCheckInterval = null;
 
 function refreshOraclePrice() {
     const btn = document.getElementById('refresh-oracle');
@@ -489,10 +612,61 @@ document.getElementById('refresh-oracle').addEventListener('click', refreshOracl
 // Auto-refresh every 60 seconds
 autoRefreshInterval = setInterval(refreshOraclePrice, 60000);
 
+// RPC Status Check
+function checkRPCStatus() {
+    const dotEl = document.getElementById('rpc-status-dot');
+    const textEl = document.getElementById('rpc-status-text');
+    const blockEl = document.getElementById('rpc-block-number');
+    const gasEl = document.getElementById('rpc-gas-price');
+    const chainEl = document.getElementById('rpc-chain-id');
+    const checkEl = document.getElementById('rpc-last-check');
+    
+    fetch('/api/network/status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.connected) {
+                dotEl.className = 'status-dot online';
+                textEl.textContent = 'Connected';
+                blockEl.textContent = data.block_number.toLocaleString();
+                gasEl.textContent = parseFloat(data.gas_price_gwei).toFixed(2) + ' Gwei';
+                chainEl.textContent = data.chain_id + ' (Kasplex)';
+            } else {
+                dotEl.className = 'status-dot offline';
+                textEl.textContent = 'Disconnected';
+                blockEl.textContent = 'N/A';
+                gasEl.textContent = 'N/A';
+                chainEl.textContent = 'N/A';
+            }
+            
+            const now = new Date();
+            checkEl.textContent = now.toLocaleTimeString();
+        })
+        .catch(err => {
+            console.error('RPC check failed:', err);
+            dotEl.className = 'status-dot offline';
+            textEl.textContent = 'Error';
+            blockEl.textContent = 'N/A';
+            gasEl.textContent = 'N/A';
+            chainEl.textContent = 'N/A';
+            
+            const now = new Date();
+            checkEl.textContent = now.toLocaleTimeString();
+        });
+}
+
+// Check RPC immediately on load
+checkRPCStatus();
+
+// Auto-check every 30 seconds
+rpcCheckInterval = setInterval(checkRPCStatus, 30000);
+
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
+    }
+    if (rpcCheckInterval) {
+        clearInterval(rpcCheckInterval);
     }
 });
 </script>
