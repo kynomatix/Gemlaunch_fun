@@ -444,14 +444,44 @@
         setTradeMode: function(mode) {
             this.currentTradeMode = mode;
             
+            // Update tab styling
             document.querySelectorAll('.trade-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelector(`.trade-tab.${mode}`).classList.add('active');
             
-            const button = document.getElementById('tradeButton');
-            button.className = `trade-button ${mode}`;
-            button.innerHTML = mode === 'buy' 
-                ? `<i class="fas fa-rocket"></i> Buy $${this.tokenSymbol}`
-                : `<i class="fas fa-money-bill"></i> Sell $${this.tokenSymbol}`;
+            // ⚠️ M-10 FIX: Update field readonly states
+            const kasAmountInput = document.getElementById('kasAmount');
+            const tokenAmountInput = document.getElementById('tokenAmount');
+            
+            if (mode === 'buy') {
+                // BUY mode: User edits KAS, tokens are output
+                if (kasAmountInput) kasAmountInput.readOnly = false;
+                if (tokenAmountInput) tokenAmountInput.readOnly = true;
+            } else { // sell
+                // SELL mode: User edits tokens, KAS is output
+                if (kasAmountInput) kasAmountInput.readOnly = true;
+                if (tokenAmountInput) tokenAmountInput.readOnly = false;
+            }
+            
+            // Update trade button text with icon and symbol
+            const tradeButton = document.getElementById('tradeButton');
+            if (tradeButton) {
+                const icon = mode === 'buy' ? 
+                    '<i class="fas fa-rocket"></i>' : 
+                    '<i class="fas fa-money-bill-wave"></i>';
+                const symbol = this.tokenSymbol || 'TOKEN';
+                tradeButton.innerHTML = `${icon} ${mode === 'buy' ? 'Buy' : 'Sell'} $${symbol}`;
+                tradeButton.className = `trade-button ${mode}`;
+            }
+            
+            // Clear inputs when switching modes
+            if (kasAmountInput) kasAmountInput.value = '';
+            if (tokenAmountInput) tokenAmountInput.value = '';
+            this.clearFeeBreakdown();
+        },
+        
+        switchTradeMode: function() {
+            const newMode = this.currentTradeMode === 'buy' ? 'sell' : 'buy';
+            this.setTradeMode(newMode);
         },
         
         setQuickAmount: function(amount) {
@@ -2101,11 +2131,28 @@
             }
         });
         
-        // Trading input listener - only add if not already added
+        // ⚠️ M-10 FIX: Mode-aware input listeners
         const kasAmountInput = document.getElementById('kasAmount');
+        const tokenAmountInput = document.getElementById('tokenAmount');
+
         if (kasAmountInput && !kasAmountInput.dataset.listenerAdded) {
             kasAmountInput.dataset.listenerAdded = 'true';
-            kasAmountInput.addEventListener('input', () => TokenDetail.updateTokenAmount());
+            kasAmountInput.addEventListener('input', () => {
+                // Only trigger in BUY mode (kasAmount is input in buy mode)
+                if (TokenDetail.currentTradeMode === 'buy') {
+                    TokenDetail.updateTokenAmount();
+                }
+            });
+        }
+
+        if (tokenAmountInput && !tokenAmountInput.dataset.listenerAdded) {
+            tokenAmountInput.dataset.listenerAdded = 'true';
+            tokenAmountInput.addEventListener('input', () => {
+                // Only trigger in SELL mode (tokenAmount is input in sell mode)
+                if (TokenDetail.currentTradeMode === 'sell') {
+                    TokenDetail.updateTokenAmount();
+                }
+            });
         }
         
         // Chat enter key - only add if not already added
@@ -2135,6 +2182,7 @@
     
     // Additional global functions for HTML event handlers
     window.setTradeMode = function(mode) { TokenDetail.setTradeMode(mode); };
+    window.switchTradeMode = function() { TokenDetail.switchTradeMode(); };
     window.setQuickAmount = function(amount) { TokenDetail.setQuickAmount(amount); };
     window.executeTrade = function() { TokenDetail.executeTrade(); };
     window.sendMessage = function() { TokenDetail.sendMessage(); };
