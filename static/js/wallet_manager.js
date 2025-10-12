@@ -81,8 +81,20 @@ class WalletManager {
                 
                 if (accounts.length === 0) {
                     console.log('[WalletManager] No accounts available - user disconnected from MetaMask');
+                    
+                    if (window.txManager) {
+                        console.log('[WalletManager] Closing txManager connections...');
+                        window.txManager.closeAllConnections();
+                    }
+                    
                     if (this.connectedWallet) {
                         await this.disconnectWallet();
+                        
+                        ModalManager.alert(
+                            'Wallet Disconnected',
+                            'Your wallet has been disconnected. Please reconnect to continue.',
+                            'warning'
+                        );
                     }
                 } else if (this.connectedWallet && this.connectedWallet.wallet_type === 'metamask') {
                     const newAddress = accounts[0].toLowerCase();
@@ -92,6 +104,12 @@ class WalletManager {
                     
                     if (newAddress !== currentAddress) {
                         console.log('[WalletManager] Account changed detected - disconnecting old wallet');
+                        
+                        if (window.txManager) {
+                            console.log('[WalletManager] Closing txManager connections...');
+                            window.txManager.closeAllConnections();
+                        }
+                        
                         await this.disconnectWallet();
                         
                         // Show user-friendly notification
@@ -332,6 +350,8 @@ class WalletManager {
             console.log('[WalletManager] Connection successful!', walletData);
             this.updateUIState('connected', walletType, walletData);
             this.trigger('connect', walletData);
+            
+            await this.updateWalletBalance();
             
             return walletData;
             
@@ -721,6 +741,30 @@ class WalletManager {
             });
         }
     }
+    
+    async updateWalletBalance() {
+        try {
+            const wallet = this.getConnectedWallet();
+            if (!wallet) return;
+            
+            const provider = this.getMetaMaskProvider();
+            if (!provider) return;
+            
+            const balance = await provider.request({
+                method: 'eth_getBalance',
+                params: [wallet.address, 'latest']
+            });
+            
+            const balanceKAS = parseFloat(balance) / Math.pow(10, 18);
+            
+            const balanceElement = document.getElementById('walletBalance');
+            if (balanceElement) {
+                balanceElement.textContent = `${balanceKAS.toFixed(4)} KAS`;
+            }
+        } catch (error) {
+            console.error('[WalletManager] Failed to update wallet balance:', error);
+        }
+    }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -729,4 +773,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
 if (typeof window !== 'undefined') {
     window.WalletManager = WalletManager;
+    
+    window.updateWalletBalance = async function() {
+        if (window.walletManager) {
+            await window.walletManager.updateWalletBalance();
+        }
+    };
 }

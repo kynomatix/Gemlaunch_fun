@@ -971,6 +971,10 @@
                     this.showTradeStatus(status.message);
                 },
                 onConfirm: (receipt) => {
+                    if (window.updateWalletBalance) {
+                        window.updateWalletBalance();
+                    }
+                    
                     ModalManager.alert(
                         'Trade Successful! ✅',
                         `Transaction: ${receipt.tx_hash}`,
