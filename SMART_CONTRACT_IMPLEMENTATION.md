@@ -449,11 +449,13 @@ class TransactionManager {
     }
     
     // ===== PHASE 1: GET QUOTE =====
-    async getQuote(quoteType, params) {
+    // ⚠️ H-5 FIX: Add signal parameter for AbortController support
+    async getQuote(quoteType, params, signal = null) {
         /*
         quoteType: 'buy' | 'sell'
         params: {token_address, kas_amount} for buy
                 {token_address, token_amount} for sell
+        signal: AbortController signal for canceling requests
         
         Returns: {
             success: true,
@@ -467,12 +469,18 @@ class TransactionManager {
             ? '/api/trade/quote-buy' 
             : '/api/trade/quote-sell';
         
-        const response = await fetch(endpoint, {
+        const fetchOptions = {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(params)
-        });
+        };
         
+        // ⚠️ H-5 FIX: Add signal if provided for request cancellation
+        if (signal) {
+            fetchOptions.signal = signal;
+        }
+        
+        const response = await fetch(endpoint, fetchOptions);
         return await response.json();
     }
     
@@ -1010,6 +1018,25 @@ window.TransactionManager = TransactionManager;
       </div>
   </div>
   ```
+  
+  **⚠️ M-7 FIX: Add deployment modal helper functions**
+  ```javascript
+  // In create_token.html or create_token.js
+  function showDeploymentModal() {
+      const modal = document.getElementById('deploymentModal');
+      modal.style.display = 'flex';
+  }
+  
+  function hideDeploymentModal() {
+      const modal = document.getElementById('deploymentModal');
+      modal.style.display = 'none';
+  }
+  
+  function updateDeploymentStatus(message) {
+      const statusDiv = document.getElementById('deploymentStatus');
+      statusDiv.textContent = message;
+  }
+  ```
 
 - [ ] **Step 4: Test end-to-end**
   - Fill token creation form
@@ -1232,29 +1259,26 @@ window.TransactionManager = TransactionManager;
               return;
           }
           
-          // ⚠️ NC-1 FIX: CHECK ERC20 APPROVAL FIRST
+          // ⚠️ CB-1 FIX: CHECK ERC20 APPROVAL (BondingCurvePool IS the token)
           const wallet = window.walletManager.getConnectedWallet();
           const provider = window.walletManager.getMetaMaskProvider();
           
-          // Get token address from pool contract
-          const poolContract = new ethers.Contract(
-              window.tokenContractAddress,  // BondingCurvePool address
-              ['function token() view returns (address)'],
-              provider
-          );
-          const tokenAddress = await poolContract.token();
-          
-          // Create ERC20 token contract instance
+          // ✅ CRITICAL FIX: BondingCurvePool IS the ERC20 token (inherits from ERC20)
+          // No separate token contract exists - the pool contract itself is the token
           const tokenContract = new ethers.Contract(
-              tokenAddress,  // ✅ FIXED: Use actual token ERC20 address
-              ['function allowance(address,address) view returns (uint256)',
-               'function approve(address,uint256) returns (bool)'],
+              window.tokenContractAddress,  // BondingCurvePool IS the token address
+              [
+                  'function allowance(address,address) view returns (uint256)',
+                  'function approve(address,uint256) returns (bool)',
+                  'function balanceOf(address) view returns (uint256)'
+              ],
               provider.getSigner()
           );
           
+          // Check current allowance - pool needs permission to spend its own tokens
           const currentAllowance = await tokenContract.allowance(
               wallet.address,
-              window.tokenContractAddress  // ✅ FIXED: Approve BondingCurvePool as spender
+              window.tokenContractAddress  // Approve the contract itself (pool = token)
           );
           
           const tokenAmountWei = ethers.utils.parseEther(tokenAmount.toString());
@@ -1272,8 +1296,11 @@ window.TransactionManager = TransactionManager;
               
               // Execute approval transaction
               showTradeStatus('Requesting token approval...');
+              
+              // ✅ Approve BondingCurvePool to spend its own ERC20 tokens
+              // This allows sellTokens() to call transferFrom(user, pool, amount)
               const approveTx = await tokenContract.approve(
-                  window.tokenContractAddress,  // ✅ FIXED: Approve BondingCurvePool (not token itself)
+                  window.tokenContractAddress,  // BondingCurvePool needs to spend its own ERC20
                   ethers.constants.MaxUint256  // Approve infinite (standard practice)
               );
               
@@ -1368,7 +1395,136 @@ window.TransactionManager = TransactionManager;
   }
   ```
 
-- [ ] **Step 4: Verify backend endpoints**
+- [ ] **Step 4: Add Loading & Status Helper Functions**
+  
+  **⚠️ H-6 FIX: These functions are called throughout the trade flow but were missing**
+  
+  ```javascript
+  // In token_detail.js (add at the bottom of the file)
+  
+  // ===== LOADING & STATUS HELPERS =====
+  function showQuoteLoading() {
+      const tokenInput = document.getElementById('tokenAmount');
+      tokenInput.classList.add('loading');
+      tokenInput.disabled = true;
+      
+      const feeBreakdown = document.getElementById('feeBreakdown');
+      if (feeBreakdown) {
+          feeBreakdown.style.opacity = '0.5';
+      }
+  }
+  
+  function hideQuoteLoading() {
+      const tokenInput = document.getElementById('tokenAmount');
+      tokenInput.classList.remove('loading');
+      tokenInput.disabled = false;
+      
+      const feeBreakdown = document.getElementById('feeBreakdown');
+      if (feeBreakdown) {
+          feeBreakdown.style.opacity = '1';
+      }
+  }
+  
+  function clearFeeBreakdown() {
+      const feeBreakdown = document.getElementById('feeBreakdown');
+      if (feeBreakdown) {
+          feeBreakdown.style.display = 'none';
+      }
+  }
+  
+  function showQuoteError(errorMessage) {
+      const tokenInput = document.getElementById('tokenAmount');
+      tokenInput.value = 'Error';
+      tokenInput.classList.add('error');
+      
+      ModalManager.showNotification(
+          `Quote failed: ${errorMessage}`,
+          'error',
+          3000
+      );
+  }
+  
+  function showTradeStatus(message) {
+      // Create or update status overlay
+      let statusOverlay = document.getElementById('tradeStatusOverlay');
+      
+      if (!statusOverlay) {
+          statusOverlay = document.createElement('div');
+          statusOverlay.id = 'tradeStatusOverlay';
+          statusOverlay.style.cssText = `
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: rgba(0, 0, 0, 0.8);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 10000;
+          `;
+          document.body.appendChild(statusOverlay);
+      }
+      
+      statusOverlay.innerHTML = `
+          <div style="background: #1a1a2e; padding: 2rem; border-radius: 10px; text-align: center;">
+              <div class="loading-spinner"></div>
+              <p style="margin-top: 1rem; color: #20B2AA;">${message}</p>
+          </div>
+      `;
+      statusOverlay.style.display = 'flex';
+  }
+  
+  function hideTradeStatus() {
+      const statusOverlay = document.getElementById('tradeStatusOverlay');
+      if (statusOverlay) {
+          statusOverlay.style.display = 'none';
+      }
+  }
+  ```
+
+- [ ] **Step 5: Add CSS for Loading States**
+  
+  **⚠️ H-6 FIX: CSS for loading animations and error states**
+  
+  ```css
+  /* Add to static/css/token_detail.css or styles.css */
+  
+  /* Loading state for input */
+  input.loading {
+      background: linear-gradient(90deg, #2a2a4a 25%, #3a3a5a 50%, #2a2a4a 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+  }
+  
+  @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+  }
+  
+  /* Error state for input */
+  input.error {
+      border-color: #FF5252;
+      background: rgba(255, 82, 82, 0.1);
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #20B2AA;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+  }
+  
+  @keyframes spin {
+      to { transform: rotate(360deg); }
+  }
+  ```
+
+- [ ] **Step 6: Verify backend endpoints**
   - Confirm `POST /api/trade/buy` returns unsigned tx data
   - Confirm `POST /api/trade/sell` returns unsigned tx data
   - Test quote endpoints return fee breakdown
@@ -1443,6 +1599,133 @@ window.TransactionManager = TransactionManager;
               'ether'
           )
       })
+  ```
+
+- [ ] **⚠️ M-5 FIX: Add estimate_trade_gas() to web3_service.py**
+  ```python
+  # In services/web3_service.py
+  def estimate_trade_gas(self, action: str, token_address: str, params: dict) -> int:
+      """
+      Estimate gas for buy or sell transaction
+      
+      Args:
+          action: 'buy' or 'sell'
+          token_address: BondingCurvePool contract address
+          params: Transaction parameters (kas_amount, token_amount, min_out, deadline)
+      
+      Returns:
+          int: Estimated gas units
+      """
+      pool_contract = self.w3.eth.contract(
+          address=Web3.to_checksum_address(token_address),
+          abi=self.bonding_curve_abi
+      )
+      
+      if action == 'buy':
+          gas_estimate = pool_contract.functions.buyTokens(
+              params['min_tokens_out'],
+              params['deadline']
+          ).estimate_gas({
+              'from': self.oracle_account.address,
+              'value': Web3.to_wei(params['kas_amount'], 'ether')
+          })
+      else:  # sell
+          gas_estimate = pool_contract.functions.sellTokens(
+              Web3.to_wei(params['token_amount'], 'ether'),
+              params['min_kas_out'],
+              params['deadline']
+          ).estimate_gas({
+              'from': self.oracle_account.address
+          })
+      
+      return gas_estimate
+  ```
+
+- [ ] **⚠️ M-6 FIX: Add get_buy_quote() and get_sell_quote() to web3_service.py**
+  ```python
+  # In services/web3_service.py
+  def get_buy_quote(self, token_address: str, kas_amount: float) -> dict:
+      """
+      Get buy quote from BondingCurvePool contract
+      
+      Args:
+          token_address: BondingCurvePool contract address
+          kas_amount: Amount of KAS to spend
+      
+      Returns:
+          dict: Quote details with tokens_out, fees, slippage, price_impact
+      """
+      pool_contract = self.w3.eth.contract(
+          address=Web3.to_checksum_address(token_address),
+          abi=self.bonding_curve_abi
+      )
+      
+      kas_amount_wei = Web3.to_wei(kas_amount, 'ether')
+      
+      # Get quote from contract
+      tokens_out = pool_contract.functions.quoteBuy(kas_amount_wei).call()
+      
+      # Get fee breakdown
+      fee_breakdown = pool_contract.functions.getEffectiveFeeBreakdown(kas_amount_wei).call()
+      # Returns: (antiBotFee, platformFee, creatorFee, tradeAmount)
+      
+      # Get auto slippage
+      auto_slippage = pool_contract.functions.calculateOptimalSlippage(kas_amount_wei).call()
+      
+      # Calculate price impact
+      virtual_kas = pool_contract.functions.virtualKasReserve().call()
+      price_impact = (kas_amount_wei * 10000) / virtual_kas / 100  # As percentage
+      
+      return {
+          'tokens_out': Web3.from_wei(tokens_out, 'ether'),
+          'anti_bot_fee': Web3.from_wei(fee_breakdown[0], 'ether'),
+          'platform_fee': Web3.from_wei(fee_breakdown[1], 'ether'),
+          'creator_fee': Web3.from_wei(fee_breakdown[2], 'ether'),
+          'auto_slippage': auto_slippage,  # In basis points
+          'price_impact': price_impact
+      }
+
+  def get_sell_quote(self, token_address: str, token_amount: float) -> dict:
+      """
+      Get sell quote from BondingCurvePool contract
+      
+      Args:
+          token_address: BondingCurvePool contract address
+          token_amount: Amount of tokens to sell
+      
+      Returns:
+          dict: Quote details with kas_out, fees, slippage, price_impact
+      """
+      pool_contract = self.w3.eth.contract(
+          address=Web3.to_checksum_address(token_address),
+          abi=self.bonding_curve_abi
+      )
+      
+      token_amount_wei = Web3.to_wei(token_amount, 'ether')
+      
+      # Get quote from contract
+      kas_out = pool_contract.functions.quoteSell(token_amount_wei).call()
+      
+      # For sell, fees are on KAS output (1% of kas_out)
+      total_fee = kas_out * 100 / 10000  # 1%
+      platform_fee = total_fee * 90 / 100
+      creator_fee = total_fee * 10 / 100
+      
+      # Calculate price impact
+      virtual_tokens = pool_contract.functions.virtualTokenReserve().call()
+      price_impact = (token_amount_wei * 10000) / virtual_tokens / 100
+      
+      # Get auto slippage (pass equivalent KAS value)
+      auto_slippage = pool_contract.functions.calculateOptimalSlippage(kas_out).call()
+      
+      return {
+          'kas_out': Web3.from_wei(kas_out, 'ether'),
+          'anti_bot_fee': 0,  # No anti-bot fee on sells
+          'platform_fee': Web3.from_wei(platform_fee, 'ether'),
+          'creator_fee': Web3.from_wei(creator_fee, 'ether'),
+          'auto_slippage': auto_slippage,
+          'price_impact': price_impact
+      }
   ```
 
 ---
