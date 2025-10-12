@@ -3355,7 +3355,8 @@ def api_quote_buy():
             logging.debug(f"Auto-slippage failed: {str(e)}, using default 0.5%")
             slippage_bps = 50
         
-        tokens_out = float(tokens_out_wei)
+        # Convert wei to ether for calculations (preserve precision where needed)
+        tokens_out = float(Web3.from_wei(tokens_out_wei, 'ether'))
         price_per_token = kas_amount / tokens_out if tokens_out > 0 else 0
         
         current_kas_reserve = float(Web3.from_wei(int(token.kas_reserve * 1e18) if token.kas_reserve else 0, 'ether'))
@@ -3374,16 +3375,17 @@ def api_quote_buy():
         
         return jsonify({
             'success': True,
-            'tokens_out': str(int(tokens_out_wei)),
-            'price_per_token': f"{price_per_token:.12f}",
-            'kas_amount': str(kas_amount),
-            'platform_fee': str(float(Web3.from_wei(platform_fee_wei, 'ether'))),
-            'creator_fee': str(float(Web3.from_wei(creator_fee_wei, 'ether'))),
-            'anti_bot_fee': str(anti_bot_fee_kas) if anti_bot_fee_kas > 0 else "0",
-            'total_cost': str(kas_amount),
-            'slippage_bps': slippage_bps,
-            'price_impact': f"{price_impact:.2f}%",
-            'new_price': f"{new_price:.12f}"
+            'tokens_out': tokens_out,  # In ether units (float)
+            'kas_amount': kas_amount,  # REQUIRED BY FRONTEND
+            'total_cost': kas_amount,  # REQUIRED BY FRONTEND  
+            'price_per_token': price_per_token,  # REQUIRED BY FRONTEND
+            'fees': {
+                'anti_bot': anti_bot_fee_kas if anti_bot_fee_kas > 0 else 0,
+                'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
+                'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
+            },
+            'auto_slippage_bps': slippage_bps,
+            'price_impact_percent': round(price_impact, 2)
         })
         
     except ValueError as e:
@@ -3489,15 +3491,18 @@ def api_quote_sell():
         
         return jsonify({
             'success': True,
-            'kas_out': str(kas_gross),
-            'price_per_token': f"{price_per_token:.12f}",
-            'token_amount': str(token_amount_wei),
-            'platform_fee': str(float(Web3.from_wei(platform_fee_wei, 'ether'))),
-            'creator_fee': str(float(Web3.from_wei(creator_fee_wei, 'ether'))),
-            'net_kas': str(kas_net),
-            'slippage_bps': slippage_bps,
-            'price_impact': f"{price_impact:.2f}%",
-            'new_price': f"{new_price:.12f}"
+            'kas_out': kas_gross,  # In ether units (float)
+            'token_amount': token_amount_wei / 1e18,  # REQUIRED BY FRONTEND (in ether)
+            'net_kas': kas_net,  # REQUIRED BY FRONTEND
+            'price_per_token': price_per_token,  # REQUIRED BY FRONTEND
+            'new_price': new_price,  # REQUIRED BY FRONTEND
+            'fees': {
+                'anti_bot': 0,
+                'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
+                'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
+            },
+            'auto_slippage_bps': slippage_bps,
+            'price_impact_percent': round(price_impact, 2)
         })
         
     except ValueError as e:
@@ -3511,193 +3516,107 @@ def api_quote_sell():
 @csrf.exempt
 def api_trade_buy():
     """
-    Execute buy trade - builds unsigned tx or relays signed tx
+    Build unsigned buy transaction
     
-    Request JSON (Step 1 - Get Unsigned TX):
+    Frontend sends:
     {
-        "action": "build_tx",
-        "user_address": "0x...",
         "token_address": "0x...",
         "kas_amount": 10.5,
-        "slippage_bps": 50
+        "min_tokens_out": 950000,
+        "deadline": 1728741234
     }
     
-    Response (Step 1):
+    Returns:
     {
         "success": true,
-        "unsigned_tx": {
-            "from": "0x...",
+        "tx_data": {
             "to": "0x...",
-            "data": "0x...",
             "value": "0x...",
-            "gas": "0x...",
-            "gasPrice": "0x...",
-            "nonce": "0x...",
-            "chainId": 167012
+            "data": "0x...",
+            "gas": "0x..."
         },
-        "quote": {
-            "tokens_out": "1234567890",
-            "platform_fee": "0.105",
-            "creator_fee": "0.095",
-            ...
-        }
+        "estimated_gas": 150000
     }
-    
-    Request JSON (Step 2 - Relay Signed TX):
-    {
-        "action": "relay_tx",
-        "signed_tx": "0x..."
-    }
-    
-    Response (Step 2):
-    {
-        "success": true,
-        "tx_hash": "0x...",
-        "status": "pending"
-    }
-    
-    Example curl (build_tx):
-    curl -X POST http://localhost:5000/api/trade/buy \
-      -H "Content-Type: application/json" \
-      -d '{"action": "build_tx", "user_address": "0x...", "token_address": "0x...", "kas_amount": 10.5, "slippage_bps": 50}'
-    
-    Example curl (relay_tx):
-    curl -X POST http://localhost:5000/api/trade/buy \
-      -H "Content-Type: application/json" \
-      -d '{"action": "relay_tx", "signed_tx": "0x..."}'
     """
     try:
         data = request.get_json(silent=True)
         if not data:
             return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
         
-        action = data.get('action', '').strip()
+        # Validate chain ID
+        validate_chain_id()
         
-        if action == 'build_tx':
-            # Validate chain ID
-            validate_chain_id()
-            
+        # Get user_address from session or request
+        user_address = session.get('wallet_address')
+        if not user_address:
             user_address = data.get('user_address', '').strip()
-            token_address = data.get('token_address', '').strip()
-            kas_amount = data.get('kas_amount')
-            slippage_bps = data.get('slippage_bps', 50)
-            
-            if not user_address:
-                return jsonify({'success': False, 'error': 'user_address is required'}), 400
-            
-            if not token_address:
-                return jsonify({'success': False, 'error': 'token_address is required'}), 400
-            
-            if kas_amount is None or kas_amount <= 0:
-                return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
-            
-            try:
-                slippage_bps = int(slippage_bps)
-                if slippage_bps < 0 or slippage_bps > 10000:
-                    return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 10000'}), 400
-            except (ValueError, TypeError):
-                return jsonify({'success': False, 'error': 'Invalid slippage_bps format'}), 400
-            
-            try:
-                user_address = Web3.to_checksum_address(user_address)
-                token_address = Web3.to_checksum_address(token_address)
-            except Exception:
-                return jsonify({'success': False, 'error': 'Invalid address format'}), 400
-            
-            token = Token.query.filter_by(contract_address=token_address).first()
-            if not token:
-                return jsonify({'success': False, 'error': 'Token not found'}), 404
-            
-            if token.deployment_status != 'deployed':
-                return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
-            
-            web3_service = get_web3_service()
-            kas_amount_wei = Web3.to_wei(kas_amount, 'ether')
-            
+        
+        token_address = data.get('token_address', '').strip()
+        kas_amount = data.get('kas_amount')
+        min_tokens_out = data.get('min_tokens_out')
+        deadline = data.get('deadline')
+        
+        if not user_address:
+            return jsonify({'success': False, 'error': 'user_address is required (connect wallet)'}), 400
+        
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        
+        if kas_amount is None or kas_amount <= 0:
+            return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
+        
+        try:
+            user_address = Web3.to_checksum_address(user_address)
+            token_address = Web3.to_checksum_address(token_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        token = Token.query.filter_by(contract_address=token_address).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        if token.deployment_status != 'deployed':
+            return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+        
+        web3_service = get_web3_service()
+        kas_amount_wei = Web3.to_wei(kas_amount, 'ether')
+        
+        # Use provided min_tokens_out or calculate with slippage
+        if min_tokens_out is None:
             anti_bot_result = calculate_anti_bot_fee(kas_amount_wei, token)
-            anti_bot_fee_wei = anti_bot_result['fee_wei']
-            anti_bot_fee_kas = anti_bot_result['fee_kas']
-            
-            remaining_kas_wei = kas_amount_wei - anti_bot_fee_wei
-            
+            remaining_kas_wei = kas_amount_wei - anti_bot_result['fee_wei']
             platform_fee_wei = remaining_kas_wei * 90 // 10000
             creator_fee_wei = remaining_kas_wei * 10 // 10000
             trade_amount_wei = remaining_kas_wei - platform_fee_wei - creator_fee_wei
-            
             tokens_out_wei = web3_service.get_buy_quote(token.contract_address, trade_amount_wei)
-            
-            min_tokens_out_wei = tokens_out_wei * (10000 - slippage_bps) // 10000
-            
+            min_tokens_out = tokens_out_wei * 9950 // 10000  # 0.5% default slippage
+        
+        # Use provided deadline or default to 5 minutes from now
+        if deadline is None:
             deadline = int(datetime.now(timezone.utc).timestamp()) + 300
-            
-            unsigned_tx = web3_service.buy_tokens_tx_data(
-                user_address,
-                token.contract_address,
-                kas_amount_wei,
-                min_tokens_out_wei,
-                deadline
-            )
-            
-            unsigned_tx_formatted = {
-                'from': unsigned_tx['from'],
-                'to': unsigned_tx['to'],
-                'data': unsigned_tx['data'],
-                'value': hex(unsigned_tx['value']),
-                'gas': hex(unsigned_tx['gas']),
-                'gasPrice': hex(unsigned_tx['gasPrice']),
-                'nonce': hex(unsigned_tx['nonce']),
-                'chainId': 167012
-            }
-            
-            quote_data = {
-                'tokens_out': str(tokens_out_wei),
-                'min_tokens_out': str(min_tokens_out_wei),
-                'kas_amount': str(kas_amount),
-                'platform_fee': str(float(Web3.from_wei(platform_fee_wei, 'ether'))),
-                'creator_fee': str(float(Web3.from_wei(creator_fee_wei, 'ether'))),
-                'anti_bot_fee': str(anti_bot_fee_kas) if anti_bot_fee_kas > 0 else "0",
-                'slippage_bps': slippage_bps,
-                'deadline': deadline
-            }
-            
-            return jsonify({
-                'success': True,
-                'unsigned_tx': unsigned_tx_formatted,
-                'quote': quote_data
-            })
         
-        elif action == 'relay_tx':
-            # Validate chain ID
-            validate_chain_id()
-            
-            signed_tx = data.get('signed_tx', '').strip()
-            
-            if not signed_tx:
-                return jsonify({'success': False, 'error': 'signed_tx is required'}), 400
-            
-            if not isinstance(signed_tx, str) or not signed_tx.startswith('0x'):
-                return jsonify({'success': False, 'error': 'signed_tx must be a hex string starting with 0x'}), 400
-            
-            web3_service = get_web3_service()
-            tx_hash = web3_service.relay_signed_transaction(signed_tx)
-            
-            # Add to monitoring queue
-            tx_monitor = get_tx_monitor()
-            tx_monitor.add_pending_transaction(
-                tx_hash=tx_hash,
-                tx_type='buy',
-                user_address=data.get('user_address'),
-                token_id=None  # Get from context if available
-            )
-            
-            return jsonify({
-                'success': True,
-                'tx_hash': tx_hash,
-                'status': 'pending'
-            })
+        # Build unsigned transaction
+        unsigned_tx = web3_service.buy_tokens_tx_data(
+            user_address,
+            token.contract_address,
+            kas_amount_wei,
+            int(min_tokens_out),
+            int(deadline)
+        )
         
-        else:
-            return jsonify({'success': False, 'error': 'Invalid action. Must be "build_tx" or "relay_tx"'}), 400
+        # Format response for frontend
+        tx_data = {
+            'to': unsigned_tx['to'],
+            'value': hex(unsigned_tx['value']),
+            'data': unsigned_tx['data'],
+            'gas': hex(unsigned_tx['gas'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'estimated_gas': unsigned_tx['gas']
+        })
     
     except ValueError as e:
         logging.debug(f"Validation error in trade/buy: {str(e)}")
@@ -3710,193 +3629,110 @@ def api_trade_buy():
 @csrf.exempt
 def api_trade_sell():
     """
-    Execute sell trade - builds unsigned tx or relays signed tx
+    Build unsigned sell transaction
     
-    Request JSON (Step 1 - Get Unsigned TX):
+    Frontend sends:
     {
-        "action": "build_tx",
-        "user_address": "0x...",
         "token_address": "0x...",
-        "token_amount": "1000000000",
-        "slippage_bps": 50
+        "token_amount": "1000000",
+        "min_kas_out": 9.2,
+        "deadline": 1728741234
     }
     
-    Response (Step 1):
+    Returns:
     {
         "success": true,
-        "unsigned_tx": {
-            "from": "0x...",
+        "tx_data": {
             "to": "0x...",
+            "value": "0x...",
             "data": "0x...",
-            "value": "0x0",
-            "gas": "0x...",
-            "gasPrice": "0x...",
-            "nonce": "0x...",
-            "chainId": 167012
+            "gas": "0x..."
         },
-        "quote": {
-            "kas_out": "9.45",
-            "min_kas_out": "9.35",
-            ...
-        }
+        "estimated_gas": 150000
     }
-    
-    Request JSON (Step 2 - Relay Signed TX):
-    {
-        "action": "relay_tx",
-        "signed_tx": "0x..."
-    }
-    
-    Response (Step 2):
-    {
-        "success": true,
-        "tx_hash": "0x...",
-        "status": "pending"
-    }
-    
-    Example curl (build_tx):
-    curl -X POST http://localhost:5000/api/trade/sell \
-      -H "Content-Type: application/json" \
-      -d '{"action": "build_tx", "user_address": "0x...", "token_address": "0x...", "token_amount": "1000000000", "slippage_bps": 50}'
-    
-    Example curl (relay_tx):
-    curl -X POST http://localhost:5000/api/trade/sell \
-      -H "Content-Type: application/json" \
-      -d '{"action": "relay_tx", "signed_tx": "0x..."}'
     """
     try:
         data = request.get_json(silent=True)
         if not data:
             return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
         
-        action = data.get('action', '').strip()
+        # Validate chain ID
+        validate_chain_id()
         
-        if action == 'build_tx':
-            # Validate chain ID
-            validate_chain_id()
-            
+        # Get user_address from session or request
+        user_address = session.get('wallet_address')
+        if not user_address:
             user_address = data.get('user_address', '').strip()
-            token_address = data.get('token_address', '').strip()
-            token_amount = data.get('token_amount')
-            slippage_bps = data.get('slippage_bps', 50)
-            
-            if not user_address:
-                return jsonify({'success': False, 'error': 'user_address is required'}), 400
-            
-            if not token_address:
-                return jsonify({'success': False, 'error': 'token_address is required'}), 400
-            
-            if token_amount is None:
-                return jsonify({'success': False, 'error': 'token_amount is required'}), 400
-            
-            try:
-                token_amount_wei = int(token_amount)
-                if token_amount_wei <= 0:
-                    return jsonify({'success': False, 'error': 'token_amount must be greater than 0'}), 400
-            except (ValueError, TypeError):
-                return jsonify({'success': False, 'error': 'Invalid token_amount format'}), 400
-            
-            try:
-                slippage_bps = int(slippage_bps)
-                if slippage_bps < 0 or slippage_bps > 10000:
-                    return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 10000'}), 400
-            except (ValueError, TypeError):
-                return jsonify({'success': False, 'error': 'Invalid slippage_bps format'}), 400
-            
-            try:
-                user_address = Web3.to_checksum_address(user_address)
-                token_address = Web3.to_checksum_address(token_address)
-            except Exception:
-                return jsonify({'success': False, 'error': 'Invalid address format'}), 400
-            
-            token = Token.query.filter_by(contract_address=token_address).first()
-            if not token:
-                return jsonify({'success': False, 'error': 'Token not found'}), 404
-            
-            if token.deployment_status != 'deployed':
-                return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
-            
-            web3_service = get_web3_service()
-            
+        
+        token_address = data.get('token_address', '').strip()
+        token_amount = data.get('token_amount')
+        min_kas_out = data.get('min_kas_out')
+        deadline = data.get('deadline')
+        
+        if not user_address:
+            return jsonify({'success': False, 'error': 'user_address is required (connect wallet)'}), 400
+        
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        
+        if token_amount is None:
+            return jsonify({'success': False, 'error': 'token_amount is required'}), 400
+        
+        try:
+            token_amount_wei = int(token_amount)
+            if token_amount_wei <= 0:
+                return jsonify({'success': False, 'error': 'token_amount must be greater than 0'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid token_amount format'}), 400
+        
+        try:
+            user_address = Web3.to_checksum_address(user_address)
+            token_address = Web3.to_checksum_address(token_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        token = Token.query.filter_by(contract_address=token_address).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        if token.deployment_status != 'deployed':
+            return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+        
+        web3_service = get_web3_service()
+        
+        # Use provided min_kas_out or calculate with slippage
+        if min_kas_out is None:
             kas_gross_wei = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
-            
-            total_fees_wei = kas_gross_wei * 100 // 10000
-            creator_fee_wei = total_fees_wei * 10 // 100
-            platform_fee_wei = total_fees_wei - creator_fee_wei
-            kas_net_wei = kas_gross_wei - total_fees_wei
-            
-            min_kas_out_wei = kas_gross_wei * (10000 - slippage_bps) // 10000
-            
-            deadline = int(datetime.now(timezone.utc).timestamp()) + 300
-            
-            unsigned_tx = web3_service.sell_tokens_tx_data(
-                user_address,
-                token.contract_address,
-                token_amount_wei,
-                min_kas_out_wei,
-                deadline
-            )
-            
-            unsigned_tx_formatted = {
-                'from': unsigned_tx['from'],
-                'to': unsigned_tx['to'],
-                'data': unsigned_tx['data'],
-                'value': hex(unsigned_tx['value']),
-                'gas': hex(unsigned_tx['gas']),
-                'gasPrice': hex(unsigned_tx['gasPrice']),
-                'nonce': hex(unsigned_tx['nonce']),
-                'chainId': 167012
-            }
-            
-            quote_data = {
-                'kas_out': str(float(Web3.from_wei(kas_gross_wei, 'ether'))),
-                'min_kas_out': str(float(Web3.from_wei(min_kas_out_wei, 'ether'))),
-                'token_amount': str(token_amount_wei),
-                'platform_fee': str(float(Web3.from_wei(platform_fee_wei, 'ether'))),
-                'creator_fee': str(float(Web3.from_wei(creator_fee_wei, 'ether'))),
-                'net_kas': str(float(Web3.from_wei(kas_net_wei, 'ether'))),
-                'slippage_bps': slippage_bps,
-                'deadline': deadline
-            }
-            
-            return jsonify({
-                'success': True,
-                'unsigned_tx': unsigned_tx_formatted,
-                'quote': quote_data
-            })
-        
-        elif action == 'relay_tx':
-            # Validate chain ID
-            validate_chain_id()
-            
-            signed_tx = data.get('signed_tx', '').strip()
-            
-            if not signed_tx:
-                return jsonify({'success': False, 'error': 'signed_tx is required'}), 400
-            
-            if not isinstance(signed_tx, str) or not signed_tx.startswith('0x'):
-                return jsonify({'success': False, 'error': 'signed_tx must be a hex string starting with 0x'}), 400
-            
-            web3_service = get_web3_service()
-            tx_hash = web3_service.relay_signed_transaction(signed_tx)
-            
-            # Add to monitoring queue
-            tx_monitor = get_tx_monitor()
-            tx_monitor.add_pending_transaction(
-                tx_hash=tx_hash,
-                tx_type='sell',
-                user_address=data.get('user_address'),
-                token_id=None  # Get from context if available
-            )
-            
-            return jsonify({
-                'success': True,
-                'tx_hash': tx_hash,
-                'status': 'pending'
-            })
-        
+            min_kas_out_wei = kas_gross_wei * 9950 // 10000  # 0.5% default slippage
         else:
-            return jsonify({'success': False, 'error': 'Invalid action. Must be "build_tx" or "relay_tx"'}), 400
+            min_kas_out_wei = Web3.to_wei(min_kas_out, 'ether')
+        
+        # Use provided deadline or default to 5 minutes from now
+        if deadline is None:
+            deadline = int(datetime.now(timezone.utc).timestamp()) + 300
+        
+        # Build unsigned transaction
+        unsigned_tx = web3_service.sell_tokens_tx_data(
+            user_address,
+            token.contract_address,
+            token_amount_wei,
+            int(min_kas_out_wei),
+            int(deadline)
+        )
+        
+        # Format response for frontend
+        tx_data = {
+            'to': unsigned_tx['to'],
+            'value': hex(unsigned_tx['value']),
+            'data': unsigned_tx['data'],
+            'gas': hex(unsigned_tx['gas'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'estimated_gas': unsigned_tx['gas']
+        })
     
     except ValueError as e:
         logging.debug(f"Validation error in trade/sell: {str(e)}")
@@ -3904,6 +3740,137 @@ def api_trade_sell():
     except Exception as e:
         logging.error(f"Error in trade/sell: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to execute sell trade'}), 500
+
+@app.route('/api/trade/<action>/estimate-gas', methods=['POST'])
+@csrf.exempt
+def api_estimate_gas(action):
+    """
+    Estimate gas for buy/sell transaction
+    
+    Frontend sends:
+    {
+        "token_address": "0x...",
+        "kas_amount": 10.5 (for buy) or "token_amount": "1000000" (for sell),
+        "from_address": "0x..." (optional)
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "gas_estimate": 150000,
+        "gas_with_buffer": 180000,
+        "gas_price": "0x...",
+        "estimated_cost_kas": 0.0015
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        if action not in ['buy', 'sell']:
+            return jsonify({'success': False, 'error': 'Invalid action. Must be "buy" or "sell"'}), 400
+        
+        token_address = data.get('token_address', '').strip()
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        
+        try:
+            token_address = Web3.to_checksum_address(token_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
+        
+        token = Token.query.filter_by(contract_address=token_address).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        web3_service = get_web3_service()
+        
+        # Build params for estimate_trade_gas
+        params = {
+            'pool_address': token.contract_address,
+            'from_address': data.get('from_address', session.get('wallet_address'))
+        }
+        
+        if action == 'buy':
+            kas_amount = data.get('kas_amount', 1.0)  # Default 1 KAS for estimation
+            params['kas_amount'] = Web3.to_wei(kas_amount, 'ether')
+        else:
+            token_amount = data.get('token_amount', 1000000)  # Default 1M tokens for estimation
+            params['token_amount'] = int(token_amount)
+        
+        # Call web3_service.estimate_trade_gas()
+        gas_result = web3_service.estimate_trade_gas(action, params)
+        
+        return jsonify({
+            'success': True,
+            'gas_estimate': gas_result['gas'],
+            'gas_with_buffer': gas_result['gas'],  # Already includes 20% buffer
+            'gas_price': hex(gas_result['gas_price']),
+            'estimated_cost_kas': gas_result['cost_kas']
+        })
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in estimate-gas: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in estimate-gas: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to estimate gas'}), 500
+
+@app.route('/api/relay/transaction', methods=['POST'])
+@csrf.exempt
+def api_relay_transaction():
+    """
+    Relay a signed transaction to the blockchain
+    
+    Frontend sends:
+    {
+        "signed_tx": "0x...",
+        "tx_type": "buy" | "sell" | "create_token" (optional),
+        "user_address": "0x..." (optional)
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "tx_hash": "0x..."
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        signed_tx = data.get('signed_tx', '').strip()
+        
+        if not signed_tx:
+            return jsonify({'success': False, 'error': 'signed_tx is required'}), 400
+        
+        if not isinstance(signed_tx, str) or not signed_tx.startswith('0x'):
+            return jsonify({'success': False, 'error': 'signed_tx must be a hex string starting with 0x'}), 400
+        
+        web3_service = get_web3_service()
+        tx_hash = web3_service.relay_signed_transaction(signed_tx)
+        
+        # Add to monitoring queue
+        tx_monitor = get_tx_monitor()
+        tx_monitor.add_pending_transaction(
+            tx_hash=tx_hash,
+            tx_type=data.get('tx_type', 'unknown'),
+            user_address=data.get('user_address')
+        )
+        
+        return jsonify({
+            'success': True,
+            'tx_hash': tx_hash
+        })
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in relay-transaction: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in relay-transaction: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to relay transaction'}), 500
 
 @app.route('/api/token/<address>/claim-creator-fees', methods=['POST'])
 @csrf.exempt

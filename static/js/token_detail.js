@@ -857,6 +857,7 @@
                 
                 params = {
                     token_address: window.tokenContractAddress,
+                    user_address: wallet.address,  // REQUIRED FOR METAMASK
                     kas_amount: kasAmount,
                     min_tokens_out: minTokensOut,
                     deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
@@ -942,6 +943,7 @@
                 
                 params = {
                     token_address: window.tokenContractAddress,
+                    user_address: wallet.address,  // REQUIRED FOR METAMASK
                     token_amount: tokenAmount,
                     min_kas_out: minKasOut,
                     deadline: Math.floor(Date.now() / 1000) + 300
