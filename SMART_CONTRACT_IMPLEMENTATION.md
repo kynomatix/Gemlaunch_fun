@@ -352,44 +352,800 @@
 
 ---
 
-### **PHASE 3: Frontend & Wallet Integration** (2-3 days)
-**Goal:** Connect UI to real smart contracts  
-**Dependencies:** ⬅️ Phase 2 (needs backend APIs)
+### **PHASE 3: Frontend & Wallet Integration** (3-5 days)
+**Goal:** Wire UI to real smart contracts via wallet-driven transaction lifecycle  
+**Dependencies:** ⬅️ Phase 2 (backend APIs ready), existing `wallet_manager.js` (wallet connection working)
 
-- [ ] **3.1** Wallet Connection Updates
-  - [ ] Update `static/js/wallet.js`:
-    - Add Kasplex Testnet (Chain ID: 167012)
-    - Network switching prompt if wrong chain
-    - Display testnet KAS balance
-  - [ ] Test wallet connection flow
+**⚠️ CRITICAL:** This phase connects frontend UI to blockchain. Each task includes EXACT integration steps (what file, what function, what API to call).
 
-- [ ] **3.2** Token Creation Flow
-  - [ ] Replace mock creation in `routes.py`
-  - [ ] API endpoint: `POST /api/token/create`
-    - Call `web3_service.create_token()`
-    - Return tx hash + contract address
-  - [ ] Frontend: Show deployment confirmation modal
-  - [ ] Display contract address after deployment
+---
 
-- [ ] **3.3** Trading Interface
-  - [ ] Buy flow: `POST /api/trade/buy`
-    - Call `quoteBuy()` for preview
-    - Execute `buyTokens()` with auto-slippage
-    - Return tx hash
-  - [ ] Sell flow: `POST /api/trade/sell`
-    - Call `quoteSell()` for preview
-    - Execute `sellTokens()` with auto-slippage
-    - Return tx hash
-  - [ ] Real-time quote updates (debounce 300ms)
-  - [ ] Show fee breakdown (anti-bot/platform/creator)
+#### **3.0 Transaction Flow Architecture** (FOUNDATIONAL - Read First) 
 
-- [ ] **3.4** Graduation UI
-  - [ ] Progress bar: (virtualKasReserve × kasPrice) / $70,000
-  - [ ] Show "Graduating..." when threshold met
-  - [ ] Display Kaspa Finance DEX link post-graduation
-  - [ ] Auto-refresh graduation status
+**Problem:** Current UI is mock - `executeTrade()` doesn't call real APIs, token creation says "UI demo only"  
+**Solution:** Implement wallet-driven transaction lifecycle that bridges frontend ↔ backend ↔ blockchain
 
-**Unlocks:** ✅ Phase 4 (can now test real trading)
+**Complete Transaction Lifecycle:**
+```
+USER CLICKS "BUY" BUTTON
+    ↓
+1. QUOTE PHASE (Frontend → Backend)
+   - Frontend: Call POST /api/trade/quote-buy with {token_address, kas_amount}
+   - Backend: Calls contract.getBuyQuote() via Web3Service
+   - Returns: {tokens_out, fees_breakdown, auto_slippage, price_impact}
+   - Frontend: Display quote + fees to user for confirmation
+    ↓
+2. BUILD PHASE (Frontend → Backend)
+   - Frontend: Call POST /api/trade/buy with {token_address, kas_amount}
+   - Backend: Builds unsigned transaction via buy_tokens_tx_data()
+   - Returns: {tx_data: {to, value, data, gas}, estimated_gas}
+   - Frontend: Has unsigned tx ready for signing
+    ↓
+3. SIGN PHASE (Frontend → Wallet)
+   - Frontend: Use WalletManager to detect wallet type (MetaMask/Kastle/KasWare)
+   - Frontend: Call wallet.signTransaction() with tx_data
+   - User: Approves in wallet popup
+   - Returns: {signed_tx: '0x...', tx_hash: '0x...'}
+    ↓
+4. RELAY PHASE (Frontend → Backend → Blockchain)
+   - Frontend: Send signed_tx to backend relay endpoint
+   - Backend: Validates signature, calls relay_transaction()
+   - Blockchain: Transaction submitted, returns tx_hash
+   - Backend: Enqueues tx in PendingTransaction table for monitoring
+    ↓
+5. MONITOR PHASE (Frontend ← Backend via SSE)
+   - Frontend: Opens SSE stream GET /api/tx/{hash}/stream
+   - Backend: Polls blockchain every 2 seconds via TransactionMonitor
+   - Backend: Streams updates {status: 'pending'|'confirmed'|'failed', ...}
+   - Frontend: Updates UI (show spinner → checkmark/error)
+    ↓
+TRANSACTION CONFIRMED ✅
+```
+
+**Why This Matters:**
+- **Security:** User signs in their wallet (frontend never sees private keys)
+- **UX:** Real-time status updates via SSE (users see "Confirming..." → "Success!")
+- **Reliability:** Backend monitors completion, retries if needed
+
+---
+
+#### **3.1 Transaction Manager Module** (Foundation for all flows)
+
+**Create:** `static/js/transaction_manager.js` (NEW FILE)
+
+This module orchestrates the 5-phase lifecycle for ALL transaction types (token creation, buy, sell, claim fees).
+
+```javascript
+/**
+ * TransactionManager - Orchestrates wallet-driven blockchain transactions
+ * Dependencies: WalletManager (wallet_manager.js), ModalManager (utils/modal.js)
+ */
+class TransactionManager {
+    constructor(walletManager) {
+        this.walletManager = walletManager;
+        this.activeTransactions = new Map(); // Track pending txs
+    }
+    
+    // ===== PHASE 1: GET QUOTE =====
+    async getQuote(quoteType, params) {
+        /*
+        quoteType: 'buy' | 'sell'
+        params: {token_address, kas_amount} for buy
+                {token_address, token_amount} for sell
+        
+        Returns: {
+            success: true,
+            tokens_out: 1000000,
+            fees: {anti_bot: 0.5, platform: 0.09, creator: 0.01},
+            auto_slippage_bps: 50,
+            price_impact_percent: 0.2
+        }
+        */
+        const endpoint = quoteType === 'buy' 
+            ? '/api/trade/quote-buy' 
+            : '/api/trade/quote-sell';
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(params)
+        });
+        
+        return await response.json();
+    }
+    
+    // ===== PHASE 2: BUILD UNSIGNED TX =====
+    async buildTransaction(txType, params) {
+        /*
+        txType: 'create_token' | 'buy' | 'sell' | 'claim_fees'
+        params: Specific to tx type
+        
+        Returns: {
+            success: true,
+            tx_data: {to, value, data, gas},
+            estimated_gas: 150000
+        }
+        */
+        const endpoints = {
+            'create_token': '/api/token/create',
+            'buy': '/api/trade/buy',
+            'sell': '/api/trade/sell',
+            'claim_fees': '/api/token/{address}/claim-creator-fees'
+        };
+        
+        const response = await fetch(endpoints[txType], {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(params)
+        });
+        
+        return await response.json();
+    }
+    
+    // ===== PHASE 3: SIGN WITH WALLET =====
+    async signTransaction(txData) {
+        /*
+        txData: {to, value, data, gas} from backend
+        
+        Returns: {signed_tx: '0x...', tx_hash: '0x...'}
+        */
+        if (!this.walletManager.isConnected()) {
+            throw new Error('Wallet not connected. Please connect your wallet first.');
+        }
+        
+        const wallet = this.walletManager.getConnectedWallet();
+        const walletType = wallet.wallet_type; // 'metamask' | 'kastle' | 'kasware'
+        
+        // Use wallet-specific signing method
+        switch(walletType) {
+            case 'metamask':
+                return await this._signWithMetaMask(txData);
+            case 'kastle':
+            case 'kasware':
+                return await this._signWithKaspa(txData, walletType);
+            default:
+                throw new Error(`Unsupported wallet type: ${walletType}`);
+        }
+    }
+    
+    async _signWithMetaMask(txData) {
+        const provider = this.walletManager.getMetaMaskProvider();
+        const accounts = await provider.request({method: 'eth_accounts'});
+        
+        const txParams = {
+            from: accounts[0],
+            to: txData.to,
+            value: txData.value || '0x0',
+            data: txData.data,
+            gas: txData.gas
+        };
+        
+        const txHash = await provider.request({
+            method: 'eth_sendTransaction',
+            params: [txParams]
+        });
+        
+        return {signed_tx: txHash, tx_hash: txHash};
+    }
+    
+    async _signWithKaspa(txData, walletType) {
+        // Kaspa wallets (Kastle/KasWare) sign differently
+        // Implementation depends on wallet API
+        throw new Error('Kaspa wallet signing not yet implemented');
+    }
+    
+    // ===== PHASE 4: RELAY TO BLOCKCHAIN =====
+    async relayTransaction(signedTx) {
+        /*
+        signedTx: {signed_tx: '0x...', tx_hash: '0x...'}
+        
+        Returns: {success: true, tx_hash: '0x...'}
+        */
+        const response = await fetch('/api/relay/transaction', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(signedTx)
+        });
+        
+        return await response.json();
+    }
+    
+    // ===== PHASE 5: MONITOR VIA SSE =====
+    async monitorTransaction(txHash, callbacks) {
+        /*
+        callbacks: {
+            onUpdate: (status) => {},   // Called every 2s with status
+            onConfirm: (receipt) => {}, // Called when confirmed
+            onError: (error) => {}      // Called on failure
+        }
+        */
+        const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
+        
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.status === 'confirmed') {
+                callbacks.onConfirm(data);
+                eventSource.close();
+            } else if (data.status === 'failed') {
+                callbacks.onError(data.error);
+                eventSource.close();
+            } else {
+                callbacks.onUpdate(data);
+            }
+        };
+        
+        eventSource.onerror = () => {
+            callbacks.onError('Connection lost');
+            eventSource.close();
+        };
+        
+        // Store for cleanup
+        this.activeTransactions.set(txHash, eventSource);
+    }
+    
+    // ===== COMPLETE FLOW (All 5 phases) =====
+    async executeTransaction(txType, params, callbacks) {
+        /*
+        Complete transaction flow from build → sign → relay → monitor
+        
+        Example usage:
+        await txManager.executeTransaction('buy', {
+            token_address: '0x...',
+            kas_amount: 10.5
+        }, {
+            onUpdate: (status) => showSpinner(status),
+            onConfirm: (receipt) => showSuccess(receipt),
+            onError: (error) => showError(error)
+        });
+        */
+        try {
+            // Phase 2: Build unsigned tx
+            callbacks.onUpdate({status: 'building', message: 'Preparing transaction...'});
+            const buildResult = await this.buildTransaction(txType, params);
+            
+            if (!buildResult.success) {
+                throw new Error(buildResult.error);
+            }
+            
+            // Phase 3: Sign with wallet
+            callbacks.onUpdate({status: 'signing', message: 'Please sign in your wallet...'});
+            const signedTx = await this.signTransaction(buildResult.tx_data);
+            
+            // Phase 4: Relay to blockchain
+            callbacks.onUpdate({status: 'relaying', message: 'Submitting to blockchain...'});
+            const relayResult = await this.relayTransaction(signedTx);
+            
+            if (!relayResult.success) {
+                throw new Error(relayResult.error);
+            }
+            
+            // Phase 5: Monitor confirmation
+            callbacks.onUpdate({status: 'pending', message: 'Waiting for confirmation...'});
+            await this.monitorTransaction(relayResult.tx_hash, callbacks);
+            
+        } catch (error) {
+            callbacks.onError(error.message);
+        }
+    }
+}
+
+// Initialize globally
+window.TransactionManager = TransactionManager;
+```
+
+**Implementation:**
+- [ ] Create `static/js/transaction_manager.js` with above code
+- [ ] Import in base template: `<script src="/static/js/transaction_manager.js"></script>`
+- [ ] Initialize in `main.js`: `window.txManager = new TransactionManager(window.walletManager);`
+- [ ] Test isolation: Call `txManager.getQuote('buy', {...})` in console, verify API response
+
+---
+
+#### **3.2 Token Creation Flow** (Uses TransactionManager)
+
+**Current Problem:** Token creation in `app.py` line 1106 is MOCK ("UI demo - no blockchain deployment")
+
+**Files to Update:**
+1. `templates/app/create_token.html` - Wire form to blockchain
+2. `static/js/create_token.js` (if exists) OR add to page inline
+
+**Integration Steps:**
+
+- [ ] **Step 1: Update form submission handler**
+  ```javascript
+  // In create_token.html or create_token.js
+  document.getElementById('createTokenForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Check wallet connection
+      if (!window.walletManager.isConnected()) {
+          ModalManager.alert('Wallet Required', 'Please connect your wallet to create a token', 'error');
+          window.walletManager.openWalletModal();
+          return;
+      }
+      
+      // Collect form data
+      const formData = {
+          name: document.getElementById('tokenName').value,
+          symbol: document.getElementById('tokenSymbol').value,
+          description: document.getElementById('description').value,
+          website: document.getElementById('website').value,
+          twitter: document.getElementById('twitter').value,
+          telegram: document.getElementById('telegram').value,
+          total_supply: document.getElementById('totalSupply').value,
+          reserved_percentage: document.getElementById('reservedPercentage').value,
+          anti_bot_enabled: document.getElementById('antiBotEnabled').checked,
+          // Add image upload handling if applicable
+      };
+      
+      // Show confirmation modal with fee estimate
+      const confirmed = await ModalManager.confirm(
+          'Deploy Token to Blockchain',
+          `Deploy ${formData.name} (${formData.symbol}) to Kasplex Testnet?<br>
+           <small>Estimated gas: ~0.5 KAS</small>`,
+          'Deploy'
+      );
+      
+      if (!confirmed) return;
+      
+      // Execute transaction via TransactionManager
+      await window.txManager.executeTransaction('create_token', formData, {
+          onUpdate: (status) => {
+              // Show status in UI (e.g., progress modal)
+              updateDeploymentStatus(status.message);
+          },
+          onConfirm: (receipt) => {
+              ModalManager.alert(
+                  'Token Deployed! 🚀',
+                  `Contract Address: ${receipt.contract_address}<br>
+                   Transaction: ${receipt.tx_hash}`,
+                  'success',
+                  () => {
+                      // Redirect to token detail page
+                      window.location.href = `/token/${receipt.contract_address}`;
+                  }
+              );
+          },
+          onError: (error) => {
+              ModalManager.alert('Deployment Failed', error, 'error');
+          }
+      });
+  });
+  ```
+
+- [ ] **Step 2: Backend endpoint verification**
+  - Verify `POST /api/token/create` exists in `app.py`
+  - Endpoint should:
+    1. Validate form data
+    2. Call `web3_service.create_token_tx_data(...)` to build unsigned tx
+    3. Return `{success: true, tx_data: {...}, estimated_gas: 150000}`
+  - If endpoint missing, add following to `app.py`:
+    ```python
+    @app.route('/api/token/create', methods=['POST'])
+    def api_create_token():
+        data = request.get_json()
+        # Build unsigned transaction
+        tx_data = web3_service.create_token_tx_data(
+            name=data['name'],
+            symbol=data['symbol'],
+            total_supply=data['total_supply'],
+            # ... other params
+        )
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'estimated_gas': tx_data['gas']
+        })
+    ```
+
+- [ ] **Step 3: Add deployment status modal**
+  ```html
+  <!-- In create_token.html -->
+  <div id="deploymentModal" class="modal" style="display: none;">
+      <div class="modal-content">
+          <h3>Deploying Token...</h3>
+          <div id="deploymentStatus">Preparing transaction...</div>
+          <div class="loading-spinner"></div>
+      </div>
+  </div>
+  ```
+
+- [ ] **Step 4: Test end-to-end**
+  - Fill token creation form
+  - Click "Create Token"
+  - Approve in wallet
+  - Verify contract deployed to testnet
+  - Check token appears with contract address
+
+---
+
+#### **3.3 Trading Interface** (Buy/Sell with Real Blockchain Data)
+
+**Current Problem:** `executeTrade()` in `static/js/token_detail.js` is MOCK - doesn't call real APIs
+
+**Files to Update:**
+1. `static/js/token_detail.js` - Replace mock trade execution
+2. `templates/app/partials/token_trading.html` - Add fee breakdown display
+
+**Integration Steps:**
+
+- [ ] **Step 1: Real-time quote updates**
+  ```javascript
+  // In token_detail.js, replace updateTokenAmount()
+  let quoteTimeout = null;
+  
+  async function updateTokenAmount() {
+      const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+      
+      if (kasAmount <= 0) {
+          document.getElementById('tokenAmount').value = 0;
+          clearFeeBreakdown();
+          return;
+      }
+      
+      // Debounce API calls (300ms)
+      clearTimeout(quoteTimeout);
+      quoteTimeout = setTimeout(async () => {
+          try {
+              showQuoteLoading();
+              
+              const quote = await window.txManager.getQuote(
+                  TokenDetail.currentTradeMode, // 'buy' or 'sell'
+                  {
+                      token_address: window.tokenContractAddress,
+                      kas_amount: kasAmount
+                  }
+              );
+              
+              if (quote.success) {
+                  // Update token amount
+                  document.getElementById('tokenAmount').value = 
+                      Math.floor(quote.tokens_out);
+                  
+                  // Display fee breakdown
+                  displayFeeBreakdown({
+                      antiBotFee: quote.fees.anti_bot || 0,
+                      platformFee: quote.fees.platform || 0,
+                      creatorFee: quote.fees.creator || 0,
+                      priceImpact: quote.price_impact_percent || 0
+                  });
+                  
+                  // Update USD value
+                  const usdAmount = kasAmount * TokenDetail.kasToUsd;
+                  document.querySelector('.input-addon').textContent = 
+                      `$${usdAmount.toFixed(2)} USD`;
+              }
+              
+          } catch (error) {
+              console.error('Quote failed:', error);
+              showQuoteError(error.message);
+          } finally {
+              hideQuoteLoading();
+          }
+      }, 300);
+  }
+  ```
+
+- [ ] **Step 2: Add fee breakdown display**
+  ```html
+  <!-- In token_trading.html -->
+  <div id="feeBreakdown" style="display: none; margin: 1rem 0; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px;">
+      <h4 style="color: #20B2AA; margin-bottom: 0.5rem;">Fee Breakdown</h4>
+      <div class="fee-row">
+          <span>Anti-Bot Fee:</span>
+          <span id="antiBotFeeDisplay">0 KAS</span>
+      </div>
+      <div class="fee-row">
+          <span>Platform Fee (0.9%):</span>
+          <span id="platformFeeDisplay">0 KAS</span>
+      </div>
+      <div class="fee-row">
+          <span>Creator Fee (0.1%):</span>
+          <span id="creatorFeeDisplay">0 KAS</span>
+      </div>
+      <div class="fee-row" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 0.5rem; padding-top: 0.5rem;">
+          <span>Price Impact:</span>
+          <span id="priceImpactDisplay" style="color: #FFA500;">0%</span>
+      </div>
+  </div>
+  ```
+  
+  ```javascript
+  function displayFeeBreakdown(fees) {
+      document.getElementById('antiBotFeeDisplay').textContent = 
+          `${fees.antiBotFee.toFixed(4)} KAS`;
+      document.getElementById('platformFeeDisplay').textContent = 
+          `${fees.platformFee.toFixed(4)} KAS`;
+      document.getElementById('creatorFeeDisplay').textContent = 
+          `${fees.creatorFee.toFixed(4)} KAS`;
+      
+      const impactColor = fees.priceImpact > 5 ? '#FF5252' : 
+                         fees.priceImpact > 2 ? '#FFA500' : '#4CAF50';
+      document.getElementById('priceImpactDisplay').innerHTML = 
+          `<span style="color: ${impactColor}">${fees.priceImpact.toFixed(2)}%</span>`;
+      
+      document.getElementById('feeBreakdown').style.display = 'block';
+  }
+  ```
+
+- [ ] **Step 3: Real trade execution**
+  ```javascript
+  // In token_detail.js, replace executeTrade()
+  async function executeTrade() {
+      const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+      
+      if (kasAmount <= 0) {
+          ModalManager.alert('Invalid Amount', 'Please enter a valid amount to trade.', 'error');
+          return;
+      }
+      
+      // Check wallet connection
+      if (!window.walletManager.isConnected()) {
+          ModalManager.alert('Wallet Required', 'Please connect your wallet to trade.', 'error');
+          window.walletManager.openWalletModal();
+          return;
+      }
+      
+      const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
+      const tokenAmount = document.getElementById('tokenAmount').value;
+      
+      // Confirmation modal
+      const confirmed = await ModalManager.confirm(
+          `Confirm ${action.toUpperCase()} Order`,
+          `${action === 'buy' ? 'Buy' : 'Sell'} ${tokenAmount} ${TokenDetail.tokenSymbol} 
+           for ${kasAmount} KAS?`,
+          action === 'buy' ? 'Buy' : 'Sell'
+      );
+      
+      if (!confirmed) return;
+      
+      // Execute via TransactionManager
+      await window.txManager.executeTransaction(action, {
+          token_address: window.tokenContractAddress,
+          kas_amount: kasAmount
+      }, {
+          onUpdate: (status) => {
+              showTradeStatus(status.message);
+          },
+          onConfirm: (receipt) => {
+              ModalManager.alert(
+                  'Trade Successful! ✅',
+                  `Transaction: ${receipt.tx_hash}`,
+                  'success',
+                  () => {
+                      // Refresh token data
+                      location.reload();
+                  }
+              );
+          },
+          onError: (error) => {
+              ModalManager.alert('Trade Failed', error, 'error');
+          }
+      });
+  }
+  ```
+
+- [ ] **Step 4: Verify backend endpoints**
+  - Confirm `POST /api/trade/buy` returns unsigned tx data
+  - Confirm `POST /api/trade/sell` returns unsigned tx data
+  - Test quote endpoints return fee breakdown
+  - Verify SSE stream `/api/tx/{hash}/stream` works
+
+---
+
+#### **3.4 Graduation UI** (Real Blockchain Data)
+
+**Current Problem:** Progress bar uses mock data, not reading from smart contract
+
+**Files to Update:**
+1. `templates/app/token_detail.html` - Graduation progress section
+2. `static/js/token_detail.js` - Fetch real graduation data
+
+**Integration Steps:**
+
+- [ ] **Step 1: Fetch graduation data from backend**
+  ```javascript
+  // In token_detail.js
+  async function fetchGraduationStatus() {
+      try {
+          const response = await fetch(`/api/token/${window.tokenContractAddress}/graduation-status`);
+          const data = await response.json();
+          
+          if (data.success) {
+              updateGraduationProgress({
+                  virtualKasReserve: data.virtual_kas_reserve,
+                  kasPrice: data.kas_price_usd,
+                  marketCap: data.market_cap_usd,
+                  graduationThreshold: 70000, // $70K
+                  isGraduated: data.is_graduated,
+                  dexPoolAddress: data.dex_pool_address,
+                  nftPositionId: data.nft_position_id
+              });
+          }
+      } catch (error) {
+          console.error('Failed to fetch graduation status:', error);
+      }
+  }
+  ```
+
+- [ ] **Step 2: Add backend endpoint for graduation status**
+  ```python
+  # In app.py
+  @app.route('/api/token/<address>/graduation-status', methods=['GET'])
+  def get_graduation_status(address):
+      token = Token.query.filter_by(contract_address=address.lower()).first()
+      if not token:
+          return jsonify({'success': False, 'error': 'Token not found'}), 404
+      
+      # Get real-time data from contract
+      web3_service = get_web3_service()
+      pool_data = web3_service.get_pool_data(token.contract_address)
+      
+      # Calculate market cap
+      kas_price = get_kas_price_usd()  # From KAS oracle
+      market_cap = float(pool_data['virtualKasReserve']) * kas_price
+      
+      return jsonify({
+          'success': True,
+          'virtual_kas_reserve': pool_data['virtualKasReserve'],
+          'kas_price_usd': kas_price,
+          'market_cap_usd': market_cap,
+          'is_graduated': token.is_graduated,
+          'dex_pool_address': token.liquidity_pool_address,
+          'nft_position_id': token.nft_position_id
+      })
+  ```
+
+- [ ] **Step 3: Update progress bar UI**
+  ```javascript
+  function updateGraduationProgress(data) {
+      const progressPercent = (data.marketCap / data.graduationThreshold) * 100;
+      const progressBar = document.querySelector('.progress-fill');
+      
+      // Update progress bar width
+      progressBar.style.width = `${Math.min(progressPercent, 100)}%`;
+      
+      // Update market cap display
+      document.getElementById('marketCapValue').textContent = 
+          `$${data.marketCap.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+      
+      // Show graduation status
+      if (data.isGraduated) {
+          showGraduatedStatus(data.dexPoolAddress);
+      } else if (progressPercent >= 100) {
+          showGraduatingStatus();
+      }
+  }
+  
+  function showGraduatedStatus(poolAddress) {
+      const container = document.getElementById('graduationStatus');
+      container.innerHTML = `
+          <div style="background: linear-gradient(135deg, #4CAF50, #45a049); 
+                      padding: 1rem; border-radius: 10px; text-align: center;">
+              <h3>🎓 Graduated to Kaspa Finance DEX</h3>
+              <a href="https://kaspa.finance/pool/${poolAddress}" 
+                 target="_blank" 
+                 class="btn btn-primary" 
+                 style="margin-top: 1rem;">
+                  Trade on DEX →
+              </a>
+          </div>
+      `;
+  }
+  
+  function showGraduatingStatus() {
+      const container = document.getElementById('graduationStatus');
+      container.innerHTML = `
+          <div style="background: linear-gradient(135deg, #FFA500, #FF8C00); 
+                      padding: 1rem; border-radius: 10px; text-align: center;">
+              <h3>🚀 Graduating to DEX...</h3>
+              <p>Market cap reached $70,000! Liquidity pool deploying...</p>
+              <div class="loading-spinner"></div>
+          </div>
+      `;
+  }
+  ```
+
+- [ ] **Step 4: Auto-refresh graduation data**
+  ```javascript
+  // Poll every 30 seconds
+  setInterval(fetchGraduationStatus, 30000);
+  
+  // Initial load
+  document.addEventListener('DOMContentLoaded', () => {
+      fetchGraduationStatus();
+  });
+  ```
+
+- [ ] **Step 5: Add web3_service.get_pool_data() method**
+  ```python
+  # In services/web3_service.py
+  def get_pool_data(self, pool_address: str) -> Dict:
+      """Fetch live pool data from BondingCurvePool contract"""
+      pool_contract = self.w3.eth.contract(
+          address=Web3.to_checksum_address(pool_address),
+          abi=self.bonding_curve_abi
+      )
+      
+      virtual_kas = pool_contract.functions.virtualKasReserve().call()
+      virtual_token = pool_contract.functions.virtualTokenReserve().call()
+      is_graduated = pool_contract.functions.isGraduated().call()
+      
+      return {
+          'virtualKasReserve': Web3.from_wei(virtual_kas, 'ether'),
+          'virtualTokenReserve': Web3.from_wei(virtual_token, 'ether'),
+          'isGraduated': is_graduated
+      }
+  ```
+
+---
+
+#### **3.5 Wallet Balance Display** (Quality of Life)
+
+- [ ] Add KAS balance display in navigation bar
+  ```javascript
+  // In wallet_manager.js, after successful connection
+  async function updateWalletBalance() {
+      const wallet = window.walletManager.getConnectedWallet();
+      const provider = window.walletManager.getMetaMaskProvider();
+      
+      const balance = await provider.request({
+          method: 'eth_getBalance',
+          params: [wallet.address, 'latest']
+      });
+      
+      const balanceKAS = Web3.utils.fromWei(balance, 'ether');
+      document.getElementById('walletBalance').textContent = 
+          `${parseFloat(balanceKAS).toFixed(4)} KAS`;
+  }
+  ```
+
+- [ ] Add balance refresh after each transaction
+  - Call `updateWalletBalance()` in transaction `onConfirm` callback
+
+---
+
+#### **3.6 Testing & Validation**
+
+- [ ] **Test Token Creation Flow**
+  1. Connect wallet (MetaMask on Kasplex Testnet)
+  2. Fill token creation form
+  3. Click "Create Token" → Verify quote API called
+  4. Approve in MetaMask → Verify tx signed
+  5. Monitor SSE stream → Verify "pending" → "confirmed"
+  6. Verify contract address stored in database
+  7. Verify redirect to token detail page
+
+- [ ] **Test Buy Flow**
+  1. Navigate to token detail page
+  2. Enter KAS amount → Verify quote updates (debounced 300ms)
+  3. Verify fee breakdown displayed (anti-bot, platform, creator)
+  4. Click "Buy" → Approve in wallet
+  5. Monitor SSE → Verify balance updates on confirmation
+
+- [ ] **Test Sell Flow**
+  1. Switch to "Sell" tab
+  2. Enter token amount → Verify quote updates
+  3. Click "Sell" → Approve in wallet
+  4. Verify KAS received after confirmation
+
+- [ ] **Test Graduation UI**
+  1. Create token, buy until market cap approaches $70K
+  2. Verify progress bar updates in real-time (30s polling)
+  3. When threshold reached, verify "Graduating..." message
+  4. After graduation, verify DEX link displayed
+  5. Click DEX link → Verify redirects to Kaspa Finance
+
+- [ ] **Error Handling Tests**
+  1. Disconnect wallet mid-transaction → Verify error message
+  2. Reject wallet signature → Verify cancellation handled
+  3. Insufficient balance → Verify user-friendly error
+  4. Network congestion (high gas) → Verify warning displayed
+
+---
+
+**Unlocks:** ✅ Phase 4 (can now test real trading with live blockchain)
 
 ---
 
