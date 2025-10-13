@@ -3,10 +3,6 @@
 {% block title %}Create Token - Gemlaunch.fun{% endblock %}
 
 {% block extra_head %}
-<!-- Quill.js Rich Text Editor -->
-<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-
 <style>
         .create-main {
             padding-top: 100px;
@@ -335,69 +331,6 @@
             border-color: #20B2AA;
         }
         
-        /* Rich Text Editor Styling */
-        .description-editor {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(32, 178, 170, 0.3);
-            border-radius: 8px;
-            min-height: 120px;
-            transition: all 0.3s ease;
-        }
-        
-        .description-editor:focus-within {
-            border-color: #20B2AA;
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 3px rgba(32, 178, 170, 0.1);
-        }
-        
-        .ql-toolbar {
-            border: none !important;
-            border-bottom: 1px solid rgba(32, 178, 170, 0.2) !important;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 8px 8px 0 0;
-        }
-        
-        .ql-container {
-            border: none !important;
-            color: #FFFFFF;
-            font-family: 'Inter', sans-serif !important;
-            font-size: 1rem;
-            border-radius: 0 0 8px 8px;
-        }
-        
-        .ql-editor {
-            min-height: 80px;
-            padding: 1rem;
-            color: #FFFFFF !important;
-            font-family: 'Inter', sans-serif !important;
-        }
-        
-        .ql-editor.ql-blank::before {
-            color: rgba(255, 255, 255, 0.5) !important;
-            font-style: normal;
-        }
-        
-        .ql-snow .ql-stroke {
-            stroke: #CCCCCC;
-        }
-        
-        .ql-snow .ql-fill {
-            fill: #CCCCCC;
-        }
-        
-        .ql-snow .ql-picker {
-            color: #CCCCCC;
-        }
-        
-        .ql-snow .ql-picker-options {
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(32, 178, 170, 0.3);
-        }
-        
-        .ql-snow .ql-picker-item:hover {
-            background: rgba(32, 178, 170, 0.2);
-        }
-        
         /* Social Links Styling */
         .social-links-header {
             cursor: pointer;
@@ -705,9 +638,6 @@
                 min-height: 100px;
             }
             
-            .ql-editor {
-                min-height: 60px;
-            }
         }
 
         /* Modal Styles for CreateTokenNotification */
@@ -1364,8 +1294,16 @@
 
                     <div class="form-group full-width">
                         <label for="description">Description (Optional)</label>
-                        <div class="description-editor" id="description-editor"></div>
-                        <input type="hidden" id="description" name="description">
+                        <textarea 
+                            id="description" 
+                            name="description" 
+                            rows="4"
+                            placeholder="Describe your token... (supports emojis! 🚀💎🌟)"
+                        ></textarea>
+                        <small style="color: #999; font-size: 0.85rem;">Maximum 280 bytes (emojis count as ~4 bytes each)</small>
+                        <div id="byte-counter" style="color: #999; font-size: 0.85rem; margin-top: 0.25rem;">
+                            0 / 280 bytes
+                        </div>
                     </div>
 
                     <div class="form-group full-width">
@@ -1730,81 +1668,19 @@
             }
         };
 
-        // Wrap Quill initialization in a function that can be re-called
-        function initQuill() {
-            // Check if already initialized to prevent duplicates
-            const editorEl = document.getElementById('description-editor');
-            if (!editorEl || editorEl.dataset.quillInitialized === 'true') return;
+        // Byte counter for description textarea
+        document.addEventListener('DOMContentLoaded', function() {
+            const descriptionTextarea = document.getElementById('description');
+            const byteCounter = document.getElementById('byte-counter');
             
-            // Only initialize if Quill is available
-            if (typeof Quill === 'undefined') {
-                // Retry after a short delay if Quill is not loaded yet
-                setTimeout(initQuill, 100);
-                return;
-            }
-            
-            const quill = new Quill('#description-editor', {
-                theme: 'snow',
-                placeholder: 'Tell the community about your token... 🚀💎🌟',
-                modules: {
-                    toolbar: [
-                        [{ 'header': [3, 4, false] }],
-                        ['bold', 'italic', 'underline'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['link'],
-                        ['clean']
-                    ]
-                }
-            });
-            
-            // Mark as initialized
-            editorEl.dataset.quillInitialized = 'true';
-            
-            // Update hidden input on change
-            quill.on('text-change', function() {
-                document.getElementById('description').value = quill.root.innerHTML;
-            });
-            
-            // Store instance globally and on the element for later access
-            window.quillInstance = quill;
-            editorEl.__quill = quill;
-        }
-        
-        // Wait for both DOM and Quill to load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initQuill);
-        } else {
-            // DOM is already loaded, initialize now
-            initQuill();
-        }
-        
-        // Reinitialize on Turbo navigation
-        document.addEventListener('turbo:load', initQuill);
-        
-        // Clean up before Turbo caches the page
-        document.addEventListener('turbo:before-cache', function() {
-            const editorEl = document.getElementById('description-editor');
-            if (editorEl && window.quillInstance) {
-                // Save current content to hidden field
-                document.getElementById('description').value = window.quillInstance.root.innerHTML;
-                // Mark as not initialized for next visit
-                editorEl.dataset.quillInitialized = 'false';
-                // Destroy Quill instance
-                window.quillInstance = null;
+            if (descriptionTextarea && byteCounter) {
+                descriptionTextarea.addEventListener('input', function(e) {
+                    const bytes = new TextEncoder().encode(e.target.value).length;
+                    byteCounter.textContent = `${bytes} / 280 bytes`;
+                    byteCounter.style.color = bytes > 280 ? '#ff5252' : bytes > 250 ? '#ffa500' : '#999';
+                });
             }
         });
-        
-        // Emoji insertion helper
-        function insertEmoji(emoji) {
-            if (window.quillInstance) {
-                const range = window.quillInstance.getSelection();
-                if (range) {
-                    window.quillInstance.insertText(range.index, emoji);
-                } else {
-                    window.quillInstance.insertText(window.quillInstance.getLength() - 1, emoji);
-                }
-            }
-        }
         
         function setMode(mode) {
             // Update mode selector
@@ -2328,16 +2204,8 @@
                 // Step 2: Prepare token creation data
                 const formData = new FormData(this);
                 
-                // Get description from Quill editor
-                let description = '';
-                if (window.quillInstance) {
-                    description = window.quillInstance.root.innerHTML;
-                } else {
-                    description = formData.get('description') || '';
-                }
-                
-                // Strip HTML for blockchain (280 byte limit) but keep emojis
-                const blockchainDescription = stripHtmlTags(description);
+                // Get description from textarea (already plain text, no HTML to strip)
+                const blockchainDescription = (formData.get('description') || '').trim();
                 
                 // Validate description length (280 byte smart contract limit)
                 // CRITICAL: Use byte length (UTF-8), not character length, to match Solidity bytes().length
@@ -2521,40 +2389,13 @@
             }
             
             if (description) {
-                // Try to fill description in Quill editor
-                // First check if quillInstance exists, if not try to find it
-                let quillEditor = window.quillInstance;
-                
-                if (!quillEditor) {
-                    // Try to get Quill instance from the editor element
-                    const editorEl = document.getElementById('description-editor');
-                    if (editorEl && editorEl.__quill) {
-                        quillEditor = editorEl.__quill;
-                    } else if (editorEl && editorEl.querySelector('.ql-editor')) {
-                        // Editor exists but instance not stored, try to access Quill
-                        const qlEditor = editorEl.querySelector('.ql-editor');
-                        if (qlEditor && qlEditor.parentElement.__quill) {
-                            quillEditor = qlEditor.parentElement.__quill;
-                        }
-                    }
+                // Fill description in textarea
+                const descField = document.getElementById('description');
+                if (descField) {
+                    descField.value = description;
+                    descField.dispatchEvent(new Event('input', { bubbles: true }));
+                    filledCount++;
                 }
-                
-                if (quillEditor) {
-                    quillEditor.setText(description);
-                    // Update hidden field
-                    const descField = document.getElementById('description');
-                    if (descField) {
-                        descField.value = description;
-                    }
-                } else {
-                    // Fallback to hidden field
-                    const descField = document.getElementById('description');
-                    if (descField) {
-                        descField.value = description;
-                        descField.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                }
-                filledCount++;
             }
             
             // Visual feedback
@@ -2881,14 +2722,9 @@
                 const tokenName = nameField?.value.trim() || '';
                 const tokenSymbol = symbolField?.value.trim() || '';
                 
-                // Get current description
-                let currentDescription = '';
-                if (window.quillInstance) {
-                    currentDescription = window.quillInstance.getText().trim();
-                } else {
-                    const descField = document.getElementById('description');
-                    currentDescription = descField?.value.trim() || '';
-                }
+                // Get current description from textarea
+                const descField = document.getElementById('description');
+                const currentDescription = descField?.value.trim() || '';
                 
                 // Validate we have at least a name or symbol
                 if (!tokenName && !tokenSymbol) {
@@ -2942,14 +2778,10 @@
                         conversationHistory.push({ role: 'assistant', content: improvedDesc });
                         
                         // Fill the description field directly
-                        if (window.quillInstance) {
-                            window.quillInstance.setText(improvedDesc);
-                        } else {
-                            const descField = document.getElementById('description');
-                            if (descField) {
-                                descField.value = improvedDesc;
-                                descField.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
+                        const descField = document.getElementById('description');
+                        if (descField) {
+                            descField.value = improvedDesc;
+                            descField.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                         
                         window.showGemmyNotification('✨ Description updated!', 'success');
@@ -3089,13 +2921,8 @@
             const tokenName = document.getElementById('name')?.value.trim() || '';
             const symbol = document.getElementById('symbol')?.value.trim() || '';
             
-            // Get description from Quill editor
-            let description = '';
-            if (window.quillInstance) {
-                description = window.quillInstance.getText().trim();
-            } else {
-                description = document.getElementById('description')?.value.trim() || '';
-            }
+            // Get description from textarea
+            const description = document.getElementById('description')?.value.trim() || '';
             
             // Validate required fields
             if (!tokenName) {
