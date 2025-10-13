@@ -2176,7 +2176,7 @@
             }
             
             // Check if wallet is connected
-            if (!window.WalletManager || !window.WalletManager.isConnected()) {
+            if (!window.walletManager || !window.walletManager.isConnected()) {
                 CreateTokenNotification.showAlert('Wallet Not Connected', 'Please connect your wallet to create a token.', 'error');
                 return false;
             }
