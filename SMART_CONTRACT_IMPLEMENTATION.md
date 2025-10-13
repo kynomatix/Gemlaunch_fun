@@ -2073,7 +2073,229 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 ---
 
-**Unlocks:** ✅ Phase 4 (can now test real trading with live blockchain)
+## ⚠️ PHASE 3 GAP ANALYSIS - CRITICAL DISCONNECTS IDENTIFIED
+
+**Status Date:** October 13, 2025  
+**Audit Result:** Phase 3 INCOMPLETE - Wallet signing integration missing
+
+### What Works ✅
+
+**Backend Infrastructure (100% Complete):**
+- ✅ Web3Service fully implemented with all contract methods
+- ✅ All 7 trading API endpoints operational (/api/trade/quote-buy, quote-sell, buy, sell, etc.)
+- ✅ Token creation API returns unsigned transaction data
+- ✅ Transaction monitoring service via SSE
+- ✅ Gas estimation, network validation, IPFS uploads
+
+**Frontend UI Components (85% Complete):**
+- ✅ TransactionManager module created and initialized
+- ✅ Quote fetching with real-time updates
+- ✅ Fee breakdown display (anti-bot, platform, creator)
+- ✅ Loading states and modal animations
+- ✅ Input event listeners with debouncing
+
+### What's Broken ❌
+
+**Critical Gap #1: Token Creation Flow**
+- **Issue:** Frontend stops after receiving unsigned tx from `/api/token/create`
+- **Location:** `templates/app/create_token.html` line 2257
+- **Problem:** Code expects `tx_hash` and `contract_address` but backend only returns `tx_data`
+- **Missing Steps:**
+  1. Call `TransactionManager.signAndSubmitTransaction(tx_data)` to sign with wallet
+  2. Relay signed transaction to blockchain (MetaMask auto-relays, others need `/api/relay/transaction`)
+  3. Monitor tx via SSE `/api/tx/{hash}/stream`
+  4. Extract contract address from transaction receipt
+  5. Update database with contract address and tx hash
+  6. Redirect to token detail page
+
+**Critical Gap #2: Trading Flow**
+- **Issue:** `executeTrade()` in `token_detail.js` doesn't use TransactionManager lifecycle
+- **Location:** `static/js/token_detail.js` (legacy trade execution)
+- **Problem:** Buy/sell buttons don't actually submit blockchain transactions
+- **Missing Steps:**
+  1. Get quote from backend (partially implemented)
+  2. Build unsigned tx via `/api/trade/buy` or `/api/trade/sell`
+  3. Sign transaction with wallet using `TransactionManager.signAndSubmitTransaction()`
+  4. Monitor confirmation via SSE
+  5. Update UI with new balances and trade confirmation
+
+**Critical Gap #3: Wallet Signing Integration**
+- **Issue:** TransactionManager exists but isn't called by UI components
+- **Problem:** No bridge between "Build TX" phase and "Sign TX" phase
+- **Impact:** All blockchain interactions fail at the signing step
+
+### Required Fixes to Complete Phase 3
+
+#### **3.9** Wire Token Creation to Wallet Signing ⬜ NOT STARTED
+**File:** `templates/app/create_token.html`
+
+**Current Code (line 2240-2261):**
+```javascript
+const response = await fetch('/api/token/create', {...});
+const result = await response.json();
+
+if (result.tx_hash && result.contract_address) {
+    await monitorDeployment(result.tx_hash, result.contract_address);
+} else {
+    throw new Error('Transaction hash or contract address not returned');
+}
+```
+
+**Required Fix:**
+```javascript
+const response = await fetch('/api/token/create', {...});
+const result = await response.json();
+
+if (!result.success || !result.tx_data) {
+    throw new Error(result.error || 'Failed to build transaction');
+}
+
+// NEW: Sign transaction with wallet
+updateDeploymentStatus('Waiting for wallet signature...');
+const signResult = await window.txManager.signAndSubmitTransaction(result.tx_data);
+
+// NEW: Monitor blockchain confirmation
+updateDeploymentStatus('Confirming on blockchain...', 'Transaction Submitted');
+const receipt = await window.txManager.monitorTransaction(signResult.tx_hash, {
+    onUpdate: (status) => console.log('TX Status:', status),
+    onConfirm: (receipt) => {
+        // Extract contract address from receipt logs
+        const contractAddress = receipt.logs[0]?.address;
+        // Update database with contract address
+        // Redirect to token page
+    },
+    onError: (error) => {
+        throw new Error(error);
+    }
+});
+```
+
+**Tasks:**
+- [ ] Replace lines 2240-2261 in create_token.html with wallet signing flow
+- [ ] Add contract address extraction from transaction receipt
+- [ ] Add database update endpoint `/api/token/{id}/update-deployment`
+- [ ] Handle wallet rejection errors gracefully
+- [ ] Test with MetaMask on testnet
+
+#### **3.10** Wire Trading UI to TransactionManager ⬜ NOT STARTED
+**File:** `static/js/token_detail.js`
+
+**Current Code:**
+```javascript
+async function executeTrade() {
+    // Legacy mock implementation - doesn't actually trade
+}
+```
+
+**Required Fix:**
+```javascript
+async function executeTrade() {
+    const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
+    const tokenAddress = window.tokenContractAddress;
+    
+    // Phase 1: Get Quote
+    const quoteParams = action === 'buy' 
+        ? {token_address: tokenAddress, kas_amount: parseFloat(kasAmountInput.value)}
+        : {token_address: tokenAddress, token_amount: parseFloat(tokenAmountInput.value)};
+    
+    const quote = await window.txManager.getQuote(action, quoteParams);
+    
+    // Phase 2: Build Transaction
+    const txParams = {
+        token_address: tokenAddress,
+        ...(action === 'buy' ? {kas_amount: quoteParams.kas_amount} : {token_amount: quoteParams.token_amount}),
+        min_tokens_out: quote.min_tokens_out, // From auto-slippage
+        deadline: Math.floor(Date.now() / 1000) + 300 // 5 min
+    };
+    
+    const buildResult = await window.txManager.buildTransaction(action, txParams);
+    
+    // Phase 3: Sign & Submit
+    const signResult = await window.txManager.signAndSubmitTransaction(buildResult.tx_data);
+    
+    // Phase 4: Monitor
+    await window.txManager.monitorTransaction(signResult.tx_hash, {
+        onConfirm: () => {
+            // Refresh balances, update UI
+            window.location.reload();
+        },
+        onError: (error) => {
+            alert(`Trade failed: ${error}`);
+        }
+    });
+}
+```
+
+**Tasks:**
+- [ ] Replace executeTrade() in token_detail.js with full TransactionManager integration
+- [ ] Add slippage parameters from quote response
+- [ ] Wire buy/sell buttons to new executeTrade()
+- [ ] Test buy flow end-to-end
+- [ ] Test sell flow end-to-end
+
+#### **3.11** Add Contract Address Extraction Logic ⬜ NOT STARTED
+**Requirement:** Extract deployed contract address from transaction receipt
+
+**Implementation:**
+```javascript
+function extractContractAddressFromReceipt(receipt) {
+    // For token creation, contract address is in logs[0].address
+    // Event: TokenCreated(address indexed tokenAddress, ...)
+    const tokenCreatedEvent = receipt.logs.find(log => 
+        log.topics[0] === '0x...' // TokenCreated event signature
+    );
+    
+    return tokenCreatedEvent ? tokenCreatedEvent.address : null;
+}
+```
+
+**Tasks:**
+- [ ] Add extractContractAddressFromReceipt() to transaction_manager.js
+- [ ] Get TokenCreated event signature from contract ABI
+- [ ] Handle case where contract deployment fails
+- [ ] Return contract address to token creation flow
+
+#### **3.12** Database Update After Deployment ⬜ NOT STARTED
+**Requirement:** Update Token record with contract address and tx hash after blockchain confirmation
+
+**New Endpoint:** `POST /api/token/{id}/update-deployment`
+
+**Request:**
+```json
+{
+    "contract_address": "0x...",
+    "deployment_tx_hash": "0x...",
+    "deployment_block_number": 1234567
+}
+```
+
+**Implementation in app.py:**
+```python
+@app.route('/api/token/<int:token_id>/update-deployment', methods=['POST'])
+@csrf.exempt
+def update_token_deployment(token_id):
+    data = request.get_json()
+    token = Token.query.get_or_404(token_id)
+    
+    token.contract_address = data['contract_address']
+    token.deployment_tx = data['deployment_tx_hash']
+    token.deployment_block_number = data.get('deployment_block_number')
+    token.deployment_status = 'deployed'
+    
+    db.session.commit()
+    
+    return jsonify({'success': True})
+```
+
+**Tasks:**
+- [ ] Add POST /api/token/{id}/update-deployment endpoint
+- [ ] Add error handling for duplicate contract addresses
+- [ ] Add validation for checksummed addresses
+- [ ] Update token creation flow to call this endpoint after confirmation
+
+---
+
+**Unlocks:** ⏸️ Phase 4 BLOCKED - Must complete Phase 3 wallet signing integration first
 
 ---
 
