@@ -81,6 +81,6 @@ class PinataService:
             logging.error(f"Error uploading JSON to Pinata: {str(e)}")
             return None
     
-    def get_ipfs_url(self, ipfs_hash: str) -> str:
-        """Get public IPFS URL from hash"""
-        return f'https://gateway.pinata.cloud/ipfs/{ipfs_hash}'
+    def get_ipfs_url(self, ipfs_hash: str, filename: str = 'image.webp') -> str:
+        """Get public IPFS URL from hash with filename for proper content-type"""
+        return f'https://gateway.pinata.cloud/ipfs/{ipfs_hash}?filename={filename}'
