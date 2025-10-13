@@ -2227,6 +2227,8 @@
                     return false;
                 }
                 
+                let tokenId = null; // Declare here so it's accessible in catch block
+                
                 const tokenData = {
                     name: formData.get('name'),
                     symbol: formData.get('symbol'),
@@ -2260,7 +2262,7 @@
                 updateDeploymentStatus('IPFS upload complete!', 'Metadata Uploaded to IPFS');
                 
                 // Extract token_id and tx_data from response
-                const tokenId = result.token_id;
+                tokenId = result.token_id; // Assign to variable declared above
                 const txData = result.tx_data;
                 
                 if (!tokenId || !txData) {
