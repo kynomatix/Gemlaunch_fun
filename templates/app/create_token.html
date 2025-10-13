@@ -2270,14 +2270,14 @@
                 // Step 4: Sign transaction with user's wallet
                 updateDeploymentStatus('Please sign the transaction in your wallet...');
                 
-                const signResult = await window.TransactionManager.signAndSubmitTransaction(txData);
+                const signResult = await window.txManager.signAndSubmitTransaction(txData);
                 
                 let txHash;
                 
                 // Handle relay if needed (for non-MetaMask wallets)
                 if (signResult.needs_relay) {
                     updateDeploymentStatus('Submitting transaction to blockchain...');
-                    const relayResult = await window.TransactionManager.relayTransaction(signResult.signed_tx);
+                    const relayResult = await window.txManager.relayTransaction(signResult.signed_tx);
                     
                     if (!relayResult.success) {
                         throw new Error(relayResult.error || 'Failed to submit transaction');
@@ -2327,7 +2327,7 @@
                 // Step 6: Extract and verify contract address from backend
                 updateDeploymentStatus('Verifying contract deployment...');
                 
-                const extractResult = await window.TransactionManager.extractContractAddressFromReceipt(txHash, tokenId);
+                const extractResult = await window.txManager.extractContractAddressFromReceipt(txHash, tokenId);
                 
                 if (!extractResult.success) {
                     throw new Error(extractResult.error || 'Failed to verify contract deployment');
