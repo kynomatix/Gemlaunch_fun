@@ -193,8 +193,9 @@ class Token(db.Model):
     
     @property
     def graduation_threshold(self):
-        """Market cap threshold for graduation (~$70K)"""
-        return 70000
+        """Market cap threshold for graduation - pulls from platform settings"""
+        settings = PlatformSettings.get_settings()
+        return float(settings.graduation_threshold_usd)
     
     @property
     def progress_to_graduation(self):
@@ -957,3 +958,30 @@ class PendingTransaction(db.Model):
     
     def __repr__(self):
         return f'<PendingTransaction {self.tx_hash[:10]}... ({self.status})>'
+
+class PlatformSettings(db.Model):
+    """Platform-wide configuration settings"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Graduation settings
+    graduation_threshold_usd = db.Column(db.Numeric(precision=20, scale=2), default=200.00)  # $200 for testnet
+    
+    # Network info (for display purposes)
+    network = db.Column(db.String(32), default='testnet')  # testnet or mainnet
+    
+    # Metadata
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_by = db.Column(db.String(128))  # wallet address of admin who updated
+    
+    @staticmethod
+    def get_settings():
+        """Get or create platform settings"""
+        settings = PlatformSettings.query.first()
+        if not settings:
+            settings = PlatformSettings()
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+    
+    def __repr__(self):
+        return f'<PlatformSettings threshold=${self.graduation_threshold_usd}>'

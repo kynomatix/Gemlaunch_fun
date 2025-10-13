@@ -1,0 +1,581 @@
+{% extends "app/base_layout.html" %}
+
+{% block title %}Admin Settings - Gemlaunch.fun{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1><i class="fas fa-cog"></i> Platform Settings</h1>
+        <div class="admin-nav">
+            <a href="/admin?key=gemlaunch-admin-2024" class="nav-link">Dashboard</a>
+            <a href="/admin/users?key=gemlaunch-admin-2024" class="nav-link">Users</a>
+            <a href="/admin/tokens?key=gemlaunch-admin-2024" class="nav-link">Tokens</a>
+            <a href="/admin/settings?key=gemlaunch-admin-2024" class="nav-link active">Settings</a>
+        </div>
+    </div>
+
+    <!-- Graduation Threshold Settings -->
+    <div class="settings-section">
+        <h2><i class="fas fa-graduation-cap"></i> Graduation Threshold</h2>
+        <div class="settings-card">
+            <div class="setting-info">
+                <p class="setting-description">
+                    Configure the market cap threshold at which tokens graduate from the bonding curve to the DEX.
+                    This setting affects all tokens on the platform.
+                </p>
+                <div class="current-threshold">
+                    <div class="threshold-label">Current Threshold</div>
+                    <div class="threshold-value" id="current-threshold">${{ "{:,.2f}".format(settings.graduation_threshold_usd) }} USD</div>
+                    <div class="threshold-kas" id="threshold-kas-display">
+                        ≈ {{ "{:,.0f}".format(oracle_status.graduation_threshold_kas) }} KAS
+                        <span class="kas-price">(@ ${{ "%.6f"|format(oracle_status.kas_price) }}/KAS)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="settings-form" class="settings-form">
+                <input type="hidden" name="admin_key" value="gemlaunch-admin-2024">
+                
+                <div class="form-group">
+                    <label for="graduation_threshold_usd">
+                        <i class="fas fa-dollar-sign"></i> Graduation Threshold (USD)
+                    </label>
+                    <input 
+                        type="number" 
+                        id="graduation_threshold_usd" 
+                        name="graduation_threshold_usd" 
+                        value="{{ settings.graduation_threshold_usd }}"
+                        min="100"
+                        step="0.01"
+                        required
+                        class="form-input"
+                    >
+                    <small class="form-hint">Minimum: $100 USD</small>
+                </div>
+                
+                <div class="threshold-preview">
+                    <div class="preview-label">Preview (KAS equivalent)</div>
+                    <div class="preview-value" id="preview-kas">-</div>
+                </div>
+                
+                <button type="submit" class="save-btn" id="save-btn">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+            </form>
+            
+            <div class="settings-meta">
+                <div class="meta-item">
+                    <i class="fas fa-clock"></i>
+                    Last Updated: 
+                    {% if settings.updated_at %}
+                        {{ settings.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-user"></i>
+                    Updated By: 
+                    {% if settings.updated_by %}
+                        {{ settings.updated_by[:6] }}...{{ settings.updated_by[-4:] }}
+                    {% else %}
+                        System
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oracle Status -->
+    <div class="oracle-section">
+        <h2><i class="fas fa-chart-line"></i> KAS Price Oracle</h2>
+        <div class="oracle-card">
+            <div class="oracle-main">
+                <div class="price-display">
+                    <div class="price-label">KAS/USD Price</div>
+                    <div class="price-value" id="kas-price">${{ "%.6f"|format(oracle_status.kas_price) }}</div>
+                    <div class="price-source">{{ oracle_status.api_source }}</div>
+                </div>
+                <div class="threshold-display">
+                    <div class="threshold-label">Current Threshold (KAS)</div>
+                    <div class="threshold-value" id="graduation-threshold">{{ "{:,.0f}".format(oracle_status.graduation_threshold_kas) }} KAS</div>
+                    <div class="threshold-usd">≈ ${{ "{:,.2f}".format(settings.graduation_threshold_usd) }} USD</div>
+                </div>
+            </div>
+            <div class="oracle-status">
+                <div class="status-item">
+                    <i class="fas fa-clock"></i>
+                    <span id="last-update">
+                        {% if oracle_status.last_update %}
+                            {{ oracle_status.last_update.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% else %}
+                            Never
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-sync-alt"></i>
+                    <span id="cache-status">
+                        {% if oracle_status.cache_age_seconds %}
+                            Cached ({{ "%.0f"|format(oracle_status.cache_age_seconds) }}s ago)
+                        {% else %}
+                            Live
+                        {% endif %}
+                    </span>
+                </div>
+                <button id="refresh-oracle" class="oracle-refresh-btn">
+                    <i class="fas fa-sync"></i> Refresh Price
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.admin-header h1 {
+    color: #20B2AA;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.nav-link {
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: #CCCCCC;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.nav-link:hover, .nav-link.active {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+}
+
+/* Settings Section */
+.settings-section {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(75, 0, 130, 0.05));
+    border: 2px solid rgba(138, 43, 226, 0.4);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.settings-section h2 {
+    color: #8A2BE2;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 2rem;
+}
+
+.setting-info {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(138, 43, 226, 0.2);
+}
+
+.setting-description {
+    color: #AAA;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.current-threshold {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(138, 43, 226, 0.1);
+    border-radius: 10px;
+}
+
+.threshold-label {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.threshold-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #8A2BE2, #9370DB);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.threshold-kas {
+    color: #AAA;
+    font-size: 1.1rem;
+}
+
+.kas-price {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.settings-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    color: #AAA;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.form-input {
+    width: 100%;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(138, 43, 226, 0.3);
+    border-radius: 10px;
+    color: #FFF;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #8A2BE2;
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+}
+
+.form-hint {
+    display: block;
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.threshold-preview {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(138, 43, 226, 0.1);
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.preview-label {
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.preview-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #8A2BE2;
+}
+
+.save-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #8A2BE2, #9370DB);
+    color: #FFF;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(138, 43, 226, 0.4);
+}
+
+.save-btn:active {
+    transform: translateY(0);
+}
+
+.save-btn.loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.settings-meta {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(138, 43, 226, 0.2);
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.meta-item {
+    color: #666;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.meta-item i {
+    color: #8A2BE2;
+}
+
+/* Oracle Section */
+.oracle-section {
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
+    border: 2px solid rgba(32, 178, 170, 0.4);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.oracle-section h2 {
+    color: #20B2AA;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oracle-card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.oracle-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(32, 178, 170, 0.2);
+}
+
+.price-display, .threshold-display {
+    text-align: center;
+}
+
+.price-label {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.price-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.price-source {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.oracle-status {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #AAA;
+    font-size: 0.9rem;
+}
+
+.status-item i {
+    color: #20B2AA;
+}
+
+.oracle-refresh-btn {
+    margin-left: auto;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oracle-refresh-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(32, 178, 170, 0.4);
+}
+
+.oracle-refresh-btn.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+// KAS Price for calculations
+let kasPrice = {{ oracle_status.kas_price }};
+
+// Update threshold preview when input changes
+document.getElementById('graduation_threshold_usd').addEventListener('input', function() {
+    const usdValue = parseFloat(this.value) || 0;
+    const kasEquivalent = kasPrice > 0 ? usdValue / kasPrice : 0;
+    document.getElementById('preview-kas').textContent = kasEquivalent.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' KAS';
+});
+
+// Initialize preview
+document.getElementById('graduation_threshold_usd').dispatchEvent(new Event('input'));
+
+// Handle form submission
+document.getElementById('settings-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('save-btn');
+    const formData = new FormData(this);
+    
+    // Show loading state
+    btn.classList.add('loading');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    try {
+        const response = await fetch('/admin/update-settings', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update current threshold display
+            const newValue = data.new_threshold;
+            document.getElementById('current-threshold').textContent = '$' + newValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+            
+            // Update KAS equivalent display
+            const kasEquivalent = kasPrice > 0 ? newValue / kasPrice : 0;
+            document.getElementById('threshold-kas-display').innerHTML = `≈ ${kasEquivalent.toLocaleString('en-US', {maximumFractionDigits: 0})} KAS <span class="kas-price">(@ $${kasPrice.toFixed(6)}/KAS)</span>`;
+            
+            // Update oracle threshold display
+            document.getElementById('graduation-threshold').textContent = kasEquivalent.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' KAS';
+            document.querySelector('.threshold-usd').textContent = '≈ $' + newValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USD';
+            
+            // Show success message
+            alert('✅ ' + data.message);
+            
+            // Reload page to update meta info
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Failed to save settings. Please try again.');
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+    }
+});
+
+// Oracle refresh functionality
+function refreshOraclePrice() {
+    const btn = document.getElementById('refresh-oracle');
+    const priceEl = document.getElementById('kas-price');
+    const thresholdEl = document.getElementById('graduation-threshold');
+    const updateEl = document.getElementById('last-update');
+    const cacheEl = document.getElementById('cache-status');
+    
+    btn.classList.add('loading');
+    btn.disabled = true;
+    
+    fetch('/api/kas-price')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                kasPrice = data.kas_price;
+                priceEl.textContent = '$' + kasPrice.toFixed(6);
+                
+                const currentUsd = parseFloat(document.getElementById('graduation_threshold_usd').value) || 0;
+                const kasEquivalent = kasPrice > 0 ? currentUsd / kasPrice : 0;
+                thresholdEl.textContent = kasEquivalent.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' KAS';
+                
+                if (data.last_update) {
+                    const date = new Date(data.last_update);
+                    updateEl.textContent = date.toLocaleString();
+                }
+                
+                cacheEl.textContent = 'Live';
+                
+                // Update preview
+                document.getElementById('graduation_threshold_usd').dispatchEvent(new Event('input'));
+                
+                // Update threshold KAS display
+                document.getElementById('threshold-kas-display').innerHTML = `≈ ${kasEquivalent.toLocaleString('en-US', {maximumFractionDigits: 0})} KAS <span class="kas-price">(@ $${kasPrice.toFixed(6)}/KAS)</span>`;
+            }
+        })
+        .catch(err => {
+            console.error('Failed to refresh oracle:', err);
+        })
+        .finally(() => {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        });
+}
+
+document.getElementById('refresh-oracle').addEventListener('click', refreshOraclePrice);
+
+// Auto-refresh every 60 seconds
+setInterval(refreshOraclePrice, 60000);
+</script>
+{% endblock %}

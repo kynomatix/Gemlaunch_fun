@@ -1891,8 +1891,8 @@ def api_token_graduation_status(address):
                 # Fallback to database value if blockchain call fails
                 current_market_cap = float(token.current_market_cap) if token.current_market_cap else 0
             
-            # Use 70000 as default threshold if null
-            graduation_threshold = token.graduation_threshold if token.graduation_threshold else 70000
+            # Get graduation threshold from token property (which pulls from PlatformSettings)
+            graduation_threshold = token.graduation_threshold
             
             # Calculate progress
             progress_percent = (current_market_cap / graduation_threshold) * 100 if graduation_threshold else 0
@@ -3125,6 +3125,59 @@ def admin_set_partner():
         
         db.session.commit()
         return jsonify({'success': True, 'message': 'Partner status updated'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/settings')
+def admin_settings():
+    """Admin platform settings"""
+    admin_key = request.args.get('key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return "Access Denied", 403
+    
+    from models import PlatformSettings
+    settings = PlatformSettings.get_settings()
+    
+    # Get KAS oracle status
+    from services.kas_oracle import oracle
+    oracle_status = oracle.get_oracle_status()
+    
+    return render_template('admin/settings.html', 
+                         settings=settings, 
+                         oracle_status=oracle_status)
+
+@app.route('/admin/update-settings', methods=['POST'])
+def admin_update_settings():
+    """Update platform settings"""
+    admin_key = request.form.get('admin_key')
+    if admin_key != 'gemlaunch-admin-2024':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        from models import PlatformSettings
+        settings = PlatformSettings.get_settings()
+        
+        # Update graduation threshold
+        threshold = float(request.form.get('graduation_threshold_usd', 200))
+        if threshold < 100:
+            return jsonify({'error': 'Threshold must be at least $100'}), 400
+        
+        settings.graduation_threshold_usd = threshold
+        settings.updated_at = datetime.now(timezone.utc)
+        
+        # Store admin wallet if available
+        if 'wallet_address' in session:
+            settings.updated_by = session['wallet_address']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Graduation threshold updated to ${threshold:,.2f}',
+            'new_threshold': float(threshold)
+        })
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

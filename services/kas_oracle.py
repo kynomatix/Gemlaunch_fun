@@ -56,14 +56,18 @@ class KasPriceOracle:
             # Return cached price if available, otherwise return 0
             return self.cache.get('price', 0)
     
-    def calculate_graduation_threshold(self, target_usd=70000):
+    def calculate_graduation_threshold(self, target_usd=None):
         """
         Calculate KAS amount needed for target USD market cap
         Args:
-            target_usd: Target market cap in USD (default: $70,000)
+            target_usd: Target market cap in USD (default: pulls from PlatformSettings)
         Returns: 
             int - KAS amount in wei (18 decimals)
         """
+        if target_usd is None:
+            from models import PlatformSettings
+            target_usd = float(PlatformSettings.get_settings().graduation_threshold_usd)
+        
         kas_price = self.get_kas_price()
         if kas_price <= 0:
             return 900000 * 10**18  # Fallback: 900K KAS

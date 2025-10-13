@@ -7,9 +7,7 @@ import logging
 from datetime import datetime, timezone
 from services.kas_oracle import oracle
 from services.web3_service import get_web3_service
-from models import Token, db
-
-GRADUATION_THRESHOLD_USD = 70000
+from models import Token, db, PlatformSettings
 
 def check_token_graduation(token):
     """
@@ -60,10 +58,13 @@ def check_token_graduation(token):
         # Calculate USD market cap using oracle
         market_cap_usd = oracle.get_market_cap_usd(kas_reserve_wei)
         
-        logging.info(f"Token {token.symbol} - Market Cap: ${market_cap_usd:,.2f} USD (Threshold: ${GRADUATION_THRESHOLD_USD:,.2f})")
+        # Get dynamic graduation threshold from platform settings
+        graduation_threshold_usd = float(PlatformSettings.get_settings().graduation_threshold_usd)
+        
+        logging.info(f"Token {token.symbol} - Market Cap: ${market_cap_usd:,.2f} USD (Threshold: ${graduation_threshold_usd:,.2f})")
         
         # Check if ready for graduation
-        if market_cap_usd >= GRADUATION_THRESHOLD_USD:
+        if market_cap_usd >= graduation_threshold_usd:
             logging.info(f"🎓 Token {token.symbol} ready for graduation! Market cap: ${market_cap_usd:,.2f}")
             
             # Trigger graduation via oracle
@@ -87,7 +88,7 @@ def check_token_graduation(token):
             }
         else:
             # Not ready yet
-            progress_pct = (market_cap_usd / GRADUATION_THRESHOLD_USD) * 100
+            progress_pct = (market_cap_usd / graduation_threshold_usd) * 100
             logging.debug(f"Token {token.symbol} not ready for graduation - Progress: {progress_pct:.1f}%")
             
             # Update market cap in database
