@@ -2343,6 +2343,19 @@
             } catch (error) {
                 console.error('Token creation error:', error);
                 hideDeploymentModal();
+                
+                // Cleanup: Delete pending token record if deployment failed
+                if (tokenId) {
+                    try {
+                        await fetch(`/api/token/${tokenId}/delete-pending`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'}
+                        });
+                    } catch (cleanupError) {
+                        console.error('Failed to cleanup pending token:', cleanupError);
+                    }
+                }
+                
                 CreateTokenNotification.showAlert(
                     'Deployment Failed',
                     error.message || 'An error occurred during deployment. Please try again.',

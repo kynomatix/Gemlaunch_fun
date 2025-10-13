@@ -5104,6 +5104,40 @@ def confirm_token_deployment(token_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': f'Failed to confirm deployment: {str(e)}'}), 500
 
+@app.route('/api/token/<int:token_id>/delete-pending', methods=['POST'])
+@csrf.exempt
+def delete_pending_token(token_id):
+    """Delete pending token record if deployment failed (cleanup)"""
+    try:
+        token = Token.query.get(token_id)
+        
+        if not token:
+            return jsonify({'success': True, 'message': 'Token not found (may already be deleted)'}), 200
+        
+        # Only delete if status is 'pending'
+        if token.deployment_status != 'pending':
+            return jsonify({
+                'success': False, 
+                'error': f'Cannot delete token with status: {token.deployment_status}'
+            }), 400
+        
+        # Delete token_settings first (foreign key constraint)
+        from models_extended import TokenSettings
+        TokenSettings.query.filter_by(token_id=token_id).delete()
+        
+        # Delete token
+        db.session.delete(token)
+        db.session.commit()
+        
+        logging.info(f"Cleaned up pending token {token_id} ({token.name}) after failed deployment")
+        
+        return jsonify({'success': True, 'message': 'Pending token deleted'}), 200
+        
+    except Exception as e:
+        logging.error(f"Failed to delete pending token {token_id}: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/admin/distribute-platform-fees', methods=['POST'])
 @csrf.exempt
 def api_distribute_platform_fees():
