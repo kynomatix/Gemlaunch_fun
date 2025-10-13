@@ -2266,6 +2266,19 @@
             });
         }
 
+        // Strip HTML tags while preserving text and emojis
+        function stripHtmlTags(html) {
+            // Create temporary div to parse HTML
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            
+            // Get text content (preserves emojis, strips HTML)
+            const text = tmp.textContent || tmp.innerText || '';
+            
+            // Trim and normalize whitespace
+            return text.replace(/\s+/g, ' ').trim();
+        }
+
         // Form submission handler with deployment flow
         document.querySelector('.create-form').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -2323,10 +2336,27 @@
                     description = formData.get('description') || '';
                 }
                 
+                // Strip HTML for blockchain (280 byte limit) but keep emojis
+                const blockchainDescription = stripHtmlTags(description);
+                
+                // Validate description length (280 byte smart contract limit)
+                // CRITICAL: Use byte length (UTF-8), not character length, to match Solidity bytes().length
+                const descriptionBytes = new TextEncoder().encode(blockchainDescription).length;
+
+                if (descriptionBytes > 280) {
+                    CreateTokenNotification.showAlert(
+                        'Description Too Long', 
+                        `Description is ${descriptionBytes} bytes but must be 280 bytes or less. Please shorten it.`, 
+                        'error'
+                    );
+                    hideDeploymentModal();
+                    return false;
+                }
+                
                 const tokenData = {
                     name: formData.get('name'),
                     symbol: formData.get('symbol'),
-                    description: description,
+                    description: blockchainDescription,
                     image_file: imageBase64,
                     total_supply: formData.get('total_supply') || '1000000000',
                     reserved_percentage: formData.get('reserved_percentage') || '0',
