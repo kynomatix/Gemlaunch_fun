@@ -2040,8 +2040,14 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 **Dependencies:** ✅ Backend API `/api/token/create` returns unsigned tx_data
 
-- [ ] **Replace token creation submission logic in `templates/app/create_token.html`**
-  - **Current Issue (line 2257):** Code expects `tx_hash` and `contract_address` from backend, but backend only returns unsigned `tx_data`
+- [x] **Replace token creation submission logic in `templates/app/create_token.html`** ✅ COMPLETE
+  - **Implementation:** `templates/app/create_token.html` lines 2161-2355
+  - Token creation now uses wallet signing with backend verification
+  - Polls for transaction confirmation (60 attempts × 2s = 2min max)
+  - Calls extractContractAddressFromReceipt() for backend verification
+  - Redirects to token page on success
+  - Wallet-specific handling (MetaMask vs Kaspa wallets)
+  - **Previous Issue (line 2257):** Code expected `tx_hash` and `contract_address` from backend, but backend only returns unsigned `tx_data`
   - **Location:** `templates/app/create_token.html` lines 2240-2261 (deployToken function)
   
   **Implementation Steps:**
@@ -2165,8 +2171,14 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 **Dependencies:** ✅ Backend APIs `/api/trade/buy` and `/api/trade/sell` return unsigned tx_data
 
-- [ ] **Replace executeTrade() in `static/js/token_detail.js` with TransactionManager integration**
-  - **Current Issue:** `executeTrade()` doesn't call real blockchain transactions
+- [x] **Replace executeTrade() in `static/js/token_detail.js` with TransactionManager integration** ✅ COMPLETE
+  - **Implementation:** `static/js/token_detail.js` lines 1000-1093
+  - Trading execution uses TransactionManager.signAndSubmitTransaction()
+  - SSE monitoring with monitorTransaction() function
+  - Real-time status updates during execution
+  - Automatic balance refresh and page reload on success
+  - Complete error handling for all failure modes
+  - **Previous Issue:** `executeTrade()` didn't call real blockchain transactions
   - **Location:** `static/js/token_detail.js` (token trading logic)
   
   **Implementation Steps:**
@@ -2294,13 +2306,27 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 ---
 
-#### **3.8 Contract Address Extraction** (REQUIRED FOR TASK 3.6)
+#### **3.8 Contract Address Extraction** ✅ COMPLETE
 
 **Goal:** Extract deployed contract address from transaction receipt logs
 
 **Dependencies:** ✅ TokenFactory emits TokenCreated event with contract address
 
-- [ ] **Add extractContractAddressFromReceipt() to `static/js/transaction_manager.js`**
+- [x] **Add extractContractAddressFromReceipt() to `static/js/transaction_manager.js`** ✅ COMPLETE
+  - **Implementation:** `static/js/transaction_manager.js` lines 122-157
+  - Calls POST /api/token/{id}/confirm-deployment with tx_hash
+  - Backend verifies transaction on blockchain and extracts contract address
+  - Returns verified contract address from blockchain
+  - No trusted frontend input - all verification server-side
+
+- [x] **Backend verification method in `services/web3_service.py`** ✅ COMPLETE
+  - **Implementation:** `services/web3_service.py` lines 1243-1343
+  - extract_token_address_from_receipt() with full security validation
+  - Verifies tx.to and log.address both equal TokenFactory
+  - Verifies event creator matches expected creator
+  - Returns checksummed token address
+
+- [ ] **ORIGINAL IMPLEMENTATION PLAN (replaced by backend verification):**
   
   **Implementation:**
   ```javascript
@@ -2363,13 +2389,26 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 ---
 
-#### **3.9 Database Update Endpoint** (REQUIRED FOR TASK 3.6)
+#### **3.9 Database Update Endpoint (Deployment Confirmation)** ✅ COMPLETE
 
 **Goal:** Update Token record with deployment information after blockchain confirmation
 
 **Dependencies:** ✅ Token model has fields for contract_address, deployment_tx, deployment_block_number
 
-- [ ] **Add POST /api/token/<token_id>/update-deployment endpoint to `app.py`**
+- [x] **Add POST /api/token/<token_id>/confirm-deployment endpoint to `app.py`** ✅ COMPLETE
+  - **Implementation:** `app.py` lines 4959-5086
+  - **Security Architecture:** 6-layer verification system
+    1. Session Authentication - Only verified sessions (wallet_verified flag)
+    2. Creator Authorization - Caller must be token creator
+    3. TokenFactory Verification - Transaction must be to TokenFactory address
+    4. Event Source Verification - TokenCreated event must come from TokenFactory
+    5. Event Creator Verification - Event creator must match expected creator
+    6. Transaction Sender Verification - tx.from must match creator wallet
+  - **Frontend Integration:** Accepts tx_hash only (not contract_address)
+  - **Backend Processing:** Extracts real contract address from blockchain receipt
+  - **Security:** No trusted frontend input, all verification server-side
+
+- [ ] **ORIGINAL IMPLEMENTATION PLAN (replaced by secure backend verification):**
   
   **Implementation:**
   ```python
