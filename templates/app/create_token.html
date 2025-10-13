@@ -2276,12 +2276,13 @@
                 return false;
             }
 
-            // Get image file
+            // Get image file OR AI-generated image URL
             const imageInput = document.getElementById('image');
             const imageFile = imageInput.files[0];
+            const aiImageUrl = document.getElementById('ai-image-url').value;
             
-            if (!imageFile) {
-                CreateTokenNotification.showAlert('Image Required', 'Please select an image for your token.', 'error');
+            if (!imageFile && !aiImageUrl) {
+                CreateTokenNotification.showAlert('Image Required', 'Please select or generate an image for your token.', 'error');
                 return false;
             }
 
@@ -2289,10 +2290,27 @@
             showDeploymentModal();
             
             try {
-                // Step 1: Convert image to base64
-                updateDeploymentStatus('Preparing image for IPFS upload...');
-                const imageBase64 = await convertImageToBase64(imageFile);
-                updateDeploymentStatus('Image prepared successfully!', 'Image Processing Complete');
+                let imageBase64;
+                
+                // Step 1: Prepare image (either file upload or AI-generated)
+                if (imageFile) {
+                    // File upload flow (existing)
+                    updateDeploymentStatus('Preparing image for IPFS upload...');
+                    imageBase64 = await convertImageToBase64(imageFile);
+                    updateDeploymentStatus('Image prepared successfully!', 'Image Processing Complete');
+                } else if (aiImageUrl) {
+                    // AI-generated image flow
+                    updateDeploymentStatus('Using AI-generated image...');
+                    // Fetch the AI image and convert to base64
+                    const response = await fetch(aiImageUrl);
+                    const blob = await response.blob();
+                    imageBase64 = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                    updateDeploymentStatus('AI image prepared successfully!', 'Image Processing Complete');
+                }
                 
                 // Step 2: Prepare token creation data
                 const formData = new FormData(this);
