@@ -1065,8 +1065,8 @@
                     );
                     
                     // Refresh wallet balance
-                    if (window.WalletManager && window.WalletManager.updateBalance) {
-                        window.WalletManager.updateBalance();
+                    if (window.WalletManager && window.WalletManager.updateWalletBalance) {
+                        window.WalletManager.updateWalletBalance();
                     }
                     
                     // Reload page to update charts and balances
