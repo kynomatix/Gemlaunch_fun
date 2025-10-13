@@ -2518,53 +2518,353 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 ## ⚠️ PHASE 3 GAP ANALYSIS - CRITICAL DISCONNECTS IDENTIFIED
 
 **Status Date:** October 13, 2025  
-**Audit Result:** Phase 3 INCOMPLETE - Wallet signing integration missing
+**Deep Audit:** External audit vs actual codebase validation  
+**Audit Result:** 2 real gaps, 3 false positives
 
-### What Works ✅
+### Backend Completeness Audit ✅❌
 
-**Backend Infrastructure (100% Complete):**
-- ✅ Web3Service fully implemented with all contract methods
-- ✅ All 7 trading API endpoints operational (/api/trade/quote-buy, quote-sell, buy, sell, etc.)
-- ✅ Token creation API returns unsigned transaction data
-- ✅ Transaction monitoring service via SSE
-- ✅ Gas estimation, network validation, IPFS uploads
+**✅ CONFIRMED WORKING - Already Implemented:**
 
-**Frontend UI Components (85% Complete):**
-- ✅ TransactionManager module created and initialized
-- ✅ Quote fetching with real-time updates
-- ✅ Fee breakdown display (anti-bot, platform, creator)
-- ✅ Loading states and modal animations
-- ✅ Input event listeners with debouncing
+1. **Trading Transaction Endpoints** (CG-1 from audit - FALSE POSITIVE)
+   - ✅ `/api/trade/buy` exists at `app.py:3716` - returns unsigned tx_data
+   - ✅ `/api/trade/sell` exists at `app.py:3830` - returns unsigned tx_data
+   - ✅ `web3_service.buy_tokens_tx_data()` at line 763
+   - ✅ `web3_service.sell_tokens_tx_data()` at line 810
+   - **Verdict:** NOT a gap, fully implemented
 
-### What's Broken ❌
+2. **Transaction Relay Endpoint** (CG-4 from audit - FALSE POSITIVE)
+   - ✅ `/api/relay/transaction` exists at `app.py:4028`
+   - ✅ Broadcasts signed transactions for Kastle/KasWare wallets
+   - **Verdict:** NOT a gap, fully implemented
 
-**Critical Gap #1: Token Creation Flow**
-- **Issue:** Frontend stops after receiving unsigned tx from `/api/token/create`
+3. **SSE Transaction Monitor** (CG-5 from audit - FALSE POSITIVE)
+   - ✅ `/api/tx/<hash>/stream` exists at `app.py:460`
+   - ✅ Real-time status polling with 2-second intervals
+   - **Verdict:** NOT a gap, fully implemented
+
+4. **Two-Phase Database Updates** (CG-3 from audit - PARTIALLY CORRECT)
+   - ✅ Token creation stores as `deployment_status='pending'` (`app.py:4890`)
+   - ✅ `contract_address` NOT set initially (correct!)
+   - ✅ Returns `token_id` to frontend (`app.py:4947`)
+   - ❌ Missing: `/api/token/{id}/confirm-deployment` endpoint
+   - **Verdict:** Backend partially implemented, missing confirmation endpoint
+
+**❌ REAL GAPS - Not Yet Implemented:**
+
+1. **CREATE2 Address Prediction** (CG-2 from audit - TRUE GAP)
+   - ❌ `web3_service._predict_create2_address()` does NOT exist
+   - ❌ `web3_service.verify_deployment()` does NOT exist
+   - ❌ Token creation doesn't predict contract address before deployment
+   - **Impact:** Cannot pre-calculate deployment address
+   - **Status:** NOT IMPLEMENTED
+
+2. **Deployment Confirmation Endpoint** (CG-3 from audit - TRUE GAP)
+   - ❌ `/api/token/{id}/confirm-deployment` does NOT exist
+   - ❌ No way to update token record after blockchain confirmation
+   - **Impact:** Tokens stay in 'pending' status forever
+   - **Status:** NOT IMPLEMENTED
+
+### Frontend Integration Gaps ❌
+
+**Critical Gap #1: Token Creation Frontend Flow**
+- **Issue:** Frontend doesn't wire wallet signing to backend tx_data
 - **Location:** `templates/app/create_token.html` line 2257
-- **Problem:** Code expects `tx_hash` and `contract_address` but backend only returns `tx_data`
+- **Problem:** Code expects `tx_hash` and `contract_address` but backend only returns `tx_data` + `token_id`
 - **Missing Steps:**
   1. Call `TransactionManager.signAndSubmitTransaction(tx_data)` to sign with wallet
-  2. Relay signed transaction to blockchain (MetaMask auto-relays, others need `/api/relay/transaction`)
-  3. Monitor tx via SSE `/api/tx/{hash}/stream`
+  2. Handle relay for Kastle/KasWare (use existing `/api/relay/transaction` ✅)
+  3. Monitor tx via SSE (use existing `/api/tx/{hash}/stream` ✅)
   4. Extract contract address from transaction receipt
-  5. Update database with contract address and tx hash
+  5. Update database with contract address (needs new `/api/token/{id}/confirm-deployment` endpoint)
   6. Redirect to token detail page
 
-**Critical Gap #2: Trading Flow**
+**Critical Gap #2: Trading Frontend Flow**
 - **Issue:** `executeTrade()` in `token_detail.js` doesn't use TransactionManager lifecycle
 - **Location:** `static/js/token_detail.js` (legacy trade execution)
-- **Problem:** Buy/sell buttons don't actually submit blockchain transactions
+- **Problem:** Buy/sell buttons don't call real blockchain transactions
 - **Missing Steps:**
-  1. Get quote from backend (partially implemented)
-  2. Build unsigned tx via `/api/trade/buy` or `/api/trade/sell`
+  1. Get quote from backend (quote APIs working ✅)
+  2. Build unsigned tx (use existing `/api/trade/buy` or `/api/trade/sell` ✅)
   3. Sign transaction with wallet using `TransactionManager.signAndSubmitTransaction()`
-  4. Monitor confirmation via SSE
-  5. Update UI with new balances and trade confirmation
+  4. Monitor confirmation (use existing SSE `/api/tx/{hash}/stream` ✅)
+  5. Update UI with new balances
 
 **Critical Gap #3: Wallet Signing Integration**
-- **Issue:** TransactionManager exists but isn't called by UI components
-- **Problem:** No bridge between "Build TX" phase and "Sign TX" phase
+- **Issue:** TransactionManager exists but UI components don't call its methods
+- **Problem:** No bridge between "Build TX" (backend) and "Sign TX" (frontend wallet)
 - **Impact:** All blockchain interactions fail at the signing step
+
+### Summary: What Needs Implementation
+
+**Backend Gaps (2 items):**
+1. ❌ CREATE2 prediction methods in `web3_service.py`
+2. ❌ POST `/api/token/{id}/confirm-deployment` endpoint in `app.py`
+
+**Frontend Gaps (2 items):**
+3. ❌ Wallet signing integration in `templates/app/create_token.html`
+4. ❌ Transaction execution in `static/js/token_detail.js`
+
+**Already Working (no action needed):**
+- ✅ All trading endpoints `/api/trade/buy`, `/api/trade/sell`
+- ✅ Transaction relay `/api/relay/transaction`
+- ✅ SSE monitoring `/api/tx/{hash}/stream`
+- ✅ Two-phase database (pending status, token_id returns)
+
+---
+
+### Required Implementation Tasks
+
+#### **BACKEND GAP 1: CREATE2 Address Prediction** ⬜ NOT STARTED
+
+**File:** `services/web3_service.py`  
+**Priority:** OPTIONAL (Can extract from receipt instead)
+
+Add these methods to enable pre-deployment address calculation:
+
+```python
+def _predict_create2_address(self, salt: bytes, init_code_hash: bytes) -> str:
+    """
+    Predict CREATE2 contract address
+    address = keccak256(0xff ++ factory_address ++ salt ++ keccak256(init_code))[12:]
+    """
+    from eth_utils import keccak, to_checksum_address
+    
+    # 0xff prefix
+    prefix = bytes.fromhex('ff')
+    
+    # Factory address (20 bytes)
+    factory_address = bytes.fromhex(self.token_factory_address[2:])
+    
+    # Concatenate: 0xff ++ factory ++ salt ++ init_code_hash
+    data = prefix + factory_address + salt + init_code_hash
+    
+    # Hash and take last 20 bytes
+    hash_result = keccak(data)
+    contract_address = hash_result[-20:]
+    
+    return to_checksum_address('0x' + contract_address.hex())
+
+def verify_deployment(self, tx_hash: str, predicted_address: str) -> bool:
+    """
+    Verify that the contract was actually deployed to the predicted address
+    """
+    receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+    
+    # Find TokenCreated event in logs
+    for log in receipt['logs']:
+        try:
+            if log['topics'][0].hex() == self._get_token_created_signature():
+                # Extract contract address from event
+                actual_address = '0x' + log['topics'][1].hex()[-40:]
+                return actual_address.lower() == predicted_address.lower()
+        except:
+            continue
+    
+    return False
+
+def _get_token_created_signature(self) -> str:
+    """
+    Get TokenCreated event signature hash
+    event TokenCreated(address indexed tokenAddress, address indexed creator, ...)
+    """
+    from eth_utils import keccak
+    signature = "TokenCreated(address,address,string,string,uint256,uint256,bool)"
+    return '0x' + keccak(text=signature).hex()
+```
+
+**Note:** This is OPTIONAL - we can extract contract address from receipt instead.
+
+#### **BACKEND GAP 2: Deployment Confirmation Endpoint** ⬜ CRITICAL
+
+**File:** `app.py`  
+**Priority:** CRITICAL (Required for token creation to complete)
+
+Add this endpoint to update token record after blockchain confirmation:
+
+```python
+@app.route('/api/token/<int:token_id>/confirm-deployment', methods=['POST'])
+@csrf.exempt
+def confirm_token_deployment(token_id):
+    """
+    Update token record after blockchain confirmation
+    
+    Request:
+    {
+        "contract_address": "0x...",
+        "tx_hash": "0x...",
+        "block_number": 1234567
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        token = Token.query.get_or_404(token_id)
+        
+        if token.deployment_status == 'deployed':
+            return jsonify({'success': True, 'message': 'Already deployed'})
+        
+        # Validate and checksum address
+        contract_address = Web3.to_checksum_address(data.get('contract_address'))
+        
+        # Check for duplicates
+        existing = Token.query.filter(
+            db.func.lower(Token.contract_address) == contract_address.lower(),
+            Token.id != token_id
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'error': f'Contract address already exists for token {existing.id}'
+            }), 400
+        
+        # Update token record
+        token.contract_address = contract_address
+        token.deployment_tx = data.get('tx_hash')
+        token.deployment_block_number = data.get('block_number')
+        token.deployment_status = 'deployed'
+        token.is_active = True
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'contract_address': token.contract_address
+        })
+        
+    except Exception as e:
+        logging.error(f"Confirm deployment failed: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+```
+
+#### **FRONTEND GAP 1: Token Creation Wallet Signing** ⬜ CRITICAL
+
+**File:** `templates/app/create_token.html`  
+**Location:** Replace lines ~2240-2261 in deployToken() function  
+**Priority:** CRITICAL (Blocks all token creation)
+
+**Current broken code:**
+```javascript
+const result = await response.json();
+if (result.tx_hash && result.contract_address) {
+    await monitorDeployment(result.tx_hash, result.contract_address);
+} else {
+    throw new Error('Transaction hash or contract address not returned');
+}
+```
+
+**Required fix (see tasks 3.6-3.8 for full implementation):**
+```javascript
+const result = await response.json();
+
+if (!result.success || !result.tx_data) {
+    throw new Error(result.error || 'Failed to build transaction');
+}
+
+const tokenId = result.token_id;
+
+// Step 1: Sign with wallet
+updateDeploymentStatus('Waiting for wallet signature...');
+const signResult = await window.txManager.signAndSubmitTransaction(result.tx_data);
+
+// Step 2: Handle relay for Kastle/KasWare
+let txHash;
+if (signResult.needs_relay) {
+    const relayResult = await window.txManager.relayTransaction(signResult.signed_tx);
+    txHash = relayResult.tx_hash;
+} else {
+    txHash = signResult.tx_hash;
+}
+
+// Step 3: Monitor confirmation
+updateDeploymentStatus('Confirming on blockchain...');
+const receipt = await new Promise((resolve, reject) => {
+    window.txManager.monitorTransaction(txHash, {
+        onConfirm: (receipt) => resolve(receipt),
+        onError: (error) => reject(new Error(error))
+    });
+});
+
+// Step 4: Extract contract address from receipt
+const contractAddress = window.txManager.extractContractAddressFromReceipt(receipt);
+
+// Step 5: Update database
+await fetch(`/api/token/${tokenId}/confirm-deployment`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        contract_address: contractAddress,
+        tx_hash: txHash,
+        block_number: receipt.blockNumber
+    })
+});
+
+// Step 6: Redirect
+window.location.href = `/token/${tokenId}`;
+```
+
+#### **FRONTEND GAP 2: Trading Transaction Execution** ⬜ CRITICAL
+
+**File:** `static/js/token_detail.js`  
+**Function:** executeTrade()  
+**Priority:** CRITICAL (Blocks all trading)
+
+**Required implementation (see task 3.7 for full details):**
+```javascript
+async function executeTrade() {
+    const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
+    
+    // Phase 1: Build transaction (backend APIs already exist!)
+    const txParams = {
+        token_address: window.tokenContractAddress,
+        user_address: window.walletManager.getConnectedWallet().address,
+        ...(action === 'buy' 
+            ? {kas_amount: parseFloat(document.getElementById('kasAmount').value)} 
+            : {token_amount: parseFloat(document.getElementById('tokenAmount').value)}
+        ),
+        min_tokens_out: currentQuote.min_tokens_out,
+        min_kas_out: currentQuote.min_kas_out,
+        deadline: Math.floor(Date.now() / 1000) + 300
+    };
+    
+    const buildResult = await fetch(`/api/trade/${action}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(txParams)
+    }).then(r => r.json());
+    
+    if (!buildResult.success) {
+        ModalManager.alert('Build Failed', buildResult.error, 'error');
+        return;
+    }
+    
+    // Phase 2: Sign & submit
+    const signResult = await window.txManager.signAndSubmitTransaction(buildResult.tx_data);
+    
+    // Phase 3: Handle relay if needed
+    let txHash;
+    if (signResult.needs_relay) {
+        const relayResult = await window.txManager.relayTransaction(signResult.signed_tx);
+        txHash = relayResult.tx_hash;
+    } else {
+        txHash = signResult.tx_hash;
+    }
+    
+    // Phase 4: Monitor confirmation
+    await window.txManager.monitorTransaction(txHash, {
+        onConfirm: (receipt) => {
+            ModalManager.alert('Trade Successful!', '', 'success');
+            window.location.reload();
+        },
+        onError: (error) => {
+            ModalManager.alert('Trade Failed', error, 'error');
+        }
+    });
+}
+```
+
+---
 
 ### Required Fixes to Complete Phase 3
 
