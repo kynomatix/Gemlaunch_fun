@@ -2034,7 +2034,449 @@ cp artifacts/contracts/GraduationController.sol/GraduationController.json contra
 
 ---
 
-#### **3.6 Testing & Validation**
+#### **3.6 Wallet Signing Integration - Token Creation** (CRITICAL - MISSING)
+
+**Goal:** Wire frontend token creation to wallet signing and blockchain deployment
+
+**Dependencies:** ✅ Backend API `/api/token/create` returns unsigned tx_data
+
+- [ ] **Replace token creation submission logic in `templates/app/create_token.html`**
+  - **Current Issue (line 2257):** Code expects `tx_hash` and `contract_address` from backend, but backend only returns unsigned `tx_data`
+  - **Location:** `templates/app/create_token.html` lines 2240-2261 (deployToken function)
+  
+  **Implementation Steps:**
+  
+  1. **Receive unsigned transaction from backend:**
+  ```javascript
+  // Step 1: Get unsigned tx from backend
+  const response = await fetch('/api/token/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(tokenData)
+  });
+  
+  const result = await response.json();
+  
+  if (!result.success || !result.tx_data) {
+      throw new Error(result.error || 'Failed to build deployment transaction');
+  }
+  
+  // Store token_id for later database update
+  const tokenId = result.token_id;
+  ```
+  
+  2. **Sign transaction with user's wallet:**
+  ```javascript
+  // Step 2: Sign transaction with wallet
+  updateDeploymentStatus('Waiting for wallet signature...', 'Please approve in your wallet');
+  
+  const signResult = await window.txManager.signAndSubmitTransaction(result.tx_data);
+  
+  // Handle different wallet types
+  let txHash;
+  if (signResult.needs_relay) {
+      // Kastle/KasWare: Need to relay signed tx through backend
+      updateDeploymentStatus('Submitting to blockchain...');
+      const relayResult = await window.txManager.relayTransaction(signResult.signed_tx);
+      txHash = relayResult.tx_hash;
+  } else {
+      // MetaMask: Already submitted directly
+      txHash = signResult.tx_hash;
+  }
+  
+  if (!txHash) {
+      throw new Error('Failed to get transaction hash from wallet');
+  }
+  ```
+  
+  3. **Monitor blockchain confirmation:**
+  ```javascript
+  // Step 3: Monitor tx confirmation via SSE
+  updateDeploymentStatus('Confirming on blockchain...', `TX: ${txHash.substring(0, 10)}...`);
+  
+  const receipt = await new Promise((resolve, reject) => {
+      window.txManager.monitorTransaction(txHash, {
+          onUpdate: (status) => {
+              console.log('Deployment status:', status);
+              if (status.block_number) {
+                  updateDeploymentStatus(
+                      `Confirming (Block ${status.block_number})...`,
+                      'Almost there!'
+                  );
+              }
+          },
+          onConfirm: (receipt) => {
+              resolve(receipt);
+          },
+          onError: (error) => {
+              reject(new Error(error));
+          }
+      });
+  });
+  ```
+  
+  4. **Extract contract address from receipt:**
+  ```javascript
+  // Step 4: Parse TokenCreated event from logs
+  const contractAddress = extractContractAddressFromReceipt(receipt);
+  
+  if (!contractAddress) {
+      throw new Error('Could not extract contract address from deployment receipt');
+  }
+  ```
+  
+  5. **Update database with deployment info and redirect:**
+  ```javascript
+  // Step 5: Verify database update, then redirect by token ID
+  const updateResponse = await fetch(`/api/token/${tokenId}/update-deployment`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+          contract_address: contractAddress,
+          deployment_tx_hash: txHash,
+          deployment_block_number: receipt.blockNumber
+      })
+  });
+  
+  const updateResult = await updateResponse.json();
+  
+  if (!updateResult.success) {
+      throw new Error('Failed to update token record: ' + updateResult.error);
+  }
+  
+  updateDeploymentStatus('Token deployed successfully!', 'Redirecting...', 'success');
+  
+  setTimeout(() => {
+      // CRITICAL: Redirect by token ID, not contract address
+      window.location.href = `/token/${tokenId}`;
+  }, 1500);
+  ```
+
+  **Files to modify:**
+  - [ ] `templates/app/create_token.html` - Replace lines 2240-2261 with above implementation
+  - [ ] Add `extractContractAddressFromReceipt()` helper function (see task 3.8)
+  - [ ] Update deployment modal UI to show signing/confirmation states
+
+---
+
+#### **3.7 Wallet Signing Integration - Trading** (CRITICAL - MISSING)
+
+**Goal:** Wire buy/sell trading UI to wallet signing and blockchain execution
+
+**Dependencies:** ✅ Backend APIs `/api/trade/buy` and `/api/trade/sell` return unsigned tx_data
+
+- [ ] **Replace executeTrade() in `static/js/token_detail.js` with TransactionManager integration**
+  - **Current Issue:** `executeTrade()` doesn't call real blockchain transactions
+  - **Location:** `static/js/token_detail.js` (token trading logic)
+  
+  **Implementation Steps:**
+  
+  1. **Phase 1 - Get Quote:**
+  ```javascript
+  async function executeTrade() {
+      const action = TokenDetail.currentTradeMode; // 'buy' or 'sell'
+      const tokenAddress = window.tokenContractAddress;
+      
+      // Validate wallet connection
+      if (!window.walletManager.isConnected()) {
+          ModalManager.alert('Wallet Required', 'Please connect your wallet to trade.', 'error');
+          return;
+      }
+      
+      // Build quote parameters based on trade type
+      const quoteParams = action === 'buy' 
+          ? {
+              token_address: tokenAddress,
+              kas_amount: parseFloat(document.getElementById('kasAmount').value)
+          }
+          : {
+              token_address: tokenAddress,
+              token_amount: parseFloat(document.getElementById('tokenAmount').value)
+          };
+      
+      // Get fresh quote from backend
+      const quote = await window.txManager.getQuote(action, quoteParams);
+      
+      if (!quote.success) {
+          ModalManager.alert('Quote Failed', quote.error, 'error');
+          return;
+      }
+  ```
+  
+  2. **Phase 2 - Build Transaction:**
+  ```javascript
+      // Build transaction parameters with slippage protection
+      const txParams = {
+          token_address: tokenAddress,
+          user_address: window.walletManager.getConnectedWallet().address,
+          ...(action === 'buy' 
+              ? {kas_amount: quoteParams.kas_amount} 
+              : {token_amount: quoteParams.token_amount}
+          ),
+          min_tokens_out: quote.min_tokens_out, // From auto-slippage calculation
+          min_kas_out: quote.min_kas_out,
+          deadline: Math.floor(Date.now() / 1000) + 300 // 5 minute deadline
+      };
+      
+      // Get unsigned transaction from backend
+      const buildResult = await window.txManager.buildTransaction(action, txParams);
+      
+      if (!buildResult.success || !buildResult.tx_data) {
+          ModalManager.alert('Transaction Build Failed', buildResult.error, 'error');
+          return;
+      }
+  ```
+  
+  3. **Phase 3 - Sign & Submit:**
+  ```javascript
+      // Show loading modal
+      ModalManager.showLoading(`${action === 'buy' ? 'Buying' : 'Selling'} tokens...`);
+      
+      try {
+          // Sign transaction with wallet
+          const signResult = await window.txManager.signAndSubmitTransaction(buildResult.tx_data);
+          
+          // Handle different wallet types
+          let txHash;
+          if (signResult.needs_relay) {
+              // Kastle/KasWare: Need to relay signed tx through backend
+              const relayResult = await window.txManager.relayTransaction(signResult.signed_tx);
+              txHash = relayResult.tx_hash;
+          } else {
+              // MetaMask: Already submitted directly
+              txHash = signResult.tx_hash;
+          }
+          
+          if (!txHash) {
+              throw new Error('Failed to get transaction hash from wallet');
+          }
+  ```
+  
+  4. **Phase 4 - Monitor Confirmation:**
+  ```javascript
+          // Monitor blockchain confirmation
+          await window.txManager.monitorTransaction(signResult.tx_hash, {
+              onUpdate: (status) => {
+                  if (status.block_number) {
+                      ModalManager.updateLoading(`Confirming (Block ${status.block_number})...`);
+                  }
+              },
+              onConfirm: (receipt) => {
+                  ModalManager.hideLoading();
+                  ModalManager.alert(
+                      'Trade Successful!',
+                      `${action === 'buy' ? 'Purchase' : 'Sale'} confirmed on blockchain`,
+                      'success'
+                  );
+                  
+                  // Refresh balances and UI
+                  window.walletManager.updateBalance();
+                  window.location.reload(); // Refresh token data
+              },
+              onError: (error) => {
+                  ModalManager.hideLoading();
+                  ModalManager.alert('Trade Failed', error, 'error');
+              }
+          });
+      } catch (error) {
+          ModalManager.hideLoading();
+          ModalManager.alert('Transaction Error', error.message, 'error');
+      }
+  }
+  ```
+
+  **Files to modify:**
+  - [ ] `static/js/token_detail.js` - Replace executeTrade() function with above implementation
+  - [ ] Update buy/sell button click handlers to call new executeTrade()
+  - [ ] Add loading modal states for signing/confirmation
+  - [ ] Test with buy flow (KAS → tokens)
+  - [ ] Test with sell flow (tokens → KAS)
+
+---
+
+#### **3.8 Contract Address Extraction** (REQUIRED FOR TASK 3.6)
+
+**Goal:** Extract deployed contract address from transaction receipt logs
+
+**Dependencies:** ✅ TokenFactory emits TokenCreated event with contract address
+
+- [ ] **Add extractContractAddressFromReceipt() to `static/js/transaction_manager.js`**
+  
+  **Implementation:**
+  ```javascript
+  /**
+   * Extract contract address from token creation transaction receipt
+   * TokenCreated event signature: TokenCreated(address indexed tokenAddress, address indexed creator, ...)
+   */
+  extractContractAddressFromReceipt(receipt) {
+      if (!receipt || !receipt.logs || receipt.logs.length === 0) {
+          console.error('No logs in receipt:', receipt);
+          return null;
+      }
+      
+      // TokenCreated event signature
+      // keccak256("TokenCreated(address,address,string,string,uint256,uint256,bool)")
+      const TOKEN_CREATED_SIGNATURE = '0x...'; // TODO: Calculate or get from ABI
+      
+      // CRITICAL: Filter logs by event signature FIRST
+      const tokenCreatedLog = receipt.logs.find(log => 
+          log.topics && log.topics.length > 0 && log.topics[0] === TOKEN_CREATED_SIGNATURE
+      );
+      
+      if (!tokenCreatedLog) {
+          console.error('TokenCreated event not found in logs. Available events:', 
+              receipt.logs.map(log => log.topics[0]));
+          return null;
+      }
+      
+      // topics[1] contains the indexed tokenAddress parameter
+      if (!tokenCreatedLog.topics[1]) {
+          console.error('Token address not found in event topics');
+          return null;
+      }
+      
+      // Extract address from topics[1] (remove leading zeros, keep last 40 chars)
+      const tokenAddress = '0x' + tokenCreatedLog.topics[1].slice(-40);
+      
+      // Validate address format
+      if (!/^0x[a-fA-F0-9]{40}$/.test(tokenAddress)) {
+          console.error('Invalid token address format:', tokenAddress);
+          return null;
+      }
+      
+      return tokenAddress;
+  }
+  ```
+  
+  **Tasks:**
+  - [ ] Add extractContractAddressFromReceipt() method to TransactionManager class
+  - [ ] Get TokenCreated event signature from `artifacts/contracts/TokenFactory.sol/TokenFactory.json`
+  - [ ] Add address validation (checksum format)
+  - [ ] Handle case where event not found (deployment failed)
+  - [ ] Add unit test for address extraction
+
+  **How to get event signature:**
+  ```bash
+  # Extract from TokenFactory ABI
+  cat artifacts/contracts/TokenFactory.sol/TokenFactory.json | jq '.[] | select(.name=="TokenCreated") | .signature'
+  ```
+
+---
+
+#### **3.9 Database Update Endpoint** (REQUIRED FOR TASK 3.6)
+
+**Goal:** Update Token record with deployment information after blockchain confirmation
+
+**Dependencies:** ✅ Token model has fields for contract_address, deployment_tx, deployment_block_number
+
+- [ ] **Add POST /api/token/<token_id>/update-deployment endpoint to `app.py`**
+  
+  **Implementation:**
+  ```python
+  @app.route('/api/token/<int:token_id>/update-deployment', methods=['POST'])
+  @csrf.exempt
+  def update_token_deployment(token_id):
+      """
+      Update token record with deployment information after blockchain confirmation
+      
+      Request JSON:
+      {
+          "contract_address": "0x...",
+          "deployment_tx_hash": "0x...",
+          "deployment_block_number": 1234567
+      }
+      
+      Response:
+      {
+          "success": true,
+          "token": {
+              "id": 123,
+              "contract_address": "0x...",
+              "deployment_status": "deployed"
+          }
+      }
+      """
+      try:
+          data = request.get_json()
+          
+          # Validate request data
+          contract_address = (data.get('contract_address') or '').strip()
+          deployment_tx_hash = (data.get('deployment_tx_hash') or '').strip()
+          deployment_block_number = data.get('deployment_block_number')
+          
+          if not contract_address:
+              return jsonify({'success': False, 'error': 'contract_address is required'}), 400
+          
+          if not deployment_tx_hash:
+              return jsonify({'success': False, 'error': 'deployment_tx_hash is required'}), 400
+          
+          # Validate address format (checksummed)
+          try:
+              from web3 import Web3
+              contract_address_checksum = Web3.to_checksum_address(contract_address)
+          except Exception as e:
+              return jsonify({'success': False, 'error': f'Invalid contract address: {str(e)}'}), 400
+          
+          # Get token record
+          token = Token.query.get_or_404(token_id)
+          
+          # Check if already deployed (prevent duplicate updates)
+          if token.deployment_status == 'deployed' and token.contract_address:
+              return jsonify({
+                  'success': False, 
+                  'error': 'Token already deployed',
+                  'contract_address': token.contract_address
+              }), 400
+          
+          # Check for duplicate contract address
+          existing_token = Token.query.filter(
+              Token.contract_address == contract_address_checksum,
+              Token.id != token_id
+          ).first()
+          
+          if existing_token:
+              return jsonify({
+                  'success': False,
+                  'error': f'Contract address already exists for token ID {existing_token.id}'
+              }), 400
+          
+          # Update token record
+          token.contract_address = contract_address_checksum
+          token.deployment_tx = deployment_tx_hash
+          token.deployment_block_number = deployment_block_number
+          token.deployment_status = 'deployed'
+          
+          db.session.commit()
+          
+          logging.info(f"Token {token_id} deployment updated - Contract: {contract_address_checksum}, TX: {deployment_tx_hash}")
+          
+          return jsonify({
+              'success': True,
+              'token': {
+                  'id': token.id,
+                  'contract_address': token.contract_address,
+                  'deployment_tx': token.deployment_tx,
+                  'deployment_status': token.deployment_status
+              }
+          })
+      
+      except Exception as e:
+          logging.error(f"Error updating token deployment: {str(e)}")
+          db.session.rollback()
+          return jsonify({'success': False, 'error': str(e)}), 500
+  ```
+  
+  **Tasks:**
+  - [ ] Add endpoint to `app.py`
+  - [ ] Add address checksum validation
+  - [ ] Add duplicate contract address check
+  - [ ] Add error handling for failed database updates
+  - [ ] Test with deployed token from testnet
+  - [ ] Add logging for audit trail
+
+---
+
+#### **3.10 Testing & Validation**
 
 - [x] **Test Token Creation Flow** ✅ COMPLETE
   1. Connect wallet (MetaMask on Kasplex Testnet)
