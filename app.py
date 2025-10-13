@@ -4955,6 +4955,155 @@ def api_create_token():
         db.session.rollback()
         return jsonify({'success': False, 'error': f'Failed to create token: {str(e)}'}), 500
 
+@app.route('/api/token/<int:token_id>/confirm-deployment', methods=['POST'])
+@csrf.exempt
+def confirm_token_deployment(token_id):
+    """
+    Confirm token deployment after blockchain transaction succeeds.
+    
+    SECURITY: 
+    - Verifies tx_hash on blockchain (prevents fake contract addresses)
+    - Checks caller is token creator (prevents unauthorized confirmation)
+    - Extracts real contract address from blockchain receipt
+    
+    Request JSON:
+    {
+        "tx_hash": "0x...",
+        "block_number": 1234567
+    }
+    
+    Response:
+    {
+        "success": true,
+        "contract_address": "0x...",
+        "token": {...}
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        token = Token.query.get_or_404(token_id)
+        
+        # SECURITY: Only accept wallet from authenticated and verified session
+        caller_address = session.get('wallet_address')
+        wallet_verified = session.get('wallet_verified', False)
+        
+        if not caller_address or not wallet_verified:
+            return jsonify({
+                'success': False, 
+                'error': 'Wallet not connected or not verified. Please connect your wallet first.'
+            }), 401
+        
+        # Get token creator
+        creator = User.query.get(token.creator_id)
+        if not creator:
+            return jsonify({'success': False, 'error': 'Token creator not found'}), 500
+        
+        # SECURITY: Verify caller is the creator (case-insensitive comparison)
+        if caller_address.lower() != creator.wallet_address.lower():
+            return jsonify({
+                'success': False, 
+                'error': 'Only token creator can confirm deployment'
+            }), 403
+        
+        # If already deployed, return success (idempotent)
+        if token.deployment_status == 'deployed' and token.contract_address:
+            return jsonify({
+                'success': True,
+                'message': 'Token already deployed',
+                'contract_address': token.contract_address,
+                'token': {
+                    'id': token.id,
+                    'name': token.name,
+                    'symbol': token.symbol,
+                    'contract_address': token.contract_address
+                }
+            })
+        
+        # SECURITY: Get tx_hash from request (don't trust contract_address from frontend)
+        tx_hash = (data.get('tx_hash') or '').strip()
+        if not tx_hash:
+            return jsonify({'success': False, 'error': 'tx_hash is required'}), 400
+        
+        # Validate tx_hash format
+        if not tx_hash.startswith('0x') or len(tx_hash) != 66:
+            return jsonify({'success': False, 'error': 'Invalid transaction hash format'}), 400
+        
+        # SECURITY: Extract contract address from blockchain with full verification
+        web3_service = get_web3_service()
+        
+        try:
+            # Pass creator wallet for event verification
+            contract_address = web3_service.extract_token_address_from_receipt(
+                tx_hash,
+                expected_creator=creator.wallet_address
+            )
+            
+            # Get transaction to verify sender
+            tx = web3_service.w3.eth.get_transaction(tx_hash)
+            
+            # SECURITY: Verify transaction sender matches creator
+            if tx['from'].lower() != creator.wallet_address.lower():
+                return jsonify({
+                    'success': False,
+                    'error': 'Transaction was not sent by token creator'
+                }), 403
+                
+        except ValueError as e:
+            return jsonify({
+                'success': False, 
+                'error': f'Deployment verification failed: {str(e)}'
+            }), 400
+        except Exception as e:
+            logging.error(f"Blockchain verification failed for tx {tx_hash}: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': 'Failed to verify deployment on blockchain'
+            }), 500
+        
+        # Check for duplicate contract addresses
+        existing = Token.query.filter(
+            db.func.lower(Token.contract_address) == contract_address.lower(),
+            Token.id != token_id
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'error': f'Contract address already exists for token ID {existing.id} ({existing.name})'
+            }), 400
+        
+        # Update token record with verified data
+        token.contract_address = contract_address
+        token.deployment_tx = tx_hash
+        token.deployment_block_number = data.get('block_number')
+        token.deployment_status = 'deployed'
+        token.is_active = True
+        
+        db.session.commit()
+        
+        logging.info(f"Token {token_id} deployment confirmed by creator {caller_address} - Contract: {contract_address}, TX: {tx_hash}")
+        
+        return jsonify({
+            'success': True,
+            'contract_address': token.contract_address,
+            'token': {
+                'id': token.id,
+                'name': token.name,
+                'symbol': token.symbol,
+                'contract_address': token.contract_address,
+                'deployment_status': token.deployment_status
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Confirm deployment failed for token {token_id}: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Failed to confirm deployment: {str(e)}'}), 500
+
 @app.route('/api/admin/distribute-platform-fees', methods=['POST'])
 @csrf.exempt
 def api_distribute_platform_fees():

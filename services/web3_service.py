@@ -38,6 +38,9 @@ class Web3Service:
         # Use fallback mechanism instead of single RPC
         self.w3 = get_web3_with_fallback()
         
+        # Store contract addresses for security verification
+        self.token_factory_address = TOKEN_FACTORY_ADDRESS
+        
         # Rest of initialization
         self.deployer_account = self._init_deployer_account()
         self.oracle_account = self._init_oracle_account()
@@ -1258,6 +1261,83 @@ class Web3Service:
             
         except Exception as e:
             logging.error(f"Failed to complete graduation for {token_address}: {str(e)}")
+            raise
+    
+    def _get_token_created_signature(self) -> str:
+        """
+        Get TokenCreated event signature hash for log filtering.
+        
+        Event: TokenCreated(address,address,address,string,string,uint256,bool,uint256)
+        Hash: 0x5b03baff921747c518abf8237d62983e3d41970c86b6f35fbd3c1f70c016b5ec
+        """
+        return '0x5b03baff921747c518abf8237d62983e3d41970c86b6f35fbd3c1f70c016b5ec'
+    
+    def extract_token_address_from_receipt(self, tx_hash: str, expected_creator: str = None) -> str:
+        """
+        Extract deployed token contract address from transaction receipt.
+        
+        SECURITY:
+        - Verifies transaction was sent to TokenFactory
+        - Verifies TokenCreated event was emitted by TokenFactory
+        - Optionally verifies creator in event matches expected creator
+        
+        Args:
+            tx_hash: Transaction hash of token deployment
+            expected_creator: Optional - verify event creator matches this address
+            
+        Returns:
+            Token contract address (checksummed)
+            
+        Raises:
+            ValueError: If verification fails or TokenCreated event not found
+        """
+        try:
+            # Get transaction and receipt
+            tx = self.w3.eth.get_transaction(tx_hash)
+            receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+            
+            if not receipt or not receipt.get('logs'):
+                raise ValueError('No logs found in transaction receipt')
+            
+            # SECURITY: Verify transaction was sent to TokenFactory
+            if tx['to'].lower() != self.token_factory_address.lower():
+                raise ValueError(f'Transaction not sent to TokenFactory. Expected {self.token_factory_address}, got {tx["to"]}')
+            
+            event_signature = self._get_token_created_signature()
+            
+            # Find TokenCreated event in logs
+            for log in receipt['logs']:
+                if log.get('topics') and len(log['topics']) > 0:
+                    # Check event signature
+                    if log['topics'][0].hex() == event_signature:
+                        
+                        # SECURITY: Verify log was emitted by TokenFactory
+                        if log['address'].lower() != self.token_factory_address.lower():
+                            raise ValueError(f'TokenCreated event not from TokenFactory. Expected {self.token_factory_address}, got {log["address"]}')
+                        
+                        # Verify we have required topics
+                        if len(log['topics']) < 4:
+                            raise ValueError('TokenCreated event missing required indexed parameters')
+                        
+                        # Extract tokenAddress from topics[1]
+                        token_address = '0x' + log['topics'][1].hex()[-40:]
+                        
+                        # SECURITY: Verify creator if provided
+                        if expected_creator:
+                            event_creator = '0x' + log['topics'][3].hex()[-40:]
+                            if event_creator.lower() != expected_creator.lower():
+                                raise ValueError(f'Event creator {event_creator} does not match expected creator {expected_creator}')
+                        
+                        # Validate and checksum token address
+                        if not Web3.is_address(token_address):
+                            raise ValueError(f'Invalid token address format: {token_address}')
+                        
+                        return Web3.to_checksum_address(token_address)
+            
+            raise ValueError('TokenCreated event not found in transaction receipt')
+            
+        except Exception as e:
+            logging.error(f"Failed to extract token address from receipt {tx_hash}: {str(e)}")
             raise
 
 
