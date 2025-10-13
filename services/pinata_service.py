@@ -21,9 +21,21 @@ class PinataService:
             'Authorization': f'Bearer {self.jwt}'
         }
         
+        # Determine MIME type from file extension
+        mime_type = 'application/octet-stream'  # Default
+        if file_path.lower().endswith('.webp'):
+            mime_type = 'image/webp'
+        elif file_path.lower().endswith('.png'):
+            mime_type = 'image/png'
+        elif file_path.lower().endswith('.jpg') or file_path.lower().endswith('.jpeg'):
+            mime_type = 'image/jpeg'
+        elif file_path.lower().endswith('.gif'):
+            mime_type = 'image/gif'
+        
         try:
             with open(file_path, 'rb') as f:
-                files = {'file': f}
+                # Include MIME type in the tuple to ensure proper content-type
+                files = {'file': (name, f, mime_type)}
                 metadata = {'name': name}
                 response = requests.post(
                     url,
