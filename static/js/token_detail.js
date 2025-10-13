@@ -988,29 +988,108 @@
                 if (!confirmed) return;
             }
             
-            // Execute via TransactionManager
-            await window.txManager.executeTransaction(action, params, {
-                onUpdate: (status) => {
-                    this.showTradeStatus(status.message);
-                },
-                onConfirm: (receipt) => {
-                    if (window.updateWalletBalance) {
-                        window.updateWalletBalance();
-                    }
+            // Execute via TransactionManager with manual flow
+            try {
+                // Phase 1: Build unsigned transaction
+                this.showTradeStatus('Preparing transaction...');
+                
+                const buildEndpoint = action === 'buy' ? '/api/trade/buy' : '/api/trade/sell';
+                const buildResponse = await fetch(buildEndpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(params)
+                });
+                
+                const buildData = await buildResponse.json();
+                if (!buildData.success) {
+                    throw new Error(buildData.error || 'Failed to build transaction');
+                }
+                
+                const txData = buildData.tx_data;
+                
+                // Phase 2: Sign and submit with wallet
+                this.showTradeStatus('Please sign the transaction in your wallet...');
+                const signResult = await window.txManager.signAndSubmitTransaction(txData);
+                
+                let txHash;
+                
+                // Phase 3: Relay if needed (for Kaspa wallets)
+                if (signResult.needs_relay) {
+                    this.showTradeStatus('Submitting to blockchain...');
+                    const relayResponse = await fetch('/api/relay/transaction', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            signed_tx: signResult.signed_tx
+                        })
+                    });
                     
+                    const relayData = await relayResponse.json();
+                    if (!relayData.success) {
+                        throw new Error(relayData.error || 'Failed to relay transaction');
+                    }
+                    txHash = relayData.tx_hash;
+                } else {
+                    // MetaMask already submitted
+                    txHash = signResult.tx_hash;
+                }
+                
+                // Phase 4: Monitor transaction via SSE
+                this.showTradeStatus('Waiting for confirmation...');
+                this.monitorTransaction(txHash);
+                
+            } catch (error) {
+                console.error('Trade execution error:', error);
+                this.hideTradeStatus();
+                ModalManager.alert('Trade Failed', error.message || 'Transaction failed', 'error');
+            }
+        },
+        
+        // SSE Transaction Monitoring
+        monitorTransaction: function(txHash) {
+            const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
+            
+            eventSource.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                this.showTradeStatus(data.message);
+                
+                if (data.status === 'confirmed' || data.status === 'success') {
+                    eventSource.close();
+                    this.hideTradeStatus();
+                    
+                    // Use txHash from closure (no receipt variable)
                     ModalManager.alert(
                         'Trade Successful! ✅',
-                        `Transaction: ${receipt.tx_hash}`,
-                        'success',
-                        () => {
-                            location.reload();
-                        }
+                        `Transaction: ${txHash}`,
+                        'success'
                     );
-                },
-                onError: (error) => {
-                    ModalManager.alert('Trade Failed', error, 'error');
+                    
+                    // Refresh wallet balance
+                    if (window.WalletManager && window.WalletManager.updateBalance) {
+                        window.WalletManager.updateBalance();
+                    }
+                    
+                    // Reload page to update charts and balances
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                    
+                } else if (data.status === 'failed' || data.status === 'error') {
+                    eventSource.close();
+                    this.hideTradeStatus();
+                    ModalManager.alert('Transaction Failed', data.message || 'Transaction failed', 'error');
                 }
             });
+            
+            eventSource.onerror = () => {
+                eventSource.close();
+                this.hideTradeStatus();
+                ModalManager.alert(
+                    'Monitoring Error',
+                    'Transaction monitoring failed. Please check the blockchain explorer to verify status.',
+                    'warning'
+                );
+            };
         },
         
         // Chat functions
