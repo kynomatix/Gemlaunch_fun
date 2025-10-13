@@ -111,6 +111,51 @@ class TransactionManager {
         return await response.json();
     }
     
+    /**
+     * Extract deployed contract address from transaction receipt
+     * Calls backend to verify and extract from blockchain
+     * 
+     * @param {string} txHash - Transaction hash from wallet signing
+     * @param {number} tokenId - Token ID from database
+     * @returns {Promise<Object>} {success, contractAddress, token} or {success: false, error}
+     */
+    async extractContractAddressFromReceipt(txHash, tokenId) {
+        try {
+            const response = await fetch(`/api/token/${tokenId}/confirm-deployment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tx_hash: txHash
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to extract contract address');
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Contract address extraction failed');
+            }
+
+            return {
+                success: true,
+                contractAddress: data.contract_address,
+                token: data.token
+            };
+
+        } catch (error) {
+            console.error('Contract extraction error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+    
     // ===== PHASE 3: SIGN & SUBMIT WITH WALLET =====
     /**
      * Sign and submit transaction using wallet-specific method

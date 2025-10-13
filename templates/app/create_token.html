@@ -2155,7 +2155,7 @@
             return text.replace(/\s+/g, ' ').trim();
         }
 
-        // Form submission handler with deployment flow
+        // Form submission handler with wallet signing flow
         document.querySelector('.create-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -2172,6 +2172,12 @@
             
             if (!imageFile && !aiImageUrl) {
                 CreateTokenNotification.showAlert('Image Required', 'Please select or generate an image for your token.', 'error');
+                return false;
+            }
+            
+            // Check if wallet is connected
+            if (!window.WalletManager || !window.WalletManager.isConnected()) {
+                CreateTokenNotification.showAlert('Wallet Not Connected', 'Please connect your wallet to create a token.', 'error');
                 return false;
             }
 
@@ -2234,8 +2240,8 @@
                     telegram: formData.get('telegram') || ''
                 };
                 
-                // Step 3: Upload to IPFS and deploy token
-                updateDeploymentStatus('Uploading image to IPFS and deploying token...');
+                // Step 3: Upload to IPFS and get unsigned transaction
+                updateDeploymentStatus('Uploading to IPFS and preparing transaction...');
                 
                 const response = await fetch('/api/token/create', {
                     method: 'POST',
@@ -2248,17 +2254,91 @@
                 const result = await response.json();
                 
                 if (!response.ok || !result.success) {
-                    throw new Error(result.error || 'Token creation failed');
+                    throw new Error(result.error || 'Failed to prepare token creation transaction');
                 }
                 
-                updateDeploymentStatus('Token deployed to blockchain!', 'IPFS Upload & Deployment Complete');
+                updateDeploymentStatus('IPFS upload complete!', 'Metadata Uploaded to IPFS');
                 
-                // Step 4: Monitor transaction confirmation
-                if (result.tx_hash && result.contract_address) {
-                    await monitorDeployment(result.tx_hash, result.contract_address);
+                // Extract token_id and tx_data from response
+                const tokenId = result.token_id;
+                const txData = result.tx_data;
+                
+                if (!tokenId || !txData) {
+                    throw new Error('Invalid response from server - missing token_id or tx_data');
+                }
+                
+                // Step 4: Sign transaction with user's wallet
+                updateDeploymentStatus('Please sign the transaction in your wallet...');
+                
+                const signResult = await window.TransactionManager.signAndSubmitTransaction(txData);
+                
+                let txHash;
+                
+                // Handle relay if needed (for non-MetaMask wallets)
+                if (signResult.needs_relay) {
+                    updateDeploymentStatus('Submitting transaction to blockchain...');
+                    const relayResult = await window.TransactionManager.relayTransaction(signResult.signed_tx);
+                    
+                    if (!relayResult.success) {
+                        throw new Error(relayResult.error || 'Failed to submit transaction');
+                    }
+                    txHash = relayResult.tx_hash;
                 } else {
-                    throw new Error('Transaction hash or contract address not returned');
+                    // MetaMask already submitted
+                    txHash = signResult.tx_hash;
                 }
+                
+                updateDeploymentStatus('Transaction submitted!', `TX Hash: ${txHash.substring(0, 10)}...`);
+                
+                // Step 5: Wait for transaction confirmation
+                updateDeploymentStatus('Waiting for blockchain confirmation...');
+                
+                // Poll for transaction receipt (simple approach)
+                let receipt = null;
+                let attempts = 0;
+                const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes max
+                
+                while (!receipt && attempts < maxAttempts) {
+                    try {
+                        if (window.ethereum) {
+                            receipt = await window.ethereum.request({
+                                method: 'eth_getTransactionReceipt',
+                                params: [txHash]
+                            });
+                        }
+                        
+                        if (!receipt) {
+                            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                            attempts++;
+                        }
+                    } catch (error) {
+                        console.error('Error checking receipt:', error);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        attempts++;
+                    }
+                }
+                
+                if (!receipt) {
+                    throw new Error('Transaction confirmation timeout. Please check your wallet and try again later.');
+                }
+                
+                updateDeploymentStatus('Transaction confirmed!', 'Blockchain Confirmation Received');
+                
+                // Step 6: Extract and verify contract address from backend
+                updateDeploymentStatus('Verifying contract deployment...');
+                
+                const extractResult = await window.TransactionManager.extractContractAddressFromReceipt(txHash, tokenId);
+                
+                if (!extractResult.success) {
+                    throw new Error(extractResult.error || 'Failed to verify contract deployment');
+                }
+                
+                updateDeploymentStatus('Token deployment verified!', `Contract: ${extractResult.contractAddress.substring(0, 10)}...`);
+                
+                // Step 7: Redirect to token detail page
+                setTimeout(() => {
+                    window.location.href = `/token/${extractResult.contractAddress}`;
+                }, 2000);
                 
             } catch (error) {
                 console.error('Token creation error:', error);
