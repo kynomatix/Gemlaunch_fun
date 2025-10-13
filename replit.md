@@ -180,6 +180,37 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - Test environment wallet constraints (Oracle has limited tokens for testing)
 - These are test setup issues, not code bugs - production usage unaffected
 
+### ✅ COMPLETE - Deployment Confirmation System
+
+**Backend Endpoint:**
+- POST /api/token/{id}/confirm-deployment
+- **Security Architecture:** 6-layer verification system
+  1. Session Authentication - Only verified sessions (wallet_verified flag)
+  2. Creator Authorization - Caller must be token creator
+  3. TokenFactory Verification - Transaction must be to TokenFactory address
+  4. Event Source Verification - TokenCreated event must come from TokenFactory
+  5. Event Creator Verification - Event creator must match expected creator
+  6. Transaction Sender Verification - tx.from must match creator wallet
+
+**Frontend Integration:**
+- TransactionManager.extractContractAddressFromReceipt() method
+- Token creation flow with wallet signing
+- Transaction monitoring via SSE
+- Trading execution with TransactionManager
+
+**Key Features:**
+- Server-side blockchain verification (no trusted frontend input)
+- Multi-layer defense against fake deployments
+- Wallet-specific handling (MetaMask vs Kaspa wallets)
+- Real-time transaction monitoring
+- Automatic balance updates post-trade
+
+**Implementation Notes:**
+- Frontend sends tx_hash only (not contract_address)
+- Backend extracts contract address from blockchain receipt
+- Security prevents arbitrary contract binding attacks
+- All deployment verification happens server-side
+
 ### Next Steps: Phase 4
 **READY FOR:** Frontend integration testing and user acceptance testing
 - Phase 4: Trading Enablement & QA (see SMART_CONTRACT_IMPLEMENTATION.md)
