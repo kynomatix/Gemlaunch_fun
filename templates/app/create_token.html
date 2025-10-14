@@ -2131,10 +2131,11 @@
             if (step) {
                 const progressContainer = document.getElementById('deploymentProgress');
                 if (progressContainer) {
-                    const stepElement = document.createElement('div');
-                    stepElement.className = 'deployment-step';
-                    stepElement.innerHTML = `<i class="fas fa-check-circle"></i>${step}`;
-                    progressContainer.appendChild(stepElement);
+                    progressContainer.innerHTML = `
+                        <div class="deployment-step">
+                            <i class="fas fa-check-circle"></i>${step}
+                        </div>
+                    `;
                 }
             }
         }
