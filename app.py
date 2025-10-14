@@ -5201,7 +5201,7 @@ def check_pending_tokens():
                     'symbol': pending.symbol,
                     'description': pending.description,
                     'image_url': pending.image_url,
-                    'ipfs_metadata_uri': pending.ipfs_metadata_uri,
+                    'ipfs_metadata_uri': pending.ipfs_metadata_url,
                     'created_at': pending.created_at.isoformat()
                 }
             })
