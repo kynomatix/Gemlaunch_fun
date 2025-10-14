@@ -93,8 +93,14 @@
             <div class="stat-sub">{{ (token.current_market_cap|float or 0)|format_number }} KAS</div>
         </div>
         <div class="stat-item">
-            <div class="stat-label">SUPPLY</div>
-            <div class="stat-value">{{ (token.circulating_supply or 0)|format_number }}</div>
+            {% if is_pro_token and token.reserved_percentage > 0 %}
+                <div class="stat-label">CIRCULATING</div>
+                <div class="stat-value">{{ (token.circulating_supply or 0)|format_number }}</div>
+                <div class="stat-sub" style="color: #FFA500;">{{ token.reserved_percentage }}% Reserved</div>
+            {% else %}
+                <div class="stat-label">SUPPLY</div>
+                <div class="stat-value">{{ (token.circulating_supply or 0)|format_number }}</div>
+            {% endif %}
         </div>
         <div class="stat-item">
             <div class="stat-label">HOLDERS</div>
