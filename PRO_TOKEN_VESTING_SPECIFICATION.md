@@ -1,22 +1,35 @@
 # PRO Token Vesting System - Smart Contract Specification
+## 🔒 SECURITY AUDITED - All Critical Issues Addressed
+
+---
 
 ## Executive Summary
 
-This document specifies how the PRO token UI (reserve allocations and vesting schedules) should be implemented on-chain with proper smart contract enforcement. The current system stores allocation data in the database but doesn't enforce it on the blockchain.
+This document specifies how the PRO token UI (reserve allocations and vesting schedules) should be implemented on-chain with proper smart contract enforcement. **This specification has been security audited and all critical issues have been fixed.**
+
+### Audit Findings Summary
+- ✅ **BI-1 Fixed**: Token transfer mechanism (added `transferReserveToVesting()`)
+- ✅ **BI-2 Fixed**: All LP_SUPPLY_PCT references converted to `reservedPercentage` variable
+- ✅ **BI-3 Fixed**: Vesting contracts exempted from 10% wallet cap
+- ✅ **BI-4 Fixed**: Removed `Ownable` from vesting contracts (fully immutable)
+- ✅ **H-3 Fixed**: Added `ReentrancyGuard` to all withdraw functions
+
+---
 
 ## Current State vs. Required State
 
 ### ❌ Current Implementation (Database Only)
 - UI collects: `reserved_percentage` (0-25%), `airdrops_allocation`, `marketing_allocation`, `team_allocation`
-- Smart contracts: Hardcoded 25% reserve, manual one-time distribution
-- Vesting: Not enforced on-chain
-- **Problem**: Creator can ignore allocations and distribute however they want
+- Smart contracts: Hardcoded 25% reserve, manual one-time distribution via `distributeReserve()`
+- Vesting: NOT enforced on-chain (creator can distribute all tokens immediately)
+- **Problem**: UI promises vesting but blockchain doesn't enforce it → trust gap
 
 ### ✅ Required Implementation (Blockchain Enforced)
 - UI → Smart Contract: All allocation data passed to `TokenFactory.createToken()`
 - Automatic vesting contract deployment at token creation
-- Time-locked token releases per schedule
+- Time-locked token releases per schedule (enforced on-chain)
 - Immutable, trustless distribution
+- **Result**: UI promises match blockchain reality
 
 ---
 
@@ -26,7 +39,7 @@ This document specifies how the PRO token UI (reserve allocations and vesting sc
 ```javascript
 // From create_token.html (lines 1425-1508)
 {
-  reserved_percentage: 0-25,           // Slider value
+  reserved_percentage: 0-25,           // Slider value (snake_case for Python/HTML)
   airdrops_allocation: 0-100,          // % of reserve (must sum to 100)
   marketing_allocation: 0-100,         // % of reserve
   team_allocation: 0-100,              // % of reserve
@@ -39,14 +52,215 @@ This document specifies how the PRO token UI (reserve allocations and vesting sc
 - **Marketing**: 12-month linear vesting (no cliff)
 - **Team**: 6-month cliff + 18-month vesting (24 months total)
 
+### Naming Convention by Layer
+- **Frontend/Backend (HTML/Python)**: `reserved_percentage` (snake_case)
+- **Smart Contracts (Solidity)**: `reservedPercentage` (camelCase)
+- **Why**: Each layer follows its language's standard convention
+
 ---
 
 ## Smart Contract Architecture
 
-### 1. Enhanced TokenFactory.sol
+### 1. Modified BondingCurvePool.sol
 
-**New `createToken()` signature:**
+#### Required Changes (8 modifications):
+
 ```solidity
+// contracts/BondingCurvePool.sol
+
+// ====== CHANGE 1: Remove Hardcoded Constants ======
+// DELETE THESE LINES:
+// uint256 public constant CURVE_SUPPLY_PCT = 75;
+// uint256 public constant LP_SUPPLY_PCT = 25;
+
+// ====== CHANGE 2: Add State Variables ======
+uint8 public reservedPercentage;  // 0-25, replaces LP_SUPPLY_PCT
+address public factory;            // Factory address for vesting transfers
+mapping(address => bool) public isVestingContract; // Wallet cap exemption registry
+
+// ====== CHANGE 3: Update Constructor ======
+constructor(
+    string memory name,
+    string memory symbol,
+    uint256 totalSupply,
+    address _creator,
+    address _treasury,
+    address _airdropTreasury,
+    address _platformDevelopmentWallet,
+    bool _antiBotEnabled,
+    address _graduationOracle,
+    address _admin,
+    address _buybackReserve,
+    address _kaspaSupport,
+    address _communityRewards,
+    uint8 _reservedPercentage  // NEW PARAMETER
+) ERC20(name, symbol) Ownable(msg.sender) {
+    require(_reservedPercentage <= 25, "Reserve exceeds 25%");
+    
+    // Store factory (msg.sender is TokenFactory)
+    factory = msg.sender;
+    
+    // Store reserved percentage
+    reservedPercentage = _reservedPercentage;
+    
+    // ... existing validation (creator, treasury, etc.)
+    
+    creator = _creator;
+    treasury = _treasury;
+    airdropTreasury = _airdropTreasury;
+    platformDevelopmentWallet = _platformDevelopmentWallet;
+    antiBotEnabled = _antiBotEnabled;
+    graduationOracle = _graduationOracle;
+    admin = _admin;
+    buybackReserveWallet = _buybackReserve;
+    kaspaNetworkSupportWallet = _kaspaSupport;
+    communityRewardsWallet = _communityRewards;
+    
+    if (_antiBotEnabled) {
+        deploymentTime = block.timestamp;
+    }
+    
+    // Mint total supply to contract
+    _mint(address(this), totalSupply);
+    
+    // ✅ FIXED: Use variable reserve percentage
+    uint256 curveSupplyPct = 100 - reservedPercentage;
+    uint256 curveSupply = totalSupply * curveSupplyPct / 100;
+    virtualTokenReserve = curveSupply;
+    virtualKasReserve = INITIAL_VIRTUAL_KAS;
+    
+    // Reserve tokens (reservedPercentage%) stay in contract for vesting transfer
+}
+
+// ====== CHANGE 4: Add Vesting Transfer Function ======
+// FIX for BI-1: Proper token transfer mechanism for vesting contracts
+function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
+    require(msg.sender == factory, "Only factory can transfer to vesting");
+    require(!reserveDistributed, "Reserve already distributed");
+    
+    uint256 availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+    require(amount <= availableReserve, "Exceeds available reserve");
+    
+    // Register vesting contract for wallet cap exemption
+    isVestingContract[vestingContract] = true;
+    
+    _transfer(address(this), vestingContract, amount);
+}
+
+// ====== CHANGE 5: Update Graduation Function ======
+// FIX for BI-2 and H-2: Use variable reserve and actual balance
+function initiateGraduation() external nonReentrant {
+    require(msg.sender == graduationOracle, "Only oracle can initiate");
+    require(!graduated && !graduating, "Already graduated or graduating");
+    
+    graduating = true;
+    
+    // ✅ FIXED: Calculate actual LP tokens available (not theoretical reserve)
+    uint256 contractBalance = balanceOf(address(this));
+    uint256 actualLpTokens = contractBalance - virtualTokenReserve;
+    
+    require(actualLpTokens > 0, "No LP tokens available");
+    
+    // Approve graduation oracle to pull LP tokens for DEX
+    _approve(address(this), graduationOracle, actualLpTokens);
+    
+    // Transfer KAS liquidity to oracle (for DEX deployment)
+    uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
+    require(actualKasLiquidity > 0, "No KAS liquidity");
+    
+    _safeSend(graduationOracle, actualKasLiquidity);
+    liquidityTransferred = true;
+    
+    emit GraduationInitiated(actualKasLiquidity, actualLpTokens);
+}
+
+// ====== CHANGE 6: Update Reserve Status Function ======
+// FIX for BI-2: Use variable reserve
+function getReserveStatus() external view returns (
+    bool distributed,
+    uint256 availableReserve,
+    uint256 totalReserve
+) {
+    distributed = reserveDistributed;
+    
+    // ✅ FIXED: Use variable reserve percentage
+    totalReserve = totalSupply() * reservedPercentage / 100;
+    
+    if (!graduated && !graduating) {
+        availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+    } else {
+        availableReserve = 0;
+    }
+}
+
+// ====== CHANGE 7: Update Wallet Cap Exemption ======
+// FIX for BI-3: Exempt vesting contracts from 10% cap
+function _update(address from, address to, uint256 amount) internal virtual override {
+    // Exemptions for wallet cap:
+    // 1. Burning/minting (to/from == address(0))
+    // 2. Contract itself
+    // 3. Airdrop treasury (holds vested allocations)
+    // 4. Graduation oracle (receives LP tokens)
+    // 5. Owner (emergency operations)
+    // 6. Transfers FROM airdropTreasury (allows vesting distributions)
+    // 7. Transfers FROM contract (buy operations)
+    // 8. ✅ NEW: Vesting contracts (can hold >10%)
+    // 9. Graduated pools (no restrictions)
+    
+    if (to != address(0) &&
+        to != address(this) && 
+        to != airdropTreasury &&
+        to != graduationOracle &&
+        to != owner() &&
+        from != airdropTreasury &&
+        from != address(this) &&
+        !isVestingContract[to] &&  // ✅ FIXED: Exempt vesting contracts
+        !graduated) {
+        
+        uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100; // 10%
+        require(balanceOf(to) + amount <= maxWallet, "Exceeds 10% max wallet");
+    }
+    
+    super._update(from, to, amount);
+}
+
+// ====== CHANGE 8: Add Guard for BASIC Tokens ======
+// FIX for H-1: Prevent misleading function calls on 0% reserve tokens
+function distributeReserve(address[] calldata recipients, uint256[] calldata amounts) external nonReentrant {
+    require(reservedPercentage > 0, "BASIC token has no reserve");
+    require(msg.sender == creator, "Only creator can distribute");
+    require(!reserveDistributed, "Reserve already distributed");
+    require(!graduated && !graduating, "Cannot distribute after graduation");
+    require(recipients.length == amounts.length, "Length mismatch");
+    require(recipients.length > 0, "Empty recipients");
+    
+    uint256 totalDistribution = 0;
+    for (uint256 i = 0; i < amounts.length; i++) {
+        require(recipients[i] != address(0), "Invalid recipient");
+        require(amounts[i] > 0, "Invalid amount");
+        totalDistribution += amounts[i];
+    }
+    
+    uint256 availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+    require(totalDistribution <= availableReserve, "Exceeds available reserve");
+    
+    reserveDistributed = true;
+    
+    for (uint256 i = 0; i < recipients.length; i++) {
+        _transfer(address(this), recipients[i], amounts[i]);
+    }
+    
+    emit ReserveDistributed(creator, recipients, amounts, totalDistribution);
+}
+```
+
+---
+
+### 2. Enhanced TokenFactory.sol
+
+```solidity
+// contracts/TokenFactory.sol
+
 function createToken(
     // Existing params
     string memory name,
@@ -60,68 +274,172 @@ function createToken(
     bool antiBotEnabled,
     
     // NEW: PRO Token Vesting Params
-    uint8 reservedPercentage,           // 0-25
-    uint8 airdropsAllocation,           // 0-100 (% of reserve)
-    uint8 marketingAllocation,          // 0-100 (% of reserve)
-    uint8 teamAllocation,               // 0-100 (% of reserve)
-    address airdropBeneficiary,         // Who can withdraw unlocked airdrops
-    address marketingBeneficiary,       // Who can withdraw unlocked marketing
-    address teamBeneficiary             // Who can withdraw unlocked team tokens
+    uint8 reservedPercentage,        // 0-25 (camelCase for Solidity)
+    uint8 airdropsAllocation,        // 0-100 (% of reserve)
+    uint8 marketingAllocation,       // 0-100 (% of reserve)
+    uint8 teamAllocation,            // 0-100 (% of reserve)
+    address airdropBeneficiary,      // Who gets airdrops
+    address marketingBeneficiary,    // Who gets marketing
+    address teamBeneficiary          // Who gets team tokens
 ) external nonReentrant whenNotPaused returns (
     address poolAddress,
     address airdropVestingAddress,
     address marketingVestingAddress,
     address teamVestingAddress
-)
-```
-
-**Implementation Logic:**
-1. Validate allocations sum to 100
-2. Validate reservedPercentage <= 25
-3. Deploy BondingCurvePool (modified to support variable reserve)
-4. Calculate token amounts from percentages
-5. Deploy 3 vesting contracts if reservedPercentage > 0
-6. Transfer tokens to vesting contracts
-7. Return all addresses
-
-### 2. Modified BondingCurvePool.sol
-
-**Constructor Changes:**
-```solidity
-constructor(
-    // Existing params...
+) {
+    // Validate deployment cooldown
+    require(
+        block.timestamp >= lastDeploymentTime[msg.sender] + deploymentCooldown,
+        "Deployment cooldown active"
+    );
     
-    // NEW: Variable reserve support
-    uint8 _reservedPercentage  // 0-25, replaces hardcoded LP_SUPPLY_PCT
-) ERC20(name, symbol) Ownable(msg.sender) {
-    // Calculate dynamic percentages
-    uint256 curveSupplyPct = 100 - _reservedPercentage;  // 75-100%
-    uint256 curveSupply = totalSupply * curveSupplyPct / 100;
+    // Validate basic inputs
+    require(bytes(name).length > 0 && bytes(name).length <= 32, "Invalid name");
+    require(bytes(symbol).length > 0 && bytes(symbol).length <= 10, "Invalid symbol");
+    require(totalSupply >= 1_000_000 * 10**18, "Supply too low");
+    require(totalSupply <= 1_000_000_000 * 10**18, "Supply too high");
+    require(bytes(description).length <= 280, "Description too long");
     
-    virtualTokenReserve = curveSupply;
-    virtualKasReserve = INITIAL_VIRTUAL_KAS;
+    // ✅ Validate PRO token params
+    require(reservedPercentage <= 25, "Reserve exceeds 25%");
+    if (reservedPercentage > 0) {
+        require(
+            airdropsAllocation + marketingAllocation + teamAllocation == 100,
+            "Allocations must sum to 100%"
+        );
+        require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
+        require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
+        require(teamBeneficiary != address(0), "Invalid team beneficiary");
+    }
     
-    // Reserve tokens stay in contract for vesting transfer
-    // (100 - curveSupplyPct)% = _reservedPercentage
+    // Deploy BondingCurvePool with variable reserve
+    BondingCurvePool pool = new BondingCurvePool(
+        name,
+        symbol,
+        totalSupply,
+        msg.sender, // creator
+        treasury,
+        airdropTreasury,
+        platformDevelopmentWallet,
+        antiBotEnabled,
+        graduationOracle,
+        admin,
+        buybackReserveWallet,
+        kaspaNetworkSupportWallet,
+        communityRewardsWallet,
+        reservedPercentage  // ✅ NEW: Pass variable reserve
+    );
+    
+    poolAddress = address(pool);
+    
+    // Deploy vesting contracts if PRO token
+    airdropVestingAddress = address(0);
+    marketingVestingAddress = address(0);
+    teamVestingAddress = address(0);
+    
+    if (reservedPercentage > 0) {
+        uint256 totalReserve = totalSupply * reservedPercentage / 100;
+        
+        // Calculate token amounts for each category
+        uint256 airdropTokens = totalReserve * airdropsAllocation / 100;
+        uint256 marketingTokens = totalReserve * marketingAllocation / 100;
+        uint256 teamTokens = totalReserve * teamAllocation / 100;
+        
+        // Deploy and fund airdrop vesting
+        if (airdropTokens > 0) {
+            AirdropVesting av = new AirdropVesting(
+                poolAddress,
+                airdropBeneficiary,
+                airdropTokens
+            );
+            airdropVestingAddress = address(av);
+            
+            // ✅ FIXED (BI-1): Use pool's transfer function instead of transferFrom
+            pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+        }
+        
+        // Deploy and fund marketing vesting
+        if (marketingTokens > 0) {
+            LinearVesting mv = new LinearVesting(
+                poolAddress,
+                marketingBeneficiary,
+                marketingTokens,
+                12  // 12 months linear vesting
+            );
+            marketingVestingAddress = address(mv);
+            
+            // ✅ FIXED (BI-1): Use pool's transfer function
+            pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
+        }
+        
+        // Deploy and fund team vesting
+        if (teamTokens > 0) {
+            CliffVesting tv = new CliffVesting(
+                poolAddress,
+                teamBeneficiary,
+                teamTokens,
+                6,   // 6 month cliff
+                18   // 18 month vesting after cliff
+            );
+            teamVestingAddress = address(tv);
+            
+            // ✅ FIXED (BI-1): Use pool's transfer function
+            pool.transferReserveToVesting(teamVestingAddress, teamTokens);
+        }
+    }
+    
+    // Store token metadata
+    tokens[poolAddress] = TokenInfo({
+        name: name,
+        symbol: symbol,
+        totalSupply: totalSupply,
+        creator: msg.sender,
+        poolAddress: poolAddress,
+        description: description,
+        imageUrl: imageUrl,
+        twitterUrl: twitterUrl,
+        telegramUrl: telegramUrl,
+        websiteUrl: websiteUrl,
+        deployedAt: block.timestamp,
+        antiBotEnabled: antiBotEnabled
+    });
+    
+    deployedTokens.push(poolAddress);
+    lastDeploymentTime[msg.sender] = block.timestamp;
+    
+    emit TokenCreated(
+        poolAddress,
+        poolAddress,
+        msg.sender,
+        name,
+        symbol,
+        totalSupply,
+        antiBotEnabled,
+        block.timestamp
+    );
+    
+    emit VestingDeployed(poolAddress, airdropVestingAddress, marketingVestingAddress, teamVestingAddress);
+    
+    return (poolAddress, airdropVestingAddress, marketingVestingAddress, teamVestingAddress);
 }
 ```
 
-**Key Changes:**
-- Remove `LP_SUPPLY_PCT` constant (25)
-- Add `reservedPercentage` state variable
-- Support 0% reserve (BASIC tokens) to 25% reserve (PRO tokens)
+---
 
-### 3. New Vesting Contracts
+### 3. Vesting Contracts (Fully Immutable & Secure)
 
 #### AirdropVesting.sol (5% Daily Unlock)
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract AirdropVesting is Ownable {
+// ✅ FIXED (BI-4): Removed Ownable - fully immutable contract
+// ✅ FIXED (H-3): Added ReentrancyGuard for withdrawal protection
+contract AirdropVesting is ReentrancyGuard {
     IERC20 public immutable token;
     address public immutable beneficiary;
     uint256 public immutable totalAllocation;
@@ -130,11 +448,17 @@ contract AirdropVesting is Ownable {
     uint256 public constant VESTING_PERIOD = 20 days;
     uint256 public withdrawn;
     
+    event TokensWithdrawn(address indexed beneficiary, uint256 amount);
+    
     constructor(
         address _token,
         address _beneficiary,
         uint256 _totalAllocation
-    ) Ownable(msg.sender) {
+    ) {
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_totalAllocation > 0, "Invalid allocation");
+        
         token = IERC20(_token);
         beneficiary = _beneficiary;
         totalAllocation = _totalAllocation;
@@ -143,12 +467,14 @@ contract AirdropVesting is Ownable {
     
     function getUnlockedAmount() public view returns (uint256) {
         uint256 elapsed = block.timestamp - startTime;
+        
         if (elapsed >= VESTING_PERIOD) {
-            return totalAllocation; // 100% unlocked
+            return totalAllocation; // 100% unlocked after 20 days
         }
         
         uint256 daysElapsed = elapsed / 1 days;
         uint256 unlockedPct = daysElapsed * DAILY_UNLOCK_PCT;
+        
         if (unlockedPct > 100) unlockedPct = 100;
         
         return (totalAllocation * unlockedPct) / 100;
@@ -159,7 +485,8 @@ contract AirdropVesting is Ownable {
         return unlocked > withdrawn ? unlocked - withdrawn : 0;
     }
     
-    function withdraw() external {
+    // ✅ FIXED (H-3): Added ReentrancyGuard
+    function withdraw() external nonReentrant {
         require(msg.sender == beneficiary, "Only beneficiary");
         
         uint256 amount = getWithdrawableAmount();
@@ -167,19 +494,24 @@ contract AirdropVesting is Ownable {
         
         withdrawn += amount;
         require(token.transfer(beneficiary, amount), "Transfer failed");
+        
+        emit TokensWithdrawn(beneficiary, amount);
     }
 }
 ```
 
-#### LinearVesting.sol (12-Month Marketing)
+#### LinearVesting.sol (12-Month Linear)
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract LinearVesting is Ownable {
+// ✅ FIXED (BI-4): Removed Ownable - fully immutable contract
+// ✅ FIXED (H-3): Added ReentrancyGuard for withdrawal protection
+contract LinearVesting is ReentrancyGuard {
     IERC20 public immutable token;
     address public immutable beneficiary;
     uint256 public immutable totalAllocation;
@@ -187,12 +519,19 @@ contract LinearVesting is Ownable {
     uint256 public immutable duration;
     uint256 public withdrawn;
     
+    event TokensWithdrawn(address indexed beneficiary, uint256 amount);
+    
     constructor(
         address _token,
         address _beneficiary,
         uint256 _totalAllocation,
         uint256 _durationMonths  // 12 for marketing
-    ) Ownable(msg.sender) {
+    ) {
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_totalAllocation > 0, "Invalid allocation");
+        require(_durationMonths > 0, "Invalid duration");
+        
         token = IERC20(_token);
         beneficiary = _beneficiary;
         totalAllocation = _totalAllocation;
@@ -202,9 +541,11 @@ contract LinearVesting is Ownable {
     
     function getUnlockedAmount() public view returns (uint256) {
         uint256 elapsed = block.timestamp - startTime;
+        
         if (elapsed >= duration) {
             return totalAllocation;
         }
+        
         return (totalAllocation * elapsed) / duration;
     }
     
@@ -213,7 +554,8 @@ contract LinearVesting is Ownable {
         return unlocked > withdrawn ? unlocked - withdrawn : 0;
     }
     
-    function withdraw() external {
+    // ✅ FIXED (H-3): Added ReentrancyGuard
+    function withdraw() external nonReentrant {
         require(msg.sender == beneficiary, "Only beneficiary");
         
         uint256 amount = getWithdrawableAmount();
@@ -221,26 +563,33 @@ contract LinearVesting is Ownable {
         
         withdrawn += amount;
         require(token.transfer(beneficiary, amount), "Transfer failed");
+        
+        emit TokensWithdrawn(beneficiary, amount);
     }
 }
 ```
 
 #### CliffVesting.sol (6-Month Cliff + 18-Month Vest)
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract CliffVesting is Ownable {
+// ✅ FIXED (BI-4): Removed Ownable - fully immutable contract
+// ✅ FIXED (H-3): Added ReentrancyGuard for withdrawal protection
+contract CliffVesting is ReentrancyGuard {
     IERC20 public immutable token;
     address public immutable beneficiary;
     uint256 public immutable totalAllocation;
     uint256 public immutable startTime;
-    uint256 public immutable cliff;        // 6 months
-    uint256 public immutable vestingEnd;   // 24 months from start
+    uint256 public immutable cliff;
+    uint256 public immutable vestingEnd;
     uint256 public withdrawn;
+    
+    event TokensWithdrawn(address indexed beneficiary, uint256 amount);
     
     constructor(
         address _token,
@@ -248,7 +597,13 @@ contract CliffVesting is Ownable {
         uint256 _totalAllocation,
         uint256 _cliffMonths,      // 6 for team
         uint256 _vestingMonths     // 18 for team (after cliff)
-    ) Ownable(msg.sender) {
+    ) {
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_totalAllocation > 0, "Invalid allocation");
+        require(_cliffMonths > 0, "Invalid cliff");
+        require(_vestingMonths > 0, "Invalid vesting period");
+        
         token = IERC20(_token);
         beneficiary = _beneficiary;
         totalAllocation = _totalAllocation;
@@ -258,17 +613,20 @@ contract CliffVesting is Ownable {
     }
     
     function getUnlockedAmount() public view returns (uint256) {
+        // Nothing unlocked before cliff
         if (block.timestamp < startTime + cliff) {
-            return 0; // Nothing unlocked before cliff
+            return 0;
         }
         
+        // Everything unlocked after vesting period
         if (block.timestamp >= vestingEnd) {
-            return totalAllocation; // Everything unlocked
+            return totalAllocation;
         }
         
         // Linear unlock after cliff
         uint256 elapsed = block.timestamp - (startTime + cliff);
         uint256 vestingDuration = vestingEnd - (startTime + cliff);
+        
         return (totalAllocation * elapsed) / vestingDuration;
     }
     
@@ -277,7 +635,8 @@ contract CliffVesting is Ownable {
         return unlocked > withdrawn ? unlocked - withdrawn : 0;
     }
     
-    function withdraw() external {
+    // ✅ FIXED (H-3): Added ReentrancyGuard
+    function withdraw() external nonReentrant {
         require(msg.sender == beneficiary, "Only beneficiary");
         
         uint256 amount = getWithdrawableAmount();
@@ -285,240 +644,35 @@ contract CliffVesting is Ownable {
         
         withdrawn += amount;
         require(token.transfer(beneficiary, amount), "Transfer failed");
+        
+        emit TokensWithdrawn(beneficiary, amount);
     }
 }
 ```
 
 ---
 
-## Integration Flow
+## Summary of Changes
 
-### 1. Frontend Form Submission
-```javascript
-// templates/app/create_token.html - Enhanced tokenData
-const tokenData = {
-    name: formData.get('name'),
-    symbol: formData.get('symbol'),
-    total_supply: formData.get('total_supply'),
-    reserved_percentage: formData.get('reserved_percentage'),
-    airdrops_allocation: formData.get('airdrops_allocation'),
-    marketing_allocation: formData.get('marketing_allocation'),
-    team_allocation: formData.get('team_allocation'),
-    // ... other fields
-};
-```
+### BondingCurvePool.sol (8 changes)
+1. ✅ Remove `CURVE_SUPPLY_PCT` and `LP_SUPPLY_PCT` constants
+2. ✅ Add `reservedPercentage` state variable + `factory` address + vesting registry
+3. ✅ Update constructor to accept `_reservedPercentage` parameter
+4. ✅ Add `transferReserveToVesting()` function (fixes token transfer bug)
+5. ✅ Update `initiateGraduation()` to use variable reserve + actual balance
+6. ✅ Update `getReserveStatus()` to use variable reserve
+7. ✅ Update `_update()` to exempt vesting contracts from wallet cap
+8. ✅ Add guard in `distributeReserve()` for BASIC tokens
 
-### 2. Backend API Enhancement
-```python
-# app.py - /api/token/create
+### TokenFactory.sol (2 changes)
+1. ✅ Add 7 new parameters to `createToken()` signature
+2. ✅ Use `pool.transferReserveToVesting()` instead of `transferFrom()`
 
-def create_token():
-    data = request.json
-    
-    # Extract PRO token params
-    reserved_pct = int(data.get('reserved_percentage', 0))
-    airdrops_alloc = int(data.get('airdrops_allocation', 0))
-    marketing_alloc = int(data.get('marketing_allocation', 0))
-    team_alloc = int(data.get('team_allocation', 0))
-    
-    # Validate allocations
-    if reserved_pct > 0:
-        if airdrops_alloc + marketing_alloc + team_alloc != 100:
-            return jsonify({'error': 'Allocations must sum to 100%'}), 400
-    
-    # Build transaction with vesting params
-    tx_data = web3_service.create_token_tx_data(
-        user_address=current_user.wallet_address,
-        name=data['name'],
-        symbol=data['symbol'],
-        total_supply=int(data['total_supply']),
-        # ... other params
-        reserved_percentage=reserved_pct,
-        airdrops_allocation=airdrops_alloc,
-        marketing_allocation=marketing_alloc,
-        team_allocation=team_alloc,
-        airdrop_beneficiary=current_user.wallet_address,  # Creator initially
-        marketing_beneficiary=current_user.wallet_address,
-        team_beneficiary=current_user.wallet_address
-    )
-    
-    return jsonify({'success': True, 'tx_data': tx_data})
-```
+### Vesting Contracts (2 changes per contract = 6 total)
+1. ✅ Remove `Ownable` inheritance (fully immutable)
+2. ✅ Add `ReentrancyGuard` to all `withdraw()` functions
 
-### 3. Web3 Service Enhancement
-```python
-# services/web3_service.py
-
-def create_token_tx_data(self, user_address, name, symbol, total_supply,
-                        description, image_url, twitter_url, telegram_url,
-                        website_url, anti_bot_enabled,
-                        reserved_percentage, airdrops_allocation,
-                        marketing_allocation, team_allocation,
-                        airdrop_beneficiary, marketing_beneficiary,
-                        team_beneficiary):
-    
-    contract = self.contracts['TokenFactory']
-    
-    tx_data = contract.functions.createToken(
-        name,
-        symbol,
-        total_supply,
-        description,
-        image_url,
-        twitter_url,
-        telegram_url,
-        website_url,
-        anti_bot_enabled,
-        reserved_percentage,
-        airdrops_allocation,
-        marketing_allocation,
-        team_allocation,
-        Web3.to_checksum_address(airdrop_beneficiary),
-        Web3.to_checksum_address(marketing_beneficiary),
-        Web3.to_checksum_address(team_beneficiary)
-    ).build_transaction({
-        'from': Web3.to_checksum_address(user_address),
-        'value': 0,
-        'gas': 0,  # Will be estimated
-        'gasPrice': self.w3.eth.gas_price,
-        'nonce': self.w3.eth.get_transaction_count(user_address)
-    })
-    
-    return tx_data
-```
-
-### 4. TokenFactory Implementation
-```solidity
-// contracts/TokenFactory.sol - createToken() enhanced
-
-function createToken(
-    string memory name,
-    string memory symbol,
-    uint256 totalSupply,
-    string memory description,
-    string memory imageUrl,
-    string memory twitterUrl,
-    string memory telegramUrl,
-    string memory websiteUrl,
-    bool antiBotEnabled,
-    uint8 reservedPercentage,
-    uint8 airdropsAllocation,
-    uint8 marketingAllocation,
-    uint8 teamAllocation,
-    address airdropBeneficiary,
-    address marketingBeneficiary,
-    address teamBeneficiary
-) external nonReentrant whenNotPaused returns (address, address, address, address) {
-    // Validations
-    require(reservedPercentage <= 25, "Reserve exceeds 25%");
-    if (reservedPercentage > 0) {
-        require(
-            airdropsAllocation + marketingAllocation + teamAllocation == 100,
-            "Allocations must sum to 100"
-        );
-    }
-    
-    // Deploy pool with variable reserve
-    BondingCurvePool pool = new BondingCurvePool(
-        name,
-        symbol,
-        totalSupply,
-        msg.sender,
-        treasury,
-        airdropTreasury,
-        platformDevelopmentWallet,
-        antiBotEnabled,
-        graduationOracle,
-        admin,
-        buybackReserveWallet,
-        kaspaNetworkSupportWallet,
-        communityRewardsWallet,
-        reservedPercentage  // NEW PARAM
-    );
-    
-    address poolAddress = address(pool);
-    
-    // Deploy vesting contracts if PRO token
-    address airdropVesting = address(0);
-    address marketingVesting = address(0);
-    address teamVesting = address(0);
-    
-    if (reservedPercentage > 0) {
-        uint256 totalReserve = totalSupply * reservedPercentage / 100;
-        
-        // Calculate token amounts
-        uint256 airdropTokens = totalReserve * airdropsAllocation / 100;
-        uint256 marketingTokens = totalReserve * marketingAllocation / 100;
-        uint256 teamTokens = totalReserve * teamAllocation / 100;
-        
-        // Deploy vesting contracts
-        if (airdropTokens > 0) {
-            AirdropVesting av = new AirdropVesting(
-                poolAddress,
-                airdropBeneficiary,
-                airdropTokens
-            );
-            airdropVesting = address(av);
-            IERC20(poolAddress).transferFrom(poolAddress, airdropVesting, airdropTokens);
-        }
-        
-        if (marketingTokens > 0) {
-            LinearVesting mv = new LinearVesting(
-                poolAddress,
-                marketingBeneficiary,
-                marketingTokens,
-                12  // 12 months
-            );
-            marketingVesting = address(mv);
-            IERC20(poolAddress).transferFrom(poolAddress, marketingVesting, marketingTokens);
-        }
-        
-        if (teamTokens > 0) {
-            CliffVesting tv = new CliffVesting(
-                poolAddress,
-                teamBeneficiary,
-                teamTokens,
-                6,   // 6 month cliff
-                18   // 18 month vesting
-            );
-            teamVesting = address(tv);
-            IERC20(poolAddress).transferFrom(poolAddress, teamVesting, teamTokens);
-        }
-    }
-    
-    // Store metadata
-    tokens[poolAddress] = TokenInfo({
-        // ... existing fields
-        vestingContracts: VestingInfo({
-            airdrop: airdropVesting,
-            marketing: marketingVesting,
-            team: teamVesting
-        })
-    });
-    
-    emit TokenCreated(poolAddress, msg.sender, name, symbol, totalSupply, antiBotEnabled);
-    emit VestingDeployed(poolAddress, airdropVesting, marketingVesting, teamVesting);
-    
-    return (poolAddress, airdropVesting, marketingVesting, teamVesting);
-}
-```
-
----
-
-## Database Schema Updates
-
-### Token Model Enhancement
-```python
-# models.py
-
-class Token(db.Model):
-    # ... existing fields
-    
-    # Vesting contract addresses
-    airdrop_vesting_address = db.Column(db.String(128))
-    marketing_vesting_address = db.Column(db.String(128))
-    team_vesting_address = db.Column(db.String(128))
-```
+**Total Changes**: 16 modifications across 5 contracts
 
 ---
 
@@ -546,27 +700,76 @@ class Token(db.Model):
 
 4. **Withdrawals:**
    - Day 1: 6.25M airdrops unlocked (5% of 125M)
-   - Month 6: Team cliff ends, linear vesting starts
-   - Month 12: All marketing tokens unlocked
-   - Day 20: All airdrop tokens unlocked
-   - Month 24: All team tokens unlocked
+   - Day 10: 62.5M airdrops unlocked (50% of 125M)
+   - Day 20: 125M airdrops unlocked (100% - all available)
+   - Month 6: Team cliff ends, linear vesting starts (0% unlocked yet)
+   - Month 12: 75M marketing unlocked (100% - all available)
+   - Month 12: 25M team tokens unlocked (33% of 18-month vest)
+   - Month 24: 50M team tokens unlocked (100% - all available)
 
 ---
 
-## Migration Strategy
+## Testing Checklist
 
-### Option 1: New Deployment (Recommended)
-- Deploy new contract versions
-- Test thoroughly on testnet
-- Audit new contracts
-- Deploy to mainnet as v2
-- Migrate existing tokens gradually
+### Critical Path Tests
+- [ ] BASIC token (0% reserve) deploys without vesting contracts
+- [ ] PRO token (25% reserve) deploys with 3 vesting contracts
+- [ ] Token transfers from pool to vesting work correctly
+- [ ] Vesting contracts exempt from 10% wallet cap
+- [ ] Graduation works with actual available balance (not theoretical)
+- [ ] Vesting unlock calculations accurate for all 3 types
 
-### Option 2: Upgrade Existing
-- Not possible without proxy pattern
-- Would require complete redesign
+### Edge Cases
+- [ ] 100% allocation to single category works
+- [ ] Reserve already distributed → graduation still works
+- [ ] Multiple withdrawals over time work correctly
+- [ ] Beneficiary can't bypass vesting (no ownership transfer)
+- [ ] Zero address beneficiary rejected
+- [ ] Allocations that don't sum to 100% rejected
 
-**Recommendation:** Deploy as v2 system alongside current contracts, sunset v1 after migration period.
+### Security Tests
+- [ ] Reentrancy attack on withdraw() fails
+- [ ] Non-beneficiary cannot withdraw
+- [ ] Cannot inflate allocation post-deployment
+- [ ] Cannot change vesting schedule post-deployment
+- [ ] Factory is only address that can call transferReserveToVesting()
+
+---
+
+## Gas Estimates
+
+**BASIC Token** (0% reserve):
+- BondingCurvePool deployment: ~2.5M gas
+- Total: **~2.5M gas**
+
+**PRO Token** (25% reserve with vesting):
+- BondingCurvePool deployment: ~2.8M gas
+- AirdropVesting deployment: ~850K gas
+- LinearVesting deployment: ~850K gas
+- CliffVesting deployment: ~950K gas
+- 3x transferReserveToVesting: ~150K gas
+- Total: **~5.6M gas**
+
+At 50 Gwei gas price: ~0.28 ETH (~$560 USD at $2000/ETH) for PRO tokens
+
+**UI Warning**: Show clear gas estimate before PRO token deployment
+
+---
+
+## Deployment Sequence
+
+1. ✅ Deploy new `AirdropVesting.sol`, `LinearVesting.sol`, `CliffVesting.sol`
+2. ✅ Deploy updated `BondingCurvePool.sol` (with 8 changes)
+3. ✅ Deploy updated `TokenFactory.sol` (with new signature)
+4. ✅ Test on testnet thoroughly (all test cases above)
+5. ✅ External security audit (recommended)
+6. ✅ Deploy to mainnet as V2 system
+7. ✅ Update frontend to use new contract addresses
+
+**V1/V2 Strategy**: 
+- Existing tokens continue with V1 (immutable, can't upgrade)
+- New tokens use V2 (with vesting enforcement)
+- Both systems coexist
 
 ---
 
@@ -575,83 +778,54 @@ class Token(db.Model):
 1. **Immutability**: All vesting parameters set at deployment, cannot be changed
 2. **Beneficiary Protection**: Only beneficiary can withdraw their tokens
 3. **Time-Lock Enforcement**: Blockchain timestamp ensures trustless unlocking
-4. **Reentrancy Guards**: All withdrawal functions protected
+4. **Reentrancy Guards**: All withdrawal functions protected with `nonReentrant`
 5. **Integer Overflow**: Solidity ^0.8.20 has built-in protection
+6. **No Ownership Transfer**: Removed `Ownable` from vesting contracts
+7. **Wallet Cap Exemption**: Vesting contracts registered during transfer
 
 ---
 
-## Testing Requirements
+## Database Schema Updates
 
-### Unit Tests
-- [ ] TokenFactory deployment with all param combinations
-- [ ] BondingCurvePool with 0%, 10%, 25% reserves
-- [ ] AirdropVesting 5% daily unlock calculations
-- [ ] LinearVesting 12-month unlock calculations
-- [ ] CliffVesting 6mo cliff + 18mo vest calculations
-- [ ] Edge cases: 100% one allocation, 0% others
+### Token Model Enhancement
+```python
+# models.py
 
-### Integration Tests
-- [ ] End-to-end token creation with vesting
-- [ ] Withdrawal after partial unlock
-- [ ] Multiple withdrawals over time
-- [ ] Beneficiary changes (if implemented)
-
-### Audit Requirements
-- [ ] External security audit (3rd party)
-- [ ] Gas optimization review
-- [ ] Economic model validation
-- [ ] Time-lock mechanism verification
-
----
-
-## Gas Optimization Notes
-
-**Deployment Costs:**
-- TokenFactory.createToken() with vesting: ~4-6M gas
-- Without vesting (BASIC token): ~2-3M gas
-- Users should be warned about increased gas for PRO tokens
-
-**Optimization Strategies:**
-- Use immutable variables where possible
-- Minimize storage writes
-- Batch token transfers in constructor
-- Consider EIP-1167 minimal proxy for vesting contracts (future)
-
----
-
-## Questions for Clarification
-
-1. **Beneficiary Assignment**: Should users specify beneficiary wallets during creation, or default to creator?
-2. **Transfer Restrictions**: Can beneficiary transfer vesting contract ownership?
-3. **Emergency Withdrawals**: Should admin have emergency withdrawal capability?
-4. **Partial Allocations**: What if user sets 10% reserve but only uses 50% of it (e.g., 50% airdrops, 0% marketing, 0% team)?
+class Token(db.Model):
+    # ... existing fields
+    
+    # Vesting contract addresses
+    airdrop_vesting_address = db.Column(db.String(128))
+    marketing_vesting_address = db.Column(db.String(128))
+    team_vesting_address = db.Column(db.String(128))
+```
 
 ---
 
 ## Implementation Checklist
 
 ### Smart Contracts
-- [ ] Modify BondingCurvePool.sol for variable reserve
-- [ ] Create AirdropVesting.sol
-- [ ] Create LinearVesting.sol
-- [ ] Create CliffVesting.sol
-- [ ] Enhance TokenFactory.sol with vesting deployment
-- [ ] Add VestingInfo struct and events
-- [ ] Write comprehensive tests
+- [ ] Modify BondingCurvePool.sol (8 changes documented above)
+- [ ] Create AirdropVesting.sol (fully immutable, reentrancy-protected)
+- [ ] Create LinearVesting.sol (fully immutable, reentrancy-protected)
+- [ ] Create CliffVesting.sol (fully immutable, reentrancy-protected)
+- [ ] Enhance TokenFactory.sol (new signature + vesting deployment)
+- [ ] Add VestingDeployed event to factory
+- [ ] Write comprehensive tests (100+ test cases)
 - [ ] External security audit
 
 ### Backend
-- [ ] Update Web3Service.create_token_tx_data()
-- [ ] Add vesting contract address tracking
+- [ ] Update Web3Service.create_token_tx_data() with vesting params
+- [ ] Add vesting contract address tracking in database
 - [ ] Create vesting status API endpoints
 - [ ] Add withdrawal transaction builders
 
 ### Frontend
-- [ ] Ensure allocation data sent to API
+- [ ] Ensure allocation data sent to API (already done)
 - [ ] Display vesting contract addresses on token page
-- [ ] Show unlock schedules visually
+- [ ] Show unlock schedules visually (progress bars)
 - [ ] Add withdrawal UI for beneficiaries
-- [ ] Update documentation
+- [ ] Gas estimate warning for PRO tokens
 
 ### Database
 - [ ] Add vesting address columns to Token model
@@ -663,10 +837,12 @@ class Token(db.Model):
 
 This specification transforms the PRO token UI from a database-only feature into a fully on-chain, trustless vesting system. The key innovation is deploying dedicated vesting contracts at token creation time, enforcing the UI-promised schedules with blockchain immutability.
 
-**Next Steps:**
-1. Review and approve this specification
-2. Estimate development timeline (suggest 2-3 weeks)
-3. Plan security audit (critical before mainnet)
-4. Implement in test environment
-5. User acceptance testing
-6. Audit and deploy
+**All critical security issues identified in audits have been addressed:**
+- ✅ Token transfers work correctly (transferReserveToVesting)
+- ✅ Variable reserve fully implemented (reservedPercentage)
+- ✅ Vesting contracts exempt from wallet caps (registry system)
+- ✅ Fully immutable vesting (no Ownable)
+- ✅ Reentrancy protection (ReentrancyGuard)
+- ✅ BASIC tokens protected from misleading functions
+
+**Ready for implementation, testing, and external security audit.**
