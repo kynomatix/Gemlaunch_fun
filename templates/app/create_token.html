@@ -3455,11 +3455,18 @@
             
             // Show IPFS image if available
             if (pendingTokenData.ipfs_image_url) {
-                const imagePreview = document.getElementById('image-preview');
-                const imagePreviewImg = document.getElementById('image-preview-img');
+                const uploadArea = document.querySelector('.image-upload');
+                uploadArea.innerHTML = `
+                    <input type="file" id="image" name="image" accept="image/*">
+                    <img src="${pendingTokenData.ipfs_image_url}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
+                    <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
+                        ✅ Loaded from IPFS
+                    </p>
+                    <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change image</p>
+                `;
                 
-                imagePreviewImg.src = pendingTokenData.ipfs_image_url;
-                imagePreview.style.display = 'block';
+                // Re-attach event listener
+                initImageUploadHandler();
                 
                 // Store IPFS URL so it doesn't get re-uploaded
                 window.pendingTokenIPFSImage = pendingTokenData.ipfs_image_url;
