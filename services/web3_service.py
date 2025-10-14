@@ -1303,14 +1303,25 @@ class Web3Service:
             if tx['to'].lower() != self.token_factory_address.lower():
                 raise ValueError(f'Transaction not sent to TokenFactory. Expected {self.token_factory_address}, got {tx["to"]}')
             
-            event_signature = self._get_token_created_signature()
+            event_signature = self._get_token_created_signature().lower()
+            
+            logging.debug(f"Searching for TokenCreated event in {len(receipt['logs'])} logs. Expected signature: {event_signature}")
             
             # Find TokenCreated event in logs
-            for log in receipt['logs']:
+            for i, log in enumerate(receipt['logs']):
                 if log.get('topics') and len(log['topics']) > 0:
                     # Check event signature (topics can be HexBytes or str)
-                    topic0 = log['topics'][0].hex() if hasattr(log['topics'][0], 'hex') else log['topics'][0]
-                    if topic0 == event_signature:
+                    topic0_raw = log['topics'][0]
+                    topic0 = topic0_raw.hex() if hasattr(topic0_raw, 'hex') else str(topic0_raw)
+                    # Normalize: ensure 0x prefix and lowercase
+                    topic0_normalized = topic0.lower().strip()
+                    if not topic0_normalized.startswith('0x'):
+                        topic0_normalized = '0x' + topic0_normalized
+                    
+                    logging.debug(f"Log {i}: address={log['address']}, topic0={topic0_normalized}")
+                    
+                    if topic0_normalized == event_signature:
+                        logging.debug(f"Found matching TokenCreated event at log index {i}")
                         
                         # SECURITY: Verify log was emitted by TokenFactory
                         if log['address'].lower() != self.token_factory_address.lower():
@@ -1321,12 +1332,14 @@ class Web3Service:
                             raise ValueError('TokenCreated event missing required indexed parameters')
                         
                         # Extract tokenAddress from topics[1] (can be HexBytes or str)
-                        topic1 = log['topics'][1].hex() if hasattr(log['topics'][1], 'hex') else log['topics'][1]
+                        topic1_raw = log['topics'][1]
+                        topic1 = topic1_raw.hex() if hasattr(topic1_raw, 'hex') else str(topic1_raw)
                         token_address = '0x' + topic1[-40:]
                         
                         # SECURITY: Verify creator if provided
                         if expected_creator:
-                            topic3 = log['topics'][3].hex() if hasattr(log['topics'][3], 'hex') else log['topics'][3]
+                            topic3_raw = log['topics'][3]
+                            topic3 = topic3_raw.hex() if hasattr(topic3_raw, 'hex') else str(topic3_raw)
                             event_creator = '0x' + topic3[-40:]
                             if event_creator.lower() != expected_creator.lower():
                                 raise ValueError(f'Event creator {event_creator} does not match expected creator {expected_creator}')
@@ -1335,6 +1348,7 @@ class Web3Service:
                         if not Web3.is_address(token_address):
                             raise ValueError(f'Invalid token address format: {token_address}')
                         
+                        logging.info(f"Successfully extracted token address: {token_address} from tx {tx_hash}")
                         return Web3.to_checksum_address(token_address)
             
             raise ValueError('TokenCreated event not found in transaction receipt')

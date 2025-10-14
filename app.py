@@ -2684,14 +2684,19 @@ def init_database():
                 db.session.commit()
                 print("✅ Sample tokens created with contract addresses")
             else:
-                # Update existing tokens without contract addresses
-                tokens_without_ca = Token.query.filter_by(contract_address=None).all()
-                if tokens_without_ca:
-                    import secrets
-                    for token in tokens_without_ca:
-                        token.contract_address = f'0x{secrets.token_hex(20).lower()}'
+                # Clean up old pending tokens (older than 24 hours)
+                from datetime import datetime, timedelta, timezone
+                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+                old_pending = Token.query.filter(
+                    Token.contract_address == None,
+                    Token.deployment_status == 'pending',
+                    Token.created_at < cutoff_time
+                ).all()
+                if old_pending:
+                    for token in old_pending:
+                        db.session.delete(token)
                     db.session.commit()
-                    print(f"✅ Updated {len(tokens_without_ca)} tokens with contract addresses")
+                    print(f"✅ Cleaned up {len(old_pending)} old pending tokens")
                 
         except Exception as e:
             print(f"❌ Database initialization error: {e}")
