@@ -158,7 +158,7 @@ def ratelimit_handler(e):
         'retry_after': getattr(e.description, 'retry_after', 60)
     }), 429
 
-# Prevent aggressive browser caching
+# Prevent aggressive browser caching and allow IPFS images
 @app.after_request
 def add_cache_control_headers(response):
     """Add Cache-Control headers to prevent browser caching of dynamic content"""
@@ -166,6 +166,8 @@ def add_cache_control_headers(response):
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+        # Allow IPFS gateway images
+        response.headers['Content-Security-Policy'] = "img-src 'self' data: https://gateway.pinata.cloud https://*.ipfs.dweb.link https://ipfs.io"
     return response
 
 # Initialize transaction monitor and scheduler
