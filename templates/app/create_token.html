@@ -2382,7 +2382,28 @@
                 
                 updateDeploymentStatus('Token deployment verified!', `Contract: ${extractResult.contractAddress.substring(0, 10)}...`);
                 
-                // Step 7: Redirect to token detail page
+                // Step 7: Sync circulating supply from blockchain (fallback for confirmation failures)
+                try {
+                    updateDeploymentStatus('Syncing token supply...', 'Fetching from blockchain');
+                    const syncResponse = await fetch(`/api/token/${extractResult.contractAddress}/sync-supply`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    });
+                    
+                    if (syncResponse.ok) {
+                        const syncData = await syncResponse.json();
+                        console.log('Supply synced:', syncData);
+                        updateDeploymentStatus('Supply synced!', `${syncData.circulating_supply?.toLocaleString() || 'N/A'} tokens`);
+                    } else {
+                        console.warn('Supply sync failed (non-critical):', await syncResponse.text());
+                        // Don't fail deployment if sync fails - supply can be synced later
+                    }
+                } catch (syncError) {
+                    console.warn('Supply sync error (non-critical):', syncError);
+                    // Don't fail deployment if sync fails - supply can be synced later
+                }
+                
+                // Step 8: Redirect to token detail page
                 setTimeout(() => {
                     window.location.href = `/app/token/${extractResult.contractAddress}`;
                 }, 2000);
