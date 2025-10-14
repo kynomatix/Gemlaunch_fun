@@ -2122,7 +2122,7 @@
                             
                             // Redirect to token detail page
                             setTimeout(() => {
-                                window.location.href = `/token/${contractAddress}`;
+                                window.location.href = `/app/token/${contractAddress}`;
                             }, 2000);
                             resolve();
                         } else if (data.status === 'failed') {
@@ -2339,7 +2339,7 @@
                 
                 // Step 7: Redirect to token detail page
                 setTimeout(() => {
-                    window.location.href = `/token/${extractResult.contractAddress}`;
+                    window.location.href = `/app/token/${extractResult.contractAddress}`;
                 }, 2000);
                 
             } catch (error) {
