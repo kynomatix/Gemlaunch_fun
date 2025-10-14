@@ -151,7 +151,7 @@ def upload_to_ipfs(image_url):
         
         ipfs_hash = result['IpfsHash']
         ipfs_url = f"ipfs://{ipfs_hash}"
-        gateway_url = f"https://gateway.pinata.cloud/ipfs/{ipfs_hash}"
+        gateway_url = f"https://gateway.pinata.cloud/ipfs/{ipfs_hash}?filename=image.webp"
         
         logging.info(f"Image uploaded to IPFS: {ipfs_url}")
         logging.info(f"Gateway URL: {gateway_url}")
