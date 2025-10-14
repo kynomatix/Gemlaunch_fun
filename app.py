@@ -158,7 +158,7 @@ def ratelimit_handler(e):
         'retry_after': getattr(e.description, 'retry_after', 60)
     }), 429
 
-# Prevent aggressive browser caching and allow IPFS images
+# Prevent aggressive browser caching
 @app.after_request
 def add_cache_control_headers(response):
     """Add Cache-Control headers to prevent browser caching of dynamic content"""
@@ -166,8 +166,6 @@ def add_cache_control_headers(response):
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
-        # Allow IPFS gateway images
-        response.headers['Content-Security-Policy'] = "img-src 'self' data: https://gateway.pinata.cloud https://*.ipfs.dweb.link https://ipfs.io"
     return response
 
 # Initialize transaction monitor and scheduler
@@ -254,37 +252,6 @@ def pitch_deck():
 def health():
     """Health check endpoint"""
     return {'status': 'healthy'}
-
-@app.route('/api/image-proxy')
-def image_proxy():
-    """Proxy IPFS images through our domain to bypass browser blocking"""
-    import requests
-    
-    ipfs_url = request.args.get('url')
-    if not ipfs_url:
-        return 'No URL provided', 400
-    
-    # Only allow IPFS URLs
-    if not ('gateway.pinata.cloud' in ipfs_url or 'ipfs.io' in ipfs_url or 'ipfs.dweb.link' in ipfs_url):
-        return 'Invalid URL', 400
-    
-    try:
-        # Fetch the image from IPFS
-        response = requests.get(ipfs_url, timeout=10)
-        response.raise_for_status()
-        
-        # Return the image with proper headers
-        return Response(
-            response.content,
-            mimetype='image/webp',
-            headers={
-                'Cache-Control': 'public, max-age=31536000',  # Cache for 1 year
-                'Access-Control-Allow-Origin': '*'
-            }
-        )
-    except Exception as e:
-        logging.error(f"Image proxy error: {str(e)}")
-        return 'Failed to load image', 500
 
 # Wallet Authentication API
 @app.route('/api/auth/nonce', methods=['POST'])
