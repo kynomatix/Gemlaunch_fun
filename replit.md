@@ -214,9 +214,31 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - Security prevents arbitrary contract binding attacks
 - All deployment verification happens server-side
 
+### ✅ October 14, 2025 - Critical Bug Fixes
+
+**1. TokenCreated Event Extraction Fix**
+- **Issue:** Event signature comparison failed because RPC returns topics without "0x" prefix
+- **Fix:** Normalized topic hash comparison by adding prefix check before matching
+- **Impact:** Automatic contract address extraction now works correctly
+- **Files:** services/web3_service.py
+
+**2. Circulating Supply Fix**
+- **Issue:** Token circulating_supply showed 0 after deployment (not fetched from blockchain)
+- **Fix:** Updated `confirm_token_deployment()` to fetch totalSupply() from deployed contract
+- **Fallback:** Uses database total_supply if blockchain fetch fails
+- **Files:** app.py (lines 5087-5112)
+
+**3. Image Loading Investigation**
+- **Issue:** IPFS images fail to display in frontend (shows fallback turquoise placeholder)
+- **Verified:** IPFS URLs return HTTP 200 with proper content-type (image/webp)
+- **Added:** onerror handler with console logging for debugging
+- **Status:** Under investigation - no console errors detected yet
+- **Files:** templates/app/partials/token_header.html
+
 ### Next Steps: Phase 4
 **READY FOR:** Frontend integration testing and user acceptance testing
 - Phase 4: Trading Enablement & QA (see SMART_CONTRACT_IMPLEMENTATION.md)
 - End-to-end testing with real user wallets
 - Anti-bot fee decay validation
 - Graduation flow testing
+- Resolve IPFS image loading issue
