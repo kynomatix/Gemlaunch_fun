@@ -3456,16 +3456,17 @@
             }
             
             // Show IPFS image if available - use setTimeout to ensure DOM is ready
-            if (pendingTokenData.ipfs_image_url) {
+            const imageUrl = pendingTokenData.ipfs_image_url || pendingTokenData.image_url;
+            if (imageUrl) {
                 // Store IPFS URL so it doesn't get re-uploaded during deployment
-                window.pendingTokenIPFSImage = pendingTokenData.ipfs_image_url;
+                window.pendingTokenIPFSImage = imageUrl;
                 
                 setTimeout(() => {
                     const uploadArea = document.querySelector('.image-upload');
                     if (uploadArea) {
                         uploadArea.innerHTML = `
                             <input type="file" id="image" name="image" accept="image/*">
-                            <img src="${pendingTokenData.ipfs_image_url}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
+                            <img src="${imageUrl}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
                             <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
                                 ✅ Image loaded from IPFS (will reuse existing)
                             </p>
