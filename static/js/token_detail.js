@@ -2466,13 +2466,13 @@ function toggleVestingModal() {
                 <div class="modal-body">
                     <div class="vesting-bar">
                         <div class="vesting-segment airdrops" style="width: ${vd.airdropsAllocation}%;">
-                            <span class="vesting-label">${Math.round(vd.airdropsAllocation)}%</span>
+                            <span class="vesting-label">${airdropsTotal}%</span>
                         </div>
                         <div class="vesting-segment marketing" style="width: ${vd.marketingAllocation}%;">
-                            <span class="vesting-label">${Math.round(vd.marketingAllocation)}%</span>
+                            <span class="vesting-label">${marketingTotal}%</span>
                         </div>
                         <div class="vesting-segment team" style="width: ${vd.teamAllocation}%;">
-                            <span class="vesting-label">${Math.round(vd.teamAllocation)}%</span>
+                            <span class="vesting-label">${teamTotal}%</span>
                         </div>
                     </div>
                     <div class="vesting-details">
