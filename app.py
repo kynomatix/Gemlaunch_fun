@@ -5212,6 +5212,78 @@ def check_pending_tokens():
         logging.error(f"Check pending tokens failed: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/token/<int:token_id>/resume-deployment', methods=['POST'])
+@csrf.exempt
+def resume_token_deployment(token_id):
+    """Resume deployment for a pending token (crash recovery)"""
+    # Get pending token (let 404 propagate correctly)
+    token = Token.query.get_or_404(token_id)
+    
+    # Verify status is pending
+    if token.deployment_status != 'pending':
+        return jsonify({
+            'success': False,
+            'error': f'Token status is {token.deployment_status}, cannot resume'
+        }), 400
+    
+    # Verify user is creator
+    user = get_current_user()
+    if not user or token.creator_id != user.id:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    # Check if token has IPFS metadata - required for deployment
+    ipfs_url = token.ipfs_metadata_url or token.ipfs_image_url
+    if not ipfs_url:
+        return jsonify({
+            'success': False,
+            'error': 'Token does not have IPFS metadata. Please create a new token with proper metadata upload.'
+        }), 400
+    
+    try:
+        # Build unsigned transaction using existing token data
+        try:
+            user_address_checksum = Web3.to_checksum_address(user.wallet_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid wallet address format'}), 400
+        
+        web3_service = get_web3_service()
+        
+        # Convert total_supply to wei (assuming 18 decimals)
+        total_supply_wei = token.total_supply * (10 ** 18)
+        
+        # Match exact parameter order from /api/token/create endpoint
+        unsigned_tx = web3_service.create_token_tx_data(
+            user_address_checksum,
+            token.name,
+            token.symbol,
+            total_supply_wei,
+            token.description or f"{token.name} token",
+            ipfs_url,  # Use metadata URL if available, fallback to image URL
+            token.twitter or "",
+            token.telegram or "",
+            token.website or "",
+            token.anti_bot_enabled
+        )
+        
+        # Format response for frontend
+        tx_data = {
+            'to': unsigned_tx['to'],
+            'value': hex(unsigned_tx['value']),
+            'data': unsigned_tx['data'],
+            'gas': hex(unsigned_tx['gas'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'estimated_gas': unsigned_tx['gas'],
+            'token_id': token_id
+        })
+        
+    except Exception as e:
+        logging.error(f"Resume deployment failed for token {token_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/token/<contract_address>/sync-supply', methods=['POST'])
 @csrf.exempt
 def sync_token_supply(contract_address):
