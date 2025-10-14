@@ -2293,8 +2293,9 @@
             const imageInput = document.getElementById('image');
             const imageFile = imageInput.files[0];
             const aiImageUrl = document.getElementById('ai-image-url').value;
+            const pendingIPFSImage = window.pendingTokenIPFSImage;
             
-            if (!imageFile && !aiImageUrl) {
+            if (!imageFile && !aiImageUrl && !pendingIPFSImage) {
                 CreateTokenNotification.showAlert('Image Required', 'Please select or generate an image for your token.', 'error');
                 return false;
             }
