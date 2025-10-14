@@ -1666,7 +1666,7 @@
                         <p id="resumeTokenTimestamp" style="margin: 1rem 0 0 0; color: #666; font-size: 0.85rem;"></p>
                     </div>
                     <p style="color: #CCC; margin-bottom: 1.5rem; font-size: 0.95rem;">
-                        Would you like to resume deploying this token to the blockchain?
+                        Would you like to load this data into the creation form? You can review and deploy it when ready.
                     </p>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
@@ -1681,7 +1681,7 @@
                         font-weight: 600;
                         transition: all 0.3s ease;
                     " onclick="resumeTokenDeployment()">
-                        <i class="fas fa-rocket"></i> Resume Deployment
+                        <i class="fas fa-fill"></i> Load Into Form
                     </button>
                     <button id="discardPendingBtn" type="button" style="
                         flex: 1;
@@ -3429,96 +3429,51 @@
             return Math.floor(seconds / 60) + ' minutes ago';
         }
 
-        async function resumeTokenDeployment() {
+        function resumeTokenDeployment() {
             if (!pendingTokenData) {
                 CreateTokenNotification.showAlert('Error', 'No pending token data found.', 'error');
                 return;
             }
 
-            const tokenId = pendingTokenData.id;
-
             // Hide resume modal
             document.getElementById('resumeDeploymentModal').style.display = 'none';
 
-            try {
-                // Show deployment modal
-                showDeploymentModal();
-                updateDeploymentStatus('Resuming deployment...', 'Preparing transaction');
-
-                // Step 1: Get unsigned transaction from resume endpoint
-                const response = await fetch(`/api/token/${tokenId}/resume-deployment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (!response.ok || !result.success) {
-                    throw new Error(result.error || 'Failed to prepare transaction');
-                }
-
-                updateDeploymentStatus('Transaction prepared', 'Awaiting signature...');
-
-                // Step 2: Sign transaction with wallet
-                const signedTx = await window.transactionManager.signTransaction(result.tx_data);
-                updateDeploymentStatus('Transaction signed', 'Broadcasting...');
-
-                // Step 3: Relay to blockchain
-                const relayResult = await window.transactionManager.relayTransaction(signedTx);
-                
-                if (!relayResult.success || !relayResult.tx_hash) {
-                    throw new Error(relayResult.error || 'Failed to relay transaction');
-                }
-
-                const txHash = relayResult.tx_hash;
-                updateDeploymentStatus('Transaction broadcasted!', `Hash: ${txHash.substring(0, 10)}...`);
-
-                // Step 4: Monitor transaction
-                const monitorResult = await monitorDeployment(txHash, null);
-
-                if (!monitorResult.success) {
-                    throw new Error(monitorResult.error || 'Transaction monitoring failed');
-                }
-
-                updateDeploymentStatus('Transaction confirmed!', 'Extracting contract address...');
-
-                // Step 5: Extract contract address from receipt
-                const extractResult = await window.transactionManager.extractContractAddress(txHash);
-
-                if (!extractResult.success) {
-                    throw new Error(extractResult.error || 'Failed to verify contract deployment');
-                }
-
-                updateDeploymentStatus('Token deployment verified!', `Contract: ${extractResult.contractAddress.substring(0, 10)}...`);
-
-                // Step 6: Sync supply
-                try {
-                    const syncResponse = await fetch(`/api/token/${extractResult.contractAddress}/sync-supply`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'}
-                    });
-                    if (syncResponse.ok) {
-                        console.log('Supply synced');
-                    }
-                } catch (syncError) {
-                    console.warn('Supply sync failed (non-critical):', syncError);
-                }
-
-                // Success! Redirect to token page
-                updateDeploymentStatus('Token deployed successfully!', 'Redirecting...');
-                setTimeout(() => {
-                    window.location.href = `/app/token/${extractResult.contractAddress}`;
-                }, 2000);
-
-            } catch (error) {
-                console.error('Resume deployment error:', error);
-                hideDeploymentModal();
-                CreateTokenNotification.showAlert(
-                    'Deployment Failed',
-                    error.message || 'An error occurred during deployment. Please try again.',
-                    'error'
-                );
+            // Populate form fields with data from database
+            document.getElementById('token_name').value = pendingTokenData.name || '';
+            document.getElementById('token_symbol').value = pendingTokenData.symbol || '';
+            document.getElementById('description').value = pendingTokenData.description || '';
+            
+            // Populate social links
+            document.getElementById('website').value = pendingTokenData.website || '';
+            document.getElementById('twitter').value = pendingTokenData.twitter || '';
+            document.getElementById('telegram').value = pendingTokenData.telegram || '';
+            
+            // Populate advanced options
+            if (pendingTokenData.total_supply) {
+                document.getElementById('total_supply').value = pendingTokenData.total_supply;
             }
+            
+            // Show IPFS image if available
+            if (pendingTokenData.ipfs_image_url) {
+                const imagePreview = document.getElementById('image-preview');
+                const imagePreviewImg = document.getElementById('image-preview-img');
+                
+                imagePreviewImg.src = pendingTokenData.ipfs_image_url;
+                imagePreview.style.display = 'block';
+                
+                // Store IPFS URL so it doesn't get re-uploaded
+                window.pendingTokenIPFSImage = pendingTokenData.ipfs_image_url;
+            }
+            
+            // Scroll to top of form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Show success message
+            CreateTokenNotification.showAlert(
+                'Form Populated',
+                'Your pending token data has been loaded into the form. Review it and click "Create Token" when ready to deploy.',
+                'success'
+            );
         }
 
         async function discardPendingToken() {
