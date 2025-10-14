@@ -2201,7 +2201,11 @@
                     const blob = await response.blob();
                     imageBase64 = await new Promise((resolve) => {
                         const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result);
+                        reader.onloadend = () => {
+                            // Extract base64 string without data:image prefix (same as manual upload)
+                            const base64 = reader.result.split(',')[1];
+                            resolve(base64);
+                        };
                         reader.readAsDataURL(blob);
                     });
                     updateDeploymentStatus('AI image prepared successfully!', 'Image Processing Complete');
