@@ -129,13 +129,26 @@ function initiateGraduation() external nonReentrant {
 }
 
 // ====== CHANGE 6: Update Wallet Cap Exemption ======
-function _update(address from, address to, uint256 amount) internal override {
-    // ... existing exemptions
+function _update(address from, address to, uint256 amount) internal virtual override {
+    // ✅ CRITICAL FIX (C-3): Complete exemptions for wallet cap
+    // Exemptions:
+    // 1. Contract itself (holds curve + LP supply)
+    // 2. Airdrop treasury (holds vested allocations)
+    // 3. Graduation oracle (receives LP tokens for DEX)
+    // 4. Owner (emergency operations)
+    // 5. Vesting contracts (can hold up to 25%)
+    // 6. Transfers FROM airdropTreasury (allows distributions)
+    // 7. Transfers FROM contract (buy operations)
+    // 8. Graduated pools (no restrictions)
     
     if (to != address(0) &&
-        to != address(this) &&
+        to != address(this) && 
+        to != airdropTreasury &&        // ✅ FIX: Airdrop treasury exemption
         to != graduationOracle &&
-        !isVestingContract[to] &&  // ✅ Exempt vesting contracts
+        to != owner() &&                 // ✅ FIX: Owner exemption
+        from != airdropTreasury &&       // ✅ FIX: FROM airdrop treasury
+        from != address(this) &&         // ✅ FIX: FROM contract (buy ops)
+        !isVestingContract[to] &&        // ✅ Vesting contract exemption
         !graduated) {
         
         uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100;
@@ -179,18 +192,32 @@ function createToken(
     require(reservedPercentage <= 25, "Vesting exceeds 25%");
     
     if (reservedPercentage > 0) {
-        // ✅ CRITICAL FIX (C-2, H-1): Allocations must sum to exactly 100%
+        // ✅ CRITICAL FIX (C-2): Allocations must sum to exactly 100%
         uint256 totalAllocations = airdropsAllocation + marketingAllocation + teamAllocation;
         require(totalAllocations == 100, "Allocations must sum to exactly 100%");
-        require(totalAllocations > 0, "Must have at least one allocation");
+        // ✅ FIX (L-4): Removed redundant > 0 check (if == 100, always > 0)
         
-        // ✅ FIX (H-2): Prevent duplicate beneficiaries
-        require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
-        require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
-        require(teamBeneficiary != address(0), "Invalid team beneficiary");
-        require(airdropBeneficiary != marketingBeneficiary, "Duplicate beneficiaries");
-        require(airdropBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
-        require(marketingBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+        // ✅ FIX (M-3): Only validate beneficiaries if allocation > 0
+        if (airdropsAllocation > 0) {
+            require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
+        }
+        if (marketingAllocation > 0) {
+            require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
+        }
+        if (teamAllocation > 0) {
+            require(teamBeneficiary != address(0), "Invalid team beneficiary");
+        }
+        
+        // ✅ FIX (M-3): Duplicate checks only for active allocations
+        if (airdropsAllocation > 0 && marketingAllocation > 0) {
+            require(airdropBeneficiary != marketingBeneficiary, "Duplicate beneficiaries");
+        }
+        if (airdropsAllocation > 0 && teamAllocation > 0) {
+            require(airdropBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+        }
+        if (marketingAllocation > 0 && teamAllocation > 0) {
+            require(marketingBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+        }
     }
     
     // Deploy pool with vesting percentage
@@ -568,6 +595,11 @@ class Token(db.Model):
 - ✅ **M-2**: Missing vesting transfer events → Added `VestingTransfer` event
 - ✅ **L-1**: Airdrop claiming unclear → Documented separate community-based claiming
 - ✅ **L-2**: Missing database schema → Added beneficiary address columns
+
+### Round 4 (Final Audit) - FIXED:
+- ✅ **C-3**: Incomplete `_update()` function → NOW includes all 8 exemptions (airdropTreasury, owner, from checks)
+- ✅ **M-3**: Overly restrictive beneficiary validation → NOW only requires addresses if allocation > 0
+- ✅ **L-4**: Redundant validation check → Removed `totalAllocations > 0` (always true if == 100)
 
 **All critical, high, and medium severity issues resolved!** The V2 model is production-ready.
 
