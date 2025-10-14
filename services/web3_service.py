@@ -1308,8 +1308,9 @@ class Web3Service:
             # Find TokenCreated event in logs
             for log in receipt['logs']:
                 if log.get('topics') and len(log['topics']) > 0:
-                    # Check event signature
-                    if log['topics'][0].hex() == event_signature:
+                    # Check event signature (topics can be HexBytes or str)
+                    topic0 = log['topics'][0].hex() if hasattr(log['topics'][0], 'hex') else log['topics'][0]
+                    if topic0 == event_signature:
                         
                         # SECURITY: Verify log was emitted by TokenFactory
                         if log['address'].lower() != self.token_factory_address.lower():
@@ -1319,12 +1320,14 @@ class Web3Service:
                         if len(log['topics']) < 4:
                             raise ValueError('TokenCreated event missing required indexed parameters')
                         
-                        # Extract tokenAddress from topics[1]
-                        token_address = '0x' + log['topics'][1].hex()[-40:]
+                        # Extract tokenAddress from topics[1] (can be HexBytes or str)
+                        topic1 = log['topics'][1].hex() if hasattr(log['topics'][1], 'hex') else log['topics'][1]
+                        token_address = '0x' + topic1[-40:]
                         
                         # SECURITY: Verify creator if provided
                         if expected_creator:
-                            event_creator = '0x' + log['topics'][3].hex()[-40:]
+                            topic3 = log['topics'][3].hex() if hasattr(log['topics'][3], 'hex') else log['topics'][3]
+                            event_creator = '0x' + topic3[-40:]
                             if event_creator.lower() != expected_creator.lower():
                                 raise ValueError(f'Event creator {event_creator} does not match expected creator {expected_creator}')
                         
