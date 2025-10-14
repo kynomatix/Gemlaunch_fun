@@ -1,5 +1,5 @@
 # Overview
-gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem.
+gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -29,6 +29,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **Multi-Wallet Linking System**: Securely links multiple wallets via challenge-response authentication.
 - **Wallet Connection System**: A modal-based system supporting Kastle, KasWare, and MetaMask using challenge-response authentication.
 - **Enhanced Marketplace Search**: Provides comprehensive search across token name, symbol, contract address, and creator information.
+- **Deployment Confirmation System**: A 6-layer security verification system for confirming token deployments, ensuring server-side blockchain verification and multi-layer defense against fake deployments.
 
 ## Smart Contract Architecture
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.
@@ -46,10 +47,7 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 The system includes a Web3 Service Layer for RPC connection to Kasplex zkEVM L2 (Testnet), an Oracle Wallet for automated operations, and contract loading. Transaction utilities handle gas estimation, signing, relay, and status polling, with POA middleware for Kasplex compatibility.
 
 ## Transaction Flow Architecture
-Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool.
-
-## Transaction Manager Module
-A dedicated `static/js/transaction_manager.js` module orchestrates all transaction types (token creation, buy, sell, claim fees) by integrating wallet management with backend APIs. It includes quote validation, network validation, KAS balance checks, gas estimation display, IPFS upload error handling, and SSE connection management.
+Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool. The `static/js/transaction_manager.js` module orchestrates all transaction types by integrating wallet management with backend APIs, including quote validation, network validation, KAS balance checks, gas estimation display, IPFS upload error handling, and SSE connection management.
 
 # External Dependencies
 
@@ -78,167 +76,3 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - **4chan /biz/**: Real-time meme trend scraping.
 - **Reddit CryptoMoonShots**: Community-validated meme trends.
 - **Pinata**: IPFS pinning service for permanent image storage.
----
-
-# Phase 3 Implementation Progress & Audit
-
-## PHASE 3 COMPLETION REPORT ✅
-**Date:** October 12, 2025  
-**Final Review:** Claude Opus  
-**Status:** 100% Complete - All Components Implemented & Architect Approved
-
-### ✅ COMPLETE - Frontend Integration (All Components)
-- ✅ **3.1:** TransactionManager imported & initialized (base_layout.html lines 609-612)
-- ✅ **3.2:** Token Creation Frontend - IPFS upload, deployment modal, SSE monitoring (create_token.html)
-- ✅ **3.3:** Real-time quote updates with fee breakdown (token_detail.js)
-- ✅ **3.4:** Graduation UI - Progress bar with 30s polling, DEX link display (token_charts.html)
-- ✅ **3.5:** Wallet Balance Display - Navigation bar, auto-refresh after trades (wallet_manager.js)
-- ✅ **3.6:** Fee breakdown UI - Anti-Bot, Platform, Creator fees (token_trading.html)
-- ✅ **3.7:** Input event listeners - Real-time quote updates on typing (token_detail.js)
-
-#### ✅ COMPLETE - Backend APIs (Phase 3.8) - **PRECISION FIX APPLIED**
-**All 7 endpoints implemented and architect-approved:**
-- ✅ POST /api/trade/quote-buy - Returns ether-scale floats, nested fees, all frontend fields
-- ✅ POST /api/trade/quote-sell - Returns ether-scale floats, nested fees, all frontend fields
-- ✅ POST /api/trade/buy - Accepts user_address from request or session (MetaMask compatible)
-- ✅ POST /api/trade/sell - Accepts user_address from request or session (MetaMask compatible)
-- ✅ POST /api/trade/{action}/estimate-gas - Returns gas estimates with 20% buffer
-- ✅ POST /api/relay/transaction - Relays signed transactions to blockchain
-- ✅ GET /api/tx/{hash}/stream - SSE monitoring with 2-second polling
-
-**CRITICAL PRECISION FIX:**
-- **Problem:** Wei-scale values (18 decimals) exceeded JavaScript safe integer limit (2^53-1)
-- **Solution:** Quote endpoints return **ether-scale floats** instead of wei strings
-  - `tokens_out` in ether (e.g., 1234567.89 tokens)
-  - `kas_out` in ether (e.g., 9.45 KAS)
-  - All fees in ether (e.g., 0.0945 KAS)
-- **Frontend compatibility:** Math.floor(), toFixed() work with float numbers
-- **Response format:** Nested `fees` object {anti_bot, platform, creator}, auto_slippage_bps, price_impact_percent
-
-**MetaMask Fix:**
-- Frontend now sends `user_address` in buy/sell params
-- Backend accepts from request body OR session (fallback pattern)
-- Both paths work: MetaMask (request) and session wallets
-
-#### ✅ PHASE 3 API TESTING COMPLETE (5/7 APIs Fully Functional)
-- ✅ **Deployed Test Token:** 0xD9fa23DD8D343602493Bb54243a73f005FD2fdd1 (P3T3620) on Kasplex Testnet
-- ✅ **Liquidity Seeded:** 4 KAS buy transaction confirmed (TX: 0x76417077...)
-- ✅ **Buy Quote API:** Working (200) - Returns accurate quotes with fees
-- ✅ **Sell Quote API:** Working (200) - Returns accurate quotes with fees
-- ✅ **Buy Transaction Building:** Working (200) - Generates proper unsigned tx_data
-- ⚠️ **Sell Transaction Building:** Partial (depends on wallet balance)
-- ✅ **Buy Gas Estimation:** Working (200) - Returns ~116k gas estimate
-- ⚠️ **Sell Gas Estimation:** Working with validation (400 for insufficient balance/min trade)
-- ✅ **Validation & Error Handling:** Proper 400 errors for invalid inputs, 500 for server errors
-
-**Test Environment Limitations:**
-- Sell operations constrained by Oracle wallet token balance (~150k tokens from seeding)
-- Contract has minimum trade threshold requiring larger amounts
-- Gas estimation returns actionable 400 errors when constraints violated (correct behavior)
-
-**Core Trading Functionality Status:** ✅ VERIFIED ON REAL BLOCKCHAIN
-- All quote calculations working with live contract data
-- Transaction building functional for valid scenarios
-- Gas estimation working with proper validation
-- Real-time blockchain integration confirmed
-
-### Key Fixes Applied
-- **CB-1:** ERC20 approval - BondingCurvePool IS the token (correct architecture)
-- **M-8:** Quote storage with flat structure (spread operator)
-- **M-9:** Mode-based parameters (kas_amount for buy, token_amount for sell)
-- **M-10:** Mode-aware input listeners (buy/sell gating)
-- **CD-1:** Quote storage in main updateTokenAmount() function
-- **H-2:** Network validation (Chain ID 167012)
-- **H-3:** KAS balance check before buy
-- **H-4:** Gas estimation display
-- **H-5:** AbortController signal propagation
-- **H-6:** Loading state functions with CSS animations
-- **NC-2:** SSE connection cleanup
-- **NC-3:** Quote freshness validation (30-second expiry)
-
-### SMART_CONTRACT_IMPLEMENTATION.md Updates
-✅ Marked complete in official planning doc:
-- [x] Step 1: Real-time quote updates (Phase 3.3)
-- [x] Step 2: Fee breakdown display (Phase 3.4)
-- [x] Step 3: Trade execution (Frontend complete, backend pending)
-- [x] Step 4: Loading & Status Helpers (Phase 3.6)
-- [x] Step 5: CSS for Loading States (Phase 3.6)
-- [x] Step 6: Input Event Listeners (Phase 3.7)
-
-### Phase 3 Status: ✅ COMPLETE  
-**All critical backend trading APIs implemented and validated on real blockchain contracts**
-
-#### Completed Deliverables:
-1. ✅ All 7 Phase 3.8 backend API endpoints implemented
-2. ✅ Test token deployed and verified on Kasplex Testnet  
-3. ✅ Liquidity seeded and trading functionality confirmed
-4. ✅ Real-time quote calculations working
-5. ✅ Transaction building APIs functional
-6. ✅ Gas estimation with proper validation
-7. ✅ Graduation status API with live blockchain data
-8. ✅ Token creation API with IPFS integration
-
-#### Known Limitations:
-- Sell gas estimation has minimum trade threshold validation (returns proper 400 errors)
-- Test environment wallet constraints (Oracle has limited tokens for testing)
-- These are test setup issues, not code bugs - production usage unaffected
-
-### ✅ COMPLETE - Deployment Confirmation System
-
-**Backend Endpoint:**
-- POST /api/token/{id}/confirm-deployment
-- **Security Architecture:** 6-layer verification system
-  1. Session Authentication - Only verified sessions (wallet_verified flag)
-  2. Creator Authorization - Caller must be token creator
-  3. TokenFactory Verification - Transaction must be to TokenFactory address
-  4. Event Source Verification - TokenCreated event must come from TokenFactory
-  5. Event Creator Verification - Event creator must match expected creator
-  6. Transaction Sender Verification - tx.from must match creator wallet
-
-**Frontend Integration:**
-- TransactionManager.extractContractAddressFromReceipt() method
-- Token creation flow with wallet signing
-- Transaction monitoring via SSE
-- Trading execution with TransactionManager
-
-**Key Features:**
-- Server-side blockchain verification (no trusted frontend input)
-- Multi-layer defense against fake deployments
-- Wallet-specific handling (MetaMask vs Kaspa wallets)
-- Real-time transaction monitoring
-- Automatic balance updates post-trade
-
-**Implementation Notes:**
-- Frontend sends tx_hash only (not contract_address)
-- Backend extracts contract address from blockchain receipt
-- Security prevents arbitrary contract binding attacks
-- All deployment verification happens server-side
-
-### ✅ October 14, 2025 - Critical Bug Fixes
-
-**1. TokenCreated Event Extraction Fix**
-- **Issue:** Event signature comparison failed because RPC returns topics without "0x" prefix
-- **Fix:** Normalized topic hash comparison by adding prefix check before matching
-- **Impact:** Automatic contract address extraction now works correctly
-- **Files:** services/web3_service.py
-
-**2. Circulating Supply Fix**
-- **Issue:** Token circulating_supply showed 0 after deployment (not fetched from blockchain)
-- **Fix:** Updated `confirm_token_deployment()` to fetch totalSupply() from deployed contract
-- **Fallback:** Uses database total_supply if blockchain fetch fails
-- **Files:** app.py (lines 5087-5112)
-
-**3. Image Loading Fix**
-- **Issue:** IPFS images appeared not to load (showed fallback turquoise placeholder)
-- **Root Cause:** Browser caching - images were working correctly, required hard refresh
-- **Fix:** Added onerror handler with console logging for future debugging
-- **Verification:** IPFS URLs confirmed working (HTTP 200, proper content-type image/webp)
-- **Status:** ✅ Resolved - Images loading correctly after cache clear
-- **Files:** templates/app/partials/token_header.html
-
-### Next Steps: Phase 4
-**READY FOR:** Frontend integration testing and user acceptance testing
-- Phase 4: Trading Enablement & QA (see SMART_CONTRACT_IMPLEMENTATION.md)
-- End-to-end testing with real user wallets
-- Anti-bot fee decay validation
-- Graduation flow testing
