@@ -2309,11 +2309,19 @@
             // Show deployment modal
             showDeploymentModal();
             
+            let tokenId = null; // Declare here so it's accessible in catch block
+            
             try {
                 let imageBase64;
+                let existingIPFSUrl = null;
                 
-                // Step 1: Prepare image (either file upload or AI-generated)
-                if (imageFile) {
+                // Step 1: Prepare image (file upload, AI-generated, or existing IPFS)
+                if (pendingIPFSImage) {
+                    // Reuse existing IPFS image (crash recovery)
+                    updateDeploymentStatus('Using existing IPFS image...');
+                    existingIPFSUrl = pendingIPFSImage;
+                    updateDeploymentStatus('Image ready (reusing existing IPFS upload)', 'Image Processing Complete');
+                } else if (imageFile) {
                     // File upload flow (existing)
                     updateDeploymentStatus('Preparing image for IPFS upload...');
                     imageBase64 = await convertImageToBase64(imageFile);
@@ -2356,13 +2364,12 @@
                     return false;
                 }
                 
-                let tokenId = null; // Declare here so it's accessible in catch block
-                
                 const tokenData = {
                     name: formData.get('name'),
                     symbol: formData.get('symbol'),
                     description: blockchainDescription,
                     image_file: imageBase64,
+                    existing_ipfs_url: existingIPFSUrl,  // Pass existing IPFS URL if resuming
                     total_supply: formData.get('total_supply') || '1000000000',
                     reserved_percentage: formData.get('reserved_percentage') || '0',
                     anti_bot_enabled: formData.get('anti_bot_enabled') === 'on',

@@ -4830,13 +4830,20 @@ def api_create_token():
         # Handle IPFS image upload/hash
         ipfs_hash = (data.get('ipfs_hash') or '').strip()
         image_file_base64 = (data.get('image_file') or '').strip()
+        existing_ipfs_url = (data.get('existing_ipfs_url') or '').strip()
         ipfs_image_url = None
         
-        if not ipfs_hash and not image_file_base64:
-            return jsonify({'success': False, 'error': 'Either ipfs_hash or image_file is required'}), 400
+        if not ipfs_hash and not image_file_base64 and not existing_ipfs_url:
+            return jsonify({'success': False, 'error': 'Either ipfs_hash, image_file, or existing_ipfs_url is required'}), 400
         
+        # If existing IPFS URL provided (crash recovery), use it directly
+        if existing_ipfs_url:
+            ipfs_image_url = existing_ipfs_url
+            # Extract hash from URL if possible (format: https://gateway.pinata.cloud/ipfs/QmXXX...)
+            if '/ipfs/' in existing_ipfs_url:
+                ipfs_hash = existing_ipfs_url.split('/ipfs/')[1].split('?')[0]
         # If image_file provided, upload to IPFS
-        if image_file_base64 and not ipfs_hash:
+        elif image_file_base64 and not ipfs_hash:
             try:
                 from services.pinata_service import PinataService
                 import base64
@@ -4865,8 +4872,8 @@ def api_create_token():
                 logging.error(f"Error uploading image to IPFS: {str(e)}")
                 return jsonify({'success': False, 'error': f'IPFS upload failed: {str(e)}'}), 500
         
-        # Generate IPFS URL
-        if ipfs_hash:
+        # Generate IPFS URL (if not already set from existing_ipfs_url)
+        if ipfs_hash and not ipfs_image_url:
             from services.pinata_service import PinataService
             pinata = PinataService()
             ipfs_image_url = pinata.get_ipfs_url(ipfs_hash)
