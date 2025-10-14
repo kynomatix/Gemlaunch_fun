@@ -4818,14 +4818,24 @@ def api_create_token():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': 'Invalid reserved_percentage format'}), 400
         
-        # Check name/symbol uniqueness
-        existing_by_name = Token.query.filter(db.func.lower(Token.name) == name.lower()).first()
-        if existing_by_name:
-            return jsonify({'success': False, 'error': f'Token name "{name}" already exists'}), 400
+        # Check if we're resuming an existing pending token (crash recovery)
+        resuming_token_id = data.get('resuming_token_id')
+        existing_token = None
         
-        existing_by_symbol = Token.query.filter(db.func.lower(Token.symbol) == symbol.lower()).first()
-        if existing_by_symbol:
-            return jsonify({'success': False, 'error': f'Token symbol "{symbol}" already exists'}), 400
+        if resuming_token_id:
+            # Resuming: validate the token exists and is pending
+            existing_token = Token.query.filter_by(id=resuming_token_id, deployment_status='pending').first()
+            if not existing_token:
+                return jsonify({'success': False, 'error': 'Cannot resume: token not found or already deployed'}), 400
+        else:
+            # New token: check name/symbol uniqueness
+            existing_by_name = Token.query.filter(db.func.lower(Token.name) == name.lower()).first()
+            if existing_by_name:
+                return jsonify({'success': False, 'error': f'Token name "{name}" already exists'}), 400
+            
+            existing_by_symbol = Token.query.filter(db.func.lower(Token.symbol) == symbol.lower()).first()
+            if existing_by_symbol:
+                return jsonify({'success': False, 'error': f'Token symbol "{symbol}" already exists'}), 400
         
         # Handle IPFS image upload/hash
         ipfs_hash = (data.get('ipfs_hash') or '').strip()
@@ -4881,53 +4891,85 @@ def api_create_token():
         # Get or create user
         user = User.get_or_create_by_wallet(user_address)
         
-        # Create database record with status='pending'
-        new_token = Token()
-        new_token.name = name
-        new_token.symbol = symbol
-        new_token.description = description
-        new_token.total_supply = total_supply
-        new_token.reserved_percentage = reserved_percentage
-        new_token.anti_bot_enabled = bool(data.get('anti_bot_enabled', False))
-        
-        # Calculate reserved tokens
-        if reserved_percentage > 0:
-            new_token.reserved_tokens = int(total_supply * (reserved_percentage / 100))
+        # Either update existing token (crash recovery) or create new one
+        if existing_token:
+            # Resume: update the existing pending token
+            new_token = existing_token
+            new_token.name = name
+            new_token.symbol = symbol
+            new_token.description = description
+            new_token.total_supply = total_supply
+            new_token.reserved_percentage = reserved_percentage
+            new_token.anti_bot_enabled = bool(data.get('anti_bot_enabled', False))
+            
+            # Calculate reserved tokens
+            if reserved_percentage > 0:
+                new_token.reserved_tokens = int(total_supply * (reserved_percentage / 100))
+            else:
+                new_token.reserved_tokens = 0
+            
+            # Social links
+            new_token.website = (data.get('website') or '').strip()
+            new_token.twitter = (data.get('twitter') or '').strip()
+            new_token.telegram = (data.get('telegram') or '').strip()
+            
+            # IPFS data (update if new image provided)
+            if ipfs_hash:
+                new_token.ipfs_image_hash = ipfs_hash
+            if ipfs_image_url:
+                new_token.ipfs_image_url = ipfs_image_url
+                new_token.image_url = ipfs_image_url
+            
+            token_id = new_token.id
+            logging.info(f"Resuming token deployment - ID: {token_id}, Name: {name}, Symbol: {symbol}")
         else:
-            new_token.reserved_tokens = 0
-        
-        # Social links
-        new_token.website = (data.get('website') or '').strip()
-        new_token.twitter = (data.get('twitter') or '').strip()
-        new_token.telegram = (data.get('telegram') or '').strip()
-        
-        # IPFS data
-        new_token.ipfs_image_hash = ipfs_hash
-        new_token.ipfs_image_url = ipfs_image_url
-        new_token.image_url = ipfs_image_url
-        
-        # Set creator and status
-        new_token.creator_id = user.id
-        new_token.deployment_status = 'pending'
-        new_token.circulating_supply = 0
-        new_token.current_price = 0.001
-        new_token.current_market_cap = 1000
-        
-        # Add to database and flush to get ID
-        db.session.add(new_token)
-        db.session.flush()
-        
-        token_id = new_token.id
-        
-        # Create default token settings
-        from models_extended import TokenSettings
-        token_settings = TokenSettings(token_id=token_id)
-        db.session.add(token_settings)
+            # New token: create database record with status='pending'
+            new_token = Token()
+            new_token.name = name
+            new_token.symbol = symbol
+            new_token.description = description
+            new_token.total_supply = total_supply
+            new_token.reserved_percentage = reserved_percentage
+            new_token.anti_bot_enabled = bool(data.get('anti_bot_enabled', False))
+            
+            # Calculate reserved tokens
+            if reserved_percentage > 0:
+                new_token.reserved_tokens = int(total_supply * (reserved_percentage / 100))
+            else:
+                new_token.reserved_tokens = 0
+            
+            # Social links
+            new_token.website = (data.get('website') or '').strip()
+            new_token.twitter = (data.get('twitter') or '').strip()
+            new_token.telegram = (data.get('telegram') or '').strip()
+            
+            # IPFS data
+            new_token.ipfs_image_hash = ipfs_hash
+            new_token.ipfs_image_url = ipfs_image_url
+            new_token.image_url = ipfs_image_url
+            
+            # Set creator and status
+            new_token.creator_id = user.id
+            new_token.deployment_status = 'pending'
+            new_token.circulating_supply = 0
+            new_token.current_price = 0.001
+            new_token.current_market_cap = 1000
+            
+            # Add to database and flush to get ID
+            db.session.add(new_token)
+            db.session.flush()
+            
+            token_id = new_token.id
+            
+            # Create default token settings
+            from models_extended import TokenSettings
+            token_settings = TokenSettings(token_id=token_id)
+            db.session.add(token_settings)
+            
+            logging.info(f"Token database record created - ID: {token_id}, Name: {name}, Symbol: {symbol}")
         
         # Commit to database
         db.session.commit()
-        
-        logging.info(f"Token database record created - ID: {token_id}, Name: {name}, Symbol: {symbol}")
         
         # Build unsigned transaction
         try:

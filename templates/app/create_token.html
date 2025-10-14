@@ -2310,6 +2310,7 @@
             showDeploymentModal();
             
             let tokenId = null; // Declare here so it's accessible in catch block
+            let resumingTokenId = window.resumingTokenId || null; // Check if we're resuming
             
             try {
                 let imageBase64;
@@ -2370,6 +2371,7 @@
                     description: blockchainDescription,
                     image_file: imageBase64,
                     existing_ipfs_url: existingIPFSUrl,  // Pass existing IPFS URL if resuming
+                    resuming_token_id: resumingTokenId,  // Pass token ID to skip uniqueness checks
                     total_supply: formData.get('total_supply') || '1000000000',
                     reserved_percentage: formData.get('reserved_percentage') || '0',
                     anti_bot_enabled: formData.get('anti_bot_enabled') === 'on',
@@ -3462,6 +3464,9 @@
             if (pendingTokenData.total_supply) {
                 document.getElementById('total_supply').value = pendingTokenData.total_supply;
             }
+            
+            // Store token ID for resume (to skip uniqueness checks)
+            window.resumingTokenId = pendingTokenData.id;
             
             // Show IPFS image if available - use setTimeout to ensure DOM is ready
             const imageUrl = pendingTokenData.ipfs_image_url || pendingTokenData.image_url;
