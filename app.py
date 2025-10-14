@@ -5249,7 +5249,8 @@ def resume_token_deployment(token_id):
         web3_service = get_web3_service()
         
         # Convert total_supply to wei (assuming 18 decimals)
-        total_supply_wei = token.total_supply * (10 ** 18)
+        # Must be int for Web3 uint256 encoding (database stores as Decimal)
+        total_supply_wei = int(token.total_supply * (10 ** 18))
         
         # Match exact parameter order from /api/token/create endpoint
         unsigned_tx = web3_service.create_token_tx_data(
