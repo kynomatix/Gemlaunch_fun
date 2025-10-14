@@ -3435,6 +3435,8 @@
                 return;
             }
 
+            console.log('Resuming with data:', pendingTokenData);
+
             // Hide resume modal
             document.getElementById('resumeDeploymentModal').style.display = 'none';
 
@@ -3454,22 +3456,32 @@
             }
             
             // Show IPFS image if available
+            console.log('IPFS Image URL:', pendingTokenData.ipfs_image_url);
             if (pendingTokenData.ipfs_image_url) {
                 const uploadArea = document.querySelector('.image-upload');
-                uploadArea.innerHTML = `
-                    <input type="file" id="image" name="image" accept="image/*">
-                    <img src="${pendingTokenData.ipfs_image_url}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
-                    <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
-                        ✅ Loaded from IPFS
-                    </p>
-                    <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change image</p>
-                `;
+                console.log('Upload area element:', uploadArea);
                 
-                // Re-attach event listener
-                initImageUploadHandler();
-                
-                // Store IPFS URL so it doesn't get re-uploaded
-                window.pendingTokenIPFSImage = pendingTokenData.ipfs_image_url;
+                if (uploadArea) {
+                    uploadArea.innerHTML = `
+                        <input type="file" id="image" name="image" accept="image/*">
+                        <img src="${pendingTokenData.ipfs_image_url}" style="max-width: 80px; max-height: 80px; border-radius: 10px; object-fit: cover;">
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #20B2AA;">
+                            ✅ Loaded from IPFS
+                        </p>
+                        <p style="margin: 0; font-size: 0.8rem; color: #CCCCCC;">Click to change image</p>
+                    `;
+                    
+                    // Re-attach event listener
+                    initImageUploadHandler();
+                    
+                    // Store IPFS URL so it doesn't get re-uploaded
+                    window.pendingTokenIPFSImage = pendingTokenData.ipfs_image_url;
+                    console.log('Image loaded successfully');
+                } else {
+                    console.error('Upload area not found!');
+                }
+            } else {
+                console.log('No IPFS image URL in token data');
             }
             
             // Scroll to top of form
