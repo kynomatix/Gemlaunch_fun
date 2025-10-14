@@ -2374,6 +2374,9 @@
                     resuming_token_id: resumingTokenId,  // Pass token ID to skip uniqueness checks
                     total_supply: formData.get('total_supply') || '1000000000',
                     reserved_percentage: formData.get('reserved_percentage') || '0',
+                    airdrops_allocation: formData.get('airdrops_allocation') || '33',
+                    marketing_allocation: formData.get('marketing_allocation') || '33',
+                    team_allocation: formData.get('team_allocation') || '34',
                     anti_bot_enabled: formData.get('anti_bot_enabled') === 'on',
                     website: formData.get('website') || '',
                     twitter: formData.get('twitter') || '',
