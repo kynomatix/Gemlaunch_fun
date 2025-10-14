@@ -331,6 +331,23 @@
             border-color: #20B2AA;
         }
         
+        .cancel-ai-image-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: rgba(255, 82, 82, 0.1);
+            color: #ff5252;
+            font-weight: 600;
+            border: 1px solid #ff5252;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .cancel-ai-image-btn:hover {
+            background: rgba(255, 82, 82, 0.2);
+            border-color: #ff5252;
+        }
+        
         /* Social Links Styling */
         .social-links-header {
             cursor: pointer;
@@ -1325,6 +1342,9 @@
                                 <button type="button" class="regenerate-btn" onclick="generateAIImage(event)">
                                     <i class="fas fa-redo"></i> Regenerate
                                 </button>
+                                <button type="button" class="cancel-ai-image-btn" onclick="cancelAIImage()" style="display: none;">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
                             </div>
                         </div>
                         
@@ -1586,6 +1606,7 @@
                     <button class="gemmy-quick-btn" data-prompt="Suggest a creative and catchy name for my token">💡 Suggest Name</button>
                     <button class="gemmy-quick-btn" data-prompt="Suggest a memorable symbol (3-5 letters) for my token">🎯 Suggest Symbol</button>
                     <button class="gemmy-quick-btn" data-prompt="Write compelling marketing copy for my token">✍️ Marketing Copy</button>
+                    <button class="gemmy-quick-btn" data-prompt="Shorten my description to max 280 characters">📝 Shorten Description</button>
                 </div>
 
                 <div class="gemmy-chat-input-area">
@@ -2959,6 +2980,78 @@
                     chatInput.focus();
                 }
             }
+            
+            async function handleShortenDescriptionRequest() {
+                // Get current description from textarea
+                const descField = document.getElementById('description');
+                const currentDescription = descField?.value.trim() || '';
+                
+                // Validate we have a description to shorten
+                if (!currentDescription) {
+                    window.showGemmyNotification('⚠️ Please enter a description first', 'error');
+                    return;
+                }
+                
+                // Build the request message
+                const message = `Shorten this description to maximum 280 characters while keeping the key points:\n\n${currentDescription}\n\nRespond with ONLY the shortened description, nothing else.`;
+                
+                addMessage('Shorten my description to 280 chars', 'user');
+                conversationHistory.push({ role: 'user', content: message });
+                sendBtn.disabled = true;
+                showTyping();
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const response = await fetch('/api/gemmy/suggest', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            context: {},
+                            mode: 'creative',
+                            history: conversationHistory.slice(-10)
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    hideTyping();
+                    
+                    if (data.success && data.response) {
+                        let shortenedDesc = data.response.trim();
+                        
+                        // Remove surrounding quotes if present
+                        if ((shortenedDesc.startsWith('"') && shortenedDesc.endsWith('"')) ||
+                            (shortenedDesc.startsWith("'") && shortenedDesc.endsWith("'"))) {
+                            shortenedDesc = shortenedDesc.slice(1, -1).trim();
+                        }
+                        
+                        // Show the response in chat
+                        addMessage(shortenedDesc, 'assistant');
+                        conversationHistory.push({ role: 'assistant', content: shortenedDesc });
+                        
+                        // Fill the description field directly
+                        if (descField) {
+                            descField.value = shortenedDesc;
+                            descField.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        
+                        window.showGemmyNotification('✨ Description shortened!', 'success');
+                    } else {
+                        addMessage(data.error || 'Sorry, I encountered an error. Please try again!', 'assistant');
+                    }
+                } catch (error) {
+                    hideTyping();
+                    addMessage('Sorry, I encountered a connection error. Please try again!', 'assistant');
+                    console.error('Gemmy error:', error);
+                } finally {
+                    sendBtn.disabled = false;
+                    chatInput.focus();
+                }
+            }
 
             async function sendMessage(message) {
                 if (!message.trim()) return;
@@ -3031,6 +3124,8 @@
                         // Special handling for Marketing Copy button
                         if (prompt.includes('marketing copy')) {
                             handleMarketingCopyRequest();
+                        } else if (prompt.includes('Shorten my description')) {
+                            handleShortenDescriptionRequest();
                         } else {
                             sendMessage(prompt);
                         }
@@ -3076,6 +3171,9 @@
         });
 
         // AI Image Generation Functions
+        let committedImageUrl = null; // Track committed image
+        let isImageCommitted = false; // Track if image has been committed
+        
         async function generateAIImage(event) {
             if (event) event.preventDefault();
             
@@ -3137,8 +3235,25 @@
                     const previewImg = document.getElementById('ai-preview-img');
                     previewImg.src = data.image_url;
                     
-                    // Store the image URL in hidden field
-                    document.getElementById('ai-image-url').value = data.image_url;
+                    // Store in temporary preview (NOT committed yet)
+                    const previewImageUrl = data.image_url;
+                    
+                    // Only update hidden field if no image is committed yet
+                    if (!isImageCommitted) {
+                        document.getElementById('ai-image-url').value = previewImageUrl;
+                    }
+                    
+                    // Show/hide cancel button based on committed state
+                    const cancelBtn = document.querySelector('.cancel-ai-image-btn');
+                    if (isImageCommitted && committedImageUrl !== previewImageUrl) {
+                        // Show cancel button if there's a committed image and this is a new preview
+                        cancelBtn.style.display = 'inline-block';
+                    } else {
+                        cancelBtn.style.display = 'none';
+                    }
+                    
+                    // Store preview URL for cancel functionality
+                    previewImg.dataset.previewUrl = previewImageUrl;
                     
                     // Show preview
                     document.getElementById('ai-image-preview').style.display = 'flex';
@@ -3156,12 +3271,20 @@
         }
         
         function useAIImage() {
-            const imageUrl = document.getElementById('ai-image-url').value;
+            const previewImg = document.getElementById('ai-preview-img');
+            const imageUrl = previewImg.dataset.previewUrl || document.getElementById('ai-image-url').value;
             
             if (!imageUrl) {
                 CreateTokenNotification.showAlert('No Image', 'No AI-generated image to use.', 'error');
                 return;
             }
+            
+            // Mark as committed
+            committedImageUrl = imageUrl;
+            isImageCommitted = true;
+            
+            // Update hidden field with committed image
+            document.getElementById('ai-image-url').value = imageUrl;
             
             // Hide AI preview and show success in upload area
             document.getElementById('ai-image-preview').style.display = 'none';
@@ -3180,6 +3303,23 @@
             initImageUploadHandler();
             
             CreateTokenNotification.showAlert('Image Applied!', 'AI-generated image will be used for your token.', 'success');
+        }
+        
+        function cancelAIImage() {
+            // Restore committed image
+            if (isImageCommitted && committedImageUrl) {
+                const previewImg = document.getElementById('ai-preview-img');
+                previewImg.src = committedImageUrl;
+                previewImg.dataset.previewUrl = committedImageUrl;
+                
+                // Hide cancel button
+                document.querySelector('.cancel-ai-image-btn').style.display = 'none';
+                
+                CreateTokenNotification.showAlert('Cancelled', 'Restored your committed image.', 'success');
+            } else {
+                // No committed image, just hide preview
+                document.getElementById('ai-image-preview').style.display = 'none';
+            }
         }
 </script>
 {% endblock %}
