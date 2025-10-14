@@ -465,7 +465,6 @@
                     {% if user %}
                     <button onclick="toggleWalletMenu()" class="wallet-connected">
                         <span class="wallet-address">{{ session.wallet_address[:8] }}...{{ session.wallet_address[-6:] if session.wallet_address else user.wallet_address[-6:] }}</span>
-                        <span id="walletBalance" style="margin-left: 10px; color: #20B2AA;">0 KAS</span>
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div id="walletDropdown" class="wallet-dropdown" style="display: none;">
