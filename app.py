@@ -5081,12 +5081,32 @@ def confirm_token_deployment(token_id):
                 'error': f'Contract address already exists for token ID {existing.id} ({existing.name})'
             }), 400
         
+        # Fetch totalSupply from blockchain
+        try:
+            import json
+            with open('artifacts/contracts/BondingCurvePool.sol/BondingCurvePool.json') as f:
+                pool_abi = json.load(f)['abi']
+            
+            pool_contract = web3_service.w3.eth.contract(
+                address=Web3.to_checksum_address(contract_address),
+                abi=pool_abi
+            )
+            
+            total_supply_wei = pool_contract.functions.totalSupply().call()
+            circulating_supply_tokens = total_supply_wei // (10 ** 18)  # Convert from wei to tokens
+            
+            logging.info(f"Fetched totalSupply from blockchain: {circulating_supply_tokens:,} tokens")
+        except Exception as e:
+            logging.error(f"Failed to fetch totalSupply from blockchain: {e}")
+            circulating_supply_tokens = token.total_supply  # Fallback to database value
+        
         # Update token record with verified data
         token.contract_address = contract_address
         token.deployment_tx = tx_hash
         token.deployment_block_number = data.get('block_number')
         token.deployment_status = 'deployed'
         token.is_active = True
+        token.circulating_supply = circulating_supply_tokens
         
         db.session.commit()
         
