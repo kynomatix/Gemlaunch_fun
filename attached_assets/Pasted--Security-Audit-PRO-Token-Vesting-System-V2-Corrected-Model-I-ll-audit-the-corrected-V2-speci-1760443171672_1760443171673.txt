@@ -1,0 +1,673 @@
+# Security Audit: PRO Token Vesting System V2 (Corrected Model)
+
+I'll audit the corrected V2 specification with the simplified tokenomics model.
+
+---
+
+## 🔴 **CRITICAL ISSUES**
+
+### **C-1: Constructor Only Mints Partial Supply**
+
+**Severity:** CRITICAL (Blocks Deployment)  
+**Location:** BondingCurvePool.sol constructor
+
+**Issue:**
+The constructor only mints `curveSupply + vestingSupply`, missing the 25% LP tokens!
+
+**Current Code:**
+```solidity
+uint256 curveSupply = totalSupply * (75 - _reservedPercentage) / 100;
+uint256 vestingSupply = totalSupply * _reservedPercentage / 100;
+
+// ❌ Only mints curve + vesting
+_mint(address(this), curveSupply);
+if (vestingSupply > 0) {
+    _mint(address(this), vestingSupply);
+}
+```
+
+**Example (10% vesting):**
+- Curve: 65% ✓
+- Vesting: 10% ✓
+- LP: 25% ❌ **MISSING!**
+- Total minted: 75% (should be 100%)
+
+**Impact:**
+- LP tokens don't exist
+- Graduation will fail (can't transfer non-existent tokens)
+- Total supply is wrong
+
+**Required Fix:**
+```solidity
+constructor(
+    // ... params
+    uint8 _reservedPercentage
+) {
+    // ... validation
+    
+    // ✅ Calculate allocations (for tracking only)
+    uint256 curveSupply = totalSupply * (75 - _reservedPercentage) / 100;
+    uint256 vestingSupply = totalSupply * _reservedPercentage / 100;
+    uint256 lpSupply = totalSupply * 25 / 100;  // Always 25%
+    
+    // ✅ Mint ENTIRE supply to contract
+    _mint(address(this), totalSupply);
+    
+    // ✅ Initialize virtual reserves (only curve supply is tradeable)
+    virtualTokenReserve = curveSupply;
+    virtualKasReserve = INITIAL_VIRTUAL_KAS;
+    
+    // Note: LP (25%) + Vesting stay in contract
+    // Vesting will be transferred by factory
+    // LP will be used during graduation
+}
+```
+
+**Verification:**
+```solidity
+// At deployment:
+totalSupply() == 1,000,000,000 tokens
+balanceOf(address(this)) == 1,000,000,000 tokens ✓
+virtualTokenReserve == curveSupply (e.g., 650M for 10% vesting)
+Remaining in contract == lpSupply + vestingSupply (e.g., 250M + 100M = 350M)
+```
+
+---
+
+### **C-2: Unallocated Vesting Tokens Stuck Forever**
+
+**Severity:** CRITICAL (Financial Loss)  
+**Location:** TokenFactory.sol allocation validation
+
+**Issue:**
+Allocations can sum to < 100%, leaving tokens stuck in the contract with no way to retrieve them.
+
+**Current Code:**
+```solidity
+require(
+    airdropsAllocation + marketingAllocation + teamAllocation <= 100,
+    "Allocations cannot exceed 100%"
+);
+```
+
+**Attack Scenario:**
+```
+reservedPercentage = 20% (200M tokens)
+airdropsAllocation = 40% → 80M tokens
+marketingAllocation = 30% → 60M tokens
+teamAllocation = 20% → 40M tokens
+Total allocated = 90% → 180M tokens
+
+Remaining 10% (20M tokens) = STUCK FOREVER
+```
+
+**Why Stuck:**
+1. `distributeReserve()` is blocked: `require(reservedPercentage == 0, "PRO tokens use vesting contracts")`
+2. No other function can claim these tokens
+3. Not in vesting contracts
+4. Not in curve (virtualTokenReserve)
+5. Not in LP allocation
+
+**Impact:**
+- Creator loses access to 20M tokens (in example)
+- Tokens remain in contract forever
+- Economic inefficiency
+
+**Required Fix (Option 1 - Strict):**
+```solidity
+require(
+    airdropsAllocation + marketingAllocation + teamAllocation == 100,
+    "Allocations must sum to exactly 100%"
+);
+```
+
+**Required Fix (Option 2 - Flexible with Remainder Handler):**
+```solidity
+// Allow <= 100 but handle remainder
+uint256 totalAllocated = airdropsAllocation + marketingAllocation + teamAllocation;
+require(totalAllocated <= 100, "Allocations exceed 100%");
+
+// Calculate remainder
+uint256 totalVesting = totalSupply * reservedPercentage / 100;
+uint256 airdropTokens = totalVesting * airdropsAllocation / 100;
+uint256 marketingTokens = totalVesting * marketingAllocation / 100;
+uint256 teamTokens = totalVesting * teamAllocation / 100;
+
+uint256 remainderTokens = totalVesting - airdropTokens - marketingTokens - teamTokens;
+
+// ✅ If remainder exists, add to creator's choice (e.g., team vesting)
+if (remainderTokens > 0) {
+    teamTokens += remainderTokens;
+}
+```
+
+**Recommendation:**
+Use **Option 1 (Strict)** for simplicity and clarity. Require allocations to sum to exactly 100%.
+
+---
+
+## 🟡 **HIGH SEVERITY ISSUES**
+
+### **H-1: Missing Validation for Zero Allocations**
+
+**Severity:** HIGH  
+**Location:** TokenFactory.sol vesting deployment
+
+**Issue:**
+If all three allocations are 0%, but `reservedPercentage > 0`, vesting tokens are allocated but no vesting contracts are deployed.
+
+**Scenario:**
+```
+reservedPercentage = 10% (100M tokens)
+airdropsAllocation = 0%
+marketingAllocation = 0%
+teamAllocation = 0%
+Total = 0%
+
+Result: 100M tokens allocated for vesting but NO vesting contracts deployed!
+Tokens stuck in BondingCurvePool with no way to retrieve.
+```
+
+**Required Fix:**
+```solidity
+if (reservedPercentage > 0) {
+    uint256 totalAllocations = airdropsAllocation + marketingAllocation + teamAllocation;
+    
+    require(totalAllocations > 0, "Must allocate vesting tokens if reservedPercentage > 0");
+    require(totalAllocations == 100, "Allocations must sum to 100%");
+    
+    // ... rest of vesting deployment
+}
+```
+
+---
+
+### **H-2: No Validation for Duplicate Beneficiaries**
+
+**Severity:** HIGH  
+**Location:** TokenFactory.sol beneficiary validation
+
+**Issue:**
+Nothing prevents the same address from being used for multiple vesting types, which could cause:
+1. Confusion in UI (same wallet sees multiple vesting entries)
+2. Economic centralization (one wallet controls all vesting)
+
+**Example:**
+```solidity
+airdropBeneficiary = 0xCreator
+marketingBeneficiary = 0xCreator
+teamBeneficiary = 0xCreator
+
+// All vesting goes to same wallet - defeats purpose of separation
+```
+
+**Impact:**
+- Defeats the purpose of separate vesting schedules
+- UI confusion (which vesting contract to claim from?)
+- Potential for mistakes in claiming
+
+**Recommendation:**
+```solidity
+require(airdropBeneficiary != marketingBeneficiary, "Duplicate beneficiaries");
+require(airdropBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+require(marketingBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+```
+
+**Note:** This could be downgraded to a warning if there's a legitimate use case for same beneficiary.
+
+---
+
+### **H-3: Portal Access Control Not Specified**
+
+**Severity:** HIGH  
+**Location:** Portal UI Requirements
+
+**Issue:**
+The spec says "Only token creator wallet can access the portal", but vesting beneficiaries might NOT be the creator.
+
+**Example:**
+```
+Token creator: 0xAlice
+Marketing beneficiary: 0xBob
+Team beneficiary: 0xCharlie
+
+Portal access: Only 0xAlice ❌
+
+Problem: Bob and Charlie can't claim their vested tokens!
+```
+
+**Required Clarification:**
+The portal should be accessible by:
+1. Token creator (for creator fees)
+2. Marketing beneficiary (for marketing vesting)
+3. Team beneficiary (for team vesting)
+
+**Required Fix (Backend):**
+```python
+# In portal access check
+def can_access_portal(wallet_address, token_address):
+    token = Token.query.filter_by(contract_address=token_address).first()
+    
+    # Check if wallet is creator
+    if wallet_address == token.creator_wallet:
+        return True
+    
+    # Check if wallet is a beneficiary
+    if wallet_address == token.marketing_beneficiary:
+        return True
+    
+    if wallet_address == token.team_beneficiary:
+        return True
+    
+    return False
+```
+
+---
+
+## 🟠 **MEDIUM SEVERITY ISSUES**
+
+### **M-1: Graduation May Fail if Vesting Tokens Already Transferred**
+
+**Severity:** MEDIUM  
+**Location:** BondingCurvePool.sol `initiateGraduation()`
+
+**Issue:**
+Graduation calculates LP tokens as 25% of `totalSupply()`, but after vesting transfers, the contract might not have enough tokens.
+
+**Example:**
+```
+Initial state:
+- Total supply: 1B tokens
+- Contract balance: 1B tokens
+- Vesting: 10% (100M transferred to vesting contracts)
+
+After vesting transfer:
+- Total supply: 1B tokens (unchanged)
+- Contract balance: 900M tokens
+- virtualTokenReserve: 650M (curve)
+- Remaining: 250M (should be LP)
+
+Graduation:
+lpTokens = 1B * 25% = 250M ✓
+Contract has: 900M - 650M (curve) = 250M ✓
+```
+
+Actually, this should work fine. Let me recalculate...
+
+Wait, the contract balance after vesting transfer should be:
+- Initial: 1B tokens
+- Transfer to vesting: -100M
+- Remaining: 900M
+
+Breakdown:
+- Curve (virtualTokenReserve): 650M
+- LP: 250M
+- Total: 900M ✓
+
+So graduation calculation is correct. Let me check the approval line...
+
+```solidity
+_approve(address(this), graduationOracle, lpTokens);
+```
+
+This approves the oracle to spend LP tokens from the contract. The contract should have them, so this is fine.
+
+Actually, I don't think this is an issue. The math works out correctly.
+
+**Status:** FALSE ALARM - No issue here. ✓
+
+---
+
+### **M-2: Missing Event for Vesting Transfers**
+
+**Severity:** MEDIUM  
+**Location:** BondingCurvePool.sol `transferReserveToVesting()`
+
+**Issue:**
+Vesting transfers don't emit events, making it hard to track where tokens went.
+
+**Required Fix:**
+```solidity
+event VestingTransfer(
+    address indexed vestingContract,
+    uint256 amount,
+    uint256 timestamp
+);
+
+function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
+    require(msg.sender == factory, "Only factory");
+    require(!vestingInitialized, "Already finalized");
+    
+    isVestingContract[vestingContract] = true;
+    _transfer(address(this), vestingContract, amount);
+    
+    emit VestingTransfer(vestingContract, amount, block.timestamp);  // ✅ Add event
+}
+```
+
+---
+
+### **M-3: No Protection Against Zero Vesting Amounts**
+
+**Severity:** MEDIUM  
+**Location:** TokenFactory.sol vesting deployment
+
+**Issue:**
+If an allocation is 0%, the contract still tries to deploy a vesting contract with 0 tokens.
+
+**Current Code:**
+```solidity
+if (airdropTokens > 0) {
+    // Deploy vesting
+}
+```
+
+This is actually protected by the `if` check. Let me verify...
+
+Yes, the code has `if (airdropTokens > 0)` checks, so this is already handled. ✓
+
+**Status:** FALSE ALARM - Already protected. ✓
+
+---
+
+## ℹ️ **LOW SEVERITY ISSUES**
+
+### **L-1: Portal Doesn't Show Airdrop Vesting**
+
+**Severity:** LOW (Clarification Needed)  
+**Location:** Portal UI Requirements
+
+**Issue:**
+The spec states:
+> "Note: Airdrop vesting is self-contained (handled by token communities with preset buttons, NOT shown in creator portal)"
+
+**Question:** How do airdrop beneficiaries claim their tokens if not through the portal?
+
+**Clarification Needed:**
+- Is there a separate UI for airdrop vesting claims?
+- Or are airdrops distributed automatically?
+- Or are they claimed through community buttons?
+
+**Recommendation:**
+Document the airdrop claiming flow clearly to avoid confusion.
+
+---
+
+### **L-2: Missing Database Schema for Beneficiaries**
+
+**Severity:** LOW  
+**Location:** Backend Requirements
+
+**Issue:**
+The spec mentions tracking beneficiary addresses but doesn't specify the database schema.
+
+**Required Addition:**
+```python
+class Token(db.Model):
+    # ... existing fields
+    
+    # Vesting contract addresses
+    airdrop_vesting_address = db.Column(db.String(128))
+    marketing_vesting_address = db.Column(db.String(128))
+    team_vesting_address = db.Column(db.String(128))
+    
+    # Beneficiary addresses (for portal access control)
+    airdrop_beneficiary = db.Column(db.String(128))
+    marketing_beneficiary = db.Column(db.String(128))
+    team_beneficiary = db.Column(db.String(128))
+```
+
+---
+
+### **L-3: Tokenomics Display Formula**
+
+**Severity:** LOW  
+**Location:** Frontend - Token Creation
+
+**Issue:**
+The spec says: "Display tokenomics breakdown: X% curve + Y% vesting + 25% LP"
+
+**Clarification:**
+Should display: `(75 - Y)% curve + Y% vesting + 25% LP = 100%`
+
+Example for 10% vesting:
+- Curve: **65%**
+- Vesting: **10%**
+- LP: **25%**
+- Total: **100%** ✓
+
+---
+
+## 📊 **SUMMARY**
+
+### Critical Issues (Block Deployment):
+1. ✅ **C-1**: Constructor only mints partial supply (missing LP tokens)
+2. ✅ **C-2**: Unallocated vesting tokens stuck forever (require == 100 or handle remainder)
+
+### High Severity:
+3. ✅ **H-1**: Zero allocations leave tokens stuck
+4. ✅ **H-2**: No duplicate beneficiary validation
+5. ✅ **H-3**: Portal access control unclear (beneficiaries vs creator)
+
+### Medium Severity:
+6. ✅ **M-2**: Missing events for vesting transfers
+
+### Low Severity:
+7. ✅ **L-1**: Airdrop claiming flow unclear
+8. ✅ **L-2**: Missing database schema for beneficiaries
+9. ✅ **L-3**: Tokenomics display formula clarification
+
+---
+
+## ✅ **CORRECTED IMPLEMENTATION**
+
+### BondingCurvePool.sol Constructor (FIXED)
+
+```solidity
+constructor(
+    string memory name,
+    string memory symbol,
+    uint256 totalSupply,
+    address _creator,
+    address _treasury,
+    address _airdropTreasury,
+    address _platformDevelopmentWallet,
+    bool _antiBotEnabled,
+    address _graduationOracle,
+    address _admin,
+    address _buybackReserve,
+    address _kaspaSupport,
+    address _communityRewards,
+    uint8 _reservedPercentage  // 0-25% for vesting
+) ERC20(name, symbol) Ownable(msg.sender) {
+    require(_reservedPercentage <= 25, "Vesting exceeds 25%");
+    
+    // ... existing validation
+    
+    factory = msg.sender;
+    reservedPercentage = _reservedPercentage;
+    
+    // Set addresses
+    creator = _creator;
+    treasury = _treasury;
+    airdropTreasury = _airdropTreasury;
+    platformDevelopmentWallet = _platformDevelopmentWallet;
+    antiBotEnabled = _antiBotEnabled;
+    graduationOracle = _graduationOracle;
+    admin = _admin;
+    buybackReserveWallet = _buybackReserve;
+    kaspaNetworkSupportWallet = _kaspaSupport;
+    communityRewardsWallet = _communityRewards;
+    
+    if (_antiBotEnabled) {
+        deploymentTime = block.timestamp;
+    }
+    
+    // ✅ Calculate allocations (for reference)
+    uint256 curveSupply = totalSupply * (75 - _reservedPercentage) / 100;
+    uint256 vestingSupply = totalSupply * _reservedPercentage / 100;
+    uint256 lpSupply = totalSupply * 25 / 100;  // Always 25%
+    
+    // ✅ Mint ENTIRE supply to contract
+    _mint(address(this), totalSupply);
+    
+    // ✅ Initialize virtual reserves (only curve supply is tradeable)
+    virtualTokenReserve = curveSupply;
+    virtualKasReserve = INITIAL_VIRTUAL_KAS;
+    
+    // Note: Contract holds curve + vesting + LP
+    // Vesting will be transferred to vesting contracts by factory
+    // LP will be used during graduation
+    // After vesting transfer, contract holds: curve + LP
+}
+```
+
+---
+
+### TokenFactory.sol Validation (FIXED)
+
+```solidity
+function createToken(
+    // ... params
+    uint8 reservedPercentage,
+    uint8 airdropsAllocation,
+    uint8 marketingAllocation,
+    uint8 teamAllocation,
+    address airdropBeneficiary,
+    address marketingBeneficiary,
+    address teamBeneficiary
+) external nonReentrant whenNotPaused returns (...) {
+    
+    // Validate vesting params
+    require(reservedPercentage <= 25, "Vesting exceeds 25%");
+    
+    if (reservedPercentage > 0) {
+        // ✅ CRITICAL FIX: Require exactly 100%
+        require(
+            airdropsAllocation + marketingAllocation + teamAllocation == 100,
+            "Allocations must sum to exactly 100%"
+        );
+        
+        // ✅ CRITICAL FIX: Require at least one allocation > 0
+        require(
+            airdropsAllocation > 0 || marketingAllocation > 0 || teamAllocation > 0,
+            "At least one allocation must be > 0"
+        );
+        
+        // ✅ HIGH FIX: Prevent duplicate beneficiaries (optional, can be warning)
+        require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
+        require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
+        require(teamBeneficiary != address(0), "Invalid team beneficiary");
+        
+        // Optional: Prevent duplicates
+        require(airdropBeneficiary != marketingBeneficiary, "Duplicate beneficiaries");
+        require(airdropBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+        require(marketingBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+    }
+    
+    // Deploy pool
+    BondingCurvePool pool = new BondingCurvePool(
+        name,
+        symbol,
+        totalSupply,
+        msg.sender,
+        treasury,
+        airdropTreasury,
+        platformDevelopmentWallet,
+        antiBotEnabled,
+        graduationOracle,
+        admin,
+        buybackReserveWallet,
+        kaspaNetworkSupportWallet,
+        communityRewardsWallet,
+        reservedPercentage
+    );
+    
+    poolAddress = address(pool);
+    
+    // Deploy vesting contracts
+    if (reservedPercentage > 0) {
+        uint256 totalVesting = totalSupply * reservedPercentage / 100;
+        
+        uint256 airdropTokens = totalVesting * airdropsAllocation / 100;
+        uint256 marketingTokens = totalVesting * marketingAllocation / 100;
+        uint256 teamTokens = totalVesting * teamAllocation / 100;
+        
+        // Deploy and fund vesting contracts
+        if (airdropTokens > 0) {
+            AirdropVesting av = new AirdropVesting(
+                poolAddress,
+                airdropBeneficiary,
+                airdropTokens
+            );
+            airdropVestingAddress = address(av);
+            pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+            
+            require(
+                IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
+                "Airdrop vesting underfunded"
+            );
+        }
+        
+        // ... same for marketing and team
+        
+        // Finalize vesting
+        pool.finalizeVestingSetup();
+    }
+    
+    // Store metadata
+    tokens[poolAddress] = TokenInfo({...});
+    deployedTokens.push(poolAddress);
+    
+    emit TokenCreated(...);
+    emit VestingDeployed(poolAddress, airdropVestingAddress, marketingVestingAddress, teamVestingAddress);
+    
+    return (poolAddress, airdropVestingAddress, marketingVestingAddress, teamVestingAddress);
+}
+```
+
+---
+
+### Updated Implementation Checklist
+
+**Smart Contracts:**
+- [ ] Update BondingCurvePool.sol constructor (mint full supply)
+- [ ] Add VestingTransfer event
+- [ ] Update TokenFactory.sol validation (== 100, no duplicates)
+- [ ] Test full supply minting
+- [ ] Test allocation edge cases (0%, 100%, partial)
+- [ ] Verify LP tokens exist after vesting transfer
+
+**Backend:**
+- [ ] Add beneficiary address tracking to Token model
+- [ ] Implement portal access control (creator + beneficiaries)
+- [ ] Create vesting status API
+- [ ] Build vesting withdrawal transaction endpoints
+
+**Frontend:**
+- [ ] Update portal access to include beneficiaries
+- [ ] Display correct tokenomics formula
+- [ ] Add vesting progress bars
+- [ ] Document airdrop claiming flow
+
+---
+
+## 🎯 **VERDICT**
+
+**Current Status:** ⚠️ **NOT READY** - 2 Critical Issues Block Deployment
+
+**Required Fixes Before Deployment:**
+1. ✅ Constructor must mint FULL supply (not just curve + vesting)
+2. ✅ Allocations must sum to exactly 100% (or handle remainder)
+
+**After Fixing Critical Issues:**
+- High severity fixes recommended (duplicate beneficiaries, portal access)
+- Medium severity fixes optional (events, documentation)
+- Ready for testnet deployment with thorough testing
+
+**Estimated Fix Time:** 2-4 hours for critical fixes + testing
+
+Would you like me to:
+1. Provide complete corrected contract code?
+2. Write test cases for the critical issues?
+3. Review any other aspects of the specification?

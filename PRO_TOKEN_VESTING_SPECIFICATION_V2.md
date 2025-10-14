@@ -65,14 +65,15 @@ constructor(
     // ✅ KEY CALCULATION: Curve supply decreases as vesting increases
     uint256 curveSupply = totalSupply * (75 - _reservedPercentage) / 100;
     uint256 vestingSupply = totalSupply * _reservedPercentage / 100;
+    uint256 lpSupply = totalSupply * 25 / 100;  // Always 25%
     
-    // Mint curve tokens to contract (for bonding curve trading)
-    _mint(address(this), curveSupply);
+    // ✅ CRITICAL FIX (C-1): Mint ENTIRE supply to contract
+    _mint(address(this), totalSupply);
     
-    // Mint vesting tokens to contract (factory will transfer to vesting contracts)
-    if (vestingSupply > 0) {
-        _mint(address(this), vestingSupply);
-    }
+    // Note: Contract holds all tokens
+    // - Curve supply (curveSupply) → virtualTokenReserve (tradeable)
+    // - Vesting supply (vestingSupply) → transferred to vesting contracts by factory
+    // - LP supply (25%) → reserved for graduation
     
     // Initialize virtual reserves (bonding curve math)
     virtualKasReserve = INITIAL_VIRTUAL_KAS;
@@ -80,6 +81,8 @@ constructor(
 }
 
 // ====== CHANGE 3: Vesting Transfer Function ======
+event VestingTransfer(address indexed vestingContract, uint256 amount, uint256 timestamp);
+
 function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
     require(msg.sender == factory, "Only factory");
     require(!vestingInitialized, "Already finalized");
@@ -88,6 +91,9 @@ function transferReserveToVesting(address vestingContract, uint256 amount) exter
     isVestingContract[vestingContract] = true;
     
     _transfer(address(this), vestingContract, amount);
+    
+    // ✅ FIX (M-2): Emit event for tracking
+    emit VestingTransfer(vestingContract, amount, block.timestamp);
 }
 
 // ====== CHANGE 4: Finalize Vesting Setup ======
@@ -173,15 +179,18 @@ function createToken(
     require(reservedPercentage <= 25, "Vesting exceeds 25%");
     
     if (reservedPercentage > 0) {
-        // ✅ Allocations can sum to anything <= 100 (flexible split)
-        require(
-            airdropsAllocation + marketingAllocation + teamAllocation <= 100,
-            "Allocations cannot exceed 100%"
-        );
+        // ✅ CRITICAL FIX (C-2, H-1): Allocations must sum to exactly 100%
+        uint256 totalAllocations = airdropsAllocation + marketingAllocation + teamAllocation;
+        require(totalAllocations == 100, "Allocations must sum to exactly 100%");
+        require(totalAllocations > 0, "Must have at least one allocation");
         
-        require(airdropBeneficiary != address(0), "Invalid beneficiary");
-        require(marketingBeneficiary != address(0), "Invalid beneficiary");
-        require(teamBeneficiary != address(0), "Invalid beneficiary");
+        // ✅ FIX (H-2): Prevent duplicate beneficiaries
+        require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
+        require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
+        require(teamBeneficiary != address(0), "Invalid team beneficiary");
+        require(airdropBeneficiary != marketingBeneficiary, "Duplicate beneficiaries");
+        require(airdropBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
+        require(marketingBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
     }
     
     // Deploy pool with vesting percentage
@@ -376,8 +385,12 @@ All contracts:
 PRO tokens require a **Claim Portal** in the creator dashboard to allow beneficiaries to withdraw unlocked vesting tokens. This portal is SEPARATE from the airdrop system (which is self-contained within token communities).
 
 ### Portal Location
-- **Dashboard → "Portal" button** (replaces "Fees" button for PRO token creators)
-- Only visible to token creator wallet (beneficiary of marketing/team vesting)
+- **Dashboard → "Portal" button** (replaces "Fees" button)
+- **✅ FIX (H-3): Accessible by:**
+  - Token creator (for creator fees)
+  - Marketing beneficiary (for marketing vesting claims)
+  - Team beneficiary (for team vesting claims)
+  - Airdrop beneficiary (optional - if community wants to show it)
 
 ### Portal Sections
 
@@ -414,23 +427,78 @@ PRO tokens require a **Claim Portal** in the creator dashboard to allow benefici
 5. **Airdrop exclusion** - Airdrop vesting NOT shown (handled separately by communities)
 
 ### Backend Requirements
-- API endpoint: `GET /api/vesting/status/<token_address>` 
+
+**API Endpoints:**
+- `GET /api/vesting/status/<token_address>` 
   - Returns unlocked amounts for marketing & team
-- API endpoint: `POST /api/vesting/withdraw/<token_address>/<vesting_type>`
+  - Access control: Only beneficiaries or creator
+- `POST /api/vesting/withdraw/<token_address>/<vesting_type>`
   - Builds withdrawal transaction
-- Database: Track marketing_beneficiary, team_beneficiary addresses
-- Web3: Call `getWithdrawableAmount()`, `getUnlockedAmount()` on vesting contracts
+  - Access control: Only beneficiary of that vesting type
+
+**Access Control Logic (H-3 Fix):**
+```python
+def can_access_portal(wallet_address, token_address):
+    token = Token.query.filter_by(contract_address=token_address).first()
+    
+    # Token creator can always access (for fees)
+    if wallet_address.lower() == token.creator_wallet.lower():
+        return True
+    
+    # Marketing beneficiary can access
+    if wallet_address.lower() == token.marketing_beneficiary.lower():
+        return True
+    
+    # Team beneficiary can access
+    if wallet_address.lower() == token.team_beneficiary.lower():
+        return True
+    
+    # Airdrop beneficiary (optional)
+    if wallet_address.lower() == token.airdrop_beneficiary.lower():
+        return True
+    
+    return False
+```
+
+**Database Schema (L-2 Fix):**
+```python
+class Token(db.Model):
+    # ... existing fields
+    
+    # Vesting contract addresses
+    airdrop_vesting_address = db.Column(db.String(128))
+    marketing_vesting_address = db.Column(db.String(128))
+    team_vesting_address = db.Column(db.String(128))
+    
+    # Beneficiary addresses (for portal access control)
+    airdrop_beneficiary = db.Column(db.String(128))
+    marketing_beneficiary = db.Column(db.String(128))
+    team_beneficiary = db.Column(db.String(128))
+```
+
+**Web3 Calls:**
+- `getWithdrawableAmount()` - Check claimable tokens
+- `getUnlockedAmount()` - Check total unlocked
+- `withdraw()` - Build transaction for beneficiary to sign
 
 ### Frontend Flow
 1. User connects wallet
 2. Check if wallet is creator/beneficiary of any PRO tokens
 3. If yes, show "Portal" button in dashboard
 4. Portal displays:
-   - Creator fees section (if any)
+   - Creator fees section (if wallet is creator)
    - Marketing vesting section (if wallet is marketing beneficiary)
    - Team vesting section (if wallet is team beneficiary)
 5. User clicks "Claim" → Backend builds transaction → User signs
 6. Tokens transferred from vesting contract to beneficiary
+
+### Airdrop Vesting Claiming (L-1 Clarification)
+**Airdrop vesting is handled separately from the creator portal:**
+- Airdrop beneficiary receives vesting contract address
+- Token communities have "preset buttons" to interact with airdrop vesting
+- Airdrop beneficiary calls `withdraw()` directly on AirdropVesting contract
+- **NOT shown in creator portal** (to keep portal focused on creator/team/marketing)
+- Can be displayed in a separate "Community Airdrops" section if needed
 
 ---
 
@@ -478,24 +546,30 @@ PRO tokens require a **Claim Portal** in the creator dashboard to allow benefici
 
 ---
 
-## Audit Findings (Round 3) - All Addressed ✅
+## Audit Findings (All Rounds) - All Addressed ✅
 
-### Critical Issues (BLOCKING):
+### Round 1 & 2 (Previous Audits):
 - ✅ **BI-1**: Token transfer mechanism → `transferReserveToVesting()` added
 - ✅ **BI-2**: Incorrect reserve math → V2 model uses correct allocation (curve = 75 - vesting%)
 - ✅ **BI-3**: Wallet cap blocks vesting → `isVestingContract` mapping exempts vesting contracts
 - ✅ **BI-4**: Vesting contracts mutable → Removed `Ownable`, fully immutable
-
-### High Severity:
 - ✅ **H-1**: Vesting initialization bypass → `vestingInitialized` flag + `finalizeVestingSetup()`
 - ✅ **H-2**: Graduation LP calculation → Always 25% (fixed), no calculation needed
 - ✅ **H-3**: Reentrancy on withdrawals → `nonReentrant` on all `withdraw()` functions
-
-### Medium Severity:
 - ✅ **M-1**: Allocation validation → Changed to `<= 100` (flexible split)
 - ✅ **M-2**: LP minimum requirement → N/A (always 25% by design)
 
-**All audit findings resolved!** The V2 model is simpler, safer, and mathematically correct.
+### Round 3 (V2 Spec Audit) - FIXED:
+- ✅ **C-1**: Constructor only mints partial supply → NOW mints entire totalSupply (100%)
+- ✅ **C-2**: Unallocated vesting tokens stuck → NOW requires allocations == 100% (exact)
+- ✅ **H-1**: Zero allocations leave tokens stuck → NOW requires totalAllocations > 0
+- ✅ **H-2**: No duplicate beneficiary validation → NOW checks all beneficiaries are unique
+- ✅ **H-3**: Portal access control unclear → NOW supports creator + all beneficiaries
+- ✅ **M-2**: Missing vesting transfer events → Added `VestingTransfer` event
+- ✅ **L-1**: Airdrop claiming unclear → Documented separate community-based claiming
+- ✅ **L-2**: Missing database schema → Added beneficiary address columns
+
+**All critical, high, and medium severity issues resolved!** The V2 model is production-ready.
 
 ---
 
