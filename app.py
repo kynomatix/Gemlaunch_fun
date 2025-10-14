@@ -1131,7 +1131,7 @@ def token_marketplace():
     # Show only deployed tokens with eager loading of creator information
     tokens = Token.query.options(
         joinedload(Token.creator)
-    ).filter(Token.contract_address.isnot(None)).order_by(Token.created_at.desc()).all()
+    ).filter(Token.deployment_status == 'deployed').order_by(Token.created_at.desc()).all()
     
     # Add is_pro flag to each token for the template
     for token in tokens:
@@ -2698,7 +2698,6 @@ def init_database():
                 from datetime import datetime, timedelta, timezone
                 cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
                 old_pending = Token.query.filter(
-                    Token.contract_address == None,
                     Token.deployment_status == 'pending',
                     Token.created_at < cutoff_time
                 ).all()
@@ -5182,13 +5181,12 @@ def check_pending_tokens():
         if not user:
             return jsonify({'success': False, 'error': 'Not authenticated'}), 401
         
-        # Find pending tokens for this user (no contract_address, status=pending, created <24h ago)
+        # Find pending tokens for this user (status=pending, created <24h ago)
         from datetime import datetime, timedelta, timezone
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         
         pending = Token.query.filter(
             Token.creator_id == user.id,
-            Token.contract_address == None,
             Token.deployment_status == 'pending',
             Token.created_at > cutoff
         ).order_by(Token.created_at.desc()).first()  # Get most recent
