@@ -82,10 +82,14 @@ constructor(
 
 // ====== CHANGE 3: Vesting Transfer Function ======
 event VestingTransfer(address indexed vestingContract, uint256 amount, uint256 timestamp);
+event VestingFinalized(uint256 timestamp);  // ✅ FIX (M-4): Add missing event
 
 function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
     require(msg.sender == factory, "Only factory");
     require(!vestingInitialized, "Already finalized");
+    
+    // ✅ FIX (L-5): Prevent transferring to self
+    require(vestingContract != address(this), "Cannot vest to self");
     
     // Register for wallet cap exemption
     isVestingContract[vestingContract] = true;
@@ -103,6 +107,14 @@ function finalizeVestingSetup() external {
     
     vestingInitialized = true;
     reserveDistributed = true;
+    
+    // ✅ FIX (CL-1): Verify expected balance after vesting transfers
+    uint256 lpSupply = totalSupply() * 25 / 100;
+    uint256 expectedBalance = virtualTokenReserve + lpSupply;
+    require(
+        balanceOf(address(this)) == expectedBalance,
+        "Vesting transfer accounting mismatch"
+    );
     
     emit VestingFinalized(block.timestamp);
 }
@@ -463,25 +475,28 @@ PRO tokens require a **Claim Portal** in the creator dashboard to allow benefici
   - Builds withdrawal transaction
   - Access control: Only beneficiary of that vesting type
 
-**Access Control Logic (H-3 Fix):**
+**Access Control Logic (H-3 Fix, M-5 Fix):**
 ```python
 def can_access_portal(wallet_address, token_address):
     token = Token.query.filter_by(contract_address=token_address).first()
     
+    if not token:
+        return False
+    
+    wallet_lower = wallet_address.lower()
+    
     # Token creator can always access (for fees)
-    if wallet_address.lower() == token.creator_wallet.lower():
+    if wallet_lower == token.creator_wallet.lower():
         return True
     
-    # Marketing beneficiary can access
-    if wallet_address.lower() == token.marketing_beneficiary.lower():
+    # ✅ FIX (M-5): Check for NULL before comparing (prevents crash on 0% allocations)
+    if token.marketing_beneficiary and wallet_lower == token.marketing_beneficiary.lower():
         return True
     
-    # Team beneficiary can access
-    if wallet_address.lower() == token.team_beneficiary.lower():
+    if token.team_beneficiary and wallet_lower == token.team_beneficiary.lower():
         return True
     
-    # Airdrop beneficiary (optional)
-    if wallet_address.lower() == token.airdrop_beneficiary.lower():
+    if token.airdrop_beneficiary and wallet_lower == token.airdrop_beneficiary.lower():
         return True
     
     return False
@@ -514,10 +529,22 @@ class Token(db.Model):
 3. If yes, show "Portal" button in dashboard
 4. Portal displays:
    - Creator fees section (if wallet is creator)
-   - Marketing vesting section (if wallet is marketing beneficiary)
-   - Team vesting section (if wallet is team beneficiary)
+   - Marketing vesting section (if wallet is marketing beneficiary AND marketing_vesting_address exists)
+   - Team vesting section (if wallet is team beneficiary AND team_vesting_address exists)
 5. User clicks "Claim" → Backend builds transaction → User signs
 6. Tokens transferred from vesting contract to beneficiary
+
+**✅ FIX (CL-2): Hide sections with 0% allocation:**
+```javascript
+// Only show vesting sections if vesting contract exists
+if (token.marketing_vesting_address) {
+    // Show marketing vesting section
+}
+if (token.team_vesting_address) {
+    // Show team vesting section
+}
+// This prevents showing empty sections for 0% allocations
+```
 
 ### Airdrop Vesting Claiming (L-1 Clarification)
 **Airdrop vesting is handled separately from the creator portal:**
@@ -526,6 +553,15 @@ class Token(db.Model):
 - Airdrop beneficiary calls `withdraw()` directly on AirdropVesting contract
 - **NOT shown in creator portal** (to keep portal focused on creator/team/marketing)
 - Can be displayed in a separate "Community Airdrops" section if needed
+
+### Unclaimed Tokens
+**What happens if beneficiaries don't claim their vested tokens?**
+- Unclaimed tokens remain safely locked in the vesting contract
+- Only the designated beneficiary can withdraw them (via `withdraw()`)
+- Tokens continue vesting on schedule regardless of claiming
+- No expiration - beneficiary can claim at any time after unlock
+- This is standard vesting behavior and doesn't create any issues
+- **Example:** If 100M tokens vest linearly over 12 months and beneficiary never claims, all 100M remain in vesting contract, claimable only by that beneficiary
 
 ---
 
@@ -600,6 +636,14 @@ class Token(db.Model):
 - ✅ **C-3**: Incomplete `_update()` function → NOW includes all 8 exemptions (airdropTreasury, owner, from checks)
 - ✅ **M-3**: Overly restrictive beneficiary validation → NOW only requires addresses if allocation > 0
 - ✅ **L-4**: Redundant validation check → Removed `totalAllocations > 0` (always true if == 100)
+
+### Round 5 (Post-Fixes Audit) - FIXED:
+- ✅ **M-4**: Missing event declaration → Added `event VestingFinalized(uint256 timestamp)`
+- ✅ **M-5**: Backend crash on NULL beneficiaries → Added NULL checks before `.lower()`
+- ✅ **L-5**: No beneficiary validation → Added `require(vestingContract != address(this))` check
+- ✅ **L-6**: Minor precision loss → Documented as acceptable (< 1 token dust)
+- ✅ **CL-1**: LP token accounting → Added balance verification in `finalizeVestingSetup()`
+- ✅ **CL-2**: Portal visibility → Hide vesting sections if contract address doesn't exist
 
 **All critical, high, and medium severity issues resolved!** The V2 model is production-ready.
 
