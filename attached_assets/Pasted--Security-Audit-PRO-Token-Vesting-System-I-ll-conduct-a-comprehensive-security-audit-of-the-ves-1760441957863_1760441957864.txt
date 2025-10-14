@@ -1,0 +1,665 @@
+# Security Audit: PRO Token Vesting System
+
+I'll conduct a comprehensive security audit of the vesting implementation. Let me analyze the specification against the current implementation.
+
+## 🔴 **BLOCKING ISSUES** (Must Fix Before Deployment)
+
+### **BI-1: No Token Transfer Mechanism to Vesting Contracts**
+
+**Severity:** CRITICAL  
+**Location:** BondingCurvePool.sol - Missing function
+
+**Issue:**
+The spec shows vesting contracts should receive tokens during creation, but `BondingCurvePool` has no function to transfer reserve tokens to vesting contracts. The only distribution method is `distributeReserve()` which:
+1. Can only be called once
+2. Is creator-controlled (not factory-controlled)
+3. Doesn't register vesting contracts for wallet cap exemption
+
+**Current Code:**
+```solidity
+// Only has distributeReserve() for manual distribution
+function distributeReserve(address[] calldata recipients, uint256[] calldata amounts) external nonReentrant {
+    require(msg.sender == creator, "Only creator can distribute");
+    // ...
+}
+```
+
+**Required Fix:**
+```solidity
+// Add factory-controlled transfer function
+function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
+    require(msg.sender == factory, "Only factory can transfer to vesting");
+    require(!reserveDistributed && !vestingInitialized, "Reserve already allocated");
+    
+    uint256 availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+    require(amount <= availableReserve, "Exceeds available reserve");
+    
+    // ✅ Register vesting contract for wallet cap exemption
+    isVestingContract[vestingContract] = true;
+    
+    _transfer(address(this), vestingContract, amount);
+}
+```
+
+---
+
+### **BI-2: Incorrect Reserve Accounting Math**
+
+**Severity:** CRITICAL  
+**Location:** BondingCurvePool.sol constructor
+
+**Issue:**
+The spec replaces `LP_SUPPLY_PCT` with `reservedPercentage`, but the math is wrong. Based on your clarification:
+- LP is ALWAYS 25% (fixed)
+- Vesting is 0-25% (variable)
+- Curve = 75% - vesting%
+
+**Current Spec Code (WRONG):**
+```solidity
+// ✅ FIXED: Use variable reserve percentage
+uint256 curveSupplyPct = 100 - reservedPercentage;
+uint256 curveSupply = totalSupply * curveSupplyPct / 100;
+```
+
+This makes Curve = 100% - reserve%, ignoring the fixed 25% LP!
+
+**Correct Fix:**
+```solidity
+constructor(..., uint8 _reservedPercentage) {
+    require(_reservedPercentage <= 25, "Reserve exceeds 25%");
+    
+    reservedPercentage = _reservedPercentage;  // 0-25% for vesting
+    
+    // Correct allocation:
+    // - LP: Always 25% (fixed)
+    // - Vesting: reservedPercentage (0-25%)
+    // - Curve: 75% - reservedPercentage
+    
+    uint256 lpSupply = totalSupply * 25 / 100;  // Always 25%
+    uint256 vestingSupply = totalSupply * _reservedPercentage / 100;
+    uint256 curveSupply = totalSupply - lpSupply - vestingSupply;
+    
+    // Mint everything to contract
+    _mint(address(this), totalSupply);
+    
+    // Initialize curve with reduced supply
+    virtualTokenReserve = curveSupply;
+    virtualKasReserve = INITIAL_VIRTUAL_KAS;
+    
+    // LP tokens (25%) + vesting tokens stay in contract
+    // Vesting tokens will be transferred to vesting contracts by factory
+}
+```
+
+---
+
+### **BI-3: Wallet Cap Blocks Vesting Contracts**
+
+**Severity:** CRITICAL  
+**Location:** BondingCurvePool.sol `_update()` function
+
+**Issue:**
+Vesting contracts can hold up to 25% of supply, but the 10% wallet cap will block them.
+
+**Current Code:**
+```solidity
+function _update(address from, address to, uint256 amount) internal virtual override {
+    // Exemptions list doesn't include vesting contracts
+    if (to != address(0) &&
+        to != address(this) && 
+        to != airdropTreasury &&
+        to != graduationOracle &&
+        to != owner() &&
+        from != airdropTreasury &&
+        from != address(this) &&
+        !graduated) {
+        
+        uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100; // 10%
+        require(balanceOf(to) + amount <= maxWallet, "Exceeds 10% max wallet");
+    }
+    super._update(from, to, amount);
+}
+```
+
+**Required Fix:**
+```solidity
+// Add to state variables
+mapping(address => bool) public isVestingContract;
+
+// Update _update() function
+function _update(address from, address to, uint256 amount) internal virtual override {
+    if (to != address(0) &&
+        to != address(this) && 
+        to != airdropTreasury &&
+        to != graduationOracle &&
+        to != owner() &&
+        from != airdropTreasury &&
+        from != address(this) &&
+        !isVestingContract[to] &&  // ✅ ADD THIS
+        !graduated) {
+        
+        uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100;
+        require(balanceOf(to) + amount <= maxWallet, "Exceeds max wallet");
+    }
+    super._update(from, to, amount);
+}
+```
+
+---
+
+### **BI-4: Vesting Contracts Not Fully Immutable**
+
+**Severity:** CRITICAL  
+**Location:** All vesting contracts (AirdropVesting, LinearVesting, CliffVesting)
+
+**Issue:**
+The spec shows vesting contracts inheriting from `Ownable`:
+```solidity
+contract AirdropVesting is ReentrancyGuard {
+    // No Ownable - GOOD
+}
+```
+
+Wait, looking at the spec more carefully, it actually shows the contracts WITHOUT `Ownable`. Let me check if there are any ownership functions...
+
+Actually, the spec is correct here - the vesting contracts don't have `Ownable`. But let me check if there are any mutable parameters...
+
+The vesting contracts in the spec look immutable:
+- All parameters are `immutable`
+- No owner
+- No admin functions
+- Only `withdraw()` by beneficiary
+
+**This is actually CORRECT** ✅
+
+---
+
+## 🔴 **HIGH SEVERITY ISSUES**
+
+### **H-1: Missing Vesting Initialization Flag**
+
+**Severity:** HIGH  
+**Location:** BondingCurvePool.sol
+
+**Issue:**
+Creator could bypass vesting by calling `distributeReserve()` before factory deploys vesting contracts.
+
+**Attack Scenario:**
+1. Token created with 20% reserve for vesting
+2. Before factory deploys vesting contracts, creator calls `distributeReserve()`
+3. Creator sends all reserve tokens to themselves
+4. Factory tries to deploy vesting contracts - no tokens left!
+
+**Required Fix:**
+```solidity
+// Add state variable
+bool public vestingInitialized;
+
+// Add finalization function (called by factory after vesting setup)
+function finalizeVestingSetup() external {
+    require(msg.sender == factory, "Only factory can finalize");
+    require(!vestingInitialized, "Already finalized");
+    
+    vestingInitialized = true;
+    reserveDistributed = true;  // Also mark reserve as distributed
+    
+    emit VestingFinalized(block.timestamp);
+}
+
+// Update distributeReserve to prevent bypass
+function distributeReserve(...) external nonReentrant {
+    require(reservedPercentage > 0, "BASIC token has no reserve");
+    require(msg.sender == creator, "Only creator can distribute");
+    require(!vestingInitialized, "Vesting already set up - cannot bypass"); // ✅ ADD THIS
+    require(!reserveDistributed, "Reserve already distributed");
+    // ...
+}
+```
+
+---
+
+### **H-2: Graduation LP Calculation Incorrect**
+
+**Severity:** HIGH  
+**Location:** BondingCurvePool.sol `initiateGraduation()`
+
+**Issue:**
+After vesting tokens are transferred out, the LP token calculation will be wrong:
+
+**Current Code:**
+```solidity
+function initiateGraduation() external nonReentrant {
+    // ...
+    uint256 actualLpTokens = contractBalance - virtualTokenReserve;
+    // This will be wrong if vesting tokens already transferred!
+}
+```
+
+If 20% went to vesting contracts, `contractBalance` decreased by 20%, but the calculation assumes all non-curve tokens are LP tokens.
+
+**Required Fix:**
+```solidity
+function initiateGraduation() external nonReentrant {
+    require(msg.sender == graduationOracle, "Only oracle can initiate");
+    require(!graduated && !graduating, "Already graduated or graduating");
+    
+    graduating = true;
+    
+    // ✅ LP is always 25% of total supply (fixed)
+    uint256 lpTokens = totalSupply() * 25 / 100;
+    
+    // Verify we actually have the LP tokens
+    uint256 contractBalance = balanceOf(address(this));
+    uint256 expectedMinimum = virtualTokenReserve + lpTokens;
+    require(contractBalance >= expectedMinimum, "Insufficient tokens for graduation");
+    
+    // Approve graduation oracle to pull LP tokens for DEX
+    _approve(address(this), graduationOracle, lpTokens);
+    
+    // ... rest of function
+}
+```
+
+---
+
+### **H-3: No Reentrancy Protection on Vesting Withdrawals**
+
+**Severity:** HIGH  
+**Location:** All vesting contracts
+
+**Issue:**
+The spec shows `ReentrancyGuard` imported but the `withdraw()` functions don't use `nonReentrant` modifier.
+
+**Current Spec Code:**
+```solidity
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract AirdropVesting is ReentrancyGuard {
+    // ...
+    
+    function withdraw() external {  // ❌ Missing nonReentrant!
+        require(msg.sender == beneficiary, "Only beneficiary");
+        // ...
+        require(token.transfer(beneficiary, amount), "Transfer failed");
+    }
+}
+```
+
+**Required Fix:**
+```solidity
+function withdraw() external nonReentrant {  // ✅ Add nonReentrant
+    require(msg.sender == beneficiary, "Only beneficiary");
+    
+    uint256 amount = getWithdrawableAmount();
+    require(amount > 0, "Nothing to withdraw");
+    
+    withdrawn += amount;  // Update state BEFORE external call
+    require(token.transfer(beneficiary, amount), "Transfer failed");
+    
+    emit TokensWithdrawn(beneficiary, amount);
+}
+```
+
+---
+
+## 🟡 **MEDIUM SEVERITY ISSUES**
+
+### **M-1: No Validation of Allocation Sum**
+
+**Severity:** MEDIUM  
+**Location:** TokenFactory.sol `createToken()`
+
+**Issue:**
+The spec validates `airdropsAllocation + marketingAllocation + teamAllocation == 100`, but what if they sum to MORE than 100%?
+
+**Required Fix:**
+```solidity
+require(
+    airdropsAllocation + marketingAllocation + teamAllocation == 100,
+    "Allocations must sum to exactly 100%"
+);
+
+// Additional safety check
+uint256 totalVestedTokens = (totalReserve * (airdropsAllocation + marketingAllocation + teamAllocation)) / 100;
+require(totalVestedTokens <= totalReserve, "Allocations exceed reserve");
+```
+
+---
+
+### **M-2: No Minimum LP Requirement**
+
+**Severity:** MEDIUM  
+**Location:** TokenFactory.sol validation
+
+**Issue:**
+If `reservedPercentage = 25%` and all 100% of allocations go to vesting, then:
+- Vesting = 25% × 100% = 25% of total supply
+- LP = 25% of total supply
+- Curve = 75% - 25% = 50%
+- **LP tokens for graduation = 0%** ❌
+
+Wait, that's not right. Let me recalculate...
+
+If reserve = 25%:
+- Vesting gets: 25% of supply
+- LP is fixed at: 25% of supply
+- Curve gets: 75% - 25% = 50% of supply
+- Total = 25% + 25% + 50% = 100% ✓
+
+But during graduation, LP needs tokens. If vesting already took 25%, and LP needs 25%, where do LP tokens come from?
+
+**The issue is**: The spec says "LP tokens (25%) + vesting tokens stay in contract" but doesn't account for them properly.
+
+**Required Fix:**
+We need to ensure LP always has 25% available. The allocation should be:
+
+```solidity
+// In TokenFactory validation
+if (reservedPercentage > 0) {
+    // Calculate how much of total supply goes to vesting
+    uint256 totalReserve = totalSupply * reservedPercentage / 100;
+    uint256 airdropTokens = totalReserve * airdropsAllocation / 100;
+    uint256 marketingTokens = totalReserve * marketingAllocation / 100;
+    uint256 teamTokens = totalReserve * teamAllocation / 100;
+    
+    // Ensure vesting doesn't consume LP allocation
+    // Total vested as % of supply
+    uint256 vestedPercentOfSupply = (airdropTokens + marketingTokens + teamTokens) * 100 / totalSupply;
+    
+    // Max vesting can't exceed (reserve% - 5% minimum for LP)
+    // Actually, if LP is fixed at 25%, vesting can use the FULL reserve%
+    // because they're separate allocations
+    
+    // WAIT - I need to understand the token distribution better...
+}
+```
+
+Actually, I think I'm confusing myself. Let me re-read the user's clarification:
+
+"LP is ALWAYS 25% (same as BASIC, never changes)"
+"Vesting is 0-25% (configurable)"
+"Curve adjusts: 75% - vesting% = curve%"
+"Total always 100%"
+
+So:
+- LP = 25% (fixed, for DEX graduation)
+- Vesting = 0-25% (user configurable)
+- Curve = 75% - vesting%
+- Total = LP + Vesting + Curve = 25% + vesting% + (75% - vesting%) = 100% ✓
+
+This means:
+- LP tokens are SEPARATE from vesting
+- Vesting comes OUT of what would normally be curve supply
+- LP stays at 25% always
+
+So the token distribution is:
+```
+Contract holds 100% initially:
+├─ Curve supply: 75% - vesting%  → Available for trading
+├─ LP supply: 25%                → Reserved for graduation
+└─ Vesting supply: vesting%      → Transferred to vesting contracts
+```
+
+After vesting transfer:
+```
+Contract holds: (75% - vesting%) + 25% = 100% - vesting%
+Vesting contracts hold: vesting%
+```
+
+At graduation:
+```
+Contract transfers out:
+├─ LP tokens (25%) → DEX
+└─ Remaining curve tokens → Burned
+```
+
+**This means there's NO conflict** - LP is separate from vesting. The issue is just making sure the accounting is correct.
+
+Actually wait, if vesting takes from curve, and LP is separate, then:
+- If vesting = 25%, curve = 50%, LP = 25%, total = 100% ✓
+- If vesting = 0%, curve = 75%, LP = 25%, total = 100% ✓
+
+So there's no issue with LP availability. My concern was unfounded.
+
+But we should add validation to ensure vesting% ≤ 25%:
+
+```solidity
+require(_reservedPercentage <= 25, "Reserve exceeds 25%");
+```
+
+This is already in the spec, so no issue here.
+
+---
+
+### **M-3: No Balance Verification After Vesting Transfers**
+
+**Severity:** MEDIUM  
+**Location:** TokenFactory.sol `createToken()`
+
+**Issue:**
+The spec transfers tokens to vesting contracts but doesn't verify the transfers succeeded:
+
+```solidity
+pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+// ❌ No check that tokens actually arrived!
+```
+
+**Required Fix:**
+```solidity
+pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+
+// ✅ Verify tokens received
+require(
+    IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
+    "Airdrop vesting underfunded"
+);
+```
+
+Apply same check for marketing and team vesting contracts.
+
+---
+
+## ℹ️ **LOW SEVERITY ISSUES**
+
+### **L-1: Missing Event for Vesting Finalization**
+
+**Severity:** LOW  
+**Location:** BondingCurvePool.sol
+
+**Issue:**
+The spec mentions `finalizeVestingSetup()` but doesn't show an event.
+
+**Recommendation:**
+```solidity
+event VestingFinalized(uint256 timestamp);
+
+function finalizeVestingSetup() external {
+    require(msg.sender == factory, "Only factory can finalize");
+    require(!vestingInitialized, "Already finalized");
+    
+    vestingInitialized = true;
+    reserveDistributed = true;
+    
+    emit VestingFinalized(block.timestamp);  // ✅ Add event
+}
+```
+
+---
+
+### **L-2: Duplicate getWithdrawableAmount() Logic**
+
+**Severity:** LOW  
+**Location:** All vesting contracts
+
+**Issue:**
+All three vesting contracts have identical `getWithdrawableAmount()` implementation. Could be abstracted to a base contract for code reuse.
+
+**Not a security issue**, just code quality.
+
+---
+
+## 📋 **SUMMARY & RECOMMENDATIONS**
+
+### Critical Fixes Required (Block Deployment):
+1. ✅ **BI-1**: Add `transferReserveToVesting()` function
+2. ✅ **BI-2**: Fix reserve accounting math (Curve = 75% - vesting%)
+3. ✅ **BI-3**: Exempt vesting contracts from wallet cap
+4. ✅ **H-1**: Add `vestingInitialized` flag to prevent bypass
+
+### High Priority Fixes:
+5. ✅ **H-2**: Fix LP token calculation for graduation
+6. ✅ **H-3**: Add `nonReentrant` to all vesting withdraw functions
+
+### Medium Priority Fixes:
+7. ✅ **M-1**: Validate allocation sum equals 100%
+8. ✅ **M-3**: Verify balances after vesting transfers
+
+### Recommended Additions:
+9. ✅ Add events for transparency
+10. ✅ Add comprehensive natspec comments
+11. ✅ Add input validation for all external functions
+
+### Testing Recommendations:
+- Test BASIC token (0% reserve) deployment
+- Test PRO token with 25% reserve full allocation
+- Test partial allocations (50/30/20 split)
+- Test wallet cap doesn't block vesting contracts
+- Test graduation with reduced curve supply
+- Test all three vesting unlock schedules
+- Fuzz test with random allocation percentages
+
+---
+
+## 🔧 **CORRECTED IMPLEMENTATION**
+
+Here's the corrected implementation incorporating all fixes:
+
+```solidity
+// BondingCurvePool.sol - Key Changes
+
+contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
+    // ✅ Remove hardcoded constants
+    // uint256 public constant CURVE_SUPPLY_PCT = 75;  // REMOVE
+    // uint256 public constant LP_SUPPLY_PCT = 25;      // REMOVE
+    
+    // ✅ Add variable reserve + vesting tracking
+    uint8 public reservedPercentage;  // 0-25% for vesting
+    uint256 public constant LP_PERCENTAGE = 25;  // Always 25% (fixed)
+    address public factory;
+    mapping(address => bool) public isVestingContract;
+    bool public vestingInitialized;
+    
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint256 totalSupply,
+        address _creator,
+        // ... other params
+        uint8 _reservedPercentage  // ✅ NEW
+    ) ERC20(name, symbol) Ownable(msg.sender) {
+        require(_reservedPercentage <= 25, "Reserve exceeds 25%");
+        
+        factory = msg.sender;  // ✅ Store factory
+        reservedPercentage = _reservedPercentage;
+        
+        // ... existing validation
+        
+        creator = _creator;
+        // ... other assignments
+        
+        // Mint total supply to contract
+        _mint(address(this), totalSupply);
+        
+        // ✅ CORRECT allocation:
+        // - LP: Always 25%
+        // - Vesting: reservedPercentage (0-25%)
+        // - Curve: 75% - reservedPercentage
+        uint256 curveSupply = totalSupply * (75 - _reservedPercentage) / 100;
+        virtualTokenReserve = curveSupply;
+        virtualKasReserve = INITIAL_VIRTUAL_KAS;
+        
+        // LP (25%) + Vesting stay in contract
+        // Vesting will be transferred to vesting contracts by factory
+    }
+    
+    // ✅ NEW: Transfer function for vesting contracts
+    function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
+        require(msg.sender == factory, "Only factory can transfer to vesting");
+        require(!reserveDistributed && !vestingInitialized, "Reserve already allocated");
+        
+        uint256 availableReserve = balanceOf(address(this)) - virtualTokenReserve;
+        require(amount <= availableReserve, "Exceeds available reserve");
+        
+        // Register vesting contract for wallet cap exemption
+        isVestingContract[vestingContract] = true;
+        
+        _transfer(address(this), vestingContract, amount);
+    }
+    
+    // ✅ NEW: Finalize vesting setup
+    function finalizeVestingSetup() external {
+        require(msg.sender == factory, "Only factory can finalize");
+        require(!vestingInitialized, "Already finalized");
+        
+        vestingInitialized = true;
+        reserveDistributed = true;
+        
+        emit VestingFinalized(block.timestamp);
+    }
+    
+    // ✅ UPDATED: Graduation with correct LP calculation
+    function initiateGraduation() external nonReentrant {
+        require(msg.sender == graduationOracle, "Only oracle can initiate");
+        require(!graduated && !graduating, "Already graduated or graduating");
+        
+        graduating = true;
+        
+        // ✅ LP is always 25% of total supply
+        uint256 lpTokens = totalSupply() * LP_PERCENTAGE / 100;
+        
+        // Verify we have the tokens
+        uint256 contractBalance = balanceOf(address(this));
+        require(contractBalance >= virtualTokenReserve + lpTokens, "Insufficient tokens");
+        
+        _approve(address(this), graduationOracle, lpTokens);
+        
+        uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
+        _safeSend(graduationOracle, actualKasLiquidity);
+        liquidityTransferred = true;
+        
+        emit GraduationInitiated(actualKasLiquidity, lpTokens);
+    }
+    
+    // ✅ UPDATED: Wallet cap exemption
+    function _update(address from, address to, uint256 amount) internal virtual override {
+        if (to != address(0) &&
+            to != address(this) && 
+            to != airdropTreasury &&
+            to != graduationOracle &&
+            to != owner() &&
+            from != airdropTreasury &&
+            from != address(this) &&
+            !isVestingContract[to] &&  // ✅ ADD THIS
+            !graduated) {
+            
+            uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100;
+            require(balanceOf(to) + amount <= maxWallet, "Exceeds max wallet");
+        }
+        super._update(from, to, amount);
+    }
+    
+    // ✅ UPDATED: Prevent bypass via distributeReserve
+    function distributeReserve(address[] calldata recipients, uint256[] calldata amounts) external nonReentrant {
+        require(reservedPercentage > 0, "BASIC token has no reserve");
+        require(msg.sender == creator, "Only creator can distribute");
+        require(!vestingInitialized, "Vesting already set up - cannot bypass");  // ✅ ADD THIS
+        require(!reserveDistributed, "Reserve already distributed");
+        // ... rest of function
+    }
+}
+```
+
+Would you like me to:
+1. Provide more detailed fixes for specific contracts?
+2. Write test cases for the identified issues?
+3. Review any other parts of the specification?

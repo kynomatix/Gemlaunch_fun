@@ -370,6 +370,70 @@ All contracts:
 
 ---
 
+## PRO Token Claim Portal (UI Requirements)
+
+### Overview
+PRO tokens require a **Claim Portal** in the creator dashboard to allow beneficiaries to withdraw unlocked vesting tokens. This portal is SEPARATE from the airdrop system (which is self-contained within token communities).
+
+### Portal Location
+- **Dashboard → "Portal" button** (replaces "Fees" button for PRO token creators)
+- Only visible to token creator wallet (beneficiary of marketing/team vesting)
+
+### Portal Sections
+
+#### Section 1: Creator Fees (Existing)
+- Shows accumulated trading fees (same as BASIC tokens)
+- Claim button for fees
+- Display KAS amount
+
+#### Section 2: Vesting Claims (NEW)
+**Marketing Vesting:**
+- Contract address
+- Total allocation: X tokens
+- Unlocked: Y tokens (Z%)
+- Schedule: "12-month linear vesting"
+- Progress bar showing unlock percentage
+- "Claim Marketing Tokens" button
+- Next unlock: "X tokens in Y days"
+
+**Team Vesting:**
+- Contract address
+- Total allocation: X tokens
+- Unlocked: Y tokens (Z%)
+- Schedule: "6-month cliff + 18-month vesting"
+- Progress bar showing unlock percentage
+- Status: "Cliff period" or "Vesting active"
+- "Claim Team Tokens" button
+- Next unlock: "X tokens in Y days"
+
+### Key Features
+1. **Real-time unlock calculation** - Call vesting contract's `getWithdrawableAmount()`
+2. **Transaction building** - Backend builds withdraw() transaction for user to sign
+3. **Visual progress** - Progress bars, unlock schedules, countdown timers
+4. **Access control** - Only beneficiary wallet can see/claim
+5. **Airdrop exclusion** - Airdrop vesting NOT shown (handled separately by communities)
+
+### Backend Requirements
+- API endpoint: `GET /api/vesting/status/<token_address>` 
+  - Returns unlocked amounts for marketing & team
+- API endpoint: `POST /api/vesting/withdraw/<token_address>/<vesting_type>`
+  - Builds withdrawal transaction
+- Database: Track marketing_beneficiary, team_beneficiary addresses
+- Web3: Call `getWithdrawableAmount()`, `getUnlockedAmount()` on vesting contracts
+
+### Frontend Flow
+1. User connects wallet
+2. Check if wallet is creator/beneficiary of any PRO tokens
+3. If yes, show "Portal" button in dashboard
+4. Portal displays:
+   - Creator fees section (if any)
+   - Marketing vesting section (if wallet is marketing beneficiary)
+   - Team vesting section (if wallet is team beneficiary)
+5. User clicks "Claim" → Backend builds transaction → User signs
+6. Tokens transferred from vesting contract to beneficiary
+
+---
+
 ## Implementation Checklist
 
 ### Smart Contracts:
@@ -385,12 +449,53 @@ All contracts:
 - [ ] Update Web3Service.create_token_tx_data() with vesting params
 - [ ] Add vesting address tracking in database
 - [ ] Create vesting status API endpoints
+- [ ] Add vesting withdrawal transaction builders
+- [ ] Track beneficiary addresses for each vesting type
 
-### Frontend:
+### Frontend - Token Creation:
 - [ ] Display tokenomics breakdown: X% curve + Y% vesting + 25% LP
 - [ ] Show "Bonding curve will have X%" based on vesting slider
 - [ ] Vesting contract addresses on token page
-- [ ] Withdrawal UI for beneficiaries
+
+### Frontend - PRO Token Claim Portal (NEW REQUIREMENT):
+- [ ] **Rename "Fees" to "Portal" for PRO token creators in dashboard**
+- [ ] **Portal should show TWO sections:**
+  - **1. Creator Fees** (from trading, same as BASIC tokens)
+  - **2. Vesting Claims** (from Marketing & Team vesting contracts)
+- [ ] **Vesting Claims UI:**
+  - Display unlocked tokens from Marketing vesting contract
+  - Display unlocked tokens from Team vesting contract  
+  - Show vesting progress bars (% unlocked vs total)
+  - "Claim" button for each vesting type
+  - Display total claimable amount
+- [ ] **Note: Airdrop vesting is self-contained** (handled by token communities with preset buttons, NOT shown in creator portal)
+- [ ] **Access control:** Only token creator wallet can access the portal
+- [ ] **Show vesting schedules:**
+  - Marketing: "X tokens unlocked of Y total (12-month linear)"
+  - Team: "X tokens unlocked of Y total (6mo cliff + 18mo vest)"
+
+---
+
+---
+
+## Audit Findings (Round 3) - All Addressed ✅
+
+### Critical Issues (BLOCKING):
+- ✅ **BI-1**: Token transfer mechanism → `transferReserveToVesting()` added
+- ✅ **BI-2**: Incorrect reserve math → V2 model uses correct allocation (curve = 75 - vesting%)
+- ✅ **BI-3**: Wallet cap blocks vesting → `isVestingContract` mapping exempts vesting contracts
+- ✅ **BI-4**: Vesting contracts mutable → Removed `Ownable`, fully immutable
+
+### High Severity:
+- ✅ **H-1**: Vesting initialization bypass → `vestingInitialized` flag + `finalizeVestingSetup()`
+- ✅ **H-2**: Graduation LP calculation → Always 25% (fixed), no calculation needed
+- ✅ **H-3**: Reentrancy on withdrawals → `nonReentrant` on all `withdraw()` functions
+
+### Medium Severity:
+- ✅ **M-1**: Allocation validation → Changed to `<= 100` (flexible split)
+- ✅ **M-2**: LP minimum requirement → N/A (always 25% by design)
+
+**All audit findings resolved!** The V2 model is simpler, safer, and mathematically correct.
 
 ---
 
@@ -398,8 +503,14 @@ All contracts:
 
 This simplified model is **much cleaner** than the previous spec:
 - No complex LP minimum validation
-- Same graduation logic as BASIC tokens
+- Same graduation logic as BASIC tokens  
 - 25% LP is guaranteed by contract design
 - Vesting comes from curve supply, not LP
+- Claim portal connects vesting contracts to UI
+
+**Key Components:**
+1. **Smart Contracts**: 5 contracts (BondingCurvePool + Factory + 3 vesting)
+2. **Backend**: Vesting status APIs + withdrawal transaction builders
+3. **Frontend**: Claim portal for marketing/team vesting (airdrop is self-contained)
 
 **Ready for implementation!** 🚀
