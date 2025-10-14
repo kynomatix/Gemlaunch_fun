@@ -1128,10 +1128,10 @@ def token_marketplace():
     """Token marketplace - main home page (pump.fun style) - accessible without wallet"""
     user = get_current_user()  # Will be None if not connected
     
-    # Show all tokens with eager loading of creator information
+    # Show only deployed tokens with eager loading of creator information
     tokens = Token.query.options(
         joinedload(Token.creator)
-    ).order_by(Token.created_at.desc()).all()
+    ).filter(Token.contract_address.isnot(None)).order_by(Token.created_at.desc()).all()
     
     # Add is_pro flag to each token for the template
     for token in tokens:
@@ -5171,6 +5171,47 @@ def delete_pending_token(token_id):
     except Exception as e:
         logging.error(f"Failed to delete pending token {token_id}: {str(e)}")
         db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/check-pending', methods=['GET'])
+@csrf.exempt
+def check_pending_tokens():
+    """Check if user has any pending (undeployed) tokens"""
+    try:
+        user = get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        
+        # Find pending tokens for this user (no contract_address, status=pending, created <24h ago)
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        pending = Token.query.filter(
+            Token.creator_id == user.id,
+            Token.contract_address == None,
+            Token.deployment_status == 'pending',
+            Token.created_at > cutoff
+        ).order_by(Token.created_at.desc()).first()  # Get most recent
+        
+        if pending:
+            return jsonify({
+                'success': True,
+                'has_pending': True,
+                'token': {
+                    'id': pending.id,
+                    'name': pending.name,
+                    'symbol': pending.symbol,
+                    'description': pending.description,
+                    'image_url': pending.image_url,
+                    'ipfs_metadata_uri': pending.ipfs_metadata_uri,
+                    'created_at': pending.created_at.isoformat()
+                }
+            })
+        else:
+            return jsonify({'success': True, 'has_pending': False})
+            
+    except Exception as e:
+        logging.error(f"Check pending tokens failed: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/token/<contract_address>/sync-supply', methods=['POST'])

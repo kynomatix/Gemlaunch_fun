@@ -1645,6 +1645,60 @@
                 </button>
             </div>
         </div>
+
+        <!-- Resume Deployment Modal -->
+        <div id="resumeDeploymentModal" class="deployment-modal" style="display: none;">
+            <div class="deployment-modal-content">
+                <h3><i class="fas fa-exclamation-triangle"></i> Unfinished Token Deployment</h3>
+                <div id="resumeDeploymentContent">
+                    <p style="color: #CCC; margin-bottom: 1.5rem;">
+                        We found an incomplete token deployment from your previous session:
+                    </p>
+                    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <img id="resumeTokenImage" src="" alt="Token" style="width: 60px; height: 60px; border-radius: 10px; object-fit: cover;">
+                            <div>
+                                <h4 id="resumeTokenName" style="margin: 0; color: #20B2AA; font-size: 1.2rem;"></h4>
+                                <p id="resumeTokenSymbol" style="margin: 0.25rem 0 0 0; color: #999; font-size: 0.9rem;"></p>
+                            </div>
+                        </div>
+                        <p id="resumeTokenDescription" style="color: #CCC; margin: 0; font-size: 0.9rem; line-height: 1.5;"></p>
+                        <p id="resumeTokenTimestamp" style="margin: 1rem 0 0 0; color: #666; font-size: 0.85rem;"></p>
+                    </div>
+                    <p style="color: #CCC; margin-bottom: 1.5rem; font-size: 0.95rem;">
+                        Would you like to resume deploying this token to the blockchain?
+                    </p>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button id="resumeDeploymentBtn" type="button" style="
+                        flex: 1;
+                        padding: 0.75rem 1.5rem;
+                        background: linear-gradient(135deg, #20B2AA, #00CED1);
+                        color: #000;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: all 0.3s ease;
+                    " onclick="resumeTokenDeployment()">
+                        <i class="fas fa-rocket"></i> Resume Deployment
+                    </button>
+                    <button id="discardPendingBtn" type="button" style="
+                        flex: 1;
+                        padding: 0.75rem 1.5rem;
+                        background: rgba(255, 82, 82, 0.2);
+                        color: #ff5252;
+                        border: 1px solid #ff5252;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: all 0.3s ease;
+                    " onclick="discardPendingToken()">
+                        <i class="fas fa-trash"></i> Discard & Start Fresh
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Scripts -->
@@ -3321,5 +3375,140 @@
                 document.getElementById('ai-image-preview').style.display = 'none';
             }
         }
+
+        // Crash Recovery System - Check for pending tokens on page load
+        let pendingTokenData = null;
+
+        async function checkPendingTokens() {
+            try {
+                const response = await fetch('/api/token/check-pending', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.has_pending) {
+                    pendingTokenData = data.token;
+                    showResumeDeploymentModal(data.token);
+                }
+            } catch (error) {
+                console.error('Error checking pending tokens:', error);
+            }
+        }
+
+        function showResumeDeploymentModal(token) {
+            // Populate modal with token data
+            const imageUrl = token.image_url || '/static/images/gemmy.png';
+            document.getElementById('resumeTokenImage').src = imageUrl;
+            document.getElementById('resumeTokenName').textContent = token.name;
+            document.getElementById('resumeTokenSymbol').textContent = token.symbol;
+            document.getElementById('resumeTokenDescription').textContent = token.description || 'No description';
+            
+            // Format timestamp
+            const createdDate = new Date(token.created_at);
+            const timeAgo = getTimeAgo(createdDate);
+            document.getElementById('resumeTokenTimestamp').textContent = `Created ${timeAgo}`;
+            
+            // Show modal
+            document.getElementById('resumeDeploymentModal').style.display = 'flex';
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            let interval = seconds / 3600;
+            
+            if (interval > 24) {
+                return Math.floor(interval / 24) + ' days ago';
+            }
+            if (interval > 1) {
+                return Math.floor(interval) + ' hours ago';
+            }
+            return Math.floor(seconds / 60) + ' minutes ago';
+        }
+
+        async function resumeTokenDeployment() {
+            if (!pendingTokenData) {
+                CreateTokenNotification.showAlert('Error', 'No pending token data found.', 'error');
+                return;
+            }
+
+            // Hide resume modal
+            document.getElementById('resumeDeploymentModal').style.display = 'none';
+
+            // Call the existing deployment function with pending token data
+            try {
+                // Show deployment modal
+                showDeploymentModal();
+                updateDeploymentStatus('Resuming deployment...', 'loading');
+
+                // Deploy using existing token ID and metadata
+                const result = await deployTokenToBlockchain(pendingTokenData.id, pendingTokenData.ipfs_metadata_uri);
+                
+                if (result.success) {
+                    updateDeploymentStatus('Token deployed successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = `/app/token/${result.contract_address}`;
+                    }, 2000);
+                } else {
+                    updateDeploymentStatus('Deployment failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Resume deployment error:', error);
+                updateDeploymentStatus('Deployment error: ' + error.message, 'error');
+            }
+        }
+
+        async function discardPendingToken() {
+            if (!pendingTokenData) {
+                CreateTokenNotification.showAlert('Error', 'No pending token data found.', 'error');
+                return;
+            }
+
+            // Confirm with user
+            const confirmDiscard = confirm(`Are you sure you want to discard "${pendingTokenData.name}" and start fresh? This cannot be undone.`);
+            
+            if (!confirmDiscard) {
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const response = await fetch(`/api/token/${pendingTokenData.id}/delete-pending`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Hide modal
+                    document.getElementById('resumeDeploymentModal').style.display = 'none';
+                    pendingTokenData = null;
+                    
+                    CreateTokenNotification.showAlert('Success', 'Pending token discarded. You can now create a fresh token.', 'success');
+                } else {
+                    CreateTokenNotification.showAlert('Error', 'Failed to discard token: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Discard pending token error:', error);
+                CreateTokenNotification.showAlert('Error', 'Failed to discard token: ' + error.message, 'error');
+            }
+        }
+
+        // Check for pending tokens on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkPendingTokens();
+        });
+
+        // Also check on Turbo visit (for SPAs)
+        document.addEventListener('turbo:load', function() {
+            checkPendingTokens();
+        });
 </script>
 {% endblock %}
