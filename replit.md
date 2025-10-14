@@ -228,11 +228,12 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - **Fallback:** Uses database total_supply if blockchain fetch fails
 - **Files:** app.py (lines 5087-5112)
 
-**3. Image Loading Investigation**
-- **Issue:** IPFS images fail to display in frontend (shows fallback turquoise placeholder)
-- **Verified:** IPFS URLs return HTTP 200 with proper content-type (image/webp)
-- **Added:** onerror handler with console logging for debugging
-- **Status:** Under investigation - no console errors detected yet
+**3. Image Loading Fix**
+- **Issue:** IPFS images appeared not to load (showed fallback turquoise placeholder)
+- **Root Cause:** Browser caching - images were working correctly, required hard refresh
+- **Fix:** Added onerror handler with console logging for future debugging
+- **Verification:** IPFS URLs confirmed working (HTTP 200, proper content-type image/webp)
+- **Status:** ✅ Resolved - Images loading correctly after cache clear
 - **Files:** templates/app/partials/token_header.html
 
 ### Next Steps: Phase 4
@@ -241,4 +242,3 @@ A dedicated `static/js/transaction_manager.js` module orchestrates all transacti
 - End-to-end testing with real user wallets
 - Anti-bot fee decay validation
 - Graduation flow testing
-- Resolve IPFS image loading issue
