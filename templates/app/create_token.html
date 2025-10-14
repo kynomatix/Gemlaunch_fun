@@ -1608,6 +1608,20 @@
                 <div id="deploymentProgress" style="margin-top: 1.5rem;">
                     <!-- Progress steps will be inserted here -->
                 </div>
+                <button id="cancelDeploymentBtn" type="button" style="
+                    margin-top: 1.5rem;
+                    padding: 0.75rem 1.5rem;
+                    background: rgba(255, 82, 82, 0.2);
+                    color: #ff5252;
+                    border: 1px solid #ff5252;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                    display: none;
+                " onclick="cancelDeployment()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
             </div>
         </div>
     </main>
@@ -1668,19 +1682,28 @@
             }
         };
 
-        // Byte counter for description textarea
-        document.addEventListener('DOMContentLoaded', function() {
+        // Byte counter for description textarea (run immediately)
+        (function initByteCounter() {
             const descriptionTextarea = document.getElementById('description');
             const byteCounter = document.getElementById('byte-counter');
             
             if (descriptionTextarea && byteCounter) {
-                descriptionTextarea.addEventListener('input', function(e) {
+                const updateByteCount = function(e) {
                     const bytes = new TextEncoder().encode(e.target.value).length;
                     byteCounter.textContent = `${bytes} / 280 bytes`;
                     byteCounter.style.color = bytes > 280 ? '#ff5252' : bytes > 250 ? '#ffa500' : '#999';
-                });
+                };
+                
+                // Add event listener
+                descriptionTextarea.addEventListener('input', updateByteCount);
+                
+                // Initial update (in case there's existing text)
+                updateByteCount({ target: descriptionTextarea });
+            } else {
+                // Retry in 100ms if elements not found yet
+                setTimeout(initByteCounter, 100);
             }
-        });
+        })();
         
         function setMode(mode) {
             // Update mode selector
@@ -2060,18 +2083,43 @@
         }
         
         // Deployment Modal Functions
+        let deploymentCancelRequested = false;
+        
         function showDeploymentModal() {
             const modal = document.getElementById('deploymentModal');
+            const cancelBtn = document.getElementById('cancelDeploymentBtn');
             if (modal) {
                 modal.classList.add('active');
+                deploymentCancelRequested = false;
+                
+                // Show cancel button after 5 seconds (in case wallet hangs)
+                setTimeout(() => {
+                    if (cancelBtn && modal.classList.contains('active')) {
+                        cancelBtn.style.display = 'block';
+                    }
+                }, 5000);
             }
         }
 
         function hideDeploymentModal() {
             const modal = document.getElementById('deploymentModal');
+            const cancelBtn = document.getElementById('cancelDeploymentBtn');
             if (modal) {
                 modal.classList.remove('active');
+                if (cancelBtn) {
+                    cancelBtn.style.display = 'none';
+                }
             }
+        }
+        
+        function cancelDeployment() {
+            deploymentCancelRequested = true;
+            hideDeploymentModal();
+            CreateTokenNotification.showAlert(
+                'Deployment Cancelled', 
+                'Token creation has been cancelled. No token was created.', 
+                'info'
+            );
         }
 
         function updateDeploymentStatus(message, step = null) {
@@ -3057,6 +3105,12 @@
                         description: description
                     })
                 });
+                
+                // Check if response is OK before parsing JSON
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error (${response.status}): ${errorText.substring(0, 200)}`);
+                }
                 
                 const data = await response.json();
                 
