@@ -2344,39 +2344,32 @@
                 
                 updateDeploymentStatus('Transaction submitted!', `TX Hash: ${txHash.substring(0, 10)}...`);
                 
-                // Step 5: Wait for transaction confirmation
+                // Step 5: Wait for transaction confirmation using SSE monitoring
                 updateDeploymentStatus('Waiting for blockchain confirmation...');
                 
-                // Poll for transaction receipt (simple approach)
-                let receipt = null;
-                let attempts = 0;
-                const maxAttempts = 60; // 60 attempts * 2 seconds = 2 minutes max
-                
-                while (!receipt && attempts < maxAttempts) {
-                    try {
-                        if (window.ethereum) {
-                            receipt = await window.ethereum.request({
-                                method: 'eth_getTransactionReceipt',
-                                params: [txHash]
-                            });
+                // Use SSE monitoring (consistent with trading flow) and capture confirmation data
+                const confirmationData = await new Promise((resolve, reject) => {
+                    window.txManager.monitorTransaction(txHash, {
+                        onUpdate: (data) => {
+                            console.log('Transaction update:', data);
+                            if (data.status === 'pending') {
+                                updateDeploymentStatus('Confirming transaction...', data.message || 'Waiting for blockchain confirmation');
+                            }
+                        },
+                        onConfirm: (data) => {
+                            console.log('Transaction confirmed:', data);
+                            updateDeploymentStatus('Transaction confirmed!', `Block ${data.block_number || 'confirmed'}`);
+                            resolve(data);
+                        },
+                        onError: (error) => {
+                            console.error('Transaction monitoring error:', error);
+                            reject(new Error(error || 'Transaction failed'));
                         }
-                        
-                        if (!receipt) {
-                            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-                            attempts++;
-                        }
-                    } catch (error) {
-                        console.error('Error checking receipt:', error);
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        attempts++;
-                    }
-                }
+                    });
+                });
                 
-                if (!receipt) {
-                    throw new Error('Transaction confirmation timeout. Please check your wallet and try again later.');
-                }
-                
-                updateDeploymentStatus('Transaction confirmed!', 'Blockchain Confirmation Received');
+                // Log confirmation data for debugging
+                console.log('Confirmation data received:', confirmationData);
                 
                 // Step 6: Extract and verify contract address from backend
                 updateDeploymentStatus('Verifying contract deployment...');

@@ -5163,6 +5163,80 @@ def delete_pending_token(token_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/token/<contract_address>/sync-supply', methods=['POST'])
+@csrf.exempt
+def sync_token_supply(contract_address):
+    """
+    Sync circulating supply from blockchain for deployed tokens.
+    
+    This endpoint fixes tokens with 0 supply by fetching totalSupply from blockchain.
+    Can be called manually, via retry logic, or by background jobs.
+    
+    Response:
+    {
+        "success": true,
+        "circulating_supply": 1000000000,
+        "message": "Supply synced successfully"
+    }
+    """
+    try:
+        # Find token by contract address
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == contract_address.lower()
+        ).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Only sync deployed tokens
+        if token.deployment_status != 'deployed':
+            return jsonify({
+                'success': False,
+                'error': f'Token not deployed (status: {token.deployment_status})'
+            }), 400
+        
+        if not token.contract_address:
+            return jsonify({'success': False, 'error': 'No contract address set'}), 400
+        
+        # Fetch totalSupply from blockchain
+        try:
+            import json
+            with open('artifacts/contracts/BondingCurvePool.sol/BondingCurvePool.json') as f:
+                pool_abi = json.load(f)['abi']
+            
+            web3_service = get_web3_service()
+            pool_contract = web3_service.w3.eth.contract(
+                address=Web3.to_checksum_address(token.contract_address),
+                abi=pool_abi
+            )
+            
+            total_supply_wei = pool_contract.functions.totalSupply().call()
+            circulating_supply_tokens = total_supply_wei // (10 ** 18)  # Convert from wei to tokens
+            
+            # Update token
+            token.circulating_supply = circulating_supply_tokens
+            db.session.commit()
+            
+            logging.info(f"Supply synced for token {token.id} ({token.symbol}): {circulating_supply_tokens:,} tokens")
+            
+            return jsonify({
+                'success': True,
+                'circulating_supply': circulating_supply_tokens,
+                'message': 'Supply synced successfully from blockchain'
+            })
+            
+        except Exception as e:
+            logging.error(f"Failed to fetch totalSupply from blockchain for {contract_address}: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to fetch supply from blockchain: {str(e)}'
+            }), 500
+        
+    except Exception as e:
+        logging.error(f"Supply sync failed for {contract_address}: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/admin/distribute-platform-fees', methods=['POST'])
 @csrf.exempt
 def api_distribute_platform_fees():
