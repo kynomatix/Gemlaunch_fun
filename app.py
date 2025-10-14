@@ -158,6 +158,16 @@ def ratelimit_handler(e):
         'retry_after': getattr(e.description, 'retry_after', 60)
     }), 429
 
+# Prevent aggressive browser caching
+@app.after_request
+def add_cache_control_headers(response):
+    """Add Cache-Control headers to prevent browser caching of dynamic content"""
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 # Initialize transaction monitor and scheduler
 tx_monitor = get_tx_monitor()
 scheduler = BackgroundScheduler()
