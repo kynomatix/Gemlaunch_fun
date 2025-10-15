@@ -5416,6 +5416,261 @@ def sync_token_supply(contract_address):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ========================================
+# PRO Token Vesting API Endpoints
+# ========================================
+
+@app.route('/api/token/<int:token_id>/vesting/status', methods=['GET'])
+@csrf.exempt
+def get_token_vesting_status(token_id):
+    """
+    Get vesting status for a PRO token (marketing, team, airdrop contracts)
+    
+    Response:
+    {
+        "success": true,
+        "vesting": {
+            "marketing": {
+                "contract_address": "0x...",
+                "total_amount": 1000000,
+                "unlocked_amount": 250000,
+                "claimed_amount": 100000,
+                "available_to_claim": 150000,
+                "duration": 31536000,
+                "start_time": 1234567890,
+                "beneficiary": "0x..."
+            },
+            "team": { ... },
+            "airdrop": { ... }
+        }
+    }
+    """
+    # Let 404s propagate correctly
+    token = Token.query.get_or_404(token_id)
+    
+    # Check if this is a PRO token with vesting
+    if not token.reserved_percentage or token.reserved_percentage == 0:
+        return jsonify({
+            'success': False,
+            'error': 'This is not a PRO token with vesting'
+        }), 400
+    
+    # Check if token is deployed
+    if token.deployment_status != 'deployed':
+        return jsonify({
+            'success': False,
+            'error': 'Token not deployed yet'
+        }), 400
+    
+    try:
+        web3_service = get_web3_service()
+        vesting_status = {}
+        
+        # Get marketing vesting status
+        if token.marketing_vesting_address:
+            try:
+                marketing_status = web3_service.get_marketing_vesting_status(token.marketing_vesting_address)
+                vesting_status['marketing'] = {
+                    'contract_address': token.marketing_vesting_address,
+                    **marketing_status
+                }
+            except Exception as e:
+                logging.error(f"Failed to get marketing vesting status: {e}")
+                vesting_status['marketing'] = {'error': str(e)}
+        
+        # Get team vesting status
+        if token.team_vesting_address:
+            try:
+                team_status = web3_service.get_team_vesting_status(token.team_vesting_address)
+                vesting_status['team'] = {
+                    'contract_address': token.team_vesting_address,
+                    **team_status
+                }
+            except Exception as e:
+                logging.error(f"Failed to get team vesting status: {e}")
+                vesting_status['team'] = {'error': str(e)}
+        
+        # Get airdrop vesting status
+        if token.airdrop_vesting_address:
+            try:
+                airdrop_status = web3_service.get_airdrop_vesting_status(token.airdrop_vesting_address)
+                vesting_status['airdrop'] = {
+                    'contract_address': token.airdrop_vesting_address,
+                    **airdrop_status
+                }
+            except Exception as e:
+                logging.error(f"Failed to get airdrop vesting status: {e}")
+                vesting_status['airdrop'] = {'error': str(e)}
+        
+        return jsonify({
+            'success': True,
+            'vesting': vesting_status
+        })
+        
+    except Exception as e:
+        logging.error(f"Failed to get vesting status for token {token_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<int:token_id>/vesting/withdraw-marketing', methods=['POST'])
+@csrf.exempt
+def build_marketing_vesting_withdraw(token_id):
+    """
+    Build transaction to withdraw unlocked marketing tokens
+    
+    Request JSON:
+    {
+        "creator_address": "0x..."
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tx_data": {
+            "to": "0x...",
+            "data": "0x...",
+            "value": "0x0",
+            "gas": "0x..."
+        },
+        "available_to_claim": 150000
+    }
+    """
+    # Let 404s propagate correctly
+    token = Token.query.get_or_404(token_id)
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        creator_address = data.get('creator_address')
+        
+        if not creator_address:
+            return jsonify({'success': False, 'error': 'creator_address is required'}), 400
+        
+        # Check if token has marketing vesting
+        if not token.marketing_vesting_address:
+            return jsonify({
+                'success': False,
+                'error': 'Token does not have marketing vesting contract'
+            }), 400
+        
+        web3_service = get_web3_service()
+        
+        # Get vesting status to check available amount
+        try:
+            status = web3_service.get_marketing_vesting_status(token.marketing_vesting_address)
+            available = status['available_to_claim']
+        except Exception as e:
+            logging.error(f"Failed to get marketing vesting status: {e}")
+            available = 0
+        
+        # Build withdraw transaction
+        unsigned_tx = web3_service.build_marketing_vesting_withdraw_tx(
+            token.marketing_vesting_address,
+            creator_address
+        )
+        
+        # Format response
+        tx_data = {
+            'to': unsigned_tx['to'],
+            'value': hex(unsigned_tx['value']),
+            'data': unsigned_tx['data'],
+            'gas': hex(unsigned_tx['gas'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'available_to_claim': available,
+            'estimated_gas': unsigned_tx['gas']
+        })
+        
+    except Exception as e:
+        logging.error(f"Failed to build marketing vesting withdraw tx: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<int:token_id>/vesting/withdraw-team', methods=['POST'])
+@csrf.exempt
+def build_team_vesting_withdraw(token_id):
+    """
+    Build transaction to withdraw unlocked team tokens
+    
+    Request JSON:
+    {
+        "creator_address": "0x..."
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tx_data": {
+            "to": "0x...",
+            "data": "0x...",
+            "value": "0x0",
+            "gas": "0x..."
+        },
+        "available_to_claim": 150000
+    }
+    """
+    # Let 404s propagate correctly
+    token = Token.query.get_or_404(token_id)
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        creator_address = data.get('creator_address')
+        
+        if not creator_address:
+            return jsonify({'success': False, 'error': 'creator_address is required'}), 400
+        
+        # Check if token has team vesting
+        if not token.team_vesting_address:
+            return jsonify({
+                'success': False,
+                'error': 'Token does not have team vesting contract'
+            }), 400
+        
+        web3_service = get_web3_service()
+        
+        # Get vesting status to check available amount
+        try:
+            status = web3_service.get_team_vesting_status(token.team_vesting_address)
+            available = status['available_to_claim']
+        except Exception as e:
+            logging.error(f"Failed to get team vesting status: {e}")
+            available = 0
+        
+        # Build withdraw transaction
+        unsigned_tx = web3_service.build_team_vesting_withdraw_tx(
+            token.team_vesting_address,
+            creator_address
+        )
+        
+        # Format response
+        tx_data = {
+            'to': unsigned_tx['to'],
+            'value': hex(unsigned_tx['value']),
+            'data': unsigned_tx['data'],
+            'gas': hex(unsigned_tx['gas'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'available_to_claim': available,
+            'estimated_gas': unsigned_tx['gas']
+        })
+        
+    except Exception as e:
+        logging.error(f"Failed to build team vesting withdraw tx: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ========================================
+# Admin API Endpoints
+# ========================================
+
 @app.route('/api/admin/distribute-platform-fees', methods=['POST'])
 @csrf.exempt
 def api_distribute_platform_fees():

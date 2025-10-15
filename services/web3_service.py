@@ -269,6 +269,252 @@ class Web3Service:
             logging.error(f"Failed to get cliff vesting contract at {vesting_address}: {str(e)}")
             raise
     
+    # =========================
+    # PRO Token Vesting Status Methods
+    # =========================
+    
+    def get_airdrop_vesting_status(self, vesting_address):
+        """
+        Get airdrop vesting status (unlocked amount, total amount, unlock schedule)
+        
+        Returns:
+            dict: {
+                'total_amount': int (wei),
+                'unlocked_amount': int (wei),
+                'claimed_amount': int (wei),
+                'available_to_claim': int (wei),
+                'daily_unlock_rate': int (5% = 500 bps),
+                'start_time': int (timestamp),
+                'beneficiary': str (address)
+            }
+        """
+        try:
+            contract = self.get_airdrop_vesting_contract(vesting_address)
+            
+            total_amount = contract.functions.totalAmount().call()
+            unlocked_amount = contract.functions.getUnlockedAmount().call()
+            claimed_amount = contract.functions.claimedAmount().call()
+            start_time = contract.functions.startTime().call()
+            beneficiary = contract.functions.beneficiary().call()
+            
+            return {
+                'total_amount': total_amount,
+                'unlocked_amount': unlocked_amount,
+                'claimed_amount': claimed_amount,
+                'available_to_claim': max(0, unlocked_amount - claimed_amount),
+                'daily_unlock_rate': 500,  # 5% daily = 500 bps
+                'start_time': start_time,
+                'beneficiary': beneficiary
+            }
+        except Exception as e:
+            logging.error(f"Failed to get airdrop vesting status: {str(e)}")
+            raise
+    
+    def get_marketing_vesting_status(self, vesting_address):
+        """
+        Get marketing vesting status (12-month linear vesting)
+        
+        Returns:
+            dict: {
+                'total_amount': int (wei),
+                'unlocked_amount': int (wei),
+                'claimed_amount': int (wei),
+                'available_to_claim': int (wei),
+                'duration': int (seconds, 12 months),
+                'start_time': int (timestamp),
+                'beneficiary': str (address)
+            }
+        """
+        try:
+            contract = self.get_linear_vesting_contract(vesting_address)
+            
+            total_amount = contract.functions.totalAmount().call()
+            unlocked_amount = contract.functions.getUnlockedAmount().call()
+            claimed_amount = contract.functions.claimedAmount().call()
+            start_time = contract.functions.startTime().call()
+            duration = contract.functions.duration().call()
+            beneficiary = contract.functions.beneficiary().call()
+            
+            return {
+                'total_amount': total_amount,
+                'unlocked_amount': unlocked_amount,
+                'claimed_amount': claimed_amount,
+                'available_to_claim': max(0, unlocked_amount - claimed_amount),
+                'duration': duration,
+                'start_time': start_time,
+                'beneficiary': beneficiary
+            }
+        except Exception as e:
+            logging.error(f"Failed to get marketing vesting status: {str(e)}")
+            raise
+    
+    def get_team_vesting_status(self, vesting_address):
+        """
+        Get team vesting status (6mo cliff + 18mo linear vesting)
+        
+        Returns:
+            dict: {
+                'total_amount': int (wei),
+                'unlocked_amount': int (wei),
+                'claimed_amount': int (wei),
+                'available_to_claim': int (wei),
+                'cliff_duration': int (seconds, 6 months),
+                'vesting_duration': int (seconds, 18 months),
+                'start_time': int (timestamp),
+                'cliff_end': int (timestamp),
+                'beneficiary': str (address)
+            }
+        """
+        try:
+            contract = self.get_cliff_vesting_contract(vesting_address)
+            
+            total_amount = contract.functions.totalAmount().call()
+            unlocked_amount = contract.functions.getUnlockedAmount().call()
+            claimed_amount = contract.functions.claimedAmount().call()
+            start_time = contract.functions.startTime().call()
+            cliff_duration = contract.functions.cliffDuration().call()
+            vesting_duration = contract.functions.vestingDuration().call()
+            beneficiary = contract.functions.beneficiary().call()
+            
+            return {
+                'total_amount': total_amount,
+                'unlocked_amount': unlocked_amount,
+                'claimed_amount': claimed_amount,
+                'available_to_claim': max(0, unlocked_amount - claimed_amount),
+                'cliff_duration': cliff_duration,
+                'vesting_duration': vesting_duration,
+                'start_time': start_time,
+                'cliff_end': start_time + cliff_duration,
+                'beneficiary': beneficiary
+            }
+        except Exception as e:
+            logging.error(f"Failed to get team vesting status: {str(e)}")
+            raise
+    
+    # =========================
+    # PRO Token Vesting Withdrawal Transaction Builders
+    # =========================
+    
+    def build_airdrop_vesting_claim_tx(self, vesting_address, claimer_address):
+        """
+        Build transaction to claim unlocked airdrop tokens
+        
+        Args:
+            vesting_address (str): AirdropVesting contract address
+            claimer_address (str): Address claiming tokens (must be platform airdropTreasury)
+        
+        Returns:
+            dict: Unsigned transaction {from, to, data, gas, value}
+        """
+        try:
+            contract = self.get_airdrop_vesting_contract(vesting_address)
+            
+            # Build claim transaction
+            tx_data = contract.functions.claim().build_transaction({
+                'from': Web3.to_checksum_address(claimer_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(claimer_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"Built airdrop vesting claim tx - Gas: {gas_estimate['gas']}")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build airdrop vesting claim tx: {str(e)}")
+            raise
+    
+    def build_marketing_vesting_withdraw_tx(self, vesting_address, creator_address):
+        """
+        Build transaction to withdraw unlocked marketing tokens
+        
+        Args:
+            vesting_address (str): LinearVesting contract address
+            creator_address (str): Token creator address (beneficiary)
+        
+        Returns:
+            dict: Unsigned transaction {from, to, data, gas, value}
+        """
+        try:
+            contract = self.get_linear_vesting_contract(vesting_address)
+            
+            # Build withdraw transaction
+            tx_data = contract.functions.withdraw().build_transaction({
+                'from': Web3.to_checksum_address(creator_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(creator_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"Built marketing vesting withdraw tx - Gas: {gas_estimate['gas']}")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build marketing vesting withdraw tx: {str(e)}")
+            raise
+    
+    def build_team_vesting_withdraw_tx(self, vesting_address, creator_address):
+        """
+        Build transaction to withdraw unlocked team tokens
+        
+        Args:
+            vesting_address (str): CliffVesting contract address
+            creator_address (str): Token creator address (beneficiary)
+        
+        Returns:
+            dict: Unsigned transaction {from, to, data, gas, value}
+        """
+        try:
+            contract = self.get_cliff_vesting_contract(vesting_address)
+            
+            # Build withdraw transaction
+            tx_data = contract.functions.withdraw().build_transaction({
+                'from': Web3.to_checksum_address(creator_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(creator_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"Built team vesting withdraw tx - Gas: {gas_estimate['gas']}")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build team vesting withdraw tx: {str(e)}")
+            raise
+    
     def estimate_gas(self, transaction):
         """
         Estimate gas for a transaction with 20% buffer
