@@ -145,6 +145,12 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         // C-3 FIX: Validate vesting parameters BEFORE deploying pool (avoid wasted gas)
         if (reservedPercentage > 0) {
             require(reservedPercentage <= 25, "Vesting exceeds 25%");
+            
+            // N-2 FIX: Add individual allocation bounds checks for clarity
+            require(airdropsAllocation <= 100, "Airdrop allocation > 100%");
+            require(marketingAllocation <= 100, "Marketing allocation > 100%");
+            require(teamAllocation <= 100, "Team allocation > 100%");
+            
             uint256 totalAllocations = uint256(airdropsAllocation) + uint256(marketingAllocation) + uint256(teamAllocation);
             require(totalAllocations == 100, "Allocations must sum to exactly 100%");
             require(totalAllocations > 0, "Must have at least one allocation");

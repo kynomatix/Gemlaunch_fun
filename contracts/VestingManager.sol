@@ -17,8 +17,24 @@ contract VestingManager {
         uint256 teamTokens;
     }
     
+    // N-4 FIX: Event for vesting contract deployment
+    event VestingContractsDeployed(
+        address indexed pool,
+        address airdropVesting,
+        address marketingVesting,
+        address teamVesting,
+        uint256 airdropTokens,
+        uint256 marketingTokens,
+        uint256 teamTokens
+    );
+    
     constructor(address _factory) {
         require(_factory != address(0), "Invalid factory address");
+        
+        // N-3 NOTE: Cannot use extcodesize check here because VestingManager is deployed
+        // from TokenFactory's constructor, where extcodesize(_factory) returns 0.
+        // The zero-address check provides sufficient validation.
+        
         factory = _factory;
     }
     
@@ -83,6 +99,17 @@ contract VestingManager {
             );
             result.teamVesting = address(tv);
         }
+        
+        // N-4 FIX: Emit event for tracking vesting deployments
+        emit VestingContractsDeployed(
+            poolAddress,
+            result.airdropVesting,
+            result.marketingVesting,
+            result.teamVesting,
+            result.airdropTokens,
+            result.marketingTokens,
+            result.teamTokens
+        );
         
         return result;
     }
