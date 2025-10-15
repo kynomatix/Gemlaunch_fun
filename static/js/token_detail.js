@@ -2329,6 +2329,24 @@
                 return;
             }
 
+            // Check if there's any vesting data at all
+            const hasAnyData = data && (data.marketing || data.team || data.airdrop);
+            if (!hasAnyData) {
+                // Show message in all sections that vesting contracts are being deployed
+                const noDataMessage = `
+                    <div style="text-align: center; padding: 1rem; color: #FFD700;">
+                        <i class="fas fa-clock" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                        <p style="margin: 0; font-size: 0.9rem;">Vesting contracts deploying...</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; opacity: 0.8;">Refresh page in a few moments</p>
+                    </div>
+                `;
+                ['marketing-progress-info', 'team-progress-info', 'airdrop-progress-info'].forEach(id => {
+                    const div = document.getElementById(id);
+                    if (div) div.innerHTML = noDataMessage;
+                });
+                return;
+            }
+
             // Update marketing vesting  
             if (data.marketing) {
                 const { total_amount, unlocked_amount, contract_address } = data.marketing;
