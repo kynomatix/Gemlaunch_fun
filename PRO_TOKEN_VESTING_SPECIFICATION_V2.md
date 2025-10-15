@@ -1027,3 +1027,29 @@ PRO tokens embody our **design philosophy: innovation through complexity abstrac
 4. **Database**: Only need creator_wallet + vesting contract addresses (no beneficiary columns!)
 
 **Ready for implementation - no assumptions, maximum clarity!** 🚀
+
+---
+
+## 📝 Implementation Notes
+
+### Airdrop Popup Integration (POST-DEPLOYMENT)
+
+**⚠️ IMPORTANT**: The airdrop popup currently uses **mock data** from the database. After vesting contracts are deployed, this MUST be updated to read from the real AirdropVesting contract.
+
+**Current Mock Implementation** (`app.py` line 1692):
+```python
+@app.route('/api/token/<contract_address>/airdrop/available')
+# Currently calculates: days_since_creation * 5% (mock time-based math)
+```
+
+**Required Post-Deployment Update**:
+```python
+# ✅ Replace with real contract call:
+vesting_contract = web3_service.get_airdrop_vesting_contract(token.airdrop_vesting_address)
+unlocked_amount = vesting_contract.functions.getUnlockedAmount().call()
+# Use real on-chain data instead of mock calculations
+```
+
+**Why This Matters**: The airdrop popup shows "5% Unlocked" based on database mock data. After vesting contracts are live, it must show actual on-chain unlocked amounts from the AirdropVesting contract's `getUnlockedAmount()` function.
+
+**When to Implement**: Only AFTER smart contracts are deployed and tested. Do NOT attempt this integration before contracts are ready on testnet/mainnet.
