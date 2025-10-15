@@ -2329,55 +2329,109 @@
 
             // Update marketing vesting
             if (data.marketing) {
-                const { total_allocated, total_unlocked } = data.marketing;
+                const { total_allocated, total_unlocked, contract_address } = data.marketing;
                 const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
+                const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
+                const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
                 
-                const progressBar = document.getElementById('marketing-progress-modal');
-                const progressText = document.getElementById('marketing-progress-text');
-                
-                if (progressBar) {
-                    progressBar.style.width = progress + '%';
-                }
-                if (progressText) {
-                    const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
-                    const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
-                    progressText.textContent = `${unlockedFormatted} / ${totalFormatted} unlocked (${progress.toFixed(1)}%)`;
+                const infoDiv = document.getElementById('marketing-progress-info');
+                if (infoDiv) {
+                    infoDiv.innerHTML = `
+                        <div style="font-size: 0.9rem;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong style="color: #20B2AA;">Contract:</strong><br>
+                                <code style="font-size: 0.85rem; color: #fff;">${contract_address}</code>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 5px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span>Unlocked:</span>
+                                    <strong>${unlockedFormatted}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span>Total:</span>
+                                    <strong>${totalFormatted}</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 0.5rem;">
+                                    <div style="height: 100%; background: #20B2AA; width: ${progress}%;"></div>
+                                </div>
+                                <div style="text-align: center; margin-top: 0.3rem; color: #20B2AA; font-size: 0.85rem;">
+                                    ${progress.toFixed(1)}% unlocked
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
             // Update team vesting
             if (data.team) {
-                const { total_allocated, total_unlocked } = data.team;
+                const { total_allocated, total_unlocked, contract_address } = data.team;
                 const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
+                const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
+                const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
                 
-                const progressBar = document.getElementById('team-progress-modal');
-                const progressText = document.getElementById('team-progress-text');
-                
-                if (progressBar) {
-                    progressBar.style.width = progress + '%';
-                }
-                if (progressText) {
-                    const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
-                    const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
-                    progressText.textContent = `${unlockedFormatted} / ${totalFormatted} unlocked (${progress.toFixed(1)}%)`;
+                const infoDiv = document.getElementById('team-progress-info');
+                if (infoDiv) {
+                    infoDiv.innerHTML = `
+                        <div style="font-size: 0.9rem;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong style="color: #B19CD9;">Contract:</strong><br>
+                                <code style="font-size: 0.85rem; color: #fff;">${contract_address}</code>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 5px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span>Unlocked:</span>
+                                    <strong>${unlockedFormatted}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span>Total:</span>
+                                    <strong>${totalFormatted}</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 0.5rem;">
+                                    <div style="height: 100%; background: #B19CD9; width: ${progress}%;"></div>
+                                </div>
+                                <div style="text-align: center; margin-top: 0.3rem; color: #B19CD9; font-size: 0.85rem;">
+                                    ${progress.toFixed(1)}% unlocked
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
             // Update airdrop vesting
             if (data.airdrops) {
-                const { total_allocated, total_unlocked } = data.airdrops;
+                const { total_allocated, total_unlocked, contract_address } = data.airdrops;
                 const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
+                const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
+                const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
                 
-                const progressBar = document.getElementById('airdrop-progress-modal');
-                const progressText = document.getElementById('airdrop-progress-text');
-                
-                if (progressBar) {
-                    progressBar.style.width = progress + '%';
-                }
-                if (progressText) {
-                    const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
-                    const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
-                    progressText.textContent = `${unlockedFormatted} / ${totalFormatted} unlocked (${progress.toFixed(1)}%)`;
+                const infoDiv = document.getElementById('airdrop-progress-info');
+                if (infoDiv) {
+                    infoDiv.innerHTML = `
+                        <div style="font-size: 0.9rem;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong style="color: #00D9FF;">Contract:</strong><br>
+                                <code style="font-size: 0.85rem; color: #fff;">${contract_address}</code>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 5px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span>Unlocked:</span>
+                                    <strong>${unlockedFormatted}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span>Total:</span>
+                                    <strong>${totalFormatted}</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 0.5rem;">
+                                    <div style="height: 100%; background: #00D9FF; width: ${progress}%;"></div>
+                                </div>
+                                <div style="text-align: center; margin-top: 0.3rem; color: #00D9FF; font-size: 0.85rem;">
+                                    ${progress.toFixed(1)}% unlocked
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
             }
         }
@@ -2524,18 +2578,24 @@
 
 // Toggle vesting info modal
 function toggleVestingModal() {
-    const modal = document.getElementById('vestingModal');
-    if (!modal) return;
+    let modal = document.getElementById('vestingModal');
     
-    const isVisible = modal.style.display === 'flex';
-    modal.style.display = isVisible ? 'none' : 'flex';
-    
-    // Load vesting data when modal opens
-    if (!isVisible && window.TokenDetail) {
-        window.TokenDetail.loadVestingData();
+    // If modal exists, just toggle it
+    if (modal) {
+        const isVisible = modal.style.display === 'flex';
+        if (isVisible) {
+            modal.style.display = 'none';
+        } else {
+            modal.style.display = 'flex';
+            // Load vesting data when opening
+            if (window.TokenDetail && window.tokenId) {
+                window.TokenDetail.loadVestingData();
+            }
+        }
+        return;
     }
     
-    // Old dynamic modal code (keep for backward compatibility if needed)
+    // Create modal first time only
     if (!window.vestingData) return;
     
     const vd = window.vestingData;
@@ -2563,23 +2623,47 @@ function toggleVestingModal() {
                         </div>
                     </div>
                     <div class="vesting-details">
-                        <div class="vesting-item">
-                            <i class="fas fa-gift" style="color: #00D9FF;"></i>
-                            <span class="vesting-category">Airdrops & Rewards</span>
-                            <span class="vesting-percent">${airdropsTotal}% of total</span>
-                            <small>5% daily unlock</small>
+                        <div class="vesting-item" onclick="toggleVestingDetails(this)" style="cursor: pointer;">
+                            <div class="vesting-item-header">
+                                <div>
+                                    <i class="fas fa-gift" style="color: #00D9FF;"></i>
+                                    <span class="vesting-category">Airdrops & Rewards</span>
+                                    <span class="vesting-percent">${airdropsTotal}% of total</span>
+                                </div>
+                                <i class="fas fa-chevron-down" style="transition: transform 0.3s; font-size: 0.8em;"></i>
+                            </div>
+                            <small style="display: block; margin-top: 0.3rem;">5% daily unlock</small>
+                            <div class="vesting-item-details" style="display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div id="airdrop-progress-info">Loading...</div>
+                            </div>
                         </div>
-                        <div class="vesting-item">
-                            <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
-                            <span class="vesting-category">Marketing</span>
-                            <span class="vesting-percent">${marketingTotal}% of total</span>
-                            <small>12-month linear</small>
+                        <div class="vesting-item" onclick="toggleVestingDetails(this)" style="cursor: pointer;">
+                            <div class="vesting-item-header">
+                                <div>
+                                    <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
+                                    <span class="vesting-category">Marketing</span>
+                                    <span class="vesting-percent">${marketingTotal}% of total</span>
+                                </div>
+                                <i class="fas fa-chevron-down" style="transition: transform 0.3s; font-size: 0.8em;"></i>
+                            </div>
+                            <small style="display: block; margin-top: 0.3rem;">12-month linear</small>
+                            <div class="vesting-item-details" style="display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div id="marketing-progress-info">Loading...</div>
+                            </div>
                         </div>
-                        <div class="vesting-item">
-                            <i class="fas fa-users" style="color: #B19CD9;"></i>
-                            <span class="vesting-category">Team</span>
-                            <span class="vesting-percent">${teamTotal}% of total</span>
-                            <small>6mo cliff + 18mo vest</small>
+                        <div class="vesting-item" onclick="toggleVestingDetails(this)" style="cursor: pointer;">
+                            <div class="vesting-item-header">
+                                <div>
+                                    <i class="fas fa-users" style="color: #B19CD9;"></i>
+                                    <span class="vesting-category">Team</span>
+                                    <span class="vesting-percent">${teamTotal}% of total</span>
+                                </div>
+                                <i class="fas fa-chevron-down" style="transition: transform 0.3s; font-size: 0.8em;"></i>
+                            </div>
+                            <small style="display: block; margin-top: 0.3rem;">6mo cliff + 18mo vest</small>
+                            <div class="vesting-item-details" style="display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div id="team-progress-info">Loading...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2590,10 +2674,29 @@ function toggleVestingModal() {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
     // Close on background click
-    const vestingModalElement = document.getElementById('vestingModal');
-    vestingModalElement.addEventListener('click', function(e) {
-        if (e.target === vestingModalElement) {
+    modal = document.getElementById('vestingModal');
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
             toggleVestingModal();
         }
     });
+    
+    // Load vesting data
+    if (window.TokenDetail && window.tokenId) {
+        window.TokenDetail.loadVestingData();
+    }
+}
+
+// Toggle expandable vesting details
+function toggleVestingDetails(element) {
+    const details = element.querySelector('.vesting-item-details');
+    const chevron = element.querySelector('.fa-chevron-down');
+    
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        chevron.style.transform = 'rotate(180deg)';
+    } else {
+        details.style.display = 'none';
+        chevron.style.transform = 'rotate(0deg)';
+    }
 }
