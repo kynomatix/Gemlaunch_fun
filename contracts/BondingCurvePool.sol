@@ -55,6 +55,13 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     address public factory;
     mapping(address => bool) public isVestingContract;
     bool public vestingInitialized;
+    
+    // H-1 FIX: Track vesting contract addresses for on-chain queries
+    address public airdropVestingContract;
+    address public marketingVestingContract;
+    address public teamVestingContract;
+    
+    enum VestingType { Airdrop, Marketing, Team }
 
     // Events
     event TokensPurchased(
@@ -94,7 +101,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     event GraduationOracleUpdated(address indexed newOracle);
     event FeesDistributed(uint256 dev, uint256 buyback, uint256 kaspa, uint256 community);
     event ReserveDistributed(address indexed creator, address[] recipients, uint256[] amounts, uint256 totalDistributed);
-    event VestingTransfer(address indexed vestingContract, uint256 amount, uint256 timestamp);
+    event VestingTransfer(address indexed vestingContract, uint256 amount, VestingType indexed vestingType, uint256 timestamp);
     event VestingFinalized(uint256 timestamp);
 
     constructor(
@@ -167,17 +174,30 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     }
 
     // PRO Token Vesting Functions
-    function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
+    function transferReserveToVesting(
+        address vestingContract,
+        uint256 amount,
+        VestingType vestingType
+    ) external nonReentrant {
         require(msg.sender == factory, "Only factory");
         require(!vestingInitialized, "Already finalized");
         require(vestingContract != address(this), "Cannot vest to self");
+        
+        // H-1 FIX: Track vesting contract by type
+        if (vestingType == VestingType.Airdrop) {
+            airdropVestingContract = vestingContract;
+        } else if (vestingType == VestingType.Marketing) {
+            marketingVestingContract = vestingContract;
+        } else {
+            teamVestingContract = vestingContract;
+        }
         
         // Register for wallet cap exemption
         isVestingContract[vestingContract] = true;
         
         _transfer(address(this), vestingContract, amount);
         
-        emit VestingTransfer(vestingContract, amount, block.timestamp);
+        emit VestingTransfer(vestingContract, amount, vestingType, block.timestamp);
     }
 
     function finalizeVestingSetup() external {
@@ -187,9 +207,14 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         vestingInitialized = true;
         reserveDistributed = true;
         
-        // Note: TokenFactory validates each vesting contract balance individually
-        // Rounding dust from integer division remains in contract as part of curve/LP supply
-        // This is intentional and documented in spec (line 328-330)
+        // C-2 FIX: Verify expected balance after vesting transfers
+        // Pool should have: curve supply (virtualTokenReserve) + LP supply (25%)
+        uint256 lpSupply = totalSupply() * LP_SUPPLY_PCT / 100;
+        uint256 expectedBalance = virtualTokenReserve + lpSupply;
+        require(
+            balanceOf(address(this)) == expectedBalance,
+            "Vesting transfer accounting mismatch"
+        );
         
         emit VestingFinalized(block.timestamp);
     }
@@ -569,6 +594,9 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         uint256 availableReserve,
         uint256 totalReserve
     ) {
+        // H-2 FIX: PRO tokens use vesting contracts, not reserve distribution
+        require(reservedPercentage == 0, "PRO tokens use vesting contracts");
+        
         distributed = reserveDistributed;
         totalReserve = totalSupply() * LP_SUPPLY_PCT / 100; // 25% of total supply
         
@@ -578,6 +606,15 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         } else {
             availableReserve = 0; // No reserve available after graduation starts
         }
+    }
+    
+    // H-1 FIX: Getter for vesting contract addresses (enables on-chain queries)
+    function getVestingContracts() external view returns (
+        address airdrop,
+        address marketing,
+        address team
+    ) {
+        return (airdropVestingContract, marketingVestingContract, teamVestingContract);
     }
 
     // M-4 Fix: Prevent direct KAS transfers (force use of buyTokens)

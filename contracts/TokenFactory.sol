@@ -77,8 +77,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         address _admin,
         address _buybackReserve,
         address _kaspaSupport,
-        address _communityRewards,
-        address _vestingManager
+        address _communityRewards
     ) Ownable(msg.sender) {
         require(_graduationController != address(0), "Bad controller");
         require(_treasury != address(0), "Bad treasury");
@@ -89,7 +88,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         require(_buybackReserve != address(0), "Bad buyback");
         require(_kaspaSupport != address(0), "Bad kaspa");
         require(_communityRewards != address(0), "Bad community");
-        require(_vestingManager != address(0), "Bad vesting");
         
         // L-2 FIX: Duplicate address validation
         require(_treasury != _admin, "Dup addr");
@@ -105,7 +103,10 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         buybackReserveWallet = _buybackReserve;
         kaspaNetworkSupportWallet = _kaspaSupport;
         communityRewardsWallet = _communityRewards;
-        vestingManager = _vestingManager;
+        
+        // C-1 FIX: Deploy VestingManager with access control
+        VestingManager vm = new VestingManager(address(this));
+        vestingManager = address(vm);
     }
 
     function createToken(
@@ -140,6 +141,14 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         require(totalSupply >= 1_000_000 * 10**18, "Supply low"); // Min 1M tokens
         require(totalSupply <= 1_000_000_000 * 10**18, "Supply high"); // Max 1B tokens
         require(bytes(description).length <= 280, "Desc long"); // Twitter-style limit
+        
+        // C-3 FIX: Validate vesting parameters BEFORE deploying pool (avoid wasted gas)
+        if (reservedPercentage > 0) {
+            require(reservedPercentage <= 25, "Vesting exceeds 25%");
+            uint256 totalAllocations = uint256(airdropsAllocation) + uint256(marketingAllocation) + uint256(teamAllocation);
+            require(totalAllocations == 100, "Allocations must sum to exactly 100%");
+            require(totalAllocations > 0, "Must have at least one allocation");
+        }
         
         // Deploy BondingCurvePool contract (which is also the ERC-20 token)
         BondingCurvePool pool = new BondingCurvePool(
@@ -179,7 +188,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             teamVestingAddress = vesting.teamVesting;
             
             if (vesting.airdropTokens > 0) {
-                pool.transferReserveToVesting(airdropVestingAddress, vesting.airdropTokens);
+                pool.transferReserveToVesting(
+                    airdropVestingAddress,
+                    vesting.airdropTokens,
+                    BondingCurvePool.VestingType.Airdrop
+                );
                 require(
                     IERC20(poolAddress).balanceOf(airdropVestingAddress) == vesting.airdropTokens,
                     "Airdrop err"
@@ -187,7 +200,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             }
             
             if (vesting.marketingTokens > 0) {
-                pool.transferReserveToVesting(marketingVestingAddress, vesting.marketingTokens);
+                pool.transferReserveToVesting(
+                    marketingVestingAddress,
+                    vesting.marketingTokens,
+                    BondingCurvePool.VestingType.Marketing
+                );
                 require(
                     IERC20(poolAddress).balanceOf(marketingVestingAddress) == vesting.marketingTokens,
                     "Marketing err"
@@ -195,7 +212,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             }
             
             if (vesting.teamTokens > 0) {
-                pool.transferReserveToVesting(teamVestingAddress, vesting.teamTokens);
+                pool.transferReserveToVesting(
+                    teamVestingAddress,
+                    vesting.teamTokens,
+                    BondingCurvePool.VestingType.Team
+                );
                 require(
                     IERC20(poolAddress).balanceOf(teamVestingAddress) == vesting.teamTokens,
                     "Team err"

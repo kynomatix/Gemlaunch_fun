@@ -6,6 +6,8 @@ import "./LinearVesting.sol";
 import "./CliffVesting.sol";
 
 contract VestingManager {
+    address public immutable factory;
+    
     struct VestingContracts {
         address airdropVesting;
         uint256 airdropTokens;
@@ -13,6 +15,11 @@ contract VestingManager {
         uint256 marketingTokens;
         address teamVesting;
         uint256 teamTokens;
+    }
+    
+    constructor(address _factory) {
+        require(_factory != address(0), "Invalid factory address");
+        factory = _factory;
     }
     
     function deployVestingContracts(
@@ -25,6 +32,7 @@ contract VestingManager {
         address airdropTreasuryAddress,
         address creatorAddress
     ) external returns (VestingContracts memory result) {
+        require(msg.sender == factory, "Only factory can deploy vesting contracts");
         require(poolAddress != address(0), "Invalid pool");
         require(totalSupply > 0, "Invalid supply");
         require(reservedPercentage > 0 && reservedPercentage <= 25, "Invalid reserve %");
