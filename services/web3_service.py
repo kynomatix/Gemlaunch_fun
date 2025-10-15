@@ -213,6 +213,12 @@ class Web3Service:
             contracts['BondingCurvePoolABI'] = self._load_contract_abi('BondingCurvePool')
             logging.info("Loaded BondingCurvePool ABI")
             
+            # Load PRO Token Vesting Contract ABIs
+            contracts['AirdropVestingABI'] = self._load_contract_abi('AirdropVesting')
+            contracts['LinearVestingABI'] = self._load_contract_abi('LinearVesting')
+            contracts['CliffVestingABI'] = self._load_contract_abi('CliffVesting')
+            logging.info("Loaded PRO Token Vesting ABIs")
+            
             return contracts
             
         except Exception as e:
@@ -228,6 +234,39 @@ class Web3Service:
             )
         except Exception as e:
             logging.error(f"Failed to get pool contract at {pool_address}: {str(e)}")
+            raise
+    
+    def get_airdrop_vesting_contract(self, vesting_address):
+        """Get AirdropVesting contract instance"""
+        try:
+            return self.w3.eth.contract(
+                address=Web3.to_checksum_address(vesting_address),
+                abi=self.contracts['AirdropVestingABI']
+            )
+        except Exception as e:
+            logging.error(f"Failed to get airdrop vesting contract at {vesting_address}: {str(e)}")
+            raise
+    
+    def get_linear_vesting_contract(self, vesting_address):
+        """Get LinearVesting contract instance (for marketing tokens)"""
+        try:
+            return self.w3.eth.contract(
+                address=Web3.to_checksum_address(vesting_address),
+                abi=self.contracts['LinearVestingABI']
+            )
+        except Exception as e:
+            logging.error(f"Failed to get linear vesting contract at {vesting_address}: {str(e)}")
+            raise
+    
+    def get_cliff_vesting_contract(self, vesting_address):
+        """Get CliffVesting contract instance (for team tokens)"""
+        try:
+            return self.w3.eth.contract(
+                address=Web3.to_checksum_address(vesting_address),
+                abi=self.contracts['CliffVestingABI']
+            )
+        except Exception as e:
+            logging.error(f"Failed to get cliff vesting contract at {vesting_address}: {str(e)}")
             raise
     
     def estimate_gas(self, transaction):
