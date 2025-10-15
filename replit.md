@@ -23,13 +23,24 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **AI Token Image Generation**: A two-stage AI pipeline uses OpenRouter Llama 3.1 70B for prompt enhancement and Replicate FLUX.1 Schnell for 1024x1024 WebP image generation.
 
 ### Core Features
-- **PRO Token Airdrop System**: Manages airdrops with a 5% per day vesting schedule.
 - **Anti-Bot System (GEM System)**: An optional premium feature for PRO tokens using time-based KAS fee decay to prevent bot sniping.
 - **Token-Specific Community Points System**: Allows PRO token creators to configure and track engagement points.
 - **Multi-Wallet Linking System**: Securely links multiple wallets via challenge-response authentication.
 - **Wallet Connection System**: A modal-based system supporting Kastle, KasWare, and MetaMask using challenge-response authentication.
 - **Enhanced Marketplace Search**: Provides comprehensive search across token name, symbol, contract address, and creator information.
 - **Deployment Confirmation System**: A 6-layer security verification system for confirming token deployments, ensuring server-side blockchain verification and multi-layer defense against fake deployments.
+
+### PRO Token Vesting System (PLANNED - NOT YET IMPLEMENTED)
+⚠️ **STATUS: Specification complete, implementation pending**
+- **Design:** Automatic beneficiary system with zero configuration complexity
+  - Airdrop vesting → Platform's airdropTreasury wallet (5% daily unlock)
+  - Marketing vesting → Creator's wallet (12-month linear)
+  - Team vesting → Creator's wallet (6mo cliff + 18mo vest)
+- **Spec Location:** `PRO_TOKEN_VESTING_SPECIFICATION_V2.md` (production-ready)
+- **Audit Status:** 7 rounds completed (all critical issues addressed in spec)
+- **Implementation Status:** See `PRO_TOKEN_VESTING_AUDIT_ROUND_7.md` for gap analysis
+- **Key Finding:** Smart contracts, backend APIs, and frontend portal NOT implemented yet
+- **Security Note:** Current airdropTreasury shares key with oracle wallet (HIGH-RISK, needs separation)
 
 ## Smart Contract Architecture
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.
