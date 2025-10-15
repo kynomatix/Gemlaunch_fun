@@ -217,6 +217,17 @@ function distributeReserve(address[] calldata recipients, uint256[] calldata amo
 
 ### 2. TokenFactory.sol
 
+**New Event Declaration:**
+```solidity
+event VestingDeployed(
+    address indexed token,
+    address airdropVesting,
+    address marketingVesting,
+    address teamVesting
+);
+```
+
+**Updated createToken Function:**
 ```solidity
 function createToken(
     // ... existing params (NO beneficiary addresses - they're automatic!)
@@ -348,17 +359,221 @@ function createToken(
 
 ---
 
-### 3. Vesting Contracts (Unchanged)
+### 3. Vesting Contracts (Complete Implementation)
 
-See original spec for:
-- `AirdropVesting.sol` (5% daily)
-- `LinearVesting.sol` (12 month linear)
-- `CliffVesting.sol` (6mo cliff + 18mo vest)
+#### AirdropVesting.sol (5% daily unlock)
 
-All contracts:
-- ✅ Fully immutable (no Ownable)
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract AirdropVesting is ReentrancyGuard {
+    IERC20 public immutable token;
+    address public immutable beneficiary;
+    uint256 public immutable totalAllocation;
+    uint256 public immutable startTime;
+    uint256 public constant DAILY_UNLOCK_PCT = 5; // 5% per day
+    uint256 public constant VESTING_PERIOD = 20 days;
+    uint256 public withdrawn;
+    
+    event TokensWithdrawn(address indexed beneficiary, uint256 amount);
+    
+    constructor(
+        address _token,
+        address _beneficiary,
+        uint256 _totalAllocation
+    ) {
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_totalAllocation > 0, "Invalid allocation");
+        
+        token = IERC20(_token);
+        beneficiary = _beneficiary;
+        totalAllocation = _totalAllocation;
+        startTime = block.timestamp;
+    }
+    
+    function getUnlockedAmount() public view returns (uint256) {
+        uint256 elapsed = block.timestamp - startTime;
+        
+        if (elapsed >= VESTING_PERIOD) {
+            return totalAllocation; // 100% unlocked after 20 days
+        }
+        
+        uint256 daysElapsed = elapsed / 1 days;
+        uint256 unlocked = (totalAllocation * daysElapsed * DAILY_UNLOCK_PCT) / 100;
+        
+        return unlocked > totalAllocation ? totalAllocation : unlocked;
+    }
+    
+    function getWithdrawableAmount() public view returns (uint256) {
+        uint256 unlocked = getUnlockedAmount();
+        return unlocked > withdrawn ? unlocked - withdrawn : 0;
+    }
+    
+    function withdraw() external nonReentrant {
+        require(msg.sender == beneficiary, "Only beneficiary can withdraw");
+        
+        uint256 withdrawable = getWithdrawableAmount();
+        require(withdrawable > 0, "No tokens available");
+        
+        withdrawn += withdrawable;
+        
+        require(token.transfer(beneficiary, withdrawable), "Transfer failed");
+        emit TokensWithdrawn(beneficiary, withdrawable);
+    }
+}
+```
+
+#### LinearVesting.sol (12-month linear)
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract LinearVesting is ReentrancyGuard {
+    IERC20 public immutable token;
+    address public immutable beneficiary;
+    uint256 public immutable totalAllocation;
+    uint256 public immutable startTime;
+    uint256 public immutable duration;
+    uint256 public withdrawn;
+    
+    event TokensWithdrawn(address indexed beneficiary, uint256 amount);
+    
+    constructor(
+        address _token,
+        address _beneficiary,
+        uint256 _totalAllocation,
+        uint256 _durationMonths  // 12 for marketing
+    ) {
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_totalAllocation > 0, "Invalid allocation");
+        require(_durationMonths > 0, "Invalid duration");
+        
+        token = IERC20(_token);
+        beneficiary = _beneficiary;
+        totalAllocation = _totalAllocation;
+        startTime = block.timestamp;
+        duration = _durationMonths * 30 days;
+    }
+    
+    function getUnlockedAmount() public view returns (uint256) {
+        uint256 elapsed = block.timestamp - startTime;
+        
+        if (elapsed >= duration) {
+            return totalAllocation; // 100% unlocked
+        }
+        
+        return (totalAllocation * elapsed) / duration;
+    }
+    
+    function getWithdrawableAmount() public view returns (uint256) {
+        uint256 unlocked = getUnlockedAmount();
+        return unlocked > withdrawn ? unlocked - withdrawn : 0;
+    }
+    
+    function withdraw() external nonReentrant {
+        require(msg.sender == beneficiary, "Only beneficiary can withdraw");
+        
+        uint256 withdrawable = getWithdrawableAmount();
+        require(withdrawable > 0, "No tokens available");
+        
+        withdrawn += withdrawable;
+        
+        require(token.transfer(beneficiary, withdrawable), "Transfer failed");
+        emit TokensWithdrawn(beneficiary, withdrawable);
+    }
+}
+```
+
+#### CliffVesting.sol (6mo cliff + 18mo vest)
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract CliffVesting is ReentrancyGuard {
+    IERC20 public immutable token;
+    address public immutable beneficiary;
+    uint256 public immutable totalAllocation;
+    uint256 public immutable startTime;
+    uint256 public immutable cliff;
+    uint256 public immutable vestingEnd;
+    uint256 public withdrawn;
+    
+    event TokensWithdrawn(address indexed beneficiary, uint256 amount);
+    
+    constructor(
+        address _token,
+        address _beneficiary,
+        uint256 _totalAllocation,
+        uint256 _cliffMonths,      // 6 for team
+        uint256 _vestingMonths     // 18 for team (after cliff)
+    ) {
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_totalAllocation > 0, "Invalid allocation");
+        require(_cliffMonths > 0, "Invalid cliff");
+        require(_vestingMonths > 0, "Invalid vesting period");
+        
+        token = IERC20(_token);
+        beneficiary = _beneficiary;
+        totalAllocation = _totalAllocation;
+        startTime = block.timestamp;
+        cliff = _cliffMonths * 30 days;
+        vestingEnd = startTime + (_cliffMonths + _vestingMonths) * 30 days;
+    }
+    
+    function getUnlockedAmount() public view returns (uint256) {
+        if (block.timestamp < startTime + cliff) {
+            return 0; // Nothing unlocked before cliff
+        }
+        
+        if (block.timestamp >= vestingEnd) {
+            return totalAllocation; // 100% unlocked after full vesting
+        }
+        
+        uint256 vestingDuration = vestingEnd - (startTime + cliff);
+        uint256 elapsedSinceCliff = block.timestamp - (startTime + cliff);
+        
+        return (totalAllocation * elapsedSinceCliff) / vestingDuration;
+    }
+    
+    function getWithdrawableAmount() public view returns (uint256) {
+        uint256 unlocked = getUnlockedAmount();
+        return unlocked > withdrawn ? unlocked - withdrawn : 0;
+    }
+    
+    function withdraw() external nonReentrant {
+        require(msg.sender == beneficiary, "Only beneficiary can withdraw");
+        
+        uint256 withdrawable = getWithdrawableAmount();
+        require(withdrawable > 0, "No tokens available");
+        
+        withdrawn += withdrawable;
+        
+        require(token.transfer(beneficiary, withdrawable), "Transfer failed");
+        emit TokensWithdrawn(beneficiary, withdrawable);
+    }
+}
+```
+
+**All contracts are:**
+- ✅ Fully immutable (no Ownable, no admin functions)
 - ✅ ReentrancyGuard on withdraw()
-- ✅ Time-locked token releases
+- ✅ Time-locked token releases (enforced on-chain)
+- ✅ Beneficiary-only withdrawals
 
 ---
 
