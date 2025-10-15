@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BondingCurvePool.sol";
+import "./AirdropVesting.sol";
+import "./LinearVesting.sol";
+import "./CliffVesting.sol";
 
 contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     // Contract addresses
@@ -58,6 +61,16 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     event GraduationControllerUpdated(address indexed newController);
     event EmergencyTokenRecovery(address indexed token, uint256 amount);
     event EmergencyKASRecovery(uint256 amount);
+    
+    event VestingDeployed(
+        address indexed token,
+        address airdropVesting,
+        uint8 airdropAllocation,
+        address marketingVesting,
+        uint8 marketingAllocation,
+        address teamVesting,
+        uint8 teamAllocation
+    );
 
     constructor(
         address _graduationController,
@@ -105,8 +118,17 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         string memory twitterUrl,
         string memory telegramUrl,
         string memory websiteUrl,
-        bool antiBotEnabled
-    ) external nonReentrant whenNotPaused returns (address) {
+        bool antiBotEnabled,
+        uint8 reservedPercentage,        // 0-25 (vesting %)
+        uint8 airdropsAllocation,        // % of vesting reserve
+        uint8 marketingAllocation,       // % of vesting reserve
+        uint8 teamAllocation             // % of vesting reserve
+    ) external nonReentrant whenNotPaused returns (
+        address poolAddress,
+        address airdropVestingAddress,
+        address marketingVestingAddress,
+        address teamVestingAddress
+    ) {
         // Anti-spam: Enforce deployment cooldown
         require(
             block.timestamp >= lastDeploymentTime[msg.sender] + deploymentCooldown,
@@ -119,6 +141,22 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         require(totalSupply >= 1_000_000 * 10**18, "Total supply too low"); // Min 1M tokens
         require(totalSupply <= 1_000_000_000 * 10**18, "Total supply too high"); // Max 1B tokens
         require(bytes(description).length <= 280, "Description too long"); // Twitter-style limit
+        
+        // AUTOMATIC BENEFICIARY LOGIC (No user input required)
+        // This is intentional design for simplicity and ease of use:
+        // - Airdrop vesting → Platform's airdropTreasury (for system-managed airdrops via chat)
+        // - Marketing vesting → msg.sender (creator's wallet)
+        // - Team vesting → msg.sender (creator's wallet)
+        // Creators can manually transfer tokens later if they want separate wallets
+        
+        // Validate vesting params
+        require(reservedPercentage <= 25, "Vesting exceeds 25%");
+        
+        if (reservedPercentage > 0) {
+            // Allocations must sum to exactly 100%
+            uint256 totalAllocations = airdropsAllocation + marketingAllocation + teamAllocation;
+            require(totalAllocations == 100, "Allocations must sum to exactly 100%");
+        }
         
         // Deploy BondingCurvePool contract (which is also the ERC-20 token)
         BondingCurvePool pool = new BondingCurvePool(
@@ -134,10 +172,86 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             admin,
             buybackReserveWallet,
             kaspaNetworkSupportWallet,
-            communityRewardsWallet
+            communityRewardsWallet,
+            reservedPercentage  // NEW: vesting percentage
         );
         
-        address poolAddress = address(pool);
+        poolAddress = address(pool);
+        
+        // Deploy vesting contracts if PRO token
+        if (reservedPercentage > 0) {
+            uint256 totalVesting = totalSupply * reservedPercentage / 100;
+            
+            // Calculate token amounts
+            uint256 airdropTokens = totalVesting * airdropsAllocation / 100;
+            uint256 marketingTokens = totalVesting * marketingAllocation / 100;
+            uint256 teamTokens = totalVesting * teamAllocation / 100;
+            
+            // Minimum allocation validation for meaningful unlocks
+            if (airdropTokens > 0) {
+                require(airdropTokens >= 100 * 10**18, "Airdrop allocation too small for daily unlocks");
+            }
+            if (marketingTokens > 0) {
+                require(marketingTokens >= 100 * 10**18, "Marketing allocation too small for monthly unlocks");
+            }
+            if (teamTokens > 0) {
+                require(teamTokens >= 100 * 10**18, "Team allocation too small for vesting schedule");
+            }
+            
+            // Deploy airdrop vesting (platform wallet)
+            if (airdropTokens > 0) {
+                AirdropVesting av = new AirdropVesting(
+                    poolAddress,
+                    airdropTreasury,  // Platform wallet
+                    airdropTokens
+                );
+                airdropVestingAddress = address(av);
+                pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+                
+                require(
+                    IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
+                    "Airdrop vesting underfunded"
+                );
+            }
+            
+            // Deploy marketing vesting (creator wallet)
+            if (marketingTokens > 0) {
+                LinearVesting mv = new LinearVesting(
+                    poolAddress,
+                    msg.sender,  // Creator wallet
+                    marketingTokens,
+                    12  // 12 months
+                );
+                marketingVestingAddress = address(mv);
+                pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
+                
+                require(
+                    IERC20(poolAddress).balanceOf(marketingVestingAddress) == marketingTokens,
+                    "Marketing vesting underfunded"
+                );
+            }
+            
+            // Deploy team vesting (creator wallet)
+            if (teamTokens > 0) {
+                CliffVesting tv = new CliffVesting(
+                    poolAddress,
+                    msg.sender,  // Creator wallet
+                    teamTokens,
+                    6,   // 6 month cliff
+                    18   // 18 month vesting
+                );
+                teamVestingAddress = address(tv);
+                pool.transferReserveToVesting(teamVestingAddress, teamTokens);
+                
+                require(
+                    IERC20(poolAddress).balanceOf(teamVestingAddress) == teamTokens,
+                    "Team vesting underfunded"
+                );
+            }
+            
+            // Finalize vesting setup
+            pool.finalizeVestingSetup();
+        }
         
         // Store token metadata
         tokens[poolAddress] = TokenInfo({
@@ -169,7 +283,20 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             block.timestamp
         );
         
-        return poolAddress;
+        // Emit vesting event if PRO token
+        if (reservedPercentage > 0) {
+            emit VestingDeployed(
+                poolAddress,
+                airdropVestingAddress,
+                airdropsAllocation,
+                marketingVestingAddress,
+                marketingAllocation,
+                teamVestingAddress,
+                teamAllocation
+            );
+        }
+        
+        return (poolAddress, airdropVestingAddress, marketingVestingAddress, teamVestingAddress);
     }
 
     // Update deployment cooldown (anti-spam control)

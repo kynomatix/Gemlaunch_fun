@@ -50,6 +50,12 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     address public kaspaNetworkSupportWallet;
     address public communityRewardsWallet;
 
+    // PRO Token Vesting Support
+    uint8 public reservedPercentage;  // 0-25 (vesting %)
+    address public factory;
+    mapping(address => bool) public isVestingContract;
+    bool public vestingInitialized;
+
     // Events
     event TokensPurchased(
         address indexed buyer,
@@ -88,6 +94,8 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     event GraduationOracleUpdated(address indexed newOracle);
     event FeesDistributed(uint256 dev, uint256 buyback, uint256 kaspa, uint256 community);
     event ReserveDistributed(address indexed creator, address[] recipients, uint256[] amounts, uint256 totalDistributed);
+    event VestingTransfer(address indexed vestingContract, uint256 amount, uint256 timestamp);
+    event VestingFinalized(uint256 timestamp);
 
     constructor(
         string memory name,
@@ -102,7 +110,8 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         address _admin,
         address _buybackReserve,
         address _kaspaSupport,
-        address _communityRewards
+        address _communityRewards,
+        uint8 _reservedPercentage  // NEW: 0-25 (vesting %)
     ) ERC20(name, symbol) Ownable(msg.sender) {
         require(_creator != address(0), "Invalid creator");
         require(_treasury != address(0), "Invalid treasury");
@@ -120,6 +129,11 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(_treasury != _admin, "Treasury cannot be admin");
         require(_treasury != _graduationOracle, "Treasury cannot be oracle");
         require(_airdropTreasury != _platformDevelopmentWallet, "Duplicate wallets");
+        
+        // PRO Token Vesting validation
+        require(_reservedPercentage <= 25, "Vesting exceeds 25%");
+        reservedPercentage = _reservedPercentage;
+        factory = msg.sender;
         
         creator = _creator;
         treasury = _treasury;
@@ -141,11 +155,43 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         _mint(address(this), totalSupply);
         
         // CRITICAL: Initialize virtual reserves to prevent division by zero
-        uint256 curveSupply = totalSupply * CURVE_SUPPLY_PCT / 100; // 75%
+        // KEY CALCULATION: Curve supply decreases as vesting increases
+        // BASIC (0% vesting): curve = 75%, vesting = 0%, LP = 25%
+        // PRO (e.g. 20% vesting): curve = 55%, vesting = 20%, LP = 25%
+        uint256 curveSupply = totalSupply * (75 - _reservedPercentage) / 100;
         virtualTokenReserve = curveSupply;
         virtualKasReserve = INITIAL_VIRTUAL_KAS; // Virtual seed for initial pricing (not actual KAS)
         
         // LP tokens (25%) stay in contract, not in virtualTokenReserve
+        // Vesting tokens (reservedPercentage%) will be transferred to vesting contracts by factory
+    }
+
+    // PRO Token Vesting Functions
+    function transferReserveToVesting(address vestingContract, uint256 amount) external nonReentrant {
+        require(msg.sender == factory, "Only factory");
+        require(!vestingInitialized, "Already finalized");
+        require(vestingContract != address(this), "Cannot vest to self");
+        
+        // Register for wallet cap exemption
+        isVestingContract[vestingContract] = true;
+        
+        _transfer(address(this), vestingContract, amount);
+        
+        emit VestingTransfer(vestingContract, amount, block.timestamp);
+    }
+
+    function finalizeVestingSetup() external {
+        require(msg.sender == factory, "Only factory");
+        require(!vestingInitialized, "Already finalized");
+        
+        vestingInitialized = true;
+        reserveDistributed = true;
+        
+        // Note: TokenFactory validates each vesting contract balance individually
+        // Rounding dust from integer division remains in contract as part of curve/LP supply
+        // This is intentional and documented in spec (line 328-330)
+        
+        emit VestingFinalized(block.timestamp);
     }
 
     function buyTokens(uint256 minTokensOut, uint256 deadline) external payable nonReentrant whenNotPaused {
@@ -488,6 +534,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     // Creator distributes reserve tokens (one-time only, for team/marketing/airdrops)
     function distributeReserve(address[] calldata recipients, uint256[] calldata amounts) external nonReentrant {
         require(msg.sender == creator, "Only creator can distribute");
+        require(reservedPercentage == 0, "PRO tokens use vesting contracts");
         require(!reserveDistributed, "Reserve already distributed");
         require(!graduated && !graduating, "Cannot distribute after graduation");
         require(recipients.length == amounts.length, "Length mismatch");
@@ -561,15 +608,16 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // 2. Airdrop treasury (holds vested allocations up to 25%)
         // 3. Graduation oracle (receives LP tokens for DEX)
         // 4. Owner (emergency operations and administrative actions)
-        // 5. Graduated pools (no restrictions after DEX listing)
+        // 5. Vesting contracts (can hold up to 25%)
         // 6. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
         // 7. Transfers FROM contract (buy operations bypass cap due to bonding curve pricing)
-        // 8. Minting/burning (from/to == address(0))
+        // 8. Graduated pools (no restrictions after DEX listing)
         if (to != address(0) &&
             to != address(this) && 
             to != airdropTreasury && 
             to != graduationOracle &&
             to != owner() &&
+            !isVestingContract[to] &&
             from != airdropTreasury &&
             from != address(this) &&
             !graduated) {
