@@ -2612,11 +2612,8 @@ function toggleVestingModal() {
                 </div>
                 <div class="modal-body">
                     <div style="text-align: center; margin-bottom: 1rem;">
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #20B2AA; margin-bottom: 0.5rem;">
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #20B2AA;">
                             ${vd.reservedPercentage}% Total Allocation
-                        </div>
-                        <div style="font-size: 0.9rem; color: rgba(255,255,255,0.6);">
-                            ${vd.airdropsAllocation}% · ${vd.marketingAllocation}% · ${vd.teamAllocation}%
                         </div>
                     </div>
                     <div class="vesting-bar">
