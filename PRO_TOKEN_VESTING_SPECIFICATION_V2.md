@@ -602,10 +602,10 @@ if (token.team_vesting_address) {
 
 ### Backend:
 - [ ] Update Web3Service.create_token_tx_data() with vesting params
-- [ ] Add vesting address tracking in database
-- [ ] Create vesting status API endpoints
+- [ ] Add vesting contract address tracking in database (marketing_vesting_address, team_vesting_address, airdrop_vesting_address)
+- [ ] Create vesting status API endpoints (beneficiaries are automatic: creator_wallet for marketing/team, airdropTreasury for airdrops)
 - [ ] Add vesting withdrawal transaction builders
-- [ ] Track beneficiary addresses for each vesting type
+- [ ] **NO beneficiary wallet storage needed** - use creator_wallet (msg.sender) and airdropTreasury directly
 
 ### Frontend - Token Creation:
 - [ ] Display tokenomics breakdown: X% curve + Y% vesting + 25% LP
