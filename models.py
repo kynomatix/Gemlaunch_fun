@@ -151,6 +151,11 @@ class Token(db.Model):
     deployment_tx = db.Column(db.String(128))
     deployment_status = db.Column(db.String(32), default='pending')  # pending, deploying, deployed, failed
     
+    # PRO Token Vesting Contract Addresses (null for BASIC tokens)
+    marketing_vesting_address = db.Column(db.String(128), nullable=True)
+    team_vesting_address = db.Column(db.String(128), nullable=True)
+    airdrop_vesting_address = db.Column(db.String(128), nullable=True)
+    
     # Market data
     current_market_cap = db.Column(db.Numeric(precision=20, scale=8), default=1000)  # Start at ~$1K
     current_price = db.Column(db.Numeric(precision=20, scale=12), default=0.000001)
