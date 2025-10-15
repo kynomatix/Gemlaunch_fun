@@ -3,7 +3,7 @@
  * Shared formatting and calculation functions for PRO token vesting
  */
 
-const VestingUtils = {
+window.VestingUtils = window.VestingUtils || {
     /**
      * Vesting schedule configurations
      */
@@ -234,6 +234,3 @@ const VestingUtils = {
         return Math.abs(sum - 100) < 0.01;
     }
 };
-
-// Make available globally
-window.VestingUtils = VestingUtils;
