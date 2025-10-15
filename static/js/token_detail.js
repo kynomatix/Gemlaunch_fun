@@ -2629,44 +2629,28 @@ function toggleVestingModal() {
                     </div>
                     <div class="vesting-details">
                         <div class="vesting-item">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-                                <div style="display:flex;align-items:center;gap:0.6rem;">
-                                    <i class="fas fa-gift" style="color:#00D9FF;"></i>
-                                    <span style="font-weight:600;">Airdrops & Rewards</span>
-                                </div>
-                                <span style="color:#20B2AA;white-space:nowrap;">${airdropsTotal}% of total</span>
-                            </div>
-                            <div style="margin-left:1.9rem;color:rgba(255,255,255,0.65);font-size:0.9rem;">5% daily unlock</div>
+                            <i class="fas fa-gift" style="color:#00D9FF;"></i>
+                            <span class="vesting-category">Airdrops & Rewards</span>
+                            <span class="vesting-percent">${airdropsTotal}% of total</span>
+                            <small>5% daily unlock</small>
                         </div>
                         <div class="vesting-item">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-                                <div style="display:flex;align-items:center;gap:0.6rem;">
-                                    <i class="fas fa-bullhorn" style="color:#20B2AA;"></i>
-                                    <span style="font-weight:600;">Marketing</span>
-                                </div>
-                                <span style="color:#20B2AA;white-space:nowrap;">${marketingTotal}% of total</span>
-                            </div>
-                            <div style="margin-left:1.9rem;color:rgba(255,255,255,0.65);font-size:0.9rem;">12-month linear</div>
+                            <i class="fas fa-bullhorn" style="color:#20B2AA;"></i>
+                            <span class="vesting-category">Marketing</span>
+                            <span class="vesting-percent">${marketingTotal}% of total</span>
+                            <small>12-month linear</small>
                         </div>
                         <div class="vesting-item">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-                                <div style="display:flex;align-items:center;gap:0.6rem;">
-                                    <i class="fas fa-users" style="color:#B19CD9;"></i>
-                                    <span style="font-weight:600;">Team</span>
-                                </div>
-                                <span style="color:#20B2AA;white-space:nowrap;">${teamTotal}% of total</span>
-                            </div>
-                            <div style="margin-left:1.9rem;color:rgba(255,255,255,0.65);font-size:0.9rem;">6mo cliff + 18mo vest</div>
+                            <i class="fas fa-users" style="color:#B19CD9;"></i>
+                            <span class="vesting-category">Team</span>
+                            <span class="vesting-percent">${teamTotal}% of total</span>
+                            <small>6mo cliff + 18mo vest</small>
                         </div>
                         <div class="vesting-item">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-                                <div style="display:flex;align-items:center;gap:0.6rem;">
-                                    <i class="fas fa-swimming-pool" style="color:#FFD700;"></i>
-                                    <span style="font-weight:600;">Liquidity Pool</span>
-                                </div>
-                                <span style="color:#20B2AA;white-space:nowrap;">25% of total</span>
-                            </div>
-                            <div style="margin-left:1.9rem;color:rgba(255,255,255,0.65);font-size:0.9rem;">Reserved for DEX graduation</div>
+                            <i class="fas fa-swimming-pool" style="color:#FFD700;"></i>
+                            <span class="vesting-category">Liquidity Pool</span>
+                            <span class="vesting-percent">25% of total</span>
+                            <small>Reserved for DEX graduation</small>
                         </div>
                     </div>
                 </div>
