@@ -49,6 +49,10 @@ contract VestingManager {
         address creatorAddress
     ) external returns (VestingContracts memory result) {
         require(msg.sender == factory, "Only factory can deploy vesting contracts");
+        
+        // N-3 FIX: Post-deployment factory validation (runs after TokenFactory construction)
+        require(factory.code.length > 0, "Factory must be a contract");
+        
         require(poolAddress != address(0), "Invalid pool");
         require(totalSupply > 0, "Invalid supply");
         require(reservedPercentage > 0 && reservedPercentage <= 25, "Invalid reserve %");
