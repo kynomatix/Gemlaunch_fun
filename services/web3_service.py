@@ -41,11 +41,23 @@ class Web3Service:
         # Store contract addresses for security verification
         self.token_factory_address = TOKEN_FACTORY_ADDRESS
         
+        # Check if we're in offline mode
+        self.is_connected = self.w3.is_connected()
+        
         # Rest of initialization
         self.deployer_account = self._init_deployer_account()
         self.oracle_account = self._init_oracle_account()
         self.contracts = self._load_contracts()
-        logging.info(f"Web3Service initialized - Chain ID: {self.w3.eth.chain_id}")
+        
+        if self.is_connected:
+            logging.info(f"Web3Service initialized - Chain ID: {self.w3.eth.chain_id}")
+        else:
+            logging.warning("⚠️ Web3Service initialized in OFFLINE mode - blockchain features disabled")
+    
+    def ensure_connected(self):
+        """Check if blockchain is available, raise error if not"""
+        if not self.is_connected:
+            raise ConnectionError("Blockchain RPC is currently unavailable. Please try again later.")
         
     def _init_web3(self):
         """Initialize Web3 provider connection"""
@@ -115,10 +127,13 @@ class Web3Service:
             
             deployer_account = Account.from_key(deployer_private_key)
             
-            # Check balance
-            balance = self.w3.eth.get_balance(deployer_account.address)
-            balance_kas = self.w3.from_wei(balance, 'ether')
-            logging.info(f"Deployer wallet {deployer_account.address} - Balance: {balance_kas} KAS")
+            # Check balance only if connected
+            if self.is_connected:
+                balance = self.w3.eth.get_balance(deployer_account.address)
+                balance_kas = self.w3.from_wei(balance, 'ether')
+                logging.info(f"Deployer wallet {deployer_account.address} - Balance: {balance_kas} KAS")
+            else:
+                logging.warning(f"Deployer wallet {deployer_account.address} - Balance check skipped (offline mode)")
             
             return deployer_account
             
@@ -141,10 +156,13 @@ class Web3Service:
             if oracle_account.address.lower() != expected_oracle.lower():
                 logging.warning(f"Oracle address mismatch: expected {expected_oracle}, got {oracle_account.address}")
             
-            # Check balance
-            balance = self.w3.eth.get_balance(oracle_account.address)
-            balance_kas = self.w3.from_wei(balance, 'ether')
-            logging.info(f"Oracle wallet {oracle_account.address} - Balance: {balance_kas} KAS")
+            # Check balance only if connected
+            if self.is_connected:
+                balance = self.w3.eth.get_balance(oracle_account.address)
+                balance_kas = self.w3.from_wei(balance, 'ether')
+                logging.info(f"Oracle wallet {oracle_account.address} - Balance: {balance_kas} KAS")
+            else:
+                logging.warning(f"Oracle wallet {oracle_account.address} - Balance check skipped (offline mode)")
             
             return oracle_account
             
@@ -1362,7 +1380,7 @@ def get_web3_with_fallback():
     """Try RPC endpoints in order until one works"""
     for rpc_url in RPC_ENDPOINTS:
         try:
-            w3 = Web3(Web3.HTTPProvider(rpc_url))
+            w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
             
             # Add POA middleware immediately after connection
             w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
@@ -1376,7 +1394,11 @@ def get_web3_with_fallback():
             logging.warning(f"RPC {rpc_url} failed: {str(e)}")
             continue
     
-    raise ConnectionError("All RPC endpoints failed")
+    # Return disconnected Web3 instance instead of crashing
+    logging.error("⚠️ All RPC endpoints failed - App running in offline mode")
+    w3 = Web3(Web3.HTTPProvider(RPC_ENDPOINTS[0], request_kwargs={'timeout': 5}))
+    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+    return w3
 
 # Global Web3 service instance
 web3_service = None
