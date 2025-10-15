@@ -7,6 +7,39 @@
 
 This document specifies the **correct tokenomics model** for PRO tokens with on-chain vesting enforcement.
 
+### 🎯 Design Philosophy: Complexity Abstraction
+**Innovation through simplicity** - creators get enterprise-grade vesting without configuration complexity. Beneficiaries are automatic, no wallet address collection required. This is intentional design for maximum ease of use and go-to-market speed.
+
+---
+
+## 🔑 Automatic Beneficiary Logic (NO User Input Required)
+
+**This is core to the platform's simplicity:**
+
+### ✅ Beneficiaries are AUTOMATIC:
+1. **Airdrop Vesting (5% daily unlock)**
+   - Beneficiary: Platform's `airdropTreasury` wallet
+   - Managed by: Platform (distributed via chat preset buttons)
+   - Creator involvement: None (just sets allocation %)
+
+2. **Marketing Vesting (12-month linear)**
+   - Beneficiary: Creator's wallet (`msg.sender`)
+   - Claimed via: Creator Portal
+   - Creator can transfer: Yes (manually, if they want separate marketing wallet)
+
+3. **Team Vesting (6mo cliff + 18mo vest)**
+   - Beneficiary: Creator's wallet (`msg.sender`)
+   - Claimed via: Creator Portal
+   - Creator can transfer: Yes (manually, if they want separate team wallet)
+
+### ❌ NO Custom Beneficiary Fields:
+- Token creation form does NOT collect beneficiary wallet addresses
+- Smart contract does NOT accept beneficiary parameters
+- Database does NOT store custom beneficiary addresses
+- **Why:** Maximum simplicity - creators can manually transfer later (more txs = better chain stats!)
+
+---
+
 ### ✅ Tokenomics Model (CORRECTED)
 
 **BASIC Tokens:**
@@ -186,20 +219,28 @@ function distributeReserve(address[] calldata recipients, uint256[] calldata amo
 
 ```solidity
 function createToken(
-    // ... existing params
+    // ... existing params (NO beneficiary addresses - they're automatic!)
     uint8 reservedPercentage,        // 0-25 (vesting %)
     uint8 airdropsAllocation,        // % of vesting reserve
     uint8 marketingAllocation,       // % of vesting reserve
-    uint8 teamAllocation,            // % of vesting reserve
-    address airdropBeneficiary,
-    address marketingBeneficiary,
-    address teamBeneficiary
+    uint8 teamAllocation             // % of vesting reserve
 ) external nonReentrant whenNotPaused returns (
     address poolAddress,
     address airdropVestingAddress,
     address marketingVestingAddress,
     address teamVestingAddress
 ) {
+    // ✅ AUTOMATIC BENEFICIARY LOGIC (No user input required)
+    // This is intentional design for simplicity and ease of use:
+    // - Airdrop vesting → Platform's airdropTreasury (for system-managed airdrops via chat)
+    // - Marketing vesting → msg.sender (creator's wallet)
+    // - Team vesting → msg.sender (creator's wallet)
+    // Creators can manually transfer tokens later if they want separate wallets (more txs = better chain stats!)
+    
+    address airdropBeneficiary = airdropTreasury;   // Platform wallet for airdrops
+    address marketingBeneficiary = msg.sender;       // Creator wallet
+    address teamBeneficiary = msg.sender;            // Creator wallet
+    
     // Validate vesting params
     require(reservedPercentage <= 25, "Vesting exceeds 25%");
     
@@ -207,29 +248,7 @@ function createToken(
         // ✅ CRITICAL FIX (C-2): Allocations must sum to exactly 100%
         uint256 totalAllocations = airdropsAllocation + marketingAllocation + teamAllocation;
         require(totalAllocations == 100, "Allocations must sum to exactly 100%");
-        // ✅ FIX (L-4): Removed redundant > 0 check (if == 100, always > 0)
-        
-        // ✅ FIX (M-3): Only validate beneficiaries if allocation > 0
-        if (airdropsAllocation > 0) {
-            require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
-        }
-        if (marketingAllocation > 0) {
-            require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
-        }
-        if (teamAllocation > 0) {
-            require(teamBeneficiary != address(0), "Invalid team beneficiary");
-        }
-        
-        // ✅ FIX (M-3): Duplicate checks only for active allocations
-        if (airdropsAllocation > 0 && marketingAllocation > 0) {
-            require(airdropBeneficiary != marketingBeneficiary, "Duplicate beneficiaries");
-        }
-        if (airdropsAllocation > 0 && teamAllocation > 0) {
-            require(airdropBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
-        }
-        if (marketingAllocation > 0 && teamAllocation > 0) {
-            require(marketingBeneficiary != teamBeneficiary, "Duplicate beneficiaries");
-        }
+        // Note: No need to validate beneficiaries - they're always valid (system addresses)
     }
     
     // Deploy pool with vesting percentage
@@ -355,8 +374,8 @@ All contracts:
 7. Block `distributeReserve()` if vesting enabled
 
 ### TokenFactory.sol (3 changes):
-1. Add vesting parameters to `createToken()` signature
-2. Change allocation validation from `== 100` to `<= 100`
+1. Add vesting allocation parameters to `createToken()` (NO beneficiary addresses - automatic!)
+2. Set automatic beneficiaries (airdropTreasury + msg.sender)
 3. Deploy vesting contracts + transfer tokens + finalize
 
 ### Vesting Contracts (3 new contracts):
@@ -425,11 +444,9 @@ PRO tokens require a **Claim Portal** in the creator dashboard to allow benefici
 
 ### Portal Location
 - **Dashboard → "Portal" button** (replaces "Fees" button)
-- **✅ FIX (H-3): Accessible by:**
-  - Token creator (for creator fees)
-  - Marketing beneficiary (for marketing vesting claims)
-  - Team beneficiary (for team vesting claims)
-  - Airdrop beneficiary (optional - if community wants to show it)
+- **Access Control (Automatic):**
+  - Token creator wallet can access (for fees + marketing/team vesting claims)
+  - Platform airdropTreasury wallet can access (for airdrop vesting - but shown in chat, not portal)
 
 ### Portal Sections
 
@@ -475,9 +492,16 @@ PRO tokens require a **Claim Portal** in the creator dashboard to allow benefici
   - Builds withdrawal transaction
   - Access control: Only beneficiary of that vesting type
 
-**Access Control Logic (H-3 Fix, M-5 Fix):**
+**Access Control Logic (Simplified - Automatic Beneficiaries):**
 ```python
 def can_access_portal(wallet_address, token_address):
+    """
+    Portal access is AUTOMATIC based on beneficiary logic:
+    - Creator wallet → Can access (for fees + marketing/team vesting claims)
+    - Platform airdropTreasury → Can access (but airdrops shown in chat, not portal)
+    
+    NO custom beneficiary addresses - this is intentional simplicity!
+    """
     token = Token.query.filter_by(contract_address=token_address).first()
     
     if not token:
@@ -485,37 +509,36 @@ def can_access_portal(wallet_address, token_address):
     
     wallet_lower = wallet_address.lower()
     
-    # Token creator can always access (for fees)
+    # Token creator can always access (for fees + marketing/team vesting)
     if wallet_lower == token.creator_wallet.lower():
         return True
     
-    # ✅ FIX (M-5): Check for NULL before comparing (prevents crash on 0% allocations)
-    if token.marketing_beneficiary and wallet_lower == token.marketing_beneficiary.lower():
-        return True
-    
-    if token.team_beneficiary and wallet_lower == token.team_beneficiary.lower():
-        return True
-    
-    if token.airdrop_beneficiary and wallet_lower == token.airdrop_beneficiary.lower():
+    # Platform airdrop treasury can access (for airdrop vesting management)
+    # Note: In practice, airdrops are handled via chat preset buttons, not portal
+    platform_settings = PlatformSettings.get_settings()
+    if wallet_lower == platform_settings.airdrop_treasury_address.lower():
         return True
     
     return False
 ```
 
-**Database Schema (L-2 Fix):**
+**Database Schema (Simplified - No Beneficiary Storage Needed):**
 ```python
 class Token(db.Model):
     # ... existing fields
     
-    # Vesting contract addresses
-    airdrop_vesting_address = db.Column(db.String(128))
-    marketing_vesting_address = db.Column(db.String(128))
-    team_vesting_address = db.Column(db.String(128))
+    # Creator wallet (for portal access control + beneficiary logic)
+    creator_wallet = db.Column(db.String(128), index=True)  # NEW - needed for access control
     
-    # Beneficiary addresses (for portal access control)
-    airdrop_beneficiary = db.Column(db.String(128))
-    marketing_beneficiary = db.Column(db.String(128))
-    team_beneficiary = db.Column(db.String(128))
+    # Vesting contract addresses (for claim portal queries)
+    airdrop_vesting_address = db.Column(db.String(128))    # AirdropVesting contract
+    marketing_vesting_address = db.Column(db.String(128))  # LinearVesting contract
+    team_vesting_address = db.Column(db.String(128))       # CliffVesting contract
+    
+    # ✅ NO beneficiary columns needed - beneficiaries are automatic:
+    # - Airdrop → airdropTreasury (platform wallet, from PlatformSettings)
+    # - Marketing → creator_wallet (this table)
+    # - Team → creator_wallet (this table)
 ```
 
 **Web3 Calls:**
@@ -523,36 +546,37 @@ class Token(db.Model):
 - `getUnlockedAmount()` - Check total unlocked
 - `withdraw()` - Build transaction for beneficiary to sign
 
-### Frontend Flow
-1. User connects wallet
-2. Check if wallet is creator/beneficiary of any PRO tokens
+### Frontend Flow (Automatic Beneficiary Logic)
+1. User connects wallet (this is the creator wallet)
+2. Check if wallet is creator of any PRO tokens (by matching `token.creator_wallet`)
 3. If yes, show "Portal" button in dashboard
-4. Portal displays:
-   - Creator fees section (if wallet is creator)
-   - Marketing vesting section (if wallet is marketing beneficiary AND marketing_vesting_address exists)
-   - Team vesting section (if wallet is team beneficiary AND team_vesting_address exists)
-5. User clicks "Claim" → Backend builds transaction → User signs
-6. Tokens transferred from vesting contract to beneficiary
+4. Portal displays (creator sees EVERYTHING for their tokens):
+   - Creator fees section (always shown for creator)
+   - Marketing vesting section (if `marketing_vesting_address` exists)
+   - Team vesting section (if `team_vesting_address` exists)
+5. User clicks "Claim" → Backend builds transaction → Creator signs with their wallet
+6. Tokens transferred from vesting contract to creator's wallet
 
-**✅ FIX (CL-2): Hide sections with 0% allocation:**
+**✅ Simple Logic - No Beneficiary Checks Needed:**
 ```javascript
-// Only show vesting sections if vesting contract exists
+// Show vesting sections if vesting contract exists
+// Creator IS the beneficiary for marketing/team, so no address checks needed!
 if (token.marketing_vesting_address) {
-    // Show marketing vesting section
+    // Show marketing vesting section to creator
 }
 if (token.team_vesting_address) {
-    // Show team vesting section
+    // Show team vesting section to creator
 }
-// This prevents showing empty sections for 0% allocations
+// Airdrop vesting is handled in chat preset buttons (platform-managed)
 ```
 
-### Airdrop Vesting Claiming (L-1 Clarification)
-**Airdrop vesting is handled separately from the creator portal:**
-- Airdrop beneficiary receives vesting contract address
-- Token communities have "preset buttons" to interact with airdrop vesting
-- Airdrop beneficiary calls `withdraw()` directly on AirdropVesting contract
-- **NOT shown in creator portal** (to keep portal focused on creator/team/marketing)
-- Can be displayed in a separate "Community Airdrops" section if needed
+### Airdrop Vesting Claiming (Platform-Managed)
+**Airdrop vesting is platform-managed, NOT creator-managed:**
+- **Beneficiary:** Platform's `airdropTreasury` wallet (automatic, no user input)
+- **Distribution:** Via chat preset buttons in token communities (5% daily unlock)
+- **Access:** Platform wallet controls withdrawals, distributes to community members
+- **Portal:** NOT shown in creator portal (platform-managed, separate system)
+- **Design rationale:** Keeps creator experience simple - they just set allocation %, platform handles distribution
 
 ### Unclaimed Tokens
 **What happens if beneficiaries don't claim their vested tokens?**
@@ -626,24 +650,32 @@ if (token.team_vesting_address) {
 - ✅ **C-1**: Constructor only mints partial supply → NOW mints entire totalSupply (100%)
 - ✅ **C-2**: Unallocated vesting tokens stuck → NOW requires allocations == 100% (exact)
 - ✅ **H-1**: Zero allocations leave tokens stuck → NOW requires totalAllocations > 0
-- ✅ **H-2**: No duplicate beneficiary validation → NOW checks all beneficiaries are unique
-- ✅ **H-3**: Portal access control unclear → NOW supports creator + all beneficiaries
+- ✅ **H-2**: No duplicate beneficiary validation → ~~Obsolete - beneficiaries are automatic (airdropTreasury + msg.sender)~~
+- ✅ **H-3**: Portal access control unclear → NOW simplified (creator wallet only for marketing/team)
 - ✅ **M-2**: Missing vesting transfer events → Added `VestingTransfer` event
-- ✅ **L-1**: Airdrop claiming unclear → Documented separate community-based claiming
-- ✅ **L-2**: Missing database schema → Added beneficiary address columns
+- ✅ **L-1**: Airdrop claiming unclear → Documented platform-managed airdrops via chat
+- ✅ **L-2**: Missing database schema → Added creator_wallet + vesting contract addresses (no beneficiary columns!)
 
 ### Round 4 (Final Audit) - FIXED:
 - ✅ **C-3**: Incomplete `_update()` function → NOW includes all 8 exemptions (airdropTreasury, owner, from checks)
-- ✅ **M-3**: Overly restrictive beneficiary validation → NOW only requires addresses if allocation > 0
+- ✅ **M-3**: Overly restrictive beneficiary validation → ~~Obsolete - beneficiaries are automatic~~
 - ✅ **L-4**: Redundant validation check → Removed `totalAllocations > 0` (always true if == 100)
 
 ### Round 5 (Post-Fixes Audit) - FIXED:
 - ✅ **M-4**: Missing event declaration → Added `event VestingFinalized(uint256 timestamp)`
-- ✅ **M-5**: Backend crash on NULL beneficiaries → Added NULL checks before `.lower()`
+- ✅ **M-5**: Backend crash on NULL beneficiaries → ~~Obsolete - no beneficiary columns in database~~
 - ✅ **L-5**: No beneficiary validation → Added `require(vestingContract != address(this))` check
 - ✅ **L-6**: Minor precision loss → Documented as acceptable (< 1 token dust)
 - ✅ **CL-1**: LP token accounting → Added balance verification in `finalizeVestingSetup()`
 - ✅ **CL-2**: Portal visibility → Hide vesting sections if contract address doesn't exist
+
+### Round 6 (Beneficiary Clarity Audit) - CLARIFIED:
+- ✅ **Automatic beneficiaries documented** - No user input required, beneficiaries are assigned automatically
+- ✅ **Design philosophy added** - Innovation through complexity abstraction
+- ✅ **Database schema simplified** - No beneficiary columns, just creator_wallet + vesting addresses
+- ✅ **TokenFactory simplified** - Beneficiaries set in contract (airdropTreasury + msg.sender)
+- ✅ **Access control simplified** - Creator wallet for marketing/team, platform wallet for airdrops
+- ✅ **Frontend flow clarified** - Creator sees portal, platform manages airdrops via chat
 
 **All critical, high, and medium severity issues resolved!** The V2 model is production-ready.
 
@@ -651,16 +683,19 @@ if (token.team_vesting_address) {
 
 ## Conclusion
 
-This simplified model is **much cleaner** than the previous spec:
-- No complex LP minimum validation
-- Same graduation logic as BASIC tokens  
-- 25% LP is guaranteed by contract design
-- Vesting comes from curve supply, not LP
-- Claim portal connects vesting contracts to UI
+PRO tokens embody our **design philosophy: innovation through complexity abstraction**.
 
-**Key Components:**
+### 🎯 What Makes This Simple:
+- ✅ **Automatic beneficiaries** - No wallet address collection (creator gets marketing/team, platform handles airdrops)
+- ✅ **Simple tokenomics** - LP always 25%, vesting comes from curve
+- ✅ **Zero config overhead** - Just set allocation %, beneficiaries auto-assigned
+- ✅ **Manual flexibility** - Creators can transfer tokens to separate wallets if desired (more txs = better chain stats!)
+- ✅ **Platform-managed airdrops** - Platform treasury + chat buttons = zero creator effort
+
+### 📦 What We're Building:
 1. **Smart Contracts**: 5 contracts (BondingCurvePool + Factory + 3 vesting)
-2. **Backend**: Vesting status APIs + withdrawal transaction builders
-3. **Frontend**: Claim portal for marketing/team vesting (airdrop is self-contained)
+2. **Backend**: Vesting status APIs + withdrawal transaction builders + automatic beneficiary assignment
+3. **Frontend**: Claim portal for creator (marketing/team vesting), chat buttons for airdrops (platform-managed)
+4. **Database**: Only need creator_wallet + vesting contract addresses (no beneficiary columns!)
 
-**Ready for implementation!** 🚀
+**Ready for implementation - no assumptions, maximum clarity!** 🚀
