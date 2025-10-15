@@ -1547,11 +1547,34 @@
                         </div>
                     </div>
 
-                    <!-- Simple immutability note -->
-                    <p class="immutable-note">
+                    <!-- Immutability warnings -->
+                    <p class="immutable-note" id="basic-immutable-note">
                         <i class="fas fa-info-circle"></i>
                         Note: All token details become permanent once deployed and cannot be changed.
                     </p>
+                    
+                    <!-- PRO Mode Vesting Warning (shown only in PRO mode with reserves) -->
+                    <div class="vesting-warning" id="vesting-warning" style="display: none;">
+                        <div style="background: rgba(255, 193, 7, 0.1); border: 2px solid #FFC107; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                                <i class="fas fa-exclamation-triangle" style="color: #FFC107; font-size: 1.5rem; margin-top: 0.25rem;"></i>
+                                <div>
+                                    <h4 style="color: #FFC107; margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700;">⚠️ Vesting Configuration is Immutable</h4>
+                                    <p style="color: #FFF; margin: 0; line-height: 1.6; font-size: 0.95rem;">
+                                        Once deployed, your vesting schedule cannot be modified. Reserved tokens will be locked in smart contracts with the following schedules:
+                                    </p>
+                                    <ul style="color: #CCC; margin: 0.75rem 0 0 1.25rem; padding: 0; line-height: 1.8; font-size: 0.9rem;">
+                                        <li><strong style="color: #00D9FF;">Airdrops:</strong> 1-month cliff, then linear unlock over 3 months</li>
+                                        <li><strong style="color: #20B2AA;">Marketing:</strong> Linear unlock over 12 months, no cliff</li>
+                                        <li><strong style="color: #B19CD9;">Team:</strong> 6-month cliff, then linear unlock over 24 months</li>
+                                    </ul>
+                                    <p style="color: #FFC107; margin: 1rem 0 0 0; font-weight: 600; font-size: 0.9rem;">
+                                        <i class="fas fa-lock"></i> These contracts are trustless and cannot be changed by anyone, including the creator.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <button type="submit" class="create-btn">
                         <i class="fas fa-rocket"></i>
@@ -1705,6 +1728,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
     <script src="{{ url_for('static', filename='js/utils/animations.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/utils/vesting.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
@@ -1815,13 +1839,24 @@
             
             // Show/hide reserve allocation section based on reserve percentage
             const reserveSection = document.getElementById('reserve-allocation-section');
+            const vestingWarning = document.getElementById('vesting-warning');
+            const basicNote = document.getElementById('basic-immutable-note');
+            
             if (reserveSection) {
                 if (value > 0) {
                     reserveSection.style.display = 'block';
                     // Update allocation percentages when reserve changes
                     updateAllocations();
+                    
+                    // Show vesting warning, hide basic note
+                    if (vestingWarning) vestingWarning.style.display = 'block';
+                    if (basicNote) basicNote.style.display = 'none';
                 } else {
                     reserveSection.style.display = 'none';
+                    
+                    // Hide vesting warning, show basic note
+                    if (vestingWarning) vestingWarning.style.display = 'none';
+                    if (basicNote) basicNote.style.display = 'block';
                 }
             }
         }

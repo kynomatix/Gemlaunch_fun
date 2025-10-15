@@ -2299,6 +2299,87 @@
                     <p style="margin: 0; color: #fff; font-size: 0.9rem;">Market cap reached $70,000! Liquidity pool deploying...</p>
                 </div>
             `;
+        },
+        
+        // Vesting modal and data fetching
+        loadVestingData: async function() {
+            if (!this.isProToken || !window.tokenId || !window.tokenContractAddress) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/token/${window.tokenId}/vesting/status`);
+                if (!response.ok) {
+                    console.warn('No vesting data available');
+                    return;
+                }
+
+                const data = await response.json();
+                this.updateVestingModal(data);
+            } catch (error) {
+                console.error('Error loading vesting data:', error);
+            }
+        },
+
+        updateVestingModal: function(data) {
+            if (!window.VestingUtils) {
+                console.warn('Vesting utilities not loaded');
+                return;
+            }
+
+            // Update marketing vesting
+            if (data.marketing) {
+                const { total_allocated, total_unlocked } = data.marketing;
+                const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
+                
+                const progressBar = document.getElementById('marketing-progress-modal');
+                const progressText = document.getElementById('marketing-progress-text');
+                
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+                if (progressText) {
+                    const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
+                    const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
+                    progressText.textContent = `${unlockedFormatted} / ${totalFormatted} unlocked (${progress.toFixed(1)}%)`;
+                }
+            }
+
+            // Update team vesting
+            if (data.team) {
+                const { total_allocated, total_unlocked } = data.team;
+                const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
+                
+                const progressBar = document.getElementById('team-progress-modal');
+                const progressText = document.getElementById('team-progress-text');
+                
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+                if (progressText) {
+                    const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
+                    const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
+                    progressText.textContent = `${unlockedFormatted} / ${totalFormatted} unlocked (${progress.toFixed(1)}%)`;
+                }
+            }
+
+            // Update airdrop vesting
+            if (data.airdrops) {
+                const { total_allocated, total_unlocked } = data.airdrops;
+                const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
+                
+                const progressBar = document.getElementById('airdrop-progress-modal');
+                const progressText = document.getElementById('airdrop-progress-text');
+                
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+                if (progressText) {
+                    const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
+                    const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
+                    progressText.textContent = `${unlockedFormatted} / ${totalFormatted} unlocked (${progress.toFixed(1)}%)`;
+                }
+            }
         }
     };
     
@@ -2441,14 +2522,20 @@
     
 })(window, document);
 
-// Toggle vesting info modal - creates modal dynamically like spotlight
+// Toggle vesting info modal
 function toggleVestingModal() {
-    const existingModal = document.getElementById('vestingModal');
-    if (existingModal) {
-        existingModal.remove();
-        return;
+    const modal = document.getElementById('vestingModal');
+    if (!modal) return;
+    
+    const isVisible = modal.style.display === 'flex';
+    modal.style.display = isVisible ? 'none' : 'flex';
+    
+    // Load vesting data when modal opens
+    if (!isVisible && window.TokenDetail) {
+        window.TokenDetail.loadVestingData();
     }
     
+    // Old dynamic modal code (keep for backward compatibility if needed)
     if (!window.vestingData) return;
     
     const vd = window.vestingData;
@@ -2503,9 +2590,9 @@ function toggleVestingModal() {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
     // Close on background click
-    const modal = document.getElementById('vestingModal');
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
+    const vestingModalElement = document.getElementById('vestingModal');
+    vestingModalElement.addEventListener('click', function(e) {
+        if (e.target === vestingModalElement) {
             toggleVestingModal();
         }
     });
