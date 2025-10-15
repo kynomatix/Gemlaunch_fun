@@ -2628,23 +2628,38 @@ function toggleVestingModal() {
                         </div>
                     </div>
                     <div class="vesting-details">
-                        <div class="vesting-item">
-                            <i class="fas fa-gift" style="color:#00D9FF;"></i>
-                            <span class="vesting-category">Airdrops & Rewards</span>
-                            <span class="vesting-percent">${airdropsTotal}% of total</span>
-                            <small>5% daily unlock</small>
+                        <div class="vesting-item-wrapper">
+                            <div class="vesting-item" onclick="toggleVestingProgress(this)" style="cursor: pointer;">
+                                <i class="fas fa-gift" style="color:#00D9FF;"></i>
+                                <span class="vesting-category">Airdrops & Rewards</span>
+                                <span class="vesting-percent">${airdropsTotal}% of total</span>
+                                <small>5% daily unlock</small>
+                            </div>
+                            <div class="vesting-progress-container" style="display: none; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0 0 8px 8px; margin-top: -0.5rem;">
+                                <div id="airdrop-progress-info"></div>
+                            </div>
                         </div>
-                        <div class="vesting-item">
-                            <i class="fas fa-bullhorn" style="color:#20B2AA;"></i>
-                            <span class="vesting-category">Marketing</span>
-                            <span class="vesting-percent">${marketingTotal}% of total</span>
-                            <small>12-month linear</small>
+                        <div class="vesting-item-wrapper">
+                            <div class="vesting-item" onclick="toggleVestingProgress(this)" style="cursor: pointer;">
+                                <i class="fas fa-bullhorn" style="color:#20B2AA;"></i>
+                                <span class="vesting-category">Marketing</span>
+                                <span class="vesting-percent">${marketingTotal}% of total</span>
+                                <small>12-month linear</small>
+                            </div>
+                            <div class="vesting-progress-container" style="display: none; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0 0 8px 8px; margin-top: -0.5rem;">
+                                <div id="marketing-progress-info"></div>
+                            </div>
                         </div>
-                        <div class="vesting-item">
-                            <i class="fas fa-users" style="color:#B19CD9;"></i>
-                            <span class="vesting-category">Team</span>
-                            <span class="vesting-percent">${teamTotal}% of total</span>
-                            <small>6mo cliff + 18mo vest</small>
+                        <div class="vesting-item-wrapper">
+                            <div class="vesting-item" onclick="toggleVestingProgress(this)" style="cursor: pointer;">
+                                <i class="fas fa-users" style="color:#B19CD9;"></i>
+                                <span class="vesting-category">Team</span>
+                                <span class="vesting-percent">${teamTotal}% of total</span>
+                                <small>6mo cliff + 18mo vest</small>
+                            </div>
+                            <div class="vesting-progress-container" style="display: none; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0 0 8px 8px; margin-top: -0.5rem;">
+                                <div id="team-progress-info"></div>
+                            </div>
                         </div>
                         <div class="vesting-item">
                             <i class="fas fa-swimming-pool" style="color:#FFD700;"></i>
@@ -2674,18 +2689,22 @@ function toggleVestingModal() {
     }
 }
 
-// Toggle expandable vesting details
-function toggleVestingDetails(element) {
-    const details = element.querySelector('.vesting-item-details');
-    const chevron = element.querySelector('.vesting-chevron');
+// Toggle vesting progress display
+function toggleVestingProgress(element) {
+    const wrapper = element.closest('.vesting-item-wrapper');
+    if (!wrapper) return;
     
-    if (details.style.display === 'none') {
+    const progressContainer = wrapper.querySelector('.vesting-progress-container');
+    if (!progressContainer) return;
+    
+    const isHidden = progressContainer.style.display === 'none';
+    
+    if (isHidden) {
         // Expand
-        details.style.display = 'block';
-        chevron.style.transform = 'rotate(180deg)';
+        progressContainer.style.display = 'block';
         
         // Load data immediately if not loaded
-        const infoDiv = details.querySelector('div[id$="-progress-info"]');
+        const infoDiv = progressContainer.querySelector('div[id$="-progress-info"]');
         if (infoDiv && infoDiv.innerHTML === '') {
             // Trigger data load if TokenDetail is available
             if (window.TokenDetail && window.tokenId) {
@@ -2694,7 +2713,6 @@ function toggleVestingDetails(element) {
         }
     } else {
         // Collapse
-        details.style.display = 'none';
-        chevron.style.transform = 'rotate(0deg)';
+        progressContainer.style.display = 'none';
     }
 }

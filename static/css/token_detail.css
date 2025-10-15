@@ -2121,6 +2121,11 @@
     gap: 0.75rem;
 }
 
+.vesting-item-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
 .vesting-item {
     display: grid;
     grid-template-columns: auto 1fr auto;
