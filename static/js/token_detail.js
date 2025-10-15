@@ -2629,52 +2629,44 @@ function toggleVestingModal() {
                     </div>
                     <div class="vesting-details">
                         <div class="vesting-item">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <i class="fas fa-gift" style="color: #00D9FF; margin-top: 0.2rem;"></i>
-                                    <div>
-                                        <div class="vesting-category" style="font-weight: 600; margin-bottom: 0.25rem;">Airdrops & Rewards</div>
-                                        <div style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">5% daily unlock</div>
-                                    </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-gift" style="color: #00D9FF;"></i>
+                                    <span class="vesting-category" style="font-weight: 600;">Airdrops & Rewards</span>
                                 </div>
                                 <span class="vesting-percent" style="color: #20B2AA;">${airdropsTotal}% of total</span>
                             </div>
+                            <div style="margin-left: 2rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">5% daily unlock</div>
                         </div>
                         <div class="vesting-item">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <i class="fas fa-bullhorn" style="color: #20B2AA; margin-top: 0.2rem;"></i>
-                                    <div>
-                                        <div class="vesting-category" style="font-weight: 600; margin-bottom: 0.25rem;">Marketing</div>
-                                        <div style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">12-month linear</div>
-                                    </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
+                                    <span class="vesting-category" style="font-weight: 600;">Marketing</span>
                                 </div>
                                 <span class="vesting-percent" style="color: #20B2AA;">${marketingTotal}% of total</span>
                             </div>
+                            <div style="margin-left: 2rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">12-month linear</div>
                         </div>
                         <div class="vesting-item">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <i class="fas fa-users" style="color: #B19CD9; margin-top: 0.2rem;"></i>
-                                    <div>
-                                        <div class="vesting-category" style="font-weight: 600; margin-bottom: 0.25rem;">Team</div>
-                                        <div style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">6mo cliff + 18mo vest</div>
-                                    </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-users" style="color: #B19CD9;"></i>
+                                    <span class="vesting-category" style="font-weight: 600;">Team</span>
                                 </div>
                                 <span class="vesting-percent" style="color: #20B2AA;">${teamTotal}% of total</span>
                             </div>
+                            <div style="margin-left: 2rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">6mo cliff + 18mo vest</div>
                         </div>
                         <div class="vesting-item">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <i class="fas fa-swimming-pool" style="color: #FFD700; margin-top: 0.2rem;"></i>
-                                    <div>
-                                        <div class="vesting-category" style="font-weight: 600; margin-bottom: 0.25rem;">Liquidity Pool</div>
-                                        <div style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">Reserved for DEX graduation</div>
-                                    </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-swimming-pool" style="color: #FFD700;"></i>
+                                    <span class="vesting-category" style="font-weight: 600;">Liquidity Pool</span>
                                 </div>
                                 <span class="vesting-percent" style="color: #20B2AA;">25% of total</span>
                             </div>
+                            <div style="margin-left: 2rem; color: rgba(255,255,255,0.6); font-size: 0.9rem;">Reserved for DEX graduation</div>
                         </div>
                     </div>
                 </div>
