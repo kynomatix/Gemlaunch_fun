@@ -600,7 +600,9 @@ class Web3Service:
     # =========================
     
     def create_token_tx_data(self, user_address, name, symbol, total_supply, description, 
-                             image_url, twitter_url, telegram_url, website_url, anti_bot_enabled):
+                             image_url, twitter_url, telegram_url, website_url, anti_bot_enabled,
+                             reserved_percentage=0, airdrops_allocation=0, 
+                             marketing_allocation=0, team_allocation=0):
         """
         Build transaction data for TokenFactory.createToken() - USER TRANSACTION
         
@@ -615,14 +617,19 @@ class Web3Service:
             telegram_url (str): Telegram URL
             website_url (str): Website URL
             anti_bot_enabled (bool): Enable anti-bot protection
+            reserved_percentage (int): PRO token vesting % (0=BASIC, 1-25=PRO)
+            airdrops_allocation (int): % of reserved tokens for airdrops (0-100)
+            marketing_allocation (int): % of reserved tokens for marketing (0-100)
+            team_allocation (int): % of reserved tokens for team (0-100)
         
         Returns:
             dict: Unsigned transaction dict {from, to, data, value, gas}
         """
         try:
-            logging.info(f"Building createToken tx for user {user_address} - Token: {name} ({symbol})")
+            token_type = "PRO" if reserved_percentage > 0 else "BASIC"
+            logging.info(f"Building createToken tx for user {user_address} - {token_type} Token: {name} ({symbol})")
             
-            # Build contract call
+            # Build contract call with vesting parameters
             contract = self.contracts['TokenFactory']
             tx_data = contract.functions.createToken(
                 name,
@@ -633,7 +640,11 @@ class Web3Service:
                 twitter_url,
                 telegram_url,
                 website_url,
-                anti_bot_enabled
+                anti_bot_enabled,
+                reserved_percentage,
+                airdrops_allocation,
+                marketing_allocation,
+                team_allocation
             ).build_transaction({
                 'from': Web3.to_checksum_address(user_address),
                 'value': 0,

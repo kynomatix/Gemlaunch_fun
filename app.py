@@ -4992,7 +4992,11 @@ def api_create_token():
             new_token.twitter or "",
             new_token.telegram or "",
             new_token.website or "",
-            new_token.anti_bot_enabled
+            new_token.anti_bot_enabled,
+            int(new_token.reserved_percentage),
+            int(new_token.airdrops_allocation),
+            int(new_token.marketing_allocation),
+            int(new_token.team_allocation)
         )
         
         # Format response for frontend
@@ -5312,7 +5316,11 @@ def resume_token_deployment(token_id):
             token.twitter or "",
             token.telegram or "",
             token.website or "",
-            token.anti_bot_enabled
+            token.anti_bot_enabled,
+            int(token.reserved_percentage),
+            int(token.airdrops_allocation),
+            int(token.marketing_allocation),
+            int(token.team_allocation)
         )
         
         # Format response for frontend
