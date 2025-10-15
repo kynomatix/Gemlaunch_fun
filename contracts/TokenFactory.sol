@@ -6,9 +6,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BondingCurvePool.sol";
-import "./AirdropVesting.sol";
-import "./LinearVesting.sol";
-import "./CliffVesting.sol";
+import "./VestingManager.sol";
 
 contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     // Contract addresses
@@ -21,6 +19,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     address public buybackReserveWallet;
     address public kaspaNetworkSupportWallet;
     address public communityRewardsWallet;
+    address public vestingManager;
     
     // Token registry
     address[] public deployedTokens;
@@ -59,9 +58,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     
     event DeploymentCooldownUpdated(uint256 newCooldown);
     event GraduationControllerUpdated(address indexed newController);
-    event EmergencyTokenRecovery(address indexed token, uint256 amount);
-    event EmergencyKASRecovery(uint256 amount);
-    
     event VestingDeployed(
         address indexed token,
         address airdropVesting,
@@ -81,22 +77,24 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         address _admin,
         address _buybackReserve,
         address _kaspaSupport,
-        address _communityRewards
+        address _communityRewards,
+        address _vestingManager
     ) Ownable(msg.sender) {
-        require(_graduationController != address(0), "Invalid graduation controller");
-        require(_treasury != address(0), "Invalid treasury");
-        require(_airdropTreasury != address(0), "Invalid airdrop treasury");
-        require(_platformDevelopmentWallet != address(0), "Invalid platform wallet");
-        require(_graduationOracle != address(0), "Invalid graduation oracle");
-        require(_admin != address(0), "Invalid admin");
-        require(_buybackReserve != address(0), "Invalid buyback reserve");
-        require(_kaspaSupport != address(0), "Invalid kaspa support");
-        require(_communityRewards != address(0), "Invalid community rewards");
+        require(_graduationController != address(0), "Bad controller");
+        require(_treasury != address(0), "Bad treasury");
+        require(_airdropTreasury != address(0), "Bad airdrop");
+        require(_platformDevelopmentWallet != address(0), "Bad platform");
+        require(_graduationOracle != address(0), "Bad oracle");
+        require(_admin != address(0), "Bad admin");
+        require(_buybackReserve != address(0), "Bad buyback");
+        require(_kaspaSupport != address(0), "Bad kaspa");
+        require(_communityRewards != address(0), "Bad community");
+        require(_vestingManager != address(0), "Bad vesting");
         
         // L-2 FIX: Duplicate address validation
-        require(_treasury != _admin, "Treasury cannot be admin");
-        require(_treasury != _graduationOracle, "Treasury cannot be oracle");
-        require(_airdropTreasury != _platformDevelopmentWallet, "Duplicate wallets");
+        require(_treasury != _admin, "Dup addr");
+        require(_treasury != _graduationOracle, "Dup addr");
+        require(_airdropTreasury != _platformDevelopmentWallet, "Dup addr");
         
         graduationController = _graduationController;
         treasury = _treasury;
@@ -107,6 +105,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         buybackReserveWallet = _buybackReserve;
         kaspaNetworkSupportWallet = _kaspaSupport;
         communityRewardsWallet = _communityRewards;
+        vestingManager = _vestingManager;
     }
 
     function createToken(
@@ -132,31 +131,15 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         // Anti-spam: Enforce deployment cooldown
         require(
             block.timestamp >= lastDeploymentTime[msg.sender] + deploymentCooldown,
-            "Deployment cooldown active"
+            "Wait"
         );
         
         // Validate inputs
-        require(bytes(name).length > 0 && bytes(name).length <= 32, "Invalid name length");
-        require(bytes(symbol).length > 0 && bytes(symbol).length <= 10, "Invalid symbol length");
-        require(totalSupply >= 1_000_000 * 10**18, "Total supply too low"); // Min 1M tokens
-        require(totalSupply <= 1_000_000_000 * 10**18, "Total supply too high"); // Max 1B tokens
-        require(bytes(description).length <= 280, "Description too long"); // Twitter-style limit
-        
-        // AUTOMATIC BENEFICIARY LOGIC (No user input required)
-        // This is intentional design for simplicity and ease of use:
-        // - Airdrop vesting → Platform's airdropTreasury (for system-managed airdrops via chat)
-        // - Marketing vesting → msg.sender (creator's wallet)
-        // - Team vesting → msg.sender (creator's wallet)
-        // Creators can manually transfer tokens later if they want separate wallets
-        
-        // Validate vesting params
-        require(reservedPercentage <= 25, "Vesting exceeds 25%");
-        
-        if (reservedPercentage > 0) {
-            // Allocations must sum to exactly 100%
-            uint256 totalAllocations = airdropsAllocation + marketingAllocation + teamAllocation;
-            require(totalAllocations == 100, "Allocations must sum to exactly 100%");
-        }
+        require(bytes(name).length > 0 && bytes(name).length <= 32, "Bad name");
+        require(bytes(symbol).length > 0 && bytes(symbol).length <= 10, "Bad symbol");
+        require(totalSupply >= 1_000_000 * 10**18, "Supply low"); // Min 1M tokens
+        require(totalSupply <= 1_000_000_000 * 10**18, "Supply high"); // Max 1B tokens
+        require(bytes(description).length <= 280, "Desc long"); // Twitter-style limit
         
         // Deploy BondingCurvePool contract (which is also the ERC-20 token)
         BondingCurvePool pool = new BondingCurvePool(
@@ -180,76 +163,45 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         
         // Deploy vesting contracts if PRO token
         if (reservedPercentage > 0) {
-            uint256 totalVesting = totalSupply * reservedPercentage / 100;
+            VestingManager.VestingContracts memory vesting = VestingManager(vestingManager).deployVestingContracts(
+                poolAddress,
+                totalSupply,
+                reservedPercentage,
+                airdropsAllocation,
+                marketingAllocation,
+                teamAllocation,
+                airdropTreasury,
+                msg.sender
+            );
             
-            // Calculate token amounts
-            uint256 airdropTokens = totalVesting * airdropsAllocation / 100;
-            uint256 marketingTokens = totalVesting * marketingAllocation / 100;
-            uint256 teamTokens = totalVesting * teamAllocation / 100;
+            airdropVestingAddress = vesting.airdropVesting;
+            marketingVestingAddress = vesting.marketingVesting;
+            teamVestingAddress = vesting.teamVesting;
             
-            // Minimum allocation validation for meaningful unlocks
-            if (airdropTokens > 0) {
-                require(airdropTokens >= 100 * 10**18, "Airdrop allocation too small for daily unlocks");
-            }
-            if (marketingTokens > 0) {
-                require(marketingTokens >= 100 * 10**18, "Marketing allocation too small for monthly unlocks");
-            }
-            if (teamTokens > 0) {
-                require(teamTokens >= 100 * 10**18, "Team allocation too small for vesting schedule");
-            }
-            
-            // Deploy airdrop vesting (platform wallet)
-            if (airdropTokens > 0) {
-                AirdropVesting av = new AirdropVesting(
-                    poolAddress,
-                    airdropTreasury,  // Platform wallet
-                    airdropTokens
-                );
-                airdropVestingAddress = address(av);
-                pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
-                
+            if (vesting.airdropTokens > 0) {
+                pool.transferReserveToVesting(airdropVestingAddress, vesting.airdropTokens);
                 require(
-                    IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
-                    "Airdrop vesting underfunded"
+                    IERC20(poolAddress).balanceOf(airdropVestingAddress) == vesting.airdropTokens,
+                    "Airdrop err"
                 );
             }
             
-            // Deploy marketing vesting (creator wallet)
-            if (marketingTokens > 0) {
-                LinearVesting mv = new LinearVesting(
-                    poolAddress,
-                    msg.sender,  // Creator wallet
-                    marketingTokens,
-                    12  // 12 months
-                );
-                marketingVestingAddress = address(mv);
-                pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
-                
+            if (vesting.marketingTokens > 0) {
+                pool.transferReserveToVesting(marketingVestingAddress, vesting.marketingTokens);
                 require(
-                    IERC20(poolAddress).balanceOf(marketingVestingAddress) == marketingTokens,
-                    "Marketing vesting underfunded"
+                    IERC20(poolAddress).balanceOf(marketingVestingAddress) == vesting.marketingTokens,
+                    "Marketing err"
                 );
             }
             
-            // Deploy team vesting (creator wallet)
-            if (teamTokens > 0) {
-                CliffVesting tv = new CliffVesting(
-                    poolAddress,
-                    msg.sender,  // Creator wallet
-                    teamTokens,
-                    6,   // 6 month cliff
-                    18   // 18 month vesting
-                );
-                teamVestingAddress = address(tv);
-                pool.transferReserveToVesting(teamVestingAddress, teamTokens);
-                
+            if (vesting.teamTokens > 0) {
+                pool.transferReserveToVesting(teamVestingAddress, vesting.teamTokens);
                 require(
-                    IERC20(poolAddress).balanceOf(teamVestingAddress) == teamTokens,
-                    "Team vesting underfunded"
+                    IERC20(poolAddress).balanceOf(teamVestingAddress) == vesting.teamTokens,
+                    "Team err"
                 );
             }
             
-            // Finalize vesting setup
             pool.finalizeVestingSetup();
         }
         
@@ -301,14 +253,14 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
 
     // Update deployment cooldown (anti-spam control)
     function setDeploymentCooldown(uint256 newCooldown) external onlyOwner {
-        require(newCooldown <= 3600, "Cooldown too long"); // Max 1 hour
+        require(newCooldown <= 3600, "CD long"); // Max 1 hour
         deploymentCooldown = newCooldown;
         emit DeploymentCooldownUpdated(newCooldown);
     }
 
     // Update graduation controller address
     function setGraduationController(address newController) external onlyOwner {
-        require(newController != address(0), "Invalid controller");
+        require(newController != address(0), "Bad ctrl");
         graduationController = newController;
         emit GraduationControllerUpdated(newController);
     }
@@ -320,20 +272,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
 
     function unpause() external onlyOwner {
         _unpause();
-    }
-
-    // Emergency token recovery (if tokens accidentally sent to factory)
-    function emergencyWithdrawToken(address token, uint256 amount) external onlyOwner {
-        require(token != address(0), "Invalid token");
-        IERC20(token).transfer(owner(), amount);
-        emit EmergencyTokenRecovery(token, amount);
-    }
-
-    // Emergency KAS recovery (if KAS accidentally sent to factory)
-    function emergencyWithdrawKAS(uint256 amount) external onlyOwner {
-        require(address(this).balance >= amount, "Insufficient balance");
-        payable(owner()).transfer(amount);
-        emit EmergencyKASRecovery(amount);
     }
 
     // Get total number of deployed tokens
@@ -348,7 +286,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
 
     // Get all deployed tokens (paginated to prevent gas issues)
     function getDeployedTokens(uint256 offset, uint256 limit) external view returns (address[] memory) {
-        require(offset < deployedTokens.length, "Offset out of bounds");
+        require(offset < deployedTokens.length, "Bad offset");
         
         uint256 end = offset + limit;
         if (end > deployedTokens.length) {
@@ -367,16 +305,4 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     function canDeploy(address user) external view returns (bool) {
         return block.timestamp >= lastDeploymentTime[user] + deploymentCooldown;
     }
-
-    // Get seconds until user can deploy again
-    function getSecondsUntilNextDeployment(address user) external view returns (uint256) {
-        uint256 nextDeploymentTime = lastDeploymentTime[user] + deploymentCooldown;
-        if (block.timestamp >= nextDeploymentTime) {
-            return 0;
-        }
-        return nextDeploymentTime - block.timestamp;
-    }
-
-    // Allow factory to receive KAS (for emergency recovery scenarios)
-    receive() external payable {}
 }

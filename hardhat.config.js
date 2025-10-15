@@ -7,12 +7,27 @@ export default {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1,
       },
       viaIR: true,
     },
   },
   networks: {
+    hardhat: {
+      hardfork: "shanghai",
+      chainId: 31337,
+      chains: {
+        167012: {
+          hardforkHistory: {
+            shanghai: 0,
+          },
+        },
+      },
+      forking: {
+        url: "https://rpc.kasplextest.xyz",
+        enabled: true,
+      },
+    },
     kasplex_testnet: {
       url: "https://rpc.kasplextest.xyz",
       chainId: 167012,

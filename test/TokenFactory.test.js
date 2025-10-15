@@ -8,6 +8,11 @@ describe("TokenFactory", function () {
   async function deployTokenFactoryFixture() {
     const [owner, graduationController, treasury, airdropTreasury, platformDev, user1, user2, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
 
+    const VestingManager = await ethers.getContractFactory("VestingManager");
+    const vestingManager = await VestingManager.deploy();
+    await vestingManager.waitForDeployment();
+    const vestingManagerAddress = await vestingManager.getAddress();
+
     const TokenFactory = await ethers.getContractFactory("TokenFactory");
     
     const factory = await TokenFactory.deploy(
@@ -19,7 +24,8 @@ describe("TokenFactory", function () {
       admin.address,
       buyback.address,
       kaspa.address,
-      community.address
+      community.address,
+      vestingManagerAddress
     );
     
     await factory.waitForDeployment();
@@ -28,6 +34,8 @@ describe("TokenFactory", function () {
     return { 
       factory,
       factoryAddress,
+      vestingManager,
+      vestingManagerAddress,
       owner,
       graduationController,
       treasury,
@@ -52,6 +60,10 @@ describe("TokenFactory", function () {
     it("Should reject invalid constructor parameters", async function () {
       const [owner, graduationController, treasury, airdropTreasury, platformDev, oracle, admin, buyback, kaspa, community] = await ethers.getSigners();
       const TokenFactory = await ethers.getContractFactory("TokenFactory");
+      const VestingManager = await ethers.getContractFactory("VestingManager");
+      const vestingManager = await VestingManager.deploy();
+      await vestingManager.waitForDeployment();
+      const vestingManagerAddress = await vestingManager.getAddress();
 
       await expect(
         TokenFactory.deploy(
@@ -63,9 +75,10 @@ describe("TokenFactory", function () {
           admin.address,
           buyback.address,
           kaspa.address,
-          community.address
+          community.address,
+          vestingManagerAddress
         )
-      ).to.be.revertedWith("Invalid graduation controller");
+      ).to.be.revertedWith("Bad controller");
 
       await expect(
         TokenFactory.deploy(
@@ -77,9 +90,10 @@ describe("TokenFactory", function () {
           admin.address,
           buyback.address,
           kaspa.address,
-          community.address
+          community.address,
+          vestingManagerAddress
         )
-      ).to.be.revertedWith("Invalid treasury");
+      ).to.be.revertedWith("Bad treasury");
     });
   });
 
@@ -96,7 +110,8 @@ describe("TokenFactory", function () {
         "https://twitter.com/test",
         "https://t.me/test",
         "https://test.com",
-        false
+        false,
+        0, 0, 0, 0  // BASIC token (no vesting)
       );
 
       const receipt = await tx.wait();
@@ -138,7 +153,8 @@ describe("TokenFactory", function () {
         tokenParams.twitterUrl,
         tokenParams.telegramUrl,
         tokenParams.websiteUrl,
-        tokenParams.antiBotEnabled
+        tokenParams.antiBotEnabled,
+        0, 0, 0, 0  // BASIC token (no vesting)
       );
 
       const receipt = await tx.wait();
@@ -180,7 +196,8 @@ describe("TokenFactory", function () {
           "https://twitter.com/test",
           "https://t.me/test",
           "https://test.com",
-          true
+          true,
+          0, 0, 0, 0  // BASIC token (no vesting)
         )
       ).to.emit(factory, "TokenCreated");
     });
@@ -197,7 +214,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0  // BASIC token (no vesting)
       );
 
       const tokens = await factory.getDeployedTokens(0, 10);
@@ -219,9 +237,10 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
-      ).to.be.revertedWith("Invalid name length");
+      ).to.be.revertedWith("Bad name");
     });
 
     it("Should reject name longer than 32 characters", async function () {
@@ -239,9 +258,10 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
-      ).to.be.revertedWith("Invalid name length");
+      ).to.be.revertedWith("Bad name");
     });
 
     it("Should reject empty symbol", async function () {
@@ -257,9 +277,10 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
-      ).to.be.revertedWith("Invalid symbol length");
+      ).to.be.revertedWith("Bad symbol");
     });
 
     it("Should reject symbol longer than 10 characters", async function () {
@@ -277,9 +298,10 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
-      ).to.be.revertedWith("Invalid symbol length");
+      ).to.be.revertedWith("Bad symbol");
     });
 
     it("Should reject total supply below minimum (1M)", async function () {
@@ -297,9 +319,9 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false, 0, 0, 0, 0
         )
-      ).to.be.revertedWith("Total supply too low");
+      ).to.be.revertedWith("Supply low");
     });
 
     it("Should reject total supply above maximum (1B)", async function () {
@@ -317,9 +339,9 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false, 0, 0, 0, 0
         )
-      ).to.be.revertedWith("Total supply too high");
+      ).to.be.revertedWith("Supply high");
     });
 
     it("Should reject description longer than 280 characters", async function () {
@@ -337,9 +359,10 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
-      ).to.be.revertedWith("Description too long");
+      ).to.be.revertedWith("Desc long");
     });
 
     it("Should accept description of exactly 280 characters", async function () {
@@ -357,7 +380,8 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
       ).to.not.be.reverted;
     });
@@ -377,7 +401,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0
       );
 
       // Immediate second deployment should fail
@@ -391,9 +416,10 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
-      ).to.be.revertedWith("Deployment cooldown active");
+      ).to.be.revertedWith("Wait");
     });
 
     it("Should allow deployment after cooldown expires", async function () {
@@ -408,7 +434,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0
       );
 
       // Wait for cooldown to expire
@@ -425,7 +452,8 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
       ).to.not.be.reverted;
     });
@@ -443,7 +471,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0
       );
 
       // User2 should still be able to create immediately
@@ -457,7 +486,8 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
       ).to.not.be.reverted;
     });
@@ -476,7 +506,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0
       );
 
       expect(await factory.canDeploy(user1.address)).to.equal(false);
@@ -486,29 +517,7 @@ describe("TokenFactory", function () {
       expect(await factory.canDeploy(user1.address)).to.equal(true);
     });
 
-    it("Should correctly report seconds until next deployment", async function () {
-      const { factory, user1 } = await loadFixture(deployTokenFactoryFixture);
-
-      await factory.connect(user1).createToken(
-        "Test Token",
-        "TEST",
-        ethers.parseEther("1000000"),
-        "Test",
-        "",
-        "",
-        "",
-        "",
-        false
-      );
-
-      const secondsRemaining = await factory.getSecondsUntilNextDeployment(user1.address);
-      expect(secondsRemaining).to.be.lte(60);
-      expect(secondsRemaining).to.be.gt(0);
-
-      await time.increase(60);
-
-      expect(await factory.getSecondsUntilNextDeployment(user1.address)).to.equal(0);
-    });
+    // Test removed: getSecondsUntilNextDeployment function was removed during VestingManager refactoring
   });
 
   describe("Pause/Unpause Functionality", function () {
@@ -534,7 +543,8 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
       ).to.be.reverted;
     });
@@ -564,7 +574,8 @@ describe("TokenFactory", function () {
           "",
           "",
           "",
-          false
+          false,
+          0, 0, 0, 0
         )
       ).to.not.be.reverted;
     });
@@ -598,7 +609,7 @@ describe("TokenFactory", function () {
 
       await expect(
         factory.connect(owner).setDeploymentCooldown(tooLong)
-      ).to.be.revertedWith("Cooldown too long");
+      ).to.be.revertedWith("CD long");
     });
 
     it("Should allow owner to update graduation controller", async function () {
@@ -616,7 +627,7 @@ describe("TokenFactory", function () {
 
       await expect(
         factory.connect(owner).setGraduationController(ethers.ZeroAddress)
-      ).to.be.revertedWith("Invalid controller");
+      ).to.be.revertedWith("Bad ctrl");
     });
 
     it("Should prevent non-owner from updating cooldown", async function () {
@@ -636,66 +647,7 @@ describe("TokenFactory", function () {
     });
   });
 
-  describe("Emergency Functions", function () {
-    it("Should allow owner to recover accidentally sent tokens", async function () {
-      const { factory, owner, user1 } = await loadFixture(deployTokenFactoryFixture);
-
-      // Create a token and accidentally send some to factory
-      const tx = await factory.connect(user1).createToken(
-        "Test Token",
-        "TEST",
-        ethers.parseEther("1000000"),
-        "Test",
-        "",
-        "",
-        "",
-        "",
-        false
-      );
-
-      const receipt = await tx.wait();
-      const event = receipt.logs.find(log => {
-        try {
-          return factory.interface.parseLog(log).name === "TokenCreated";
-        } catch {
-          return false;
-        }
-      });
-
-      const parsedEvent = factory.interface.parseLog(event);
-      const tokenAddress = parsedEvent.args[0];
-
-      const token = await ethers.getContractAt("BondingCurvePool", tokenAddress);
-      
-      // First, buy some tokens so user has a balance (small amount to avoid wallet cap)
-      const buyAmount = ethers.parseEther("0.01");
-      const deadline = (await time.latest()) + 3600;
-      await token.connect(user1).buyTokens(0, deadline, { value: buyAmount });
-      
-      // Send some tokens to factory (simulate accident)
-      const amount = ethers.parseEther("100");
-      await token.connect(user1).transfer(await factory.getAddress(), amount);
-
-      await expect(
-        factory.connect(owner).emergencyWithdrawToken(tokenAddress, amount)
-      ).to.emit(factory, "EmergencyTokenRecovery");
-    });
-
-    it("Should allow owner to recover accidentally sent KAS", async function () {
-      const { factory, owner, user1, factoryAddress } = await loadFixture(deployTokenFactoryFixture);
-
-      // Send KAS to factory
-      const amount = ethers.parseEther("1");
-      await user1.sendTransaction({
-        to: factoryAddress,
-        value: amount
-      });
-
-      await expect(
-        factory.connect(owner).emergencyWithdrawKAS(amount)
-      ).to.emit(factory, "EmergencyKASRecovery");
-    });
-  });
+  // Emergency Functions tests removed: emergencyWithdrawToken and emergencyWithdrawKAS functions were removed during VestingManager refactoring
 
   describe("Query Functions", function () {
     it("Should return correct deployed token count", async function () {
@@ -712,7 +664,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0
       );
 
       expect(await factory.getDeployedTokenCount()).to.equal(1);
@@ -728,7 +681,8 @@ describe("TokenFactory", function () {
         "",
         "",
         "",
-        false
+        false,
+        0, 0, 0, 0
       );
 
       expect(await factory.getDeployedTokenCount()).to.equal(2);
@@ -738,13 +692,13 @@ describe("TokenFactory", function () {
       const { factory, user1, user2 } = await loadFixture(deployTokenFactoryFixture);
 
       // Create 3 tokens
-      await factory.connect(user1).createToken("Token 1", "TK1", ethers.parseEther("1000000"), "1", "", "", "", "", false);
+      await factory.connect(user1).createToken("Token 1", "TK1", ethers.parseEther("1000000"), "1", "", "", "", "", false, 0, 0, 0, 0);
       
       await time.increase(60);
-      await factory.connect(user2).createToken("Token 2", "TK2", ethers.parseEther("1000000"), "2", "", "", "", "", false);
+      await factory.connect(user2).createToken("Token 2", "TK2", ethers.parseEther("1000000"), "2", "", "", "", "", false, 0, 0, 0, 0);
       
       await time.increase(60);
-      await factory.connect(user1).createToken("Token 3", "TK3", ethers.parseEther("1000000"), "3", "", "", "", "", false);
+      await factory.connect(user1).createToken("Token 3", "TK3", ethers.parseEther("1000000"), "3", "", "", "", "", false, 0, 0, 0, 0);
 
       const tokens = await factory.getDeployedTokens(0, 2);
       expect(tokens.length).to.equal(2);
@@ -758,7 +712,91 @@ describe("TokenFactory", function () {
 
       await expect(
         factory.getDeployedTokens(10, 5)
-      ).to.be.revertedWith("Offset out of bounds");
+      ).to.be.revertedWith("Bad offset");
     });
+  });
+
+  describe("VestingManager Integration", function () {
+    it("Should deploy PRO token with vesting contracts via VestingManager", async function () {
+      const { factory, user1, airdropTreasury } = await loadFixture(deployTokenFactoryFixture);
+
+      const tx = await factory.connect(user1).createToken(
+        "PRO Token",
+        "PRO",
+        ethers.parseEther("1000000"),
+        "PRO token with vesting",
+        "",
+        "",
+        "",
+        "",
+        false,
+        10,  // 10% vesting
+        30,  // 30% airdrops
+        40,  // 40% marketing
+        30   // 30% team
+      );
+
+      const receipt = await tx.wait();
+      const vestingEvent = receipt.logs.find(log => {
+        try {
+          return factory.interface.parseLog(log).name === "VestingDeployed";
+        } catch {
+          return false;
+        }
+      });
+
+      expect(vestingEvent).to.not.be.undefined;
+      const parsed = factory.interface.parseLog(vestingEvent);
+      expect(parsed.args.airdropAllocation).to.equal(30);
+      expect(parsed.args.marketingAllocation).to.equal(40);
+      expect(parsed.args.teamAllocation).to.equal(30);
+    });
+
+    it("Should reject vesting allocations that don't sum to 100%", async function () {
+      const { factory, user1 } = await loadFixture(deployTokenFactoryFixture);
+
+      await expect(
+        factory.connect(user1).createToken(
+          "PRO Token",
+          "PRO",
+          ethers.parseEther("1000000"),
+          "Invalid vesting",
+          "",
+          "",
+          "",
+          "",
+          false,
+          10,  // 10% vesting
+          30,  // 30% airdrops
+          30,  // 30% marketing
+          30   // 30% team (total = 90%, should fail)
+        )
+      ).to.be.revertedWith("Allocations must sum to 100%");
+    });
+
+    it("Should reject vesting percentage over 25%", async function () {
+      const { factory, user1 } = await loadFixture(deployTokenFactoryFixture);
+
+      await expect(
+        factory.connect(user1).createToken(
+          "PRO Token",
+          "PRO",
+          ethers.parseEther("1000000"),
+          "Too much vesting",
+          "",
+          "",
+          "",
+          "",
+          false,
+          26,  // 26% vesting (over limit)
+          50,  // 50% airdrops
+          25,  // 25% marketing
+          25   // 25% team
+        )
+      ).to.be.revertedWith("Vesting exceeds 25%");
+    });
+
+    // Test removed: With current constraints (min 1M supply, min 1% vesting, uint8 allocations), 
+    // it's not possible to trigger "allocation too small" error since 1M * 1% * 1% = 100 tokens (exactly at minimum)
   });
 });

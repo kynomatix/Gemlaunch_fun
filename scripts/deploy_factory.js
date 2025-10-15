@@ -134,6 +134,31 @@ async function main() {
     throw new Error("❌ Secondary wallet must differ from deployer!");
   }
   
+  // Deploy VestingManager first
+  console.log("\n🏗️  Deploying VestingManager Contract...");
+  console.log("=" .repeat(80));
+  
+  const VestingManager = await hre.ethers.getContractFactory("VestingManager");
+  const vestingManager = await VestingManager.deploy();
+  
+  console.log("   ✓ Transaction sent!");
+  console.log("   Tx hash:", vestingManager.deploymentTransaction()?.hash);
+  console.log("   Waiting for confirmation...");
+  
+  await vestingManager.waitForDeployment();
+  const vestingManagerAddress = await vestingManager.getAddress();
+  
+  console.log("\n✅ VestingManager Deployed Successfully!");
+  console.log("   Contract address:", vestingManagerAddress);
+  console.log("   Block number:", await hre.ethers.provider.getBlockNumber());
+  
+  // Verify deployment by checking contract code exists
+  const vestingCode = await hre.ethers.provider.getCode(vestingManagerAddress);
+  if (vestingCode === "0x") {
+    throw new Error("VestingManager deployment failed - no code at address");
+  }
+  console.log("   ✓ Contract code verified at address");
+  
   // Build constructor parameters using CONTROLLED addresses only
   const constructorParams = {
     graduationController: deployerAddress, // Temporary - update after GraduationController deployed
@@ -144,7 +169,8 @@ async function main() {
     admin: secondaryAddress,
     buybackReserveWallet: deployerAddress,
     kaspaNetworkSupportWallet: deployerAddress,
-    communityRewardsWallet: deployerAddress
+    communityRewardsWallet: deployerAddress,
+    vestingManager: vestingManagerAddress
   };
   
   // Validate constraints
@@ -175,7 +201,8 @@ async function main() {
     "admin": { address: constructorParams.admin, wallet: "Secondary" },
     "buybackReserveWallet": { address: constructorParams.buybackReserveWallet, wallet: "Primary" },
     "kaspaNetworkSupportWallet": { address: constructorParams.kaspaNetworkSupportWallet, wallet: "Primary" },
-    "communityRewardsWallet": { address: constructorParams.communityRewardsWallet, wallet: "Primary" }
+    "communityRewardsWallet": { address: constructorParams.communityRewardsWallet, wallet: "Primary" },
+    "vestingManager": { address: constructorParams.vestingManager, wallet: "Contract" }
   });
   
   // Estimate gas
@@ -190,7 +217,8 @@ async function main() {
     constructorParams.admin,
     constructorParams.buybackReserveWallet,
     constructorParams.kaspaNetworkSupportWallet,
-    constructorParams.communityRewardsWallet
+    constructorParams.communityRewardsWallet,
+    constructorParams.vestingManager
   ]);
 
   const estimatedGas = await hre.ethers.provider.estimateGas({
@@ -216,7 +244,8 @@ async function main() {
       constructorParams.admin,
       constructorParams.buybackReserveWallet,
       constructorParams.kaspaNetworkSupportWallet,
-      constructorParams.communityRewardsWallet
+      constructorParams.communityRewardsWallet,
+      constructorParams.vestingManager
     );
 
     console.log("   ✓ Transaction sent!");
@@ -259,6 +288,7 @@ async function main() {
       network: network,
       chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
       tokenFactory: factoryAddress,
+      vestingManager: vestingManagerAddress,
       deployer: deployerAddress,
       wallets: {
         primary: {
@@ -274,6 +304,7 @@ async function main() {
       },
       constructorParams: constructorParams,
       deploymentTx: tokenFactory.deploymentTransaction()?.hash,
+      vestingManagerTx: vestingManager.deploymentTransaction()?.hash,
       timestamp: new Date().toISOString(),
       blockNumber: blockNumber
     };
@@ -307,13 +338,17 @@ async function main() {
     // Display next steps
     console.log("\n📌 Next Steps:");
     console.log("=" .repeat(80));
-    console.log("   1. ✓ TokenFactory deployed with CONTROLLED addresses only");
-    console.log("   2. Deploy GraduationController contract");
-    console.log("   3. Update graduationController address:");
+    console.log("   1. ✓ VestingManager deployed at:", vestingManagerAddress);
+    console.log("   2. ✓ TokenFactory deployed with CONTROLLED addresses only");
+    console.log("   3. Deploy GraduationController contract");
+    console.log("   4. Update graduationController address:");
     console.log("      await tokenFactory.setGraduationController(graduationControllerAddress)");
-    console.log("   4. Test token creation");
+    console.log("   5. Test token creation");
     console.log("");
-    console.log("   Verify contract (optional):");
+    console.log("   Verify VestingManager (optional):");
+    console.log(`   npx hardhat verify --network ${network} ${vestingManagerAddress}`);
+    console.log("");
+    console.log("   Verify TokenFactory (optional):");
     console.log(`   npx hardhat verify --network ${network} ${factoryAddress} \\`);
     console.log(`     "${constructorParams.graduationController}" \\`);
     console.log(`     "${constructorParams.treasury}" \\`);
@@ -323,7 +358,8 @@ async function main() {
     console.log(`     "${constructorParams.admin}" \\`);
     console.log(`     "${constructorParams.buybackReserveWallet}" \\`);
     console.log(`     "${constructorParams.kaspaNetworkSupportWallet}" \\`);
-    console.log(`     "${constructorParams.communityRewardsWallet}"`);
+    console.log(`     "${constructorParams.communityRewardsWallet}" \\`);
+    console.log(`     "${constructorParams.vestingManager}"`);
 
     console.log("\n" + "=" .repeat(80));
     console.log("✅ DEPLOYMENT COMPLETE - ALL ADDRESSES CONTROLLED");

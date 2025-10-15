@@ -25,7 +25,8 @@ describe("BondingCurvePool", function () {
       admin.address,
       buyback.address,
       kaspa.address,
-      community.address
+      community.address,
+      0 // reservedPercentage = 0 (no vesting for basic tests)
     );
     
     await pool.waitForDeployment();
@@ -66,7 +67,8 @@ describe("BondingCurvePool", function () {
       admin.address,
       buyback.address,
       kaspa.address,
-      community.address
+      community.address,
+      0 // reservedPercentage = 0 (no vesting for basic tests)
     );
     
     await pool.waitForDeployment();
@@ -128,7 +130,8 @@ describe("BondingCurvePool", function () {
           admin.address,
           buyback.address,
           kaspa.address,
-          community.address
+          community.address,
+          0  // BASIC token (no vesting)
         )
       ).to.be.revertedWith("Invalid creator");
     });

@@ -56,7 +56,8 @@ describe("GraduationController", function () {
       admin.address,
       buyback.address,
       kaspa.address,
-      community.address
+      community.address,
+      0  // BASIC token (no vesting)
     );
     await pool.waitForDeployment();
 

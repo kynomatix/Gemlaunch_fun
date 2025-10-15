@@ -23,8 +23,8 @@ RPC_ENDPOINTS = [
     # Add fallback RPCs here when available
 ]
 
-# Deployed Contract Addresses (from Phase 1)
-TOKEN_FACTORY_ADDRESS = "0x348640F6e87a0226e8E4CdB5e068282B5D0b2F60"
+# Deployed Contract Addresses (Kasplex Testnet - October 2025)
+TOKEN_FACTORY_ADDRESS = "0x14689311eE96F715A5eae2F8Ca6670b1dC701164"
 GRADUATION_CONTROLLER_ADDRESS = "0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e"
 
 # Contract ABI paths
