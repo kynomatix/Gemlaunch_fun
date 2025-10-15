@@ -2315,7 +2315,9 @@
                 }
 
                 const data = await response.json();
-                this.updateVestingModal(data);
+                if (data.success && data.vesting) {
+                    this.updateVestingModal(data.vesting);
+                }
             } catch (error) {
                 console.error('Error loading vesting data:', error);
             }
@@ -2327,12 +2329,12 @@
                 return;
             }
 
-            // Update marketing vesting
+            // Update marketing vesting  
             if (data.marketing) {
-                const { total_allocated, total_unlocked, contract_address } = data.marketing;
-                const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
-                const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
-                const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
+                const { total_amount, unlocked_amount, contract_address } = data.marketing;
+                const progress = window.VestingUtils.calculateProgress(unlocked_amount, total_amount);
+                const unlockedFormatted = window.VestingUtils.formatTokenAmount(unlocked_amount);
+                const totalFormatted = window.VestingUtils.formatTokenAmount(total_amount);
                 
                 const infoDiv = document.getElementById('marketing-progress-info');
                 if (infoDiv) {
@@ -2365,10 +2367,10 @@
 
             // Update team vesting
             if (data.team) {
-                const { total_allocated, total_unlocked, contract_address } = data.team;
-                const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
-                const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
-                const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
+                const { total_amount, unlocked_amount, contract_address } = data.team;
+                const progress = window.VestingUtils.calculateProgress(unlocked_amount, total_amount);
+                const unlockedFormatted = window.VestingUtils.formatTokenAmount(unlocked_amount);
+                const totalFormatted = window.VestingUtils.formatTokenAmount(total_amount);
                 
                 const infoDiv = document.getElementById('team-progress-info');
                 if (infoDiv) {
@@ -2400,11 +2402,11 @@
             }
 
             // Update airdrop vesting
-            if (data.airdrops) {
-                const { total_allocated, total_unlocked, contract_address } = data.airdrops;
-                const progress = window.VestingUtils.calculateProgress(total_unlocked, total_allocated);
-                const unlockedFormatted = window.VestingUtils.formatTokenAmount(total_unlocked);
-                const totalFormatted = window.VestingUtils.formatTokenAmount(total_allocated);
+            if (data.airdrop) {
+                const { total_amount, unlocked_amount, contract_address } = data.airdrop;
+                const progress = window.VestingUtils.calculateProgress(unlocked_amount, total_amount);
+                const unlockedFormatted = window.VestingUtils.formatTokenAmount(unlocked_amount);
+                const totalFormatted = window.VestingUtils.formatTokenAmount(total_amount);
                 
                 const infoDiv = document.getElementById('airdrop-progress-info');
                 if (infoDiv) {
