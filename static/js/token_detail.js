@@ -2611,59 +2611,77 @@ function toggleVestingModal() {
                     <button class="modal-close" onclick="toggleVestingModal()">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #20B2AA; margin-bottom: 0.5rem;">
+                            ${vd.reservedPercentage}% Total Allocation
+                        </div>
+                        <div style="font-size: 0.9rem; color: rgba(255,255,255,0.6);">
+                            ${vd.airdropsAllocation}% · ${vd.marketingAllocation}% · ${vd.teamAllocation}%
+                        </div>
+                    </div>
                     <div class="vesting-bar">
                         <div class="vesting-segment airdrops" style="width: ${vd.airdropsAllocation}%;">
-                            <span class="vesting-label">${airdropsTotal}%</span>
+                            <span class="vesting-label">${vd.airdropsAllocation}%</span>
                         </div>
                         <div class="vesting-segment marketing" style="width: ${vd.marketingAllocation}%;">
-                            <span class="vesting-label">${marketingTotal}%</span>
+                            <span class="vesting-label">${vd.marketingAllocation}%</span>
                         </div>
                         <div class="vesting-segment team" style="width: ${vd.teamAllocation}%;">
-                            <span class="vesting-label">${teamTotal}%</span>
+                            <span class="vesting-label">${vd.teamAllocation}%</span>
                         </div>
                     </div>
                     <div class="vesting-details">
                         <div class="vesting-item" onclick="toggleVestingDetails(this)" style="cursor: pointer;">
-                            <div class="vesting-item-header">
-                                <div>
+                            <div class="vesting-item-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
                                     <i class="fas fa-gift" style="color: #00D9FF;"></i>
-                                    <span class="vesting-category">Airdrops & Rewards</span>
-                                    <span class="vesting-percent">${airdropsTotal}% of total</span>
+                                    <span class="vesting-category" style="font-weight: 600;">Airdrops & Rewards</span>
+                                    <span class="vesting-percent" style="color: #20B2AA;">${airdropsTotal}% of total</span>
                                 </div>
-                                <i class="fas fa-chevron-down" style="transition: transform 0.3s; font-size: 0.8em;"></i>
+                                <i class="fas fa-chevron-down vesting-chevron" style="transition: transform 0.3s; font-size: 0.9em; color: rgba(255,255,255,0.5);"></i>
                             </div>
-                            <small style="display: block; margin-top: 0.3rem;">5% daily unlock</small>
-                            <div class="vesting-item-details" style="display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                                <div id="airdrop-progress-info">Loading...</div>
+                            <div style="text-align: center; margin-top: 0.5rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">5% daily unlock</div>
+                            <div class="vesting-item-details" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div id="airdrop-progress-info"></div>
                             </div>
                         </div>
                         <div class="vesting-item" onclick="toggleVestingDetails(this)" style="cursor: pointer;">
-                            <div class="vesting-item-header">
-                                <div>
+                            <div class="vesting-item-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
                                     <i class="fas fa-bullhorn" style="color: #20B2AA;"></i>
-                                    <span class="vesting-category">Marketing</span>
-                                    <span class="vesting-percent">${marketingTotal}% of total</span>
+                                    <span class="vesting-category" style="font-weight: 600;">Marketing</span>
+                                    <span class="vesting-percent" style="color: #20B2AA;">${marketingTotal}% of total</span>
                                 </div>
-                                <i class="fas fa-chevron-down" style="transition: transform 0.3s; font-size: 0.8em;"></i>
+                                <i class="fas fa-chevron-down vesting-chevron" style="transition: transform 0.3s; font-size: 0.9em; color: rgba(255,255,255,0.5);"></i>
                             </div>
-                            <small style="display: block; margin-top: 0.3rem;">12-month linear</small>
-                            <div class="vesting-item-details" style="display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                                <div id="marketing-progress-info">Loading...</div>
+                            <div style="text-align: center; margin-top: 0.5rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">12-month linear</div>
+                            <div class="vesting-item-details" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div id="marketing-progress-info"></div>
                             </div>
                         </div>
                         <div class="vesting-item" onclick="toggleVestingDetails(this)" style="cursor: pointer;">
-                            <div class="vesting-item-header">
-                                <div>
+                            <div class="vesting-item-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
                                     <i class="fas fa-users" style="color: #B19CD9;"></i>
-                                    <span class="vesting-category">Team</span>
-                                    <span class="vesting-percent">${teamTotal}% of total</span>
+                                    <span class="vesting-category" style="font-weight: 600;">Team</span>
+                                    <span class="vesting-percent" style="color: #20B2AA;">${teamTotal}% of total</span>
                                 </div>
-                                <i class="fas fa-chevron-down" style="transition: transform 0.3s; font-size: 0.8em;"></i>
+                                <i class="fas fa-chevron-down vesting-chevron" style="transition: transform 0.3s; font-size: 0.9em; color: rgba(255,255,255,0.5);"></i>
                             </div>
-                            <small style="display: block; margin-top: 0.3rem;">6mo cliff + 18mo vest</small>
-                            <div class="vesting-item-details" style="display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                                <div id="team-progress-info">Loading...</div>
+                            <div style="text-align: center; margin-top: 0.5rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">6mo cliff + 18mo vest</div>
+                            <div class="vesting-item-details" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div id="team-progress-info"></div>
                             </div>
+                        </div>
+                        <div class="vesting-item" style="opacity: 0.8; background: rgba(255,255,255,0.03); cursor: default;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-swimming-pool" style="color: #FFD700;"></i>
+                                    <span class="vesting-category" style="font-weight: 600;">Liquidity Pool</span>
+                                    <span class="vesting-percent" style="color: #20B2AA;">25% of total</span>
+                                </div>
+                            </div>
+                            <div style="text-align: center; margin-top: 0.5rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Reserved for DEX graduation</div>
                         </div>
                     </div>
                 </div>
@@ -2690,12 +2708,23 @@ function toggleVestingModal() {
 // Toggle expandable vesting details
 function toggleVestingDetails(element) {
     const details = element.querySelector('.vesting-item-details');
-    const chevron = element.querySelector('.fa-chevron-down');
+    const chevron = element.querySelector('.vesting-chevron');
     
     if (details.style.display === 'none') {
+        // Expand
         details.style.display = 'block';
         chevron.style.transform = 'rotate(180deg)';
+        
+        // Load data immediately if not loaded
+        const infoDiv = details.querySelector('div[id$="-progress-info"]');
+        if (infoDiv && infoDiv.innerHTML === '') {
+            // Trigger data load if TokenDetail is available
+            if (window.TokenDetail && window.tokenId) {
+                window.TokenDetail.loadVestingData();
+            }
+        }
     } else {
+        // Collapse
         details.style.display = 'none';
         chevron.style.transform = 'rotate(0deg)';
     }
