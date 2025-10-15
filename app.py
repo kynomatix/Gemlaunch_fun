@@ -5179,6 +5179,37 @@ def confirm_token_deployment(token_id):
         token.is_active = True
         token.circulating_supply = circulating_supply_tokens
         
+        # Deploy PRO token vesting contracts if reserved percentage > 0
+        if token.reserved_percentage and token.reserved_percentage > 0:
+            try:
+                logging.info(f"Deploying vesting contracts for PRO token {token.id} ({token.symbol})")
+                
+                # Call web3_service to deploy vesting contracts
+                vesting_result = web3_service.deploy_pro_token_vesting(
+                    pool_address=contract_address,
+                    total_supply=token.total_supply,
+                    reserved_percentage=token.reserved_percentage,
+                    airdrops_allocation=token.airdrops_allocation,
+                    marketing_allocation=token.marketing_allocation,
+                    team_allocation=token.team_allocation,
+                    creator_address=creator.wallet_address
+                )
+                
+                # Save vesting addresses to database
+                token.marketing_vesting_address = vesting_result.get('marketing_vesting_address')
+                token.team_vesting_address = vesting_result.get('team_vesting_address')
+                token.airdrop_vesting_address = vesting_result.get('airdrop_vesting_address')
+                
+                logging.info(f"✅ Vesting contracts deployed successfully!")
+                logging.info(f"  Marketing: {token.marketing_vesting_address}")
+                logging.info(f"  Team: {token.team_vesting_address}")
+                logging.info(f"  Airdrop: {token.airdrop_vesting_address}")
+                
+            except Exception as vesting_error:
+                logging.error(f"Failed to deploy vesting contracts: {str(vesting_error)}")
+                # Don't fail the entire deployment - token is still deployed, just vesting failed
+                # This allows manual intervention later if needed
+        
         db.session.commit()
         
         logging.info(f"Token {token_id} deployment confirmed by creator {caller_address} - Contract: {contract_address}, TX: {tx_hash}")
