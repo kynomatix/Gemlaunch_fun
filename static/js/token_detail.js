@@ -442,9 +442,12 @@
                         type: 'custom',
                         formatter: (price) => {
                             if (self.currentChartType === 'marketcap') {
+                                // Market Cap in USD
                                 return '$' + self.formatNumber(price, true);
                             } else {
-                                return price.toFixed(6) + ' KAS';
+                                // Price in USD (KAS/USD conversion)
+                                const priceInUsd = price * self.kasToUsd;
+                                return '$' + priceInUsd.toFixed(8);
                             }
                         },
                     },
@@ -472,9 +475,12 @@
                         type: 'custom',
                         formatter: (price) => {
                             if (self.currentChartType === 'marketcap') {
+                                // Market Cap in USD
                                 return '$' + self.formatNumber(price, true);
                             } else {
-                                return price.toFixed(6) + ' KAS';
+                                // Price in USD (KAS/USD conversion)
+                                const priceInUsd = price * self.kasToUsd;
+                                return '$' + priceInUsd.toFixed(8);
                             }
                         },
                     },

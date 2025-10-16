@@ -1,0 +1,730 @@
+# TradingView Lightweight Charts Integration Guide for Gemlaunch.fun
+
+## Why Lightweight Charts is Perfect for You
+
+✅ **Open source** - No permission needed
+✅ **Free** - MIT license
+✅ **Simple** - Much easier than full TradingView library
+✅ **Performant** - Built for real-time crypto trading
+✅ **Used by major platforms** - Binance, Uniswap, etc.
+
+GitHub: https://github.com/tradingview/lightweight-charts
+
+---
+
+## Quick Start Installation
+
+```bash
+npm install lightweight-charts
+# or
+yarn add lightweight-charts
+```
+
+---
+
+## Part 1: Basic Candlestick Chart Setup
+
+### Simple React Implementation
+
+```jsx
+import { useEffect, useRef } from 'react'
+import { createChart } from 'lightweight-charts'
+
+function TradingChart({ tokenSymbol }) {
+  const chartContainerRef = useRef()
+  const chartRef = useRef()
+  const candlestickSeriesRef = useRef()
+  
+  useEffect(() => {
+    // Create chart
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: 500,
+      layout: {
+        background: { color: '#1a1a1a' },
+        textColor: '#d1d4dc',
+      },
+      grid: {
+        vertLines: { color: '#2B2B43' },
+        horzLines: { color: '#363C4E' },
+      },
+      crosshair: {
+        mode: 0, // Normal crosshair
+      },
+      rightPriceScale: {
+        borderColor: '#485c7b',
+      },
+      timeScale: {
+        borderColor: '#485c7b',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    })
+    
+    // Add candlestick series
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderVisible: false,
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
+    })
+    
+    chartRef.current = chart
+    candlestickSeriesRef.current = candlestickSeries
+    
+    // Handle resize
+    const handleResize = () => {
+      chart.applyOptions({
+        width: chartContainerRef.current.clientWidth,
+      })
+    }
+    window.addEventListener('resize', handleResize)
+    
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      chart.remove()
+    }
+  }, [])
+  
+  return (
+    <div 
+      ref={chartContainerRef} 
+      style={{ position: 'relative', width: '100%' }}
+    />
+  )
+}
+
+export default TradingChart
+```
+
+---
+
+## Part 2: Loading Data from Kasplex
+
+### Fetch and Format Transaction Data
+
+```javascript
+// Helper to fetch Kasplex transactions
+async function fetchKasplexTransactions(tokenAddress) {
+  try {
+    // Replace with your actual Kasplex API endpoint
+    const response = await fetch(
+      `https://tn10api.kasplex.org/token/${tokenAddress}/transactions`
+    )
+    const transactions = await response.json()
+    
+    return transactions
+  } catch (error) {
+    console.error('Error fetching transactions:', error)
+    return []
+  }
+}
+
+// Convert transactions to OHLC candlestick format
+function convertToCandlestickData(transactions, intervalMinutes = 15) {
+  const intervalMs = intervalMinutes * 60 * 1000
+  const candles = {}
+  
+  // Sort transactions by timestamp
+  transactions.sort((a, b) => a.timestamp - b.timestamp)
+  
+  transactions.forEach(tx => {
+    // Round timestamp to interval
+    const candleTime = Math.floor(tx.timestamp / intervalMs) * intervalMs / 1000
+    
+    const price = calculatePriceFromTx(tx)
+    
+    if (!candles[candleTime]) {
+      // New candle
+      candles[candleTime] = {
+        time: candleTime,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      }
+    } else {
+      // Update existing candle
+      candles[candleTime].high = Math.max(candles[candleTime].high, price)
+      candles[candleTime].low = Math.min(candles[candleTime].low, price)
+      candles[candleTime].close = price
+    }
+  })
+  
+  // Convert to array and sort
+  return Object.values(candles).sort((a, b) => a.time - b.time)
+}
+
+// Calculate price from transaction based on bonding curve
+function calculatePriceFromTx(tx) {
+  // Your bonding curve formula here
+  // This depends on your specific implementation
+  const tokenAmount = tx.tokenAmount
+  const kasAmount = tx.kasAmount
+  
+  return kasAmount / tokenAmount // Simple example
+}
+```
+
+### Update Chart with Data
+
+```javascript
+// Inside your component
+useEffect(() => {
+  async function loadData() {
+    const transactions = await fetchKasplexTransactions(tokenSymbol)
+    const candleData = convertToCandlestickData(transactions, 15) // 15 min candles
+    
+    if (candlestickSeriesRef.current) {
+      candlestickSeriesRef.current.setData(candleData)
+    }
+  }
+  
+  loadData()
+  
+  // Refresh every 30 seconds
+  const interval = setInterval(loadData, 30000)
+  return () => clearInterval(interval)
+}, [tokenSymbol])
+```
+
+---
+
+## Part 3: Fix Bonding Curve Market Cap Calculation
+
+### Proper Bonding Curve Implementation
+
+```javascript
+class BondingCurve {
+  constructor(config = {}) {
+    // Virtual reserves (creates smooth curve)
+    this.virtualKasReserves = config.virtualKasReserves || 30
+    this.virtualTokenReserves = config.virtualTokenReserves || 1073000000
+    
+    // Real reserves (actual tokens available)
+    this.initialRealTokenReserves = config.initialRealTokenReserves || 793100000
+    this.realKasReserves = 0 // Starts at 0
+    
+    // Total supply
+    this.totalSupply = config.totalSupply || 1000000000 // 1 billion
+    
+    // Graduation threshold
+    this.graduationMcap = config.graduationMcap || 69000 // $69k
+  }
+  
+  // Calculate current price based on tokens sold
+  getCurrentPrice(tokensSold) {
+    const virtualTokensRemaining = this.virtualTokenReserves - tokensSold
+    const currentVirtualKas = this.virtualKasReserves
+    
+    // Price = KAS reserves / Token reserves (constant product)
+    return currentVirtualKas / virtualTokensRemaining
+  }
+  
+  // Calculate how much KAS needed to buy X tokens
+  calculateKasForTokens(tokenAmount, currentTokensSold) {
+    const k = this.virtualKasReserves * this.virtualTokenReserves
+    
+    const tokensRemaining = this.virtualTokenReserves - currentTokensSold
+    const newTokensRemaining = tokensRemaining - tokenAmount
+    
+    const newKasReserves = k / newTokensRemaining
+    const kasNeeded = newKasReserves - this.virtualKasReserves
+    
+    return kasNeeded
+  }
+  
+  // Calculate real market cap (not fake $1k)
+  calculateMarketCap(tokensSold, kasPrice) {
+    const pricePerToken = this.getCurrentPrice(tokensSold)
+    const marketCapInKas = pricePerToken * this.totalSupply
+    const marketCapInUSD = marketCapInKas * kasPrice
+    
+    return {
+      kas: marketCapInKas,
+      usd: marketCapInUSD
+    }
+  }
+  
+  // Get progress towards graduation
+  getBondingCurveProgress(tokensSold) {
+    return (tokensSold / this.initialRealTokenReserves) * 100
+  }
+  
+  // Calculate price impact for a trade
+  getPriceImpact(tokenAmount, currentTokensSold) {
+    const currentPrice = this.getCurrentPrice(currentTokensSold)
+    const averagePrice = this.calculateKasForTokens(tokenAmount, currentTokensSold) / tokenAmount
+    
+    return ((averagePrice - currentPrice) / currentPrice) * 100
+  }
+}
+
+// Usage example
+const bondingCurve = new BondingCurve({
+  virtualKasReserves: 30,
+  virtualTokenReserves: 1073000000,
+  initialRealTokenReserves: 793100000,
+  totalSupply: 1000000000,
+  graduationMcap: 69000
+})
+
+// When processing a transaction
+const tokensSold = 50000000 // 50M tokens sold so far
+const kasPrice = 0.15 // Current KAS price in USD
+
+const { usd: marketCap } = bondingCurve.calculateMarketCap(tokensSold, kasPrice)
+console.log(`Real Market Cap: $${marketCap.toFixed(2)}`)
+
+// This will show the ACTUAL market cap, not a fake $1k
+```
+
+---
+
+## Part 4: Real-Time Updates with WebSocket
+
+### Backend WebSocket Server (Node.js)
+
+```javascript
+const WebSocket = require('ws')
+const wss = new WebSocket.Server({ port: 8080 })
+
+// Track Kasplex transactions
+const monitorKasplexTransactions = (tokenAddress, callback) => {
+  // This would connect to Kasplex indexer
+  // For now, simulated example:
+  
+  setInterval(async () => {
+    try {
+      const latestTx = await fetchLatestTransaction(tokenAddress)
+      if (latestTx) {
+        callback(latestTx)
+      }
+    } catch (error) {
+      console.error('Error monitoring:', error)
+    }
+  }, 5000) // Check every 5 seconds
+}
+
+wss.on('connection', (ws, req) => {
+  const tokenAddress = new URLSearchParams(req.url.split('?')[1]).get('token')
+  
+  console.log(`Client subscribed to ${tokenAddress}`)
+  
+  const unsubscribe = monitorKasplexTransactions(tokenAddress, (tx) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'trade',
+        data: {
+          time: Math.floor(tx.timestamp / 1000),
+          price: calculatePriceFromTx(tx),
+          volume: tx.tokenAmount,
+          marketCap: calculateMarketCap(tx)
+        }
+      }))
+    }
+  })
+  
+  ws.on('close', () => {
+    console.log('Client disconnected')
+    unsubscribe()
+  })
+})
+```
+
+### Frontend WebSocket Integration
+
+```javascript
+function TradingChart({ tokenAddress }) {
+  const chartContainerRef = useRef()
+  const chartRef = useRef()
+  const candlestickSeriesRef = useRef()
+  const wsRef = useRef()
+  
+  useEffect(() => {
+    // ... chart creation code from earlier ...
+    
+    // Connect to WebSocket
+    const ws = new WebSocket(`wss://your-api.com/ws?token=${tokenAddress}`)
+    wsRef.current = ws
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      
+      if (message.type === 'trade') {
+        // Update the last candle or create a new one
+        updateChartWithTrade(message.data)
+      }
+    }
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+    }
+    
+    return () => {
+      ws.close()
+    }
+  }, [tokenAddress])
+  
+  const updateChartWithTrade = (trade) => {
+    if (!candlestickSeriesRef.current) return
+    
+    // Get current candle data
+    const currentTime = Math.floor(Date.now() / 1000)
+    const intervalSeconds = 15 * 60 // 15 minutes
+    const candleTime = Math.floor(currentTime / intervalSeconds) * intervalSeconds
+    
+    // Update method depends on if it's a new candle or updating existing
+    candlestickSeriesRef.current.update({
+      time: candleTime,
+      open: trade.price, // You'd track this properly
+      high: trade.price,
+      low: trade.price,
+      close: trade.price,
+    })
+  }
+  
+  return <div ref={chartContainerRef} style={{ width: '100%', height: '500px' }} />
+}
+```
+
+---
+
+## Part 5: Complete Trading Interface
+
+### Full Component with Market Cap Display
+
+```jsx
+import { useEffect, useRef, useState } from 'react'
+import { createChart } from 'lightweight-charts'
+
+function TradingInterface({ tokenAddress, tokenSymbol }) {
+  const chartContainerRef = useRef()
+  const [marketCap, setMarketCap] = useState(0)
+  const [price, setPrice] = useState(0)
+  const [volume24h, setVolume24h] = useState(0)
+  const [progress, setProgress] = useState(0)
+  
+  useEffect(() => {
+    // Create chart
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: 400,
+      layout: {
+        background: { color: '#131722' },
+        textColor: '#d1d4dc',
+      },
+      grid: {
+        vertLines: { color: '#1f2937' },
+        horzLines: { color: '#1f2937' },
+      },
+      rightPriceScale: {
+        borderColor: '#2B2B43',
+      },
+      timeScale: {
+        borderColor: '#2B2B43',
+        timeVisible: true,
+      },
+    })
+    
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#22c55e',
+      downColor: '#ef4444',
+      borderVisible: false,
+      wickUpColor: '#22c55e',
+      wickDownColor: '#ef4444',
+    })
+    
+    // Load initial data
+    async function loadInitialData() {
+      const transactions = await fetchKasplexTransactions(tokenAddress)
+      const candles = convertToCandlestickData(transactions)
+      
+      candlestickSeries.setData(candles)
+      
+      // Calculate stats
+      const stats = calculateStats(transactions)
+      setMarketCap(stats.marketCap)
+      setPrice(stats.currentPrice)
+      setVolume24h(stats.volume24h)
+      setProgress(stats.bondingCurveProgress)
+    }
+    
+    loadInitialData()
+    
+    // WebSocket for real-time updates
+    const ws = new WebSocket(`wss://your-api.com/ws?token=${tokenAddress}`)
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      
+      if (data.type === 'trade') {
+        candlestickSeries.update(data.candle)
+        setMarketCap(data.marketCap)
+        setPrice(data.price)
+      }
+    }
+    
+    return () => {
+      ws.close()
+      chart.remove()
+    }
+  }, [tokenAddress])
+  
+  return (
+    <div className="trading-interface">
+      {/* Stats Bar */}
+      <div className="stats-bar" style={{
+        display: 'flex',
+        gap: '2rem',
+        padding: '1rem',
+        backgroundColor: '#1a1a1a',
+        borderRadius: '8px',
+        marginBottom: '1rem'
+      }}>
+        <div>
+          <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Market Cap</div>
+          <div style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 'bold' }}>
+            ${marketCap.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+          </div>
+        </div>
+        
+        <div>
+          <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>Price</div>
+          <div style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 'bold' }}>
+            ${price.toFixed(8)}
+          </div>
+        </div>
+        
+        <div>
+          <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>24h Volume</div>
+          <div style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 'bold' }}>
+            ${volume24h.toLocaleString('en-US')}
+          </div>
+        </div>
+        
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
+            Bonding Curve Progress
+          </div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <div style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: '#2a2a2a',
+              borderRadius: '4px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${progress}%`,
+                height: '100%',
+                backgroundColor: '#22c55e',
+                transition: 'width 0.3s'
+              }} />
+            </div>
+            <div style={{ color: '#fff', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              {progress.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Chart */}
+      <div 
+        ref={chartContainerRef} 
+        style={{ 
+          width: '100%', 
+          height: '400px',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }} 
+      />
+    </div>
+  )
+}
+```
+
+---
+
+## Part 6: Kasplex Integration Code
+
+### Connect to Kasplex Testnet
+
+```javascript
+import { Indexer } from 'KasplexBuilder'
+
+class KasplexDataProvider {
+  constructor(network = 'testnet') {
+    this.indexer = new Indexer(
+      network === 'testnet' 
+        ? 'https://tn10api.kasplex.org'
+        : 'https://api.kasplex.org'
+    )
+    this.bondingCurve = new BondingCurve()
+  }
+  
+  async getTokenTransactions(tokenAddress, fromBlock, toBlock) {
+    try {
+      // Fetch from Kasplex indexer
+      const response = await fetch(
+        `${this.indexer.apiUrl}/token/${tokenAddress}/transactions?from=${fromBlock}&to=${toBlock}`
+      )
+      const data = await response.json()
+      
+      return data.transactions
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+      return []
+    }
+  }
+  
+  async getTokenInfo(tokenAddress) {
+    try {
+      const response = await fetch(
+        `${this.indexer.apiUrl}/token/${tokenAddress}`
+      )
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching token info:', error)
+      return null
+    }
+  }
+  
+  async getCurrentMarketCap(tokenAddress) {
+    const tokenInfo = await this.getTokenInfo(tokenAddress)
+    if (!tokenInfo) return 0
+    
+    const kasPrice = await this.getKasPrice()
+    const { usd } = this.bondingCurve.calculateMarketCap(
+      tokenInfo.totalSold,
+      kasPrice
+    )
+    
+    return usd
+  }
+  
+  async getKasPrice() {
+    try {
+      // Fetch KAS price from CoinGecko or similar
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd'
+      )
+      const data = await response.json()
+      return data.kaspa.usd
+    } catch (error) {
+      console.error('Error fetching KAS price:', error)
+      return 0.15 // Fallback price
+    }
+  }
+}
+
+// Usage
+const provider = new KasplexDataProvider('testnet')
+
+async function updateChart() {
+  const transactions = await provider.getTokenTransactions(tokenAddress)
+  const marketCap = await provider.getCurrentMarketCap(tokenAddress)
+  
+  // Update your chart with this data
+}
+```
+
+---
+
+## Part 7: Volume Histogram (Optional Enhancement)
+
+```javascript
+// Add volume bars below the chart
+useEffect(() => {
+  // ... after creating chart ...
+  
+  const volumeSeries = chart.addHistogramSeries({
+    color: '#26a69a',
+    priceFormat: {
+      type: 'volume',
+    },
+    priceScaleId: '', // Separate scale
+  })
+  
+  chart.priceScale('').applyOptions({
+    scaleMargins: {
+      top: 0.8, // Push volume to bottom 20%
+      bottom: 0,
+    },
+  })
+  
+  // Add volume data
+  const volumeData = candles.map(candle => ({
+    time: candle.time,
+    value: candle.volume,
+    color: candle.close >= candle.open ? '#26a69a' : '#ef5350'
+  }))
+  
+  volumeSeries.setData(volumeData)
+}, [])
+```
+
+---
+
+## Part 8: Implementation Checklist
+
+### Quick Setup (1-2 hours)
+- [ ] Install `lightweight-charts`: `npm install lightweight-charts`
+- [ ] Create basic chart component
+- [ ] Load sample data and display candlesticks
+- [ ] Add market cap display above chart
+
+### Backend Integration (2-4 hours)
+- [ ] Set up API endpoint to fetch Kasplex transactions
+- [ ] Implement OHLC conversion logic
+- [ ] Fix bonding curve calculations (remove hardcoded $1k)
+- [ ] Test with real testnet data
+
+### Real-Time Updates (2-3 hours)
+- [ ] Set up WebSocket server
+- [ ] Monitor Kasplex transactions
+- [ ] Push updates to connected clients
+- [ ] Update chart in real-time
+
+### Polish (1-2 hours)
+- [ ] Add volume bars
+- [ ] Style to match your platform
+- [ ] Add loading states
+- [ ] Mobile responsive design
+
+---
+
+## Part 9: Key Differences from Your Current Chart
+
+| Your Current Chart | TradingView Lightweight |
+|-------------------|------------------------|
+| Simple line | Professional candlesticks |
+| No interactivity | Zoom, pan, crosshair |
+| Hardcoded $1k mcap | Real calculated mcap |
+| No volume | Volume histogram |
+| Static | Real-time updates |
+| Basic styling | Professional trading UI |
+
+---
+
+## Part 10: Example Output
+
+Your chart will show:
+- ✅ **Proper candlesticks** (green up, red down)
+- ✅ **Real market cap** calculated from bonding curve
+- ✅ **Volume bars** below chart
+- ✅ **Real-time updates** as trades happen
+- ✅ **Interactive** zoom/pan/crosshair
+- ✅ **Professional UI** like Binance/Uniswap
+
+---
+
+## Resources
+
+- **Lightweight Charts Docs**: https://tradingview.github.io/lightweight-charts/
+- **Examples**: https://github.com/tradingview/lightweight-charts/tree/master/website/tutorials
+- **Kasplex Docs**: https://docs-kasplex.gitbook.io/krc20/
+- **Live Demo**: https://www.tradingview.com/lightweight-charts/
+
+This is much simpler than the full TradingView library and perfect for your bonding curve launchpad!
