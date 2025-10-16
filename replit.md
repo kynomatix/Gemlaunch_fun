@@ -31,25 +31,24 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **Deployment Confirmation System**: A 6-layer security verification system for confirming token deployments, ensuring server-side blockchain verification and multi-layer defense against fake deployments.
 
 ### PRO Token Vesting System
-✅ **STATUS: Fully implemented and operational**
+✅ **STATUS: Fully implemented - Atomic on-chain deployment**
 - **Design:** Automatic beneficiary system with zero configuration complexity
-  - Airdrop vesting → Platform's airdropTreasury wallet (5% daily unlock via DailyVesting)
+  - Airdrop vesting → Platform's airdropTreasury wallet (5% daily unlock via AirdropVesting)
   - Marketing vesting → Creator's wallet (12-month linear via LinearVesting)
   - Team vesting → Creator's wallet (6mo cliff + 18mo vest via CliffVesting)
-- **Smart Contracts:** VestingManager (0x8b137230C7E3F8C1E451A8ffA45e28dA1cf3dd7d) deployed on testnet
-- **Backend Integration:** Asynchronous vesting deployment - token deploys immediately, vesting deploys in background
-  - Token deployment returns instantly without waiting for vesting (no timeout issues)
-  - Transaction monitor tracks vesting deployment (`deploy_vesting` tx type)
-  - When vesting confirms, addresses are extracted and reserves transferred automatically
-  - Status tracked via `vesting_deployment_status`: none/pending/deployed/failed
-  - Failed deployments marked as 'failed' for manual retry (token remains functional)
+- **Smart Contracts:**
+  - TokenFactory (0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D) - deploys pool + vesting atomically
+  - VestingDeployer (0x07edeC513453f193673639Fd60eC35Bc27f1A5E2) - helper contract for vesting deployment
+  - Atomic deployment: user pays once, all contracts deployed in single transaction
+- **Architecture:** Event-based vesting address extraction
+  - TokenFactory emits VestingDeployed event with all three vesting contract addresses
+  - Backend extracts addresses from event logs and saves to database
+  - No async deployment, no timeout issues, no oracle wallet subsidy
+- **Contract Size Optimization:**
+  - VestingDeployer pattern used to avoid 24KB contract size limit
+  - TokenFactory metadata storage removed (rely on events for data)
 - **Frontend Portal:** Vesting status display on token detail pages with unlock schedules
-- **Audit Status:** Post-implementation audit completed with all issues addressed:
-  - N-1: ✅ Constructor parameter cleaned up
-  - N-2: ✅ Individual allocation bounds checks added
-  - N-3: ✅ Post-deployment factory validation implemented
-  - N-4: ✅ VestingContractsDeployed event emission added
-- **Security:** All critical and high severity issues from previous audits resolved
+- **Security:** All critical issues from spec audits resolved, matches PRO_TOKEN_VESTING_SPECIFICATION_V2.md exactly
 
 ## Smart Contract Architecture
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.

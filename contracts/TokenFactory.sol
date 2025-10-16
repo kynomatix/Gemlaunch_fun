@@ -6,9 +6,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BondingCurvePool.sol";
-import "./AirdropVesting.sol";
-import "./LinearVesting.sol";
-import "./CliffVesting.sol";
+import "./VestingDeployer.sol";
 
 contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     // Contract addresses
@@ -21,29 +19,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     address public buybackReserveWallet;
     address public kaspaNetworkSupportWallet;
     address public communityRewardsWallet;
-    
-    // Token registry
-    address[] public deployedTokens;
-    mapping(address => TokenInfo) public tokens;
+    address public vestingDeployer;
     
     // Anti-spam configuration
     uint256 public deploymentCooldown = 60; // 60 seconds between deployments per user
     mapping(address => uint256) public lastDeploymentTime;
-    
-    struct TokenInfo {
-        string name;
-        string symbol;
-        uint256 totalSupply;
-        address creator;
-        address poolAddress;
-        string description;
-        string imageUrl;
-        string twitterUrl;
-        string telegramUrl;
-        string websiteUrl;
-        uint256 deployedAt;
-        bool antiBotEnabled;
-    }
     
     // Events
     event TokenCreated(
@@ -78,7 +58,8 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         address _admin,
         address _buybackReserve,
         address _kaspaSupport,
-        address _communityRewards
+        address _communityRewards,
+        address _vestingDeployer
     ) Ownable(msg.sender) {
         require(_graduationController != address(0), "Bad controller");
         require(_treasury != address(0), "Bad treasury");
@@ -89,6 +70,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         require(_buybackReserve != address(0), "Bad buyback");
         require(_kaspaSupport != address(0), "Bad kaspa");
         require(_communityRewards != address(0), "Bad community");
+        require(_vestingDeployer != address(0), "Bad vesting deployer");
         
         // L-2 FIX: Duplicate address validation
         require(_treasury != _admin, "Dup addr");
@@ -104,6 +86,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         buybackReserveWallet = _buybackReserve;
         kaspaNetworkSupportWallet = _kaspaSupport;
         communityRewardsWallet = _communityRewards;
+        vestingDeployer = _vestingDeployer;
     }
 
     function createToken(
@@ -150,7 +133,12 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             
             uint256 totalAllocations = uint256(airdropsAllocation) + uint256(marketingAllocation) + uint256(teamAllocation);
             require(totalAllocations == 100, "Allocations must sum to exactly 100%");
-            require(totalAllocations > 0, "Must have at least one allocation");
+            
+            // Require all three allocations to be non-zero to ensure all vesting contracts are deployed
+            // This prevents zero addresses in VestingDeployed event
+            require(airdropsAllocation > 0, "Airdrop allocation must be > 0%");
+            require(marketingAllocation > 0, "Marketing allocation must be > 0%");
+            require(teamAllocation > 0, "Team allocation must be > 0%");
         }
         
         // Deploy BondingCurvePool contract (which is also the ERC-20 token)
@@ -198,51 +186,38 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
                 require(teamTokens >= 100 * 10**18, "Team allocation too small for vesting schedule");
             }
             
-            // Deploy airdrop vesting
-            if (airdropTokens > 0) {
-                AirdropVesting av = new AirdropVesting(
+            // Deploy vesting contracts via VestingDeployer (reduces factory size)
+            (airdropVestingAddress, marketingVestingAddress, teamVestingAddress) = 
+                VestingDeployer(vestingDeployer).deployVestingContracts(
                     poolAddress,
                     airdropBeneficiary,
-                    airdropTokens
+                    marketingBeneficiary,
+                    teamBeneficiary,
+                    airdropTokens,
+                    marketingTokens,
+                    teamTokens,
+                    block.timestamp
                 );
-                airdropVestingAddress = address(av);
+            
+            // Transfer tokens to vesting contracts
+            if (airdropTokens > 0) {
                 pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
-                
                 require(
                     IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
                     "Airdrop vesting underfunded"
                 );
             }
             
-            // Deploy marketing vesting
             if (marketingTokens > 0) {
-                LinearVesting mv = new LinearVesting(
-                    poolAddress,
-                    marketingBeneficiary,
-                    marketingTokens,
-                    12  // 12 months
-                );
-                marketingVestingAddress = address(mv);
                 pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
-                
                 require(
                     IERC20(poolAddress).balanceOf(marketingVestingAddress) == marketingTokens,
                     "Marketing vesting underfunded"
                 );
             }
             
-            // Deploy team vesting
             if (teamTokens > 0) {
-                CliffVesting tv = new CliffVesting(
-                    poolAddress,
-                    teamBeneficiary,
-                    teamTokens,
-                    6,   // 6 month cliff
-                    18   // 18 month vesting
-                );
-                teamVestingAddress = address(tv);
                 pool.transferReserveToVesting(teamVestingAddress, teamTokens);
-                
                 require(
                     IERC20(poolAddress).balanceOf(teamVestingAddress) == teamTokens,
                     "Team vesting underfunded"
@@ -253,23 +228,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             pool.finalizeVestingSetup();
         }
         
-        // Store token metadata
-        tokens[poolAddress] = TokenInfo({
-            name: name,
-            symbol: symbol,
-            totalSupply: totalSupply,
-            creator: msg.sender,
-            poolAddress: poolAddress,
-            description: description,
-            imageUrl: imageUrl,
-            twitterUrl: twitterUrl,
-            telegramUrl: telegramUrl,
-            websiteUrl: websiteUrl,
-            deployedAt: block.timestamp,
-            antiBotEnabled: antiBotEnabled
-        });
-        
-        deployedTokens.push(poolAddress);
         lastDeploymentTime[msg.sender] = block.timestamp;
         
         emit TokenCreated(
@@ -320,33 +278,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
 
     function unpause() external onlyOwner {
         _unpause();
-    }
-
-    // Get total number of deployed tokens
-    function getDeployedTokenCount() external view returns (uint256) {
-        return deployedTokens.length;
-    }
-
-    // Get token info by address
-    function getTokenInfo(address tokenAddress) external view returns (TokenInfo memory) {
-        return tokens[tokenAddress];
-    }
-
-    // Get all deployed tokens (paginated to prevent gas issues)
-    function getDeployedTokens(uint256 offset, uint256 limit) external view returns (address[] memory) {
-        require(offset < deployedTokens.length, "Bad offset");
-        
-        uint256 end = offset + limit;
-        if (end > deployedTokens.length) {
-            end = deployedTokens.length;
-        }
-        
-        address[] memory result = new address[](end - offset);
-        for (uint256 i = offset; i < end; i++) {
-            result[i - offset] = deployedTokens[i];
-        }
-        
-        return result;
     }
 
     // Check if user can deploy (cooldown check)

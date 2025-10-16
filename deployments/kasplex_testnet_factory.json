@@ -1,8 +1,8 @@
 {
   "network": "kasplex_testnet",
   "chainId": 167012,
-  "tokenFactory": "0x14689311eE96F715A5eae2F8Ca6670b1dC701164",
-  "vestingManager": "0x8b137230C7E3F8C1E451A8ffA45e28dA1cf3dd7d",
+  "tokenFactory": "0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D",
+  "vestingDeployer": "0x07edeC513453f193673639Fd60eC35Bc27f1A5E2",
   "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
   "wallets": {
     "primary": {
@@ -38,10 +38,10 @@
     "buybackReserveWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
     "kaspaNetworkSupportWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
     "communityRewardsWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-    "vestingManager": "0x8b137230C7E3F8C1E451A8ffA45e28dA1cf3dd7d"
+    "vestingDeployer": "0x07edeC513453f193673639Fd60eC35Bc27f1A5E2"
   },
-  "deploymentTx": "0xa976787a439c216dbe2f4d70a1371bb6ae1d621126ae632ae3d41bb1522ff963",
-  "vestingManagerTx": "0x8845e0189cc7aeee0b999278f9b08d6d69e7a4b32ac3ce26000f935aa3155fbc",
-  "timestamp": "2025-10-15T09:43:04.959Z",
-  "blockNumber": 8130030
+  "deploymentTx": "0xb36359fbfe8882ee3075e51b211bb9367d3803974c31361bd94dbb57d19d1f49",
+  "vestingDeployerTx": "0x44c666eb56ee3866fc7fe2bdbcbf237a5f1e9ef7a4f24ffdb987e19d277d4620",
+  "timestamp": "2025-10-16T05:50:08.981Z",
+  "blockNumber": 8202438
 }

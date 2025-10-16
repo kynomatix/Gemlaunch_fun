@@ -115,6 +115,47 @@
         "IERC20"
       ]
     },
+    "/home/runner/workspace/contracts/VestingDeployer.sol": {
+      "lastModificationDate": 1760593454593,
+      "contentHash": "334dfb54d4b611870db6f210d99c3259",
+      "sourceName": "contracts/VestingDeployer.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./AirdropVesting.sol",
+        "./LinearVesting.sol",
+        "./CliffVesting.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "VestingDeployer"
+      ]
+    },
     "/home/runner/workspace/contracts/LinearVesting.sol": {
       "lastModificationDate": 1760516793746,
       "contentHash": "e26372fd315078e0c8dd0a804544d333",
@@ -352,10 +393,10 @@
         "IERC721Errors"
       ]
     },
-    "/home/runner/workspace/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
-      "lastModificationDate": 1760071706687,
-      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
-      "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
+    "/home/runner/workspace/node_modules/@openzeppelin/contracts/utils/Pausable.sol": {
+      "lastModificationDate": 1760071706713,
+      "contentHash": "0d47b53e10b1985efbb396f937626279",
+      "sourceName": "@openzeppelin/contracts/utils/Pausable.sol",
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
@@ -388,12 +429,12 @@
         "^0.8.20"
       ],
       "artifacts": [
-        "Ownable"
+        "Pausable"
       ]
     },
     "/home/runner/workspace/contracts/TokenFactory.sol": {
-      "lastModificationDate": 1760592102006,
-      "contentHash": "3a5c4a86483952749e74c5bc923adabb",
+      "lastModificationDate": 1760593970161,
+      "contentHash": "14b739f8c77242b9e84ff56a41821083",
       "sourceName": "contracts/TokenFactory.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -426,9 +467,7 @@
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "./BondingCurvePool.sol",
-        "./AirdropVesting.sol",
-        "./LinearVesting.sol",
-        "./CliffVesting.sol"
+        "./VestingDeployer.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -479,10 +518,10 @@
         "BondingCurvePool"
       ]
     },
-    "/home/runner/workspace/node_modules/@openzeppelin/contracts/utils/Pausable.sol": {
-      "lastModificationDate": 1760071706713,
-      "contentHash": "0d47b53e10b1985efbb396f937626279",
-      "sourceName": "@openzeppelin/contracts/utils/Pausable.sol",
+    "/home/runner/workspace/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
+      "lastModificationDate": 1760071706687,
+      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
+      "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
       "solcConfig": {
         "version": "0.8.20",
         "settings": {
@@ -515,7 +554,7 @@
         "^0.8.20"
       ],
       "artifacts": [
-        "Pausable"
+        "Ownable"
       ]
     },
     "/home/runner/workspace/contracts/GraduationController.sol": {

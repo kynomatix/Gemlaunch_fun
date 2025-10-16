@@ -134,9 +134,51 @@ async function main() {
     throw new Error("❌ Secondary wallet must differ from deployer!");
   }
   
-  // Build constructor parameters using CONTROLLED addresses only
+  // Deploy VestingDeployer first (required by TokenFactory)
+  console.log("\n🏗️  Deploying VestingDeployer Contract...");
+  console.log("=" .repeat(80));
+  
+  // We'll pass factory address after factory is deployed (chicken-egg problem)
+  // So we deploy with deployer address first, then update via constructor param
+  const VestingDeployer = await hre.ethers.getContractFactory("VestingDeployer");
+  
+  // Note: We need to pass future factory address. Deploy with placeholder then redeploy.
+  // Actually, we need to calculate CREATE address deterministically
+  // Factory will be deployed by deployer at nonce N+1
+  
+  // Get current nonce to calculate future factory address
+  const currentNonce = await hre.ethers.provider.getTransactionCount(deployerAddress);
+  const futureFactoryAddress = hre.ethers.getCreateAddress({
+    from: deployerAddress,
+    nonce: currentNonce + 1  // VestingDeployer is currentNonce, Factory is currentNonce+1
+  });
+  
+  console.log("   Calculated future TokenFactory address:", futureFactoryAddress);
+  console.log("   (Factory will be deployed at nonce:", currentNonce + 1, ")");
+  
+  const vestingDeployer = await VestingDeployer.deploy(futureFactoryAddress);
+  
+  console.log("   ✓ Transaction sent!");
+  console.log("   Tx hash:", vestingDeployer.deploymentTransaction()?.hash);
+  console.log("   Waiting for confirmation...");
+  
+  await vestingDeployer.waitForDeployment();
+  const vestingDeployerAddress = await vestingDeployer.getAddress();
+  
+  console.log("\n✅ VestingDeployer Deployed Successfully!");
+  console.log("   Contract address:", vestingDeployerAddress);
+  console.log("   Factory address (configured):", futureFactoryAddress);
+  
+  // Verify deployment
+  const vestingCode = await hre.ethers.provider.getCode(vestingDeployerAddress);
+  if (vestingCode === "0x") {
+    throw new Error("VestingDeployer deployment failed - no code at address");
+  }
+  console.log("   ✓ Contract code verified at address");
+  
+  // Build constructor parameters
   const constructorParams = {
-    graduationController: deployerAddress, // Temporary - update after GraduationController deployed
+    graduationController: deployerAddress,
     treasury: deployerAddress,
     airdropTreasury: secondaryAddress,
     platformDevelopmentWallet: deployerAddress,
@@ -144,7 +186,8 @@ async function main() {
     admin: secondaryAddress,
     buybackReserveWallet: deployerAddress,
     kaspaNetworkSupportWallet: deployerAddress,
-    communityRewardsWallet: deployerAddress
+    communityRewardsWallet: deployerAddress,
+    vestingDeployer: vestingDeployerAddress
   };
   
   // Validate constraints
@@ -175,7 +218,8 @@ async function main() {
     "admin": { address: constructorParams.admin, wallet: "Secondary" },
     "buybackReserveWallet": { address: constructorParams.buybackReserveWallet, wallet: "Primary" },
     "kaspaNetworkSupportWallet": { address: constructorParams.kaspaNetworkSupportWallet, wallet: "Primary" },
-    "communityRewardsWallet": { address: constructorParams.communityRewardsWallet, wallet: "Primary" }
+    "communityRewardsWallet": { address: constructorParams.communityRewardsWallet, wallet: "Primary" },
+    "vestingDeployer": { address: constructorParams.vestingDeployer, wallet: "Contract" }
   });
   
   // Estimate gas
@@ -190,7 +234,8 @@ async function main() {
     constructorParams.admin,
     constructorParams.buybackReserveWallet,
     constructorParams.kaspaNetworkSupportWallet,
-    constructorParams.communityRewardsWallet
+    constructorParams.communityRewardsWallet,
+    constructorParams.vestingDeployer
   ]);
 
   const estimatedGas = await hre.ethers.provider.estimateGas({
@@ -216,7 +261,8 @@ async function main() {
       constructorParams.admin,
       constructorParams.buybackReserveWallet,
       constructorParams.kaspaNetworkSupportWallet,
-      constructorParams.communityRewardsWallet
+      constructorParams.communityRewardsWallet,
+      constructorParams.vestingDeployer
     );
 
     console.log("   ✓ Transaction sent!");
@@ -254,11 +300,21 @@ async function main() {
       console.warn("   ⚠️  Warning: Treasury doesn't match expected");
     }
 
+    // Verify factory address matches calculated address
+    if (factoryAddress !== futureFactoryAddress) {
+      console.warn("   ⚠️  Warning: Factory address doesn't match calculated address");
+      console.warn("   Expected:", futureFactoryAddress);
+      console.warn("   Got:", factoryAddress);
+    } else {
+      console.log("   ✓ Factory address matches calculated address");
+    }
+    
     // Save deployment info
     const deploymentInfo = {
       network: network,
       chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
       tokenFactory: factoryAddress,
+      vestingDeployer: vestingDeployerAddress,
       deployer: deployerAddress,
       wallets: {
         primary: {
@@ -274,6 +330,7 @@ async function main() {
       },
       constructorParams: constructorParams,
       deploymentTx: tokenFactory.deploymentTransaction()?.hash,
+      vestingDeployerTx: vestingDeployer.deploymentTransaction()?.hash,
       timestamp: new Date().toISOString(),
       blockNumber: blockNumber
     };
@@ -307,11 +364,15 @@ async function main() {
     // Display next steps
     console.log("\n📌 Next Steps:");
     console.log("=" .repeat(80));
-    console.log("   1. ✓ TokenFactory deployed with CONTROLLED addresses only");
-    console.log("   2. Deploy GraduationController contract");
-    console.log("   3. Update graduationController address:");
+    console.log("   1. ✓ VestingDeployer deployed at:", vestingDeployerAddress);
+    console.log("   2. ✓ TokenFactory deployed with CONTROLLED addresses only");
+    console.log("   3. Deploy GraduationController contract");
+    console.log("   4. Update graduationController address:");
     console.log("      await tokenFactory.setGraduationController(graduationControllerAddress)");
-    console.log("   4. Test token creation");
+    console.log("   5. Test token creation");
+    console.log("");
+    console.log("   Verify VestingDeployer (optional):");
+    console.log(`   npx hardhat verify --network ${network} ${vestingDeployerAddress} "${factoryAddress}"`);
     console.log("");
     console.log("   Verify TokenFactory (optional):");
     console.log(`   npx hardhat verify --network ${network} ${factoryAddress} \\`);
@@ -323,7 +384,8 @@ async function main() {
     console.log(`     "${constructorParams.admin}" \\`);
     console.log(`     "${constructorParams.buybackReserveWallet}" \\`);
     console.log(`     "${constructorParams.kaspaNetworkSupportWallet}" \\`);
-    console.log(`     "${constructorParams.communityRewardsWallet}"`);
+    console.log(`     "${constructorParams.communityRewardsWallet}" \\`);
+    console.log(`     "${constructorParams.vestingDeployer}"`);
 
     console.log("\n" + "=" .repeat(80));
     console.log("✅ DEPLOYMENT COMPLETE - ALL ADDRESSES CONTROLLED");
