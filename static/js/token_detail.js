@@ -60,6 +60,7 @@
             this.tokenSymbol = config.tokenSymbol;
             this.tokenName = config.tokenName;
             this.isProToken = config.isProToken || false;
+            this.kasToUsd = config.kasPrice || 0.15; // Use server-provided KAS price (cached for 5 min)
             this.tokenSettings = config.tokenSettings || this.tokenSettings;
             
             // Initialize chat state (NO FAKE BALANCE!)
@@ -84,9 +85,6 @@
                 this.initializeChatState();
             }, 100);
             
-            // Fetch real KAS price from oracle
-            this.fetchKasPrice();
-            
             // Initialize graduation status polling
             this.fetchGraduationStatus();
             
@@ -99,11 +97,6 @@
             this.graduationPollingInterval = setInterval(() => {
                 this.fetchGraduationStatus();
             }, 30000);
-            
-            // Poll KAS price every 60 seconds
-            setInterval(() => {
-                this.fetchKasPrice();
-            }, 60000);
             
             // Cleanup on page unload
             window.addEventListener('beforeunload', () => {
@@ -589,30 +582,40 @@
             
             // Update Anti-Bot Fee
             const antiBotFee = fees.antiBotFee || fees.anti_bot || 0;
-            document.getElementById('antiBotFeeDisplay').textContent = 
-                `${antiBotFee.toFixed(4)} KAS`;
+            const antiBotFeeDisplay = document.getElementById('antiBotFeeDisplay');
+            if (antiBotFeeDisplay) {
+                antiBotFeeDisplay.textContent = `${antiBotFee.toFixed(4)} KAS`;
+            }
             
             // Update Platform Fee (0.9%)
             const platformFee = fees.platformFee || fees.platform || 0;
-            document.getElementById('platformFeeDisplay').textContent = 
-                `${platformFee.toFixed(4)} KAS`;
+            const platformFeeDisplay = document.getElementById('platformFeeDisplay');
+            if (platformFeeDisplay) {
+                platformFeeDisplay.textContent = `${platformFee.toFixed(4)} KAS`;
+            }
             
             // Update Creator Fee (0.1%)
             const creatorFee = fees.creatorFee || fees.creator || 0;
-            document.getElementById('creatorFeeDisplay').textContent = 
-                `${creatorFee.toFixed(4)} KAS`;
+            const creatorFeeDisplay = document.getElementById('creatorFeeDisplay');
+            if (creatorFeeDisplay) {
+                creatorFeeDisplay.textContent = `${creatorFee.toFixed(4)} KAS`;
+            }
             
             // Update Price Impact with color coding
             const priceImpact = fees.priceImpact || fees.price_impact_percent || 0;
             const impactColor = priceImpact > 5 ? '#FF5252' : 
                                priceImpact > 2 ? '#FFA500' : '#4CAF50';
-            document.getElementById('priceImpactDisplay').innerHTML = 
-                `<span style="color: ${impactColor}">${priceImpact.toFixed(2)}%</span>`;
+            const priceImpactDisplay = document.getElementById('priceImpactDisplay');
+            if (priceImpactDisplay) {
+                priceImpactDisplay.innerHTML = `<span style="color: ${impactColor}">${priceImpact.toFixed(2)}%</span>`;
+            }
             
             // Update Auto Slippage
             const slippageBps = fees.auto_slippage_bps || 50;
-            document.getElementById('autoSlippageDisplay').textContent = 
-                `${(slippageBps / 100).toFixed(2)}%`;
+            const autoSlippageDisplay = document.getElementById('autoSlippageDisplay');
+            if (autoSlippageDisplay) {
+                autoSlippageDisplay.textContent = `${(slippageBps / 100).toFixed(2)}%`;
+            }
             
             // Show breakdown
             feeBreakdown.style.display = 'block';
@@ -2244,34 +2247,6 @@
             } catch (error) {
                 console.error('Failed to create spotlight:', error);
                 this.showNotification('❌ Error', 'Failed to create spotlight message', 'error');
-            }
-        },
-        
-        // Fetch real KAS price from oracle
-        fetchKasPrice: async function() {
-            try {
-                const response = await fetch('/api/kas-price');
-                const data = await response.json();
-                
-                if (data.success && data.kas_price) {
-                    this.kasToUsd = data.kas_price;
-                    console.log(`💰 KAS Price updated: $${this.kasToUsd.toFixed(4)} USD`);
-                    
-                    // Update quote USD display if quote exists
-                    if (window.lastQuote) {
-                        const action = this.currentTradeMode;
-                        const kasValue = action === 'buy' 
-                            ? parseFloat(document.getElementById('kasAmount').value) || 0
-                            : window.lastQuote.kas_out || 0;
-                        const usdAmount = kasValue * this.kasToUsd;
-                        const inputAddon = document.querySelector('.input-addon');
-                        if (inputAddon && kasValue > 0) {
-                            inputAddon.textContent = `$${usdAmount.toFixed(2)} USD`;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch KAS price from oracle:', error);
             }
         },
         

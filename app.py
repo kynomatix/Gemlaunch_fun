@@ -1200,13 +1200,18 @@ def token_detail(contract_address):
     # Ensure token has settings using service
     token.settings = TokenService.ensure_token_settings(token)
     
+    # Get KAS price from oracle (cached for 5 minutes)
+    from services.kas_oracle import oracle
+    kas_price = oracle.get_kas_price()
+    
     return render_template('app/token_detail.html', 
                          token=token, 
                          recent_trades=recent_trades,
                          user_holding=user_holding,
                          user=user,
                          is_owner=is_owner,
-                         is_pro_token=is_pro_token)
+                         is_pro_token=is_pro_token,
+                         kas_price=kas_price)
 
 # Fallback route for legacy numeric IDs (backwards compatibility)
 @app.route('/app/token/<int:token_id>')
