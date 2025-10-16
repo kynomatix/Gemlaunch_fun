@@ -37,7 +37,12 @@ Built with Flask, the backend features a minimal, route-based architecture with 
   - Marketing vesting → Creator's wallet (12-month linear via LinearVesting)
   - Team vesting → Creator's wallet (6mo cliff + 18mo vest via CliffVesting)
 - **Smart Contracts:** VestingManager (0x8b137230C7E3F8C1E451A8ffA45e28dA1cf3dd7d) deployed on testnet
-- **Backend Integration:** Automatic vesting deployment in `confirm_token_deployment()` endpoint
+- **Backend Integration:** Asynchronous vesting deployment - token deploys immediately, vesting deploys in background
+  - Token deployment returns instantly without waiting for vesting (no timeout issues)
+  - Transaction monitor tracks vesting deployment (`deploy_vesting` tx type)
+  - When vesting confirms, addresses are extracted and reserves transferred automatically
+  - Status tracked via `vesting_deployment_status`: none/pending/deployed/failed
+  - Failed deployments marked as 'failed' for manual retry (token remains functional)
 - **Frontend Portal:** Vesting status display on token detail pages with unlock schedules
 - **Audit Status:** Post-implementation audit completed with all issues addressed:
   - N-1: ✅ Constructor parameter cleaned up
