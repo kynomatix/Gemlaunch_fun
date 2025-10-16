@@ -635,7 +635,7 @@
                 feeBreakdown.innerHTML = `
                     <div class="quote-error">
                         <i class="fas fa-exclamation-triangle"></i>
-                        ${message}
+                        ${message || 'Quote unavailable'}
                     </div>
                 `;
                 feeBreakdown.style.display = 'block';
@@ -753,7 +753,7 @@
                         return; // Request cancelled, ignore
                     }
                     console.error('Quote failed:', error);
-                    this.showQuoteError(error.message);
+                    this.showQuoteError(error.message || 'Quote request failed');
                 } finally {
                     this.hideQuoteLoading();
                 }
@@ -2250,7 +2250,7 @@
         // Fetch real KAS price from oracle
         fetchKasPrice: async function() {
             try {
-                const response = await fetch('/api/oracle/kas-price');
+                const response = await fetch('/api/kas-price');
                 const data = await response.json();
                 
                 if (data.success && data.kas_price) {
