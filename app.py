@@ -21,6 +21,7 @@ from services import TokenService
 from services.achievement_service import evaluate_user_achievements
 from services.web3_service import get_web3_service
 from services.tx_monitor import get_tx_monitor
+from services.event_indexer import index_all_events
 from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 from web3 import Web3
 
@@ -177,6 +178,15 @@ def check_pending_with_context():
     with app.app_context():
         tx_monitor.check_pending_transactions()
 
+# Wrapper function to run event indexer in app context
+def run_event_indexer_with_context():
+    with app.app_context():
+        try:
+            index_all_events()
+        except Exception as e:
+            logging.error(f"Error in event indexer: {str(e)}")
+            db.session.rollback()
+
 # Add monitoring job - runs every 10 seconds
 scheduler.add_job(
     func=check_pending_with_context,
@@ -187,6 +197,16 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# Add event indexer job - runs every 20 seconds
+scheduler.add_job(
+    func=run_event_indexer_with_context,
+    trigger='interval',
+    seconds=20,
+    id='event_indexer',
+    name='Index blockchain events',
+    replace_existing=True
+)
+
 # Start scheduler
 scheduler.start()
 
@@ -194,6 +214,7 @@ scheduler.start()
 atexit.register(lambda: scheduler.shutdown())
 
 logging.info("Transaction monitor scheduler started - checking every 10 seconds")
+logging.info("Event indexer scheduler started - checking every 20 seconds")
 
 def get_current_user():
     """Get current user from session - only if wallet is verified"""

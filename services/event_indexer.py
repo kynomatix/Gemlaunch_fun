@@ -172,8 +172,8 @@ def process_anti_bot_fee_events(w3, pool_contract, token, from_block, to_block):
     """Process AntiBotFeePaid and AntiBotFeeSplit events together (they're in same tx)"""
     try:
         anti_bot_paid_filter = pool_contract.events.AntiBotFeePaid.create_filter(
-            fromBlock=from_block,
-            toBlock=to_block
+            from_block=from_block,
+            to_block=to_block
         )
         anti_bot_paid_events = anti_bot_paid_filter.get_all_entries()
         
@@ -200,8 +200,8 @@ def process_anti_bot_fee_events(w3, pool_contract, token, from_block, to_block):
                     continue
                 
                 split_filter = pool_contract.events.AntiBotFeeSplit.create_filter(
-                    fromBlock=block_number,
-                    toBlock=block_number
+                    from_block=block_number,
+                    to_block=block_number
                 )
                 split_events = [e for e in split_filter.get_all_entries() if e['transactionHash'].hex() == tx_hash]
                 
@@ -338,8 +338,8 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         
         try:
             purchase_filter = pool_contract.events.TokensPurchased.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             purchase_events = purchase_filter.get_all_entries()
             
@@ -357,8 +357,8 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         
         try:
             sell_filter = pool_contract.events.TokensSold.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             sell_events = sell_filter.get_all_entries()
             
@@ -381,8 +381,8 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         
         try:
             graduation_filter = pool_contract.events.GraduationInitiated.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             graduation_events = graduation_filter.get_all_entries()
             
@@ -399,8 +399,8 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         
         try:
             withdraw_filter = pool_contract.events.CreatorFeesWithdrawn.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             withdraw_events = withdraw_filter.get_all_entries()
             
@@ -434,13 +434,14 @@ def process_token_created_events(from_block, to_block):
         
         stats = {
             'tokens_deployed': 0,
+            'vesting_updated': 0,
             'errors': 0
         }
         
         # Get TokenCreated events
         token_created_filter = token_factory.events.TokenCreated.create_filter(
-            fromBlock=from_block,
-            toBlock=to_block
+            from_block=from_block,
+            to_block=to_block
         )
         
         events = token_created_filter.get_all_entries()
@@ -483,15 +484,60 @@ def process_token_created_events(from_block, to_block):
                 stats['errors'] += 1
                 continue
         
+        # Get VestingDeployed events (emitted for PRO tokens with vesting)
+        try:
+            vesting_deployed_filter = token_factory.events.VestingDeployed.create_filter(
+                from_block=from_block,
+                to_block=to_block
+            )
+            
+            vesting_events = vesting_deployed_filter.get_all_entries()
+            logger.debug(f"Found {len(vesting_events)} VestingDeployed events")
+            
+            for event in vesting_events:
+                try:
+                    args = event['args']
+                    token_address = args['token'].lower()
+                    airdrop_vesting = args['airdropVesting'].lower()
+                    marketing_vesting = args['marketingVesting'].lower()
+                    team_vesting = args['teamVesting'].lower()
+                    
+                    # Find token by contract address
+                    token = Token.query.filter_by(contract_address=token_address).first()
+                    
+                    if token:
+                        # Update vesting contract addresses (address(0) means 0% allocation)
+                        if airdrop_vesting != '0x0000000000000000000000000000000000000000':
+                            token.airdrop_vesting_address = airdrop_vesting
+                        if marketing_vesting != '0x0000000000000000000000000000000000000000':
+                            token.marketing_vesting_address = marketing_vesting
+                        if team_vesting != '0x0000000000000000000000000000000000000000':
+                            token.team_vesting_address = team_vesting
+                        
+                        db.session.flush()
+                        stats['vesting_updated'] += 1
+                        
+                        logger.debug(f"✅ Updated vesting addresses for {token.symbol}: airdrop={airdrop_vesting[:10]}..., marketing={marketing_vesting[:10]}..., team={team_vesting[:10]}...")
+                    else:
+                        logger.warning(f"Token not found for VestingDeployed event: {token_address}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing VestingDeployed event: {str(e)}")
+                    stats['errors'] += 1
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error fetching VestingDeployed events: {str(e)}")
+        
         db.session.commit()
-        logger.debug(f"Processed {stats['tokens_deployed']} TokenCreated events")
+        logger.debug(f"Processed {stats['tokens_deployed']} TokenCreated and {stats['vesting_updated']} VestingDeployed events")
         
         return stats
         
     except Exception as e:
         logger.error(f"Fatal error processing TokenCreated events: {str(e)}")
         db.session.rollback()
-        return {'tokens_deployed': 0, 'errors': 1}
+        return {'tokens_deployed': 0, 'vesting_updated': 0, 'errors': 1}
 
 
 def process_graduation_events(from_block, to_block):
@@ -510,8 +556,8 @@ def process_graduation_events(from_block, to_block):
         
         try:
             initiation_filter = graduation_contract.events.GraduationInitiated.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             initiation_events = initiation_filter.get_all_entries()
             
@@ -551,8 +597,8 @@ def process_graduation_events(from_block, to_block):
         
         try:
             completion_filter = graduation_contract.events.GraduationCompleted.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             completion_events = completion_filter.get_all_entries()
             
@@ -581,8 +627,8 @@ def process_graduation_events(from_block, to_block):
         
         try:
             failure_filter = graduation_contract.events.GraduationFailed.create_filter(
-                fromBlock=from_block,
-                toBlock=to_block
+                from_block=from_block,
+                to_block=to_block
             )
             failure_events = failure_filter.get_all_entries()
             
