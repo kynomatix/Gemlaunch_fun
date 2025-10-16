@@ -335,7 +335,7 @@
                 };
                 const timeframe = timeframeMap[interval] || '7d';
                 
-                let url = `/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}&interval=${interval}`;
+                let url = `/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}&interval=${interval}&type=${type}`;
                 
                 const response = await fetch(url);
                 const result = await response.json();

@@ -5524,6 +5524,7 @@ def get_token_chart_data(contract_address):
         timeframe = request.args.get('timeframe', '24h')
         requested_interval = request.args.get('interval', None)
         requested_format = request.args.get('format', None)
+        chart_type = request.args.get('type', 'marketcap')  # 'price' or 'marketcap'
         
         # Calculate time window
         now = datetime.now(timezone.utc)
@@ -5560,25 +5561,21 @@ def get_token_chart_data(contract_address):
         
         # Build trade data points with prices
         trade_points = []
-        current_supply = starting_supply
         
         for trade in trades:
-            # Update cumulative supply
-            if trade.trade_type == 'buy':
-                current_supply += float(trade.token_amount)
-            else:
-                current_supply -= float(trade.token_amount)
+            # Calculate price per token from trade amounts
+            kas_amt = float(trade.kas_amount) if trade.kas_amount else 0
+            token_amt = float(trade.token_amount) if trade.token_amount else 0
+            price_per_token_kas = (kas_amt / token_amt) if token_amt > 0 else 0
             
-            # Calculate price from bonding curve
-            k = token.bonding_curve_k or 0
-            price_kas = float(k) * (current_supply ** 2) if current_supply > 0 else 0
-            market_cap = price_kas * current_supply if current_supply > 0 else 0
+            # Market cap = price_per_token * total_supply
+            market_cap_kas = price_per_token_kas * float(token.total_supply) if token.total_supply else 0
             
             trade_points.append({
                 'timestamp': trade.timestamp,
-                'price': price_kas,
-                'market_cap': market_cap,
-                'volume': float(trade.kas_amount),
+                'price': price_per_token_kas,  # Price per token in KAS
+                'market_cap': market_cap_kas,  # Market cap in KAS
+                'volume': kas_amt,
                 'trade_type': trade.trade_type
             })
         
@@ -5591,8 +5588,8 @@ def get_token_chart_data(contract_address):
         
         # If no trades, return current stats as area chart
         if not trade_points:
-            current_price = float(token.current_price_kas or 0)
-            current_mc = float(token.market_cap_kas or 0)
+            current_price = float(token.current_price or 0)
+            current_mc = float(token.current_market_cap or 0)
             return jsonify({
                 'success': True,
                 'data': [{
@@ -5607,22 +5604,27 @@ def get_token_chart_data(contract_address):
         
         # Generate chart data based on format
         if use_format == 'candlestick':
-            chart_data = aggregate_ohlc_data(trade_points, interval, start_time, now)
+            chart_data = aggregate_ohlc_data(trade_points, interval, start_time, now, chart_type)
         else:  # area format
             chart_data = []
             for point in trade_points:
+                # Use price or market cap based on chart type
+                value = point['price'] if chart_type == 'price' else point['market_cap']
                 chart_data.append({
                     'time': int(point['timestamp'].timestamp()),  # Unix timestamp (seconds)
-                    'value': point['market_cap'],
+                    'value': value,
                     'volume': point['volume']
                 })
             
             # Ensure we always have at least one point for area chart
             if not chart_data:
-                current_mc = float(token.market_cap_kas or 0)
+                if chart_type == 'price':
+                    value = float(token.current_price or 0)
+                else:  # marketcap
+                    value = float(token.current_market_cap or 0)
                 chart_data.append({
                     'time': int(now.timestamp()),
-                    'value': current_mc,
+                    'value': value,
                     'volume': 0
                 })
         
@@ -5639,7 +5641,7 @@ def get_token_chart_data(contract_address):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-def aggregate_ohlc_data(trade_points, interval, start_time, end_time):
+def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type='marketcap'):
     """
     Aggregate trade data into OHLC candlesticks
     
@@ -5648,6 +5650,7 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time):
         interval: '1m', '5m', '15m', '1h', '4h', '1d'
         start_time: Start of time window
         end_time: End of time window
+        chart_type: 'price' or 'marketcap' - determines which values to use for OHLC
     
     Returns:
         List of OHLC candles: [{"time": unix_seconds, "open": x, "high": y, "low": z, "close": w, "volume": v}, ...]
@@ -5693,14 +5696,17 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time):
         if not bucket_trades:
             continue
         
-        # Get market cap values (what the chart displays)
-        mcap_values = [t['market_cap'] for t in bucket_trades]
+        # Get values based on chart type (price or market cap)
+        if chart_type == 'price':
+            values = [t['price'] for t in bucket_trades]
+        else:  # marketcap
+            values = [t['market_cap'] for t in bucket_trades]
         
-        # OHLC from market cap values
-        open_value = mcap_values[0]
-        close_value = mcap_values[-1]
-        high_value = max(mcap_values)
-        low_value = min(mcap_values)
+        # OHLC from values
+        open_value = values[0]
+        close_value = values[-1]
+        high_value = max(values)
+        low_value = min(values)
         
         # Sum volume in bucket
         total_volume = sum(t['volume'] for t in bucket_trades)
