@@ -158,6 +158,11 @@ class Token(db.Model):
     vesting_deployment_tx = db.Column(db.String(128), nullable=True)  # Vesting deployment tx hash (for monitoring)
     vesting_deployment_status = db.Column(db.String(32), default='none')  # none, pending, deployed, failed
     
+    # Vesting claim cooldown tracking (anti-gaming feature)
+    marketing_next_claim_available = db.Column(db.DateTime, nullable=True)  # When marketing claim becomes available
+    team_next_claim_available = db.Column(db.DateTime, nullable=True)  # When team claim becomes available
+    airdrop_next_claim_available = db.Column(db.DateTime, nullable=True)  # When airdrop claim becomes available (future)
+    
     # Market data
     current_market_cap = db.Column(db.Numeric(precision=20, scale=8), default=1000)  # Start at ~$1K
     current_price = db.Column(db.Numeric(precision=20, scale=12), default=0.000001)
