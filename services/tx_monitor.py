@@ -52,6 +52,9 @@ class TransactionMonitor:
                 
                 if receipt['status'] != 1:
                     tx.error_message = 'Transaction reverted'
+                else:
+                    # Handle successful transaction callbacks
+                    self._handle_confirmed_transaction(tx, receipt)
                 
                 db.session.commit()
                 logging.info(f"Transaction {tx.tx_hash[:10]}... {tx.status} at block {tx.block_number}")
@@ -63,6 +66,76 @@ class TransactionMonitor:
             # Transaction still pending or RPC error
             logging.debug(f"Transaction {tx.tx_hash[:10]}... still pending: {str(e)}")
             return False
+    
+    def _handle_confirmed_transaction(self, tx, receipt):
+        """Handle post-confirmation actions for different transaction types"""
+        try:
+            if tx.tx_type == 'deploy_vesting':
+                self._handle_vesting_deployment_confirmed(tx, receipt)
+        except Exception as e:
+            logging.error(f"Error handling confirmed transaction {tx.tx_hash}: {str(e)}")
+    
+    def _handle_vesting_deployment_confirmed(self, tx, receipt):
+        """Handle confirmed vesting deployment transaction"""
+        try:
+            from models import Token
+            
+            if not tx.token_id:
+                logging.error(f"Vesting deployment tx {tx.tx_hash} has no token_id")
+                return
+            
+            token = Token.query.get(tx.token_id)
+            if not token:
+                logging.error(f"Token {tx.token_id} not found for vesting deployment {tx.tx_hash}")
+                return
+            
+            logging.info(f"🎉 Vesting deployment confirmed for token {token.id} ({token.symbol})")
+            
+            # Extract vesting addresses from receipt
+            vesting_addresses = self.web3_service.extract_vesting_addresses_from_receipt(tx.tx_hash)
+            
+            # Update token with vesting addresses
+            token.marketing_vesting_address = vesting_addresses.get('marketing_vesting_address')
+            token.team_vesting_address = vesting_addresses.get('team_vesting_address')
+            token.airdrop_vesting_address = vesting_addresses.get('airdrop_vesting_address')
+            token.vesting_deployment_status = 'deployed'
+            
+            logging.info(f"✅ Vesting addresses saved:")
+            logging.info(f"  Marketing: {token.marketing_vesting_address}")
+            logging.info(f"  Team: {token.team_vesting_address}")
+            logging.info(f"  Airdrop: {token.airdrop_vesting_address}")
+            
+            # Now submit reserve transfer transaction (non-blocking)
+            try:
+                transfer_tx_hash = self.web3_service.transfer_reserves_to_vesting_async(
+                    pool_address=token.contract_address,
+                    marketing_vesting=token.marketing_vesting_address,
+                    team_vesting=token.team_vesting_address,
+                    airdrop_vesting=token.airdrop_vesting_address
+                )
+                
+                if transfer_tx_hash:
+                    logging.info(f"🚀 Reserve transfer tx submitted: {transfer_tx_hash}")
+                    
+                    # Add transfer tx to monitor
+                    transfer_pending_tx = PendingTransaction(
+                        tx_hash=transfer_tx_hash,
+                        tx_type='transfer_reserves',
+                        user_address=tx.user_address,
+                        token_id=token.id,
+                        status='pending',
+                        created_at=datetime.now(timezone.utc)
+                    )
+                    db.session.add(transfer_pending_tx)
+                    
+            except Exception as e:
+                logging.error(f"Failed to submit reserve transfer: {str(e)}")
+            
+            db.session.commit()
+            
+        except Exception as e:
+            logging.error(f"Error handling vesting deployment confirmation: {str(e)}")
+            db.session.rollback()
     
     def add_pending_transaction(self, tx_hash, tx_type, user_address, token_id=None):
         """Add new pending transaction to monitor

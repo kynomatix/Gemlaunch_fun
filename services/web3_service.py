@@ -282,11 +282,183 @@ class Web3Service:
     # PRO Token Vesting Deployment Methods
     # =========================
     
+    def deploy_pro_token_vesting_async(self, pool_address, total_supply, reserved_percentage, 
+                                        airdrops_allocation, marketing_allocation, team_allocation,
+                                        creator_address):
+        """
+        Deploy PRO token vesting contracts asynchronously (non-blocking).
+        Submits the transaction and returns immediately without waiting for confirmation.
+        
+        Args:
+            pool_address: BondingCurvePool contract address
+            total_supply: Total token supply in tokens (not wei)
+            reserved_percentage: Reserved percentage (0-25)
+            airdrops_allocation: Airdrops allocation % of reserve
+            marketing_allocation: Marketing allocation % of reserve
+            team_allocation: Team allocation % of reserve
+            creator_address: Token creator wallet address
+            
+        Returns:
+            dict: {
+                'tx_hash': str,
+                'pool_address': str,
+                'status': 'pending'
+            }
+        """
+        try:
+            self.ensure_connected()
+            
+            # Convert allocations to uint8 (percentages)
+            airdrops_alloc_uint8 = int(airdrops_allocation)
+            marketing_alloc_uint8 = int(marketing_allocation)
+            team_alloc_uint8 = int(team_allocation)
+            reserved_pct_uint8 = int(reserved_percentage)
+            
+            # Validate allocations sum to 100
+            total_alloc = airdrops_alloc_uint8 + marketing_alloc_uint8 + team_alloc_uint8
+            if total_alloc != 100:
+                raise ValueError(f"Allocations must sum to 100%, got {total_alloc}%")
+            
+            # Convert total supply to wei
+            total_supply_wei = int(total_supply) * 10**18
+            
+            # Airdrop treasury is the oracle wallet (secondary wallet)
+            airdrop_treasury = self.oracle_account.address
+            
+            logging.info(f"🚀 Submitting async vesting deployment for pool {pool_address}")
+            logging.info(f"  Total Supply: {total_supply:,} tokens")
+            logging.info(f"  Reserved: {reserved_pct_uint8}%")
+            logging.info(f"  Allocations - Airdrops: {airdrops_alloc_uint8}%, Marketing: {marketing_alloc_uint8}%, Team: {team_alloc_uint8}%")
+            
+            # Build transaction to call VestingManager.deployVestingContracts()
+            vesting_manager = self.contracts['VestingManager']
+            
+            # Build the transaction
+            tx = vesting_manager.functions.deployVestingContracts(
+                Web3.to_checksum_address(pool_address),
+                total_supply_wei,
+                reserved_pct_uint8,
+                airdrops_alloc_uint8,
+                marketing_alloc_uint8,
+                team_alloc_uint8,
+                Web3.to_checksum_address(airdrop_treasury),
+                Web3.to_checksum_address(creator_address)
+            ).build_transaction({
+                'from': self.oracle_account.address,
+                'nonce': self.w3.eth.get_transaction_count(self.oracle_account.address),
+                'gas': 3000000,  # High gas limit for deployment
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            # Sign and send transaction from oracle wallet
+            signed_tx = self.w3.eth.account.sign_transaction(tx, self.oracle_account.key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            tx_hash_hex = tx_hash.hex()
+            
+            logging.info(f"✅ Vesting deployment tx submitted: {tx_hash_hex} (monitoring in background)")
+            
+            return {
+                'tx_hash': tx_hash_hex,
+                'pool_address': pool_address,
+                'status': 'pending'
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to submit vesting deployment tx: {str(e)}")
+            raise
+    
+    def extract_vesting_addresses_from_receipt(self, tx_hash):
+        """
+        Extract vesting contract addresses from deployment transaction receipt.
+        Called by transaction monitor when vesting deployment confirms.
+        
+        Args:
+            tx_hash: Vesting deployment transaction hash
+            
+        Returns:
+            dict: {
+                'marketing_vesting_address': str or None,
+                'team_vesting_address': str or None,
+                'airdrop_vesting_address': str or None
+            }
+        """
+        try:
+            receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+            
+            if receipt['status'] != 1:
+                raise Exception(f"Vesting deployment transaction failed: {tx_hash}")
+            
+            vesting_addresses = {
+                'marketing_vesting_address': None,
+                'team_vesting_address': None,
+                'airdrop_vesting_address': None
+            }
+            
+            # Parse logs to extract vesting contract addresses
+            for log in receipt['logs']:
+                try:
+                    if log['address'] != VESTING_MANAGER_ADDRESS:
+                        deployed_address = log['address']
+                        
+                        # Try AirdropVesting (5% daily unlock)
+                        try:
+                            airdrop_contract = self.w3.eth.contract(
+                                address=deployed_address,
+                                abi=self.contracts['AirdropVestingABI']
+                            )
+                            daily_rate = airdrop_contract.functions.DAILY_UNLOCK_RATE().call()
+                            if daily_rate == 500:  # 5% = 500 bps
+                                vesting_addresses['airdrop_vesting_address'] = deployed_address
+                                logging.info(f"  ✅ Airdrop vesting: {deployed_address}")
+                                continue
+                        except:
+                            pass
+                        
+                        # Try LinearVesting (12 month marketing)
+                        try:
+                            linear_contract = self.w3.eth.contract(
+                                address=deployed_address,
+                                abi=self.contracts['LinearVestingABI']
+                            )
+                            vesting_months = linear_contract.functions.vestingMonths().call()
+                            if vesting_months == 12:
+                                vesting_addresses['marketing_vesting_address'] = deployed_address
+                                logging.info(f"  ✅ Marketing vesting: {deployed_address}")
+                                continue
+                        except:
+                            pass
+                        
+                        # Try CliffVesting (6 month cliff team)
+                        try:
+                            cliff_contract = self.w3.eth.contract(
+                                address=deployed_address,
+                                abi=self.contracts['CliffVestingABI']
+                            )
+                            cliff_months = cliff_contract.functions.cliffMonths().call()
+                            if cliff_months == 6:
+                                vesting_addresses['team_vesting_address'] = deployed_address
+                                logging.info(f"  ✅ Team vesting: {deployed_address}")
+                                continue
+                        except:
+                            pass
+                            
+                except Exception as e:
+                    logging.debug(f"Error parsing log: {e}")
+                    continue
+            
+            return vesting_addresses
+            
+        except Exception as e:
+            logging.error(f"Failed to extract vesting addresses from receipt: {str(e)}")
+            raise
+    
     def deploy_pro_token_vesting(self, pool_address, total_supply, reserved_percentage, 
                                    airdrops_allocation, marketing_allocation, team_allocation,
                                    creator_address):
         """
-        Deploy PRO token vesting contracts using VestingManager.
+        Deploy PRO token vesting contracts using VestingManager (SYNCHRONOUS - BLOCKS FOR 2+ MINUTES).
+        
+        ⚠️ DEPRECATED: Use deploy_pro_token_vesting_async() instead to avoid timeout issues.
         
         Args:
             pool_address: BondingCurvePool contract address
@@ -452,6 +624,75 @@ class Web3Service:
             
         except Exception as e:
             logging.error(f"Failed to deploy vesting contracts: {str(e)}")
+            raise
+    
+    def transfer_reserves_to_vesting_async(self, pool_address, marketing_vesting, team_vesting, airdrop_vesting):
+        """
+        Transfer reserves from BondingCurvePool to vesting contracts (async - non-blocking).
+        Submits transaction and returns tx hash immediately without waiting.
+        
+        Args:
+            pool_address: BondingCurvePool address
+            marketing_vesting: Marketing vesting contract address (or None)
+            team_vesting: Team vesting contract address (or None)
+            airdrop_vesting: Airdrop vesting contract address (or None)
+            
+        Returns:
+            str: Transaction hash or None if no recipients
+        """
+        try:
+            pool_contract = self.get_bonding_pool_contract(pool_address)
+            
+            # Build arrays of recipients and amounts
+            recipients = []
+            amounts = []
+            
+            if marketing_vesting:
+                recipients.append(Web3.to_checksum_address(marketing_vesting))
+                linear_contract = self.get_linear_vesting_contract(marketing_vesting)
+                amount = linear_contract.functions.totalAmount().call()
+                amounts.append(amount)
+                logging.info(f"  Marketing: {amount / 10**18:,.0f} tokens to {marketing_vesting}")
+            
+            if team_vesting:
+                recipients.append(Web3.to_checksum_address(team_vesting))
+                cliff_contract = self.get_cliff_vesting_contract(team_vesting)
+                amount = cliff_contract.functions.totalAmount().call()
+                amounts.append(amount)
+                logging.info(f"  Team: {amount / 10**18:,.0f} tokens to {team_vesting}")
+            
+            if airdrop_vesting:
+                recipients.append(Web3.to_checksum_address(airdrop_vesting))
+                airdrop_contract = self.get_airdrop_vesting_contract(airdrop_vesting)
+                amount = airdrop_contract.functions.totalAmount().call()
+                amounts.append(amount)
+                logging.info(f"  Airdrop: {amount / 10**18:,.0f} tokens to {airdrop_vesting}")
+            
+            if not recipients:
+                logging.warning("No vesting contracts to transfer to")
+                return None
+            
+            # Build transaction to transfer reserves
+            tx = pool_contract.functions.transferReserves(
+                recipients,
+                amounts
+            ).build_transaction({
+                'from': self.oracle_account.address,
+                'nonce': self.w3.eth.get_transaction_count(self.oracle_account.address),
+                'gas': 500000,
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            # Sign and send (non-blocking)
+            signed_tx = self.w3.eth.account.sign_transaction(tx, self.oracle_account.key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            tx_hash_hex = tx_hash.hex()
+            
+            logging.info(f"✅ Reserve transfer tx submitted: {tx_hash_hex}")
+            return tx_hash_hex
+            
+        except Exception as e:
+            logging.error(f"Failed to submit reserve transfer: {str(e)}")
             raise
     
     def _transfer_reserves_to_vesting(self, pool_address, marketing_vesting, team_vesting, airdrop_vesting):
