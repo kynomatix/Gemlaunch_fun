@@ -3501,6 +3501,14 @@ function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCou
 }
 
 function openProClaimsModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
+    // Store current token data
+    currentTokenData = {
+        id: tokenId,
+        name: tokenName,
+        symbol: tokenSymbol,
+        image: tokenImage
+    };
+    
     // Update token info
     document.getElementById('proTokenName').textContent = tokenName;
     document.getElementById('proTokenSymbol').textContent = '$' + tokenSymbol;
@@ -3641,6 +3649,7 @@ async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad)
 
 function closeProClaimsModal() {
     document.getElementById('proClaimsModal').style.display = 'none';
+    currentTokenData = {};
 }
 
 function switchClaimsTab(tabName) {
