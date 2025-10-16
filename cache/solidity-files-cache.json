@@ -115,47 +115,6 @@
         "IERC20"
       ]
     },
-    "/home/runner/workspace/contracts/VestingManager.sol": {
-      "lastModificationDate": 1760571834194,
-      "contentHash": "ff3d0756886a383bb0c84ee78bee94be",
-      "sourceName": "contracts/VestingManager.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": true,
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./AirdropVesting.sol",
-        "./LinearVesting.sol",
-        "./CliffVesting.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "VestingManager"
-      ]
-    },
     "/home/runner/workspace/contracts/LinearVesting.sol": {
       "lastModificationDate": 1760516793746,
       "contentHash": "e26372fd315078e0c8dd0a804544d333",
@@ -433,8 +392,8 @@
       ]
     },
     "/home/runner/workspace/contracts/TokenFactory.sol": {
-      "lastModificationDate": 1760571678750,
-      "contentHash": "09c38928b0a86cbcc1d1b962cef1f07e",
+      "lastModificationDate": 1760592102006,
+      "contentHash": "3a5c4a86483952749e74c5bc923adabb",
       "sourceName": "contracts/TokenFactory.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -467,7 +426,9 @@
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "./BondingCurvePool.sol",
-        "./VestingManager.sol"
+        "./AirdropVesting.sol",
+        "./LinearVesting.sol",
+        "./CliffVesting.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -477,8 +438,8 @@
       ]
     },
     "/home/runner/workspace/contracts/BondingCurvePool.sol": {
-      "lastModificationDate": 1760560978686,
-      "contentHash": "46a318970d60b3b15dd21abe76fa5ed9",
+      "lastModificationDate": 1760592020841,
+      "contentHash": "ac476a5d49444f0cbc1f3f8026da169f",
       "sourceName": "contracts/BondingCurvePool.sol",
       "solcConfig": {
         "version": "0.8.20",

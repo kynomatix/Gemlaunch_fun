@@ -6,7 +6,9 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BondingCurvePool.sol";
-import "./VestingManager.sol";
+import "./AirdropVesting.sol";
+import "./LinearVesting.sol";
+import "./CliffVesting.sol";
 
 contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     // Contract addresses
@@ -19,7 +21,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     address public buybackReserveWallet;
     address public kaspaNetworkSupportWallet;
     address public communityRewardsWallet;
-    address public vestingManager;
     
     // Token registry
     address[] public deployedTokens;
@@ -103,10 +104,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         buybackReserveWallet = _buybackReserve;
         kaspaNetworkSupportWallet = _kaspaSupport;
         communityRewardsWallet = _communityRewards;
-        
-        // C-1 FIX: Deploy VestingManager with access control
-        VestingManager vm = new VestingManager(address(this));
-        vestingManager = address(vm);
     }
 
     function createToken(
@@ -178,57 +175,81 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         
         // Deploy vesting contracts if PRO token
         if (reservedPercentage > 0) {
-            VestingManager.VestingContracts memory vesting = VestingManager(vestingManager).deployVestingContracts(
-                poolAddress,
-                totalSupply,
-                reservedPercentage,
-                airdropsAllocation,
-                marketingAllocation,
-                teamAllocation,
-                airdropTreasury,
-                msg.sender
-            );
+            // Automatic beneficiary logic (no user input required)
+            address airdropBeneficiary = airdropTreasury;   // Platform wallet for airdrops
+            address marketingBeneficiary = msg.sender;       // Creator wallet
+            address teamBeneficiary = msg.sender;            // Creator wallet
             
-            airdropVestingAddress = vesting.airdropVesting;
-            marketingVestingAddress = vesting.marketingVesting;
-            teamVestingAddress = vesting.teamVesting;
+            uint256 totalVesting = totalSupply * reservedPercentage / 100;
             
-            if (vesting.airdropTokens > 0) {
-                pool.transferReserveToVesting(
-                    airdropVestingAddress,
-                    vesting.airdropTokens,
-                    BondingCurvePool.VestingType.Airdrop
+            // Calculate token amounts
+            uint256 airdropTokens = totalVesting * airdropsAllocation / 100;
+            uint256 marketingTokens = totalVesting * marketingAllocation / 100;
+            uint256 teamTokens = totalVesting * teamAllocation / 100;
+            
+            // Minimum allocation validation
+            if (airdropTokens > 0) {
+                require(airdropTokens >= 100 * 10**18, "Airdrop allocation too small for daily unlocks");
+            }
+            if (marketingTokens > 0) {
+                require(marketingTokens >= 100 * 10**18, "Marketing allocation too small for monthly unlocks");
+            }
+            if (teamTokens > 0) {
+                require(teamTokens >= 100 * 10**18, "Team allocation too small for vesting schedule");
+            }
+            
+            // Deploy airdrop vesting
+            if (airdropTokens > 0) {
+                AirdropVesting av = new AirdropVesting(
+                    poolAddress,
+                    airdropBeneficiary,
+                    airdropTokens
                 );
+                airdropVestingAddress = address(av);
+                pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+                
                 require(
-                    IERC20(poolAddress).balanceOf(airdropVestingAddress) == vesting.airdropTokens,
-                    "Airdrop err"
+                    IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
+                    "Airdrop vesting underfunded"
                 );
             }
             
-            if (vesting.marketingTokens > 0) {
-                pool.transferReserveToVesting(
-                    marketingVestingAddress,
-                    vesting.marketingTokens,
-                    BondingCurvePool.VestingType.Marketing
+            // Deploy marketing vesting
+            if (marketingTokens > 0) {
+                LinearVesting mv = new LinearVesting(
+                    poolAddress,
+                    marketingBeneficiary,
+                    marketingTokens,
+                    12  // 12 months
                 );
+                marketingVestingAddress = address(mv);
+                pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
+                
                 require(
-                    IERC20(poolAddress).balanceOf(marketingVestingAddress) == vesting.marketingTokens,
-                    "Marketing err"
+                    IERC20(poolAddress).balanceOf(marketingVestingAddress) == marketingTokens,
+                    "Marketing vesting underfunded"
                 );
             }
             
-            if (vesting.teamTokens > 0) {
-                pool.transferReserveToVesting(
-                    teamVestingAddress,
-                    vesting.teamTokens,
-                    BondingCurvePool.VestingType.Team
+            // Deploy team vesting
+            if (teamTokens > 0) {
+                CliffVesting tv = new CliffVesting(
+                    poolAddress,
+                    teamBeneficiary,
+                    teamTokens,
+                    6,   // 6 month cliff
+                    18   // 18 month vesting
                 );
+                teamVestingAddress = address(tv);
+                pool.transferReserveToVesting(teamVestingAddress, teamTokens);
+                
                 require(
-                    IERC20(poolAddress).balanceOf(teamVestingAddress) == vesting.teamTokens,
-                    "Team err"
+                    IERC20(poolAddress).balanceOf(teamVestingAddress) == teamTokens,
+                    "Team vesting underfunded"
                 );
             }
             
+            // Finalize vesting setup
             pool.finalizeVestingSetup();
         }
         

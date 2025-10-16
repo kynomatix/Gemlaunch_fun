@@ -5118,6 +5118,15 @@ def confirm_token_deployment(token_id):
                 expected_creator=creator.wallet_address
             )
             
+            # Extract vesting addresses if PRO token
+            vesting_addresses = None
+            if token.reserved_percentage > 0:
+                try:
+                    vesting_addresses = web3_service.extract_vesting_addresses_from_receipt(tx_hash)
+                    logging.info(f"Extracted vesting addresses for PRO token {token_id}: {vesting_addresses}")
+                except Exception as e:
+                    logging.error(f"Failed to extract vesting addresses for token {token_id}: {str(e)}")
+            
             # Get transaction to verify sender
             tx = web3_service.w3.eth.get_transaction(tx_hash)
             
@@ -5179,47 +5188,12 @@ def confirm_token_deployment(token_id):
         token.is_active = True
         token.circulating_supply = circulating_supply_tokens
         
-        # Deploy PRO token vesting contracts asynchronously if reserved percentage > 0
-        if token.reserved_percentage and token.reserved_percentage > 0:
-            try:
-                logging.info(f"🚀 Submitting async vesting deployment for PRO token {token.id} ({token.symbol})")
-                
-                # Call async web3_service to deploy vesting contracts (non-blocking)
-                vesting_result = web3_service.deploy_pro_token_vesting_async(
-                    pool_address=contract_address,
-                    total_supply=token.total_supply,
-                    reserved_percentage=token.reserved_percentage,
-                    airdrops_allocation=token.airdrops_allocation,
-                    marketing_allocation=token.marketing_allocation,
-                    team_allocation=token.team_allocation,
-                    creator_address=creator.wallet_address
-                )
-                
-                # Save vesting deployment tx hash for monitoring
-                token.vesting_deployment_tx = vesting_result.get('tx_hash')
-                token.vesting_deployment_status = 'pending'
-                
-                logging.info(f"✅ Vesting deployment tx submitted: {token.vesting_deployment_tx}")
-                logging.info(f"   Will be monitored in background and updated when confirmed")
-                
-                # Add vesting deployment transaction to monitor
-                from services.tx_monitor import PendingTransaction
-                from datetime import datetime, timezone
-                
-                vesting_tx = PendingTransaction(
-                    tx_hash=token.vesting_deployment_tx,
-                    tx_type='deploy_vesting',
-                    user_address=creator.wallet_address,
-                    token_id=token.id,
-                    status='pending',
-                    created_at=datetime.now(timezone.utc)
-                )
-                db.session.add(vesting_tx)
-                
-            except Exception as vesting_error:
-                logging.error(f"Failed to submit vesting deployment: {str(vesting_error)}")
-                token.vesting_deployment_status = 'failed'
-                # Don't fail the entire deployment - token is still deployed, just vesting failed
+        # Save vesting addresses for PRO tokens
+        if vesting_addresses and token.reserved_percentage > 0:
+            token.airdrop_vesting_address = vesting_addresses.get('airdrop_vesting_address')
+            token.marketing_vesting_address = vesting_addresses.get('marketing_vesting_address')
+            token.team_vesting_address = vesting_addresses.get('team_vesting_address')
+            logging.info(f"Saved vesting addresses for PRO token {token_id}")
         
         db.session.commit()
         
