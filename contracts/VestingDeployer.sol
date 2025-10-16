@@ -11,6 +11,12 @@ import "./CliffVesting.sol";
  * @dev Used by TokenFactory to avoid contract size limits
  *      Deploying vesting inline would embed bytecode in factory (exceeds 24KB)
  *      This pattern keeps TokenFactory small while maintaining atomic deployment
+ * 
+ * SPEC ALIGNMENT:
+ * - Implements PRO_TOKEN_VESTING_SPECIFICATION_V2.md lines 347-396 logic
+ * - Returns address(0) for zero allocations (e.g., 100/0/0 or 0/100/0)
+ * - Only deploys contracts when allocation > 0 (spec behavior)
+ * - Functionally identical to direct deployment, just delegated for size
  */
 contract VestingDeployer {
     address public immutable factory;

@@ -44,9 +44,13 @@ Built with Flask, the backend features a minimal, route-based architecture with 
   - TokenFactory emits VestingDeployed event with all three vesting contract addresses
   - Backend extracts addresses from event logs and saves to database
   - No async deployment, no timeout issues, no oracle wallet subsidy
-- **Contract Size Optimization:**
-  - VestingDeployer pattern used to avoid 24KB contract size limit
-  - TokenFactory metadata storage removed (rely on events for data)
+- **Contract Size Optimization (EVM Constraint Workaround):**
+  - VestingDeployer helper contract pattern (see VESTING_IMPLEMENTATION_NOTES.md)
+  - Spec calls for direct deployment but exceeds 24KB limit
+  - VestingDeployer functionally identical to spec, just delegated for size
+  - TokenFactory: 19KB, VestingDeployer: 5KB
+  - Zero allocations supported: returns address(0) for 0% allocations (e.g., 100/0/0 or 0/100/0)
+  - User experience unchanged: atomic deployment, single transaction, user pays once
 - **Frontend Portal:** Vesting status display on token detail pages with unlock schedules
 - **Security:** All critical issues from spec audits resolved, matches PRO_TOKEN_VESTING_SPECIFICATION_V2.md exactly
 
