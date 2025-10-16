@@ -3793,6 +3793,15 @@ function formatCooldownTime(seconds) {
 async function checkCooldownStatus(tokenId) {
     try {
         const response = await fetch(`/api/token/${tokenId}/vesting/cooldown-status`);
+        
+        // Check if response is OK before parsing JSON
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Cooldown status error:', response.status, errorText);
+            // Return default "no cooldown" state on error
+            return;
+        }
+        
         const data = await response.json();
         
         // Update marketing button/timer
@@ -3806,6 +3815,7 @@ async function checkCooldownStatus(tokenId) {
         }
     } catch (error) {
         console.error('Error checking cooldown status:', error);
+        // Don't throw - just log and continue (default UI will show claim buttons)
     }
 }
 
@@ -3899,14 +3909,27 @@ async function claimMarketingVesting() {
             })
         });
         
+        // Check response status
         if (!response.ok) {
-            const error = await response.json();
-            if (response.status === 429) {
-                // Cooldown active - refresh status
-                alert('Claim is on cooldown. Please wait and try again.');
-                await checkCooldownStatus(currentTokenData.id);
+            const errorText = await response.text();
+            console.error('Claim error:', response.status, errorText);
+            
+            // Try to parse as JSON if possible
+            try {
+                const error = JSON.parse(errorText);
+                if (response.status === 429) {
+                    // Cooldown active - refresh status
+                    alert('Claim is on cooldown. Please wait and try again.');
+                    await checkCooldownStatus(currentTokenData.id);
+                }
+                throw new Error(error.error || `Server error: ${response.status}`);
+            } catch (parseError) {
+                if (response.status === 429) {
+                    alert('Claim is on cooldown. Please wait and try again.');
+                    await checkCooldownStatus(currentTokenData.id);
+                }
+                throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
             }
-            throw new Error(error.error || 'Failed to build transaction');
         }
         
         const buildData = await response.json();
@@ -4052,14 +4075,27 @@ async function claimTeamVesting() {
             })
         });
         
+        // Check response status
         if (!response.ok) {
-            const error = await response.json();
-            if (response.status === 429) {
-                // Cooldown active - refresh status
-                alert('Claim is on cooldown. Please wait and try again.');
-                await checkCooldownStatus(currentTokenData.id);
+            const errorText = await response.text();
+            console.error('Claim error:', response.status, errorText);
+            
+            // Try to parse as JSON if possible
+            try {
+                const error = JSON.parse(errorText);
+                if (response.status === 429) {
+                    // Cooldown active - refresh status
+                    alert('Claim is on cooldown. Please wait and try again.');
+                    await checkCooldownStatus(currentTokenData.id);
+                }
+                throw new Error(error.error || `Server error: ${response.status}`);
+            } catch (parseError) {
+                if (response.status === 429) {
+                    alert('Claim is on cooldown. Please wait and try again.');
+                    await checkCooldownStatus(currentTokenData.id);
+                }
+                throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
             }
-            throw new Error(error.error || 'Failed to build transaction');
         }
         
         const buildData = await response.json();

@@ -5789,35 +5789,39 @@ def get_vesting_cooldown_status(token_id):
         }
     }
     """
-    token = Token.query.get_or_404(token_id)
-    now = datetime.now(timezone.utc)
-    
-    result = {
-        'marketing': {
-            'on_cooldown': False,
-            'next_available': None,
-            'seconds_remaining': 0
-        },
-        'team': {
-            'on_cooldown': False,
-            'next_available': None,
-            'seconds_remaining': 0
+    try:
+        token = Token.query.get_or_404(token_id)
+        now = datetime.now(timezone.utc)
+        
+        result = {
+            'marketing': {
+                'on_cooldown': False,
+                'next_available': None,
+                'seconds_remaining': 0
+            },
+            'team': {
+                'on_cooldown': False,
+                'next_available': None,
+                'seconds_remaining': 0
+            }
         }
-    }
-    
-    # Marketing cooldown
-    if token.marketing_next_claim_available and now < token.marketing_next_claim_available:
-        result['marketing']['on_cooldown'] = True
-        result['marketing']['next_available'] = token.marketing_next_claim_available.isoformat()
-        result['marketing']['seconds_remaining'] = int((token.marketing_next_claim_available - now).total_seconds())
-    
-    # Team cooldown
-    if token.team_next_claim_available and now < token.team_next_claim_available:
-        result['team']['on_cooldown'] = True
-        result['team']['next_available'] = token.team_next_claim_available.isoformat()
-        result['team']['seconds_remaining'] = int((token.team_next_claim_available - now).total_seconds())
-    
-    return jsonify(result)
+        
+        # Marketing cooldown
+        if token.marketing_next_claim_available and now < token.marketing_next_claim_available:
+            result['marketing']['on_cooldown'] = True
+            result['marketing']['next_available'] = token.marketing_next_claim_available.isoformat()
+            result['marketing']['seconds_remaining'] = int((token.marketing_next_claim_available - now).total_seconds())
+        
+        # Team cooldown
+        if token.team_next_claim_available and now < token.team_next_claim_available:
+            result['team']['on_cooldown'] = True
+            result['team']['next_available'] = token.team_next_claim_available.isoformat()
+            result['team']['seconds_remaining'] = int((token.team_next_claim_available - now).total_seconds())
+        
+        return jsonify(result)
+    except Exception as e:
+        logging.error(f"Error getting cooldown status for token {token_id}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ========================================
 # Admin API Endpoints
