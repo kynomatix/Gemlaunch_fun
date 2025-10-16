@@ -321,35 +321,48 @@
             }
         },
         
-        // Generate realistic chart data
-        generateChartData: function(type) {
-            const now = new Date();
-            const data = [];
-            const labels = [];
-            
-            for (let i = 24; i >= 0; i--) {
-                const time = new Date(now - i * 60 * 60 * 1000);
-                labels.push(time);
+        // Fetch real chart data from blockchain trade history
+        fetchChartData: async function(type, timeframe = '24h') {
+            try {
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}`);
+                const result = await response.json();
                 
-                let value;
-                if (type === 'marketcap') {
-                    const baseValue = this.marketCap * 0.7;
-                    const trendFactor = (24 - i) / 24;
-                    const volatility = (Math.sin(i * 0.5) * 0.1 + Math.random() * 0.1);
-                    value = baseValue * (1 + trendFactor * 0.5 + volatility);
-                } else {
-                    const volatility = Math.sin(i * 0.3) * 0.15 + Math.random() * 0.1 - 0.05;
-                    value = this.tokenPrice * (1 + volatility);
+                if (!result.success || !result.data || result.data.length === 0) {
+                    // No trade data available, use current token stats
+                    const now = new Date();
+                    return {
+                        labels: [now],
+                        data: [type === 'marketcap' ? this.marketCap : this.tokenPrice]
+                    };
                 }
-                data.push(value);
+                
+                // Extract timestamps and values from trade history
+                const labels = result.data.map(point => new Date(point.timestamp));
+                const data = result.data.map(point => {
+                    if (type === 'marketcap') {
+                        return point.market_cap;
+                    } else {
+                        return point.price;
+                    }
+                });
+                
+                return { labels, data };
+                
+            } catch (error) {
+                console.error('Error fetching chart data:', error);
+                // Fallback to single current value on error
+                const now = new Date();
+                return {
+                    labels: [now],
+                    data: [type === 'marketcap' ? this.marketCap : this.tokenPrice]
+                };
             }
-            return { labels, data };
         },
         
         // Initialize Chart.js chart
-        initChart: function() {
+        initChart: async function() {
             const ctx = document.getElementById('tokenChart').getContext('2d');
-            const chartData = this.generateChartData(this.currentChartType);
+            const chartData = await this.fetchChartData(this.currentChartType);
             
             if (this.myChart) {
                 this.myChart.destroy();
@@ -1086,14 +1099,53 @@
                 }
             });
             
-            eventSource.onerror = () => {
+            eventSource.onerror = async () => {
                 eventSource.close();
-                this.hideTradeStatus();
-                ModalManager.alert(
-                    'Monitoring Error',
-                    'Transaction monitoring failed. Please check the blockchain explorer to verify status.',
-                    'warning'
-                );
+                
+                // Check transaction status one final time before showing error
+                try {
+                    const response = await fetch(`/api/tx/${txHash}/status`);
+                    const status = await response.json();
+                    
+                    this.hideTradeStatus();
+                    
+                    if (status.status === 'confirmed' || status.status === 'success') {
+                        // Transaction succeeded! Show success even though monitoring failed
+                        ModalManager.alert(
+                            'Trade Successful! ✅',
+                            `Transaction: ${txHash}`,
+                            'success'
+                        );
+                        
+                        // Refresh wallet balance
+                        if (window.WalletManager && window.WalletManager.updateWalletBalance) {
+                            window.WalletManager.updateWalletBalance();
+                        }
+                        
+                        // Reload page to update charts and balances
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                        
+                    } else if (status.status === 'failed' || status.status === 'error') {
+                        ModalManager.alert('Transaction Failed', status.message || 'Transaction failed', 'error');
+                    } else {
+                        // Still pending or unknown
+                        ModalManager.alert(
+                            'Monitoring Error',
+                            'Transaction monitoring failed. Please check the blockchain explorer to verify status.',
+                            'warning'
+                        );
+                    }
+                } catch (err) {
+                    this.hideTradeStatus();
+                    console.error('Error checking final transaction status:', err);
+                    ModalManager.alert(
+                        'Monitoring Error',
+                        'Transaction monitoring failed. Please check the blockchain explorer to verify status.',
+                        'warning'
+                    );
+                }
             };
         },
         

@@ -513,8 +513,8 @@ def stream_tx_status(tx_hash):
                 for _ in range(max_checks):
                     status = tx_monitor.get_transaction_status(tx_hash)
                     
-                    # Send update to client
-                    yield f"data: {json.dumps(status)}\n\n"
+                    # Send update to client with 'status' event type to match client listener
+                    yield f"event: status\ndata: {json.dumps(status)}\n\n"
                     
                     # Stop if terminal state reached
                     if status.get('status') in ['confirmed', 'failed']:
@@ -525,7 +525,7 @@ def stream_tx_status(tx_hash):
         except Exception as e:
             logging.error(f"SSE stream error for {tx_hash}: {str(e)}")
             error_data = {'success': False, 'error': str(e)}
-            yield f"data: {json.dumps(error_data)}\n\n"
+            yield f"event: status\ndata: {json.dumps(error_data)}\n\n"
     
     return Response(
         generate(),
@@ -5479,6 +5479,112 @@ def sync_token_supply(contract_address):
     except Exception as e:
         logging.error(f"Supply sync failed for {contract_address}: {str(e)}")
         db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<contract_address>/chart-data', methods=['GET'])
+def get_token_chart_data(contract_address):
+    """
+    Get real trade history data for token price/volume chart
+    
+    Query params:
+    - timeframe: '24h' (default), '7d', '30d'
+    
+    Response:
+    {
+        "success": true,
+        "data": [
+            {"timestamp": "2025-10-16T10:00:00Z", "price": 0.000015, "volume": 1500, "market_cap": 15000},
+            ...
+        ]
+    }
+    """
+    try:
+        # Find token by contract address
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == contract_address.lower()
+        ).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Get timeframe parameter
+        timeframe = request.args.get('timeframe', '24h')
+        
+        # Calculate time window
+        now = datetime.now(timezone.utc)
+        if timeframe == '7d':
+            start_time = now - timedelta(days=7)
+        elif timeframe == '30d':
+            start_time = now - timedelta(days=30)
+        else:  # Default 24h
+            start_time = now - timedelta(hours=24)
+        
+        # Calculate starting supply from all trades BEFORE the time window
+        # This ensures we have the correct baseline for price calculations
+        prior_trades = TradeEvent.query.filter(
+            TradeEvent.token_id == token.id,
+            TradeEvent.timestamp < start_time
+        ).all()
+        
+        starting_supply = 0
+        for trade in prior_trades:
+            if trade.trade_type == 'buy':
+                starting_supply += float(trade.token_amount)
+            else:  # sell
+                starting_supply -= float(trade.token_amount)
+        
+        # Query trade events within timeframe, ordered by timestamp
+        trades = TradeEvent.query.filter(
+            TradeEvent.token_id == token.id,
+            TradeEvent.timestamp >= start_time
+        ).order_by(TradeEvent.timestamp.asc()).all()
+        
+        # Build chart data points
+        chart_data = []
+        current_supply = starting_supply  # Start with supply as of start_time
+        
+        for trade in trades:
+            # Update cumulative supply
+            if trade.trade_type == 'buy':
+                current_supply += float(trade.token_amount)
+            else:  # sell
+                current_supply -= float(trade.token_amount)
+            
+            # Calculate price from bonding curve (P = k * S^2)
+            k = token.bonding_curve_k or 0
+            price_kas = float(k) * (current_supply ** 2) if current_supply > 0 else 0
+            
+            # Calculate market cap
+            market_cap = price_kas * current_supply if current_supply > 0 else 0
+            
+            chart_data.append({
+                'timestamp': trade.timestamp.isoformat(),
+                'price': price_kas,
+                'volume': float(trade.kas_amount),
+                'market_cap': market_cap,
+                'trade_type': trade.trade_type
+            })
+        
+        # If no trades, return current token stats as single data point
+        if not chart_data:
+            current_price = float(token.current_price_kas or 0)
+            current_mc = float(token.market_cap_kas or 0)
+            chart_data.append({
+                'timestamp': now.isoformat(),
+                'price': current_price,
+                'volume': 0,
+                'market_cap': current_mc,
+                'trade_type': None
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': chart_data,
+            'timeframe': timeframe
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching chart data for {contract_address}: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ========================================
