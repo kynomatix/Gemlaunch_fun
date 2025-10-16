@@ -3897,7 +3897,7 @@ async function claimMarketingVesting() {
             eventSource.close();
             console.error('SSE connection error:', error);
             
-            alert('Transaction monitoring failed. Please check blockchain explorer to verify status:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+            showTransactionModal('timeout', txHash, 'Transaction monitoring failed. Please check the blockchain explorer to verify status.');
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -4039,7 +4039,7 @@ async function claimTeamVesting() {
             eventSource.close();
             console.error('SSE connection error:', error);
             
-            alert('Transaction monitoring failed. Please check blockchain explorer to verify status:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+            showTransactionModal('timeout', txHash, 'Transaction monitoring failed. Please check the blockchain explorer to verify status.');
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -4157,7 +4157,7 @@ async function claimCreatorFees() {
             displayBtn.innerHTML = originalHTML;
             displayBtn.classList.remove('loading');
             updateClaimFeesButtonState(false);
-            alert('Transaction submitted but monitoring timed out. Please check explorer:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+            showTransactionModal('timeout', txHash, 'Transaction submitted but monitoring timed out. Please check the explorer to verify status.');
         }, MONITOR_TIMEOUT);
         
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
@@ -4169,11 +4169,13 @@ async function claimCreatorFees() {
                 clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert(`✅ Creator fees claimed successfully!\nTransaction: ${txHash}\nExplorer: https://explorer.kasplextest.xyz/tx/${txHash}`);
+                showTransactionModal('success', txHash, 'Creator fees claimed successfully! Your balances will be updated shortly.');
                 
-                // Close modal and refresh data
-                closeCreatorFeeModal();
-                location.reload(); // Refresh to update balances
+                // Close modal and refresh data after a brief delay
+                setTimeout(() => {
+                    closeCreatorFeeModal();
+                    location.reload(); // Refresh to update balances
+                }, 1500);
                 
                 // Reset button - USE SYNCHRONIZED FUNCTION
                 displayBtn.innerHTML = originalHTML;
@@ -4183,7 +4185,7 @@ async function claimCreatorFees() {
                 clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert('Transaction Failed: ' + (data.message || data.error || 'Transaction failed on blockchain') + '\nExplorer: https://explorer.kasplextest.xyz/tx/' + txHash);
+                showTransactionModal('error', txHash, 'Transaction Failed: ' + (data.message || data.error || 'Transaction failed on blockchain'));
                 
                 // Reset button - USE SYNCHRONIZED FUNCTION
                 displayBtn.innerHTML = originalHTML;
@@ -4197,7 +4199,7 @@ async function claimCreatorFees() {
             eventSource.close();
             console.error('SSE connection error:', error);
             
-            alert('Transaction monitoring failed. Please check blockchain explorer to verify status:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+            showTransactionModal('timeout', txHash, 'Transaction monitoring failed. Please check the blockchain explorer to verify status.');
             
             // Reset button - USE SYNCHRONIZED FUNCTION
             displayBtn.innerHTML = originalHTML;
@@ -4207,7 +4209,7 @@ async function claimCreatorFees() {
         
     } catch (error) {
         console.error('Error claiming creator fees:', error);
-        alert('Claim Failed: ' + error.message);
+        showTransactionModal('error', '', 'Claim Failed: ' + error.message);
         
         // Reset button - USE SYNCHRONIZED FUNCTION
         displayBtn.innerHTML = originalHTML;
@@ -4230,5 +4232,182 @@ document.addEventListener('keydown', function(e) {
         closeCreatorFeeModal();
     }
 });
+
+// ========================================
+// Transaction Feedback Modal System
+// ========================================
+
+/**
+ * Show transaction feedback modal with status
+ * @param {string} status - 'success', 'error', or 'timeout'
+ * @param {string} txHash - Transaction hash
+ * @param {string} message - Optional custom message
+ */
+function showTransactionModal(status, txHash, message = '') {
+    // Configuration based on status
+    const config = {
+        success: {
+            title: 'Transaction Confirmed',
+            icon: '✅',
+            iconColor: '#4CAF50',
+            accentColor: '#4CAF50',
+            defaultMessage: 'Your transaction has been successfully confirmed on the blockchain.',
+            autoClose: true,
+            autoCloseDelay: 10000
+        },
+        error: {
+            title: 'Transaction Failed',
+            icon: '❌',
+            iconColor: '#FF5252',
+            accentColor: '#FF5252',
+            defaultMessage: 'Your transaction failed. Please try again.',
+            autoClose: false
+        },
+        timeout: {
+            title: 'Transaction Timeout',
+            icon: '⏱️',
+            iconColor: '#FFA726',
+            accentColor: '#FFA726',
+            defaultMessage: 'Transaction monitoring timed out. Please check the explorer to verify status.',
+            autoClose: false
+        }
+    };
+
+    const statusConfig = config[status] || config.error;
+    const displayMessage = message || statusConfig.defaultMessage;
+    
+    // Truncate transaction hash for display
+    const truncatedHash = txHash ? `${txHash.substring(0, 10)}...${txHash.substring(txHash.length - 8)}` : 'N/A';
+    
+    // Explorer URL
+    const explorerUrl = `https://explorer.kasplextest.xyz/tx/${txHash}`;
+    
+    // Create modal HTML
+    const modalHTML = `
+        <div id="transactionFeedbackModal" class="modal" style="display: flex; z-index: 10001;">
+            <div class="modal-content" style="max-width: 500px; animation: modalSlideIn 0.3s ease;">
+                <div class="modal-header">
+                    <h3 style="color: ${statusConfig.accentColor};">
+                        <span style="font-size: 1.5rem; margin-right: 0.5rem;">${statusConfig.icon}</span>
+                        ${statusConfig.title}
+                    </h3>
+                    <button class="modal-close" onclick="closeTransactionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: #CCC; margin-bottom: 1.5rem; line-height: 1.6;">${displayMessage}</p>
+                    
+                    ${txHash ? `
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; color: #20B2AA; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Transaction Hash:</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" 
+                                   id="txHashInput" 
+                                   value="${txHash}" 
+                                   readonly 
+                                   style="flex: 1; padding: 0.6rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; color: #FFFFFF; font-family: monospace; font-size: 0.85rem;">
+                            <button onclick="copyTransactionHash()" 
+                                    style="padding: 0.6rem 1rem; background: linear-gradient(135deg, #20B2AA, #00CED1); border: none; border-radius: 8px; color: #000; font-weight: 600; cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <p style="color: #888; font-size: 0.8rem; margin-top: 0.3rem;">Click to copy full hash</p>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <a href="${explorerUrl}" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #20B2AA, #00CED1); color: #000; text-decoration: none; border-radius: 10px; font-weight: 600; transition: all 0.3s ease;">
+                            <i class="fas fa-external-link-alt"></i>
+                            View on Explorer
+                        </a>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" 
+                            class="btn btn-secondary" 
+                            onclick="closeTransactionModal()"
+                            style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #FFF; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('transactionFeedbackModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Insert modal into DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Auto-close for success status
+    if (statusConfig.autoClose) {
+        setTimeout(() => {
+            closeTransactionModal();
+        }, statusConfig.autoCloseDelay);
+    }
+    
+    // Close on outside click
+    const modal = document.getElementById('transactionFeedbackModal');
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeTransactionModal();
+        }
+    });
+}
+
+/**
+ * Close transaction feedback modal
+ */
+function closeTransactionModal() {
+    const modal = document.getElementById('transactionFeedbackModal');
+    if (modal) {
+        modal.style.display = 'none';
+        setTimeout(() => modal.remove(), 300);
+    }
+}
+
+/**
+ * Copy transaction hash to clipboard
+ */
+function copyTransactionHash() {
+    const input = document.getElementById('txHashInput');
+    if (input) {
+        input.select();
+        input.setSelectionRange(0, 99999); // For mobile devices
+        
+        navigator.clipboard.writeText(input.value).then(() => {
+            // Show feedback
+            const button = event.target.closest('button');
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            button.style.background = '#4CAF50';
+            
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+                button.style.background = 'linear-gradient(135deg, #20B2AA, #00CED1)';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy transaction hash');
+        });
+    }
+}
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('transactionFeedbackModal');
+        if (modal && modal.style.display === 'flex') {
+            closeTransactionModal();
+        }
+    }
+});
+
 </script>
 {% endblock %}
