@@ -319,7 +319,9 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         web3_service = get_web3_service()
         w3 = web3_service.w3
         
-        token = Token.query.filter_by(contract_address=pool_address.lower()).first()
+        # Use case-insensitive comparison (ILIKE in PostgreSQL)
+        from sqlalchemy import func
+        token = Token.query.filter(func.lower(Token.contract_address) == pool_address.lower()).first()
         if not token:
             logger.warning(f"Token not found for pool address: {pool_address}")
             return {'success': False, 'error': 'Token not found'}
