@@ -914,20 +914,13 @@
                     deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
                 };
                 
-                // H-4 FIX: Get gas estimate and display
+                // H-4 FIX: Get gas estimate for display
                 const gasEstimate = await this.estimateTradeGas(action, params);
                 const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
                 const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
                 
-                // Enhanced confirmation with gas
-                const confirmed = await ModalManager.confirm(
-                    'Confirm BUY Order',
-                    `Buy ${expectedTokens.toLocaleString()} ${this.tokenSymbol} for ${kasAmount} KAS?<br>
-                     <small>Min tokens: ${minTokensOut.toLocaleString()} (slippage protected)</small><br>
-                     <small>Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})</small>`,
-                    'Buy'
-                );
-                if (!confirmed) return;
+                // Show gas estimate in status
+                this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
                 
             } else { // sell
                 // SELL FLOW
@@ -966,16 +959,7 @@
                 
                 // If insufficient allowance, request approval
                 if (currentAllowance.lt(tokenAmountWei)) {
-                    const approveConfirmed = await ModalManager.confirm(
-                        'Approval Required',
-                        `You need to approve the pool to spend your ${this.tokenSymbol} tokens.<br>
-                         <small>This is a one-time approval per token.</small>`,
-                        'Approve'
-                    );
-                    
-                    if (!approveConfirmed) return;
-                    
-                    this.showTradeStatus('Requesting token approval...');
+                    this.showTradeStatus(`Requesting approval to spend ${this.tokenSymbol} tokens...`);
                     
                     // ⚠️ FIX #2: Approve POOL to spend tokens from token contract
                     const approveTx = await tokenContract.approve(
@@ -1000,20 +984,13 @@
                     deadline: Math.floor(Date.now() / 1000) + 300
                 };
                 
-                // H-4 FIX: Get gas estimate and display
+                // H-4 FIX: Get gas estimate for display
                 const gasEstimate = await this.estimateTradeGas(action, params);
                 const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
                 const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
                 
-                // Enhanced confirmation with gas
-                const confirmed = await ModalManager.confirm(
-                    'Confirm SELL Order',
-                    `Sell ${tokenAmount.toLocaleString()} ${this.tokenSymbol} for ${expectedKas.toFixed(4)} KAS?<br>
-                     <small>Min KAS: ${minKasOut.toFixed(4)} (slippage protected)</small><br>
-                     <small>Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})</small>`,
-                    'Sell'
-                );
-                if (!confirmed) return;
+                // Show gas estimate in status
+                this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
             }
             
             // Execute via TransactionManager with manual flow
