@@ -5520,6 +5520,10 @@ def get_token_chart_data(contract_address):
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
+        # Get KAS price from oracle (cached for 5 minutes)
+        from services.kas_oracle import oracle
+        kas_to_usd = oracle.get_kas_price()
+        
         # Get query parameters
         timeframe = request.args.get('timeframe', '24h')
         requested_interval = request.args.get('interval', None)
@@ -5564,17 +5568,24 @@ def get_token_chart_data(contract_address):
         
         for trade in trades:
             # Calculate price per token from trade amounts
+            # Note: kas_amount is already in KAS, but token_amount is in wei (18 decimals)
             kas_amt = float(trade.kas_amount) if trade.kas_amount else 0
-            token_amt = float(trade.token_amount) if trade.token_amount else 0
+            token_amt_wei = float(trade.token_amount) if trade.token_amount else 0
+            token_amt = token_amt_wei / 1e18  # Convert from wei to full tokens
+            
+            # Price per token in KAS
             price_per_token_kas = (kas_amt / token_amt) if token_amt > 0 else 0
             
-            # Market cap = price_per_token * total_supply
-            market_cap_kas = price_per_token_kas * float(token.total_supply) if token.total_supply else 0
+            # Convert to USD using oracle price
+            price_per_token_usd = price_per_token_kas * kas_to_usd
+            
+            # Market cap = price_per_token * total_supply (in USD)
+            market_cap_usd = price_per_token_usd * float(token.total_supply) if token.total_supply else 0
             
             trade_points.append({
                 'timestamp': trade.timestamp,
-                'price': price_per_token_kas,  # Price per token in KAS
-                'market_cap': market_cap_kas,  # Market cap in KAS
+                'price': price_per_token_usd,  # Price per token in USD
+                'market_cap': market_cap_usd,  # Market cap in USD
                 'volume': kas_amt,
                 'trade_type': trade.trade_type
             })
@@ -5588,13 +5599,18 @@ def get_token_chart_data(contract_address):
         
         # If no trades, return current stats as area chart
         if not trade_points:
-            current_price = float(token.current_price or 0)
-            current_mc = float(token.current_market_cap or 0)
+            # Convert current price/mcap to USD
+            current_price_kas = float(token.current_price or 0)
+            current_mc_kas = float(token.current_market_cap or 0)
+            current_price_usd = current_price_kas * kas_to_usd
+            current_mc_usd = current_mc_kas * kas_to_usd
+            
+            value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
             return jsonify({
                 'success': True,
                 'data': [{
                     'time': int(now.timestamp()),  # Unix timestamp (seconds)
-                    'value': current_mc,
+                    'value': value,
                     'volume': 0
                 }],
                 'format': 'area',
@@ -5619,9 +5635,9 @@ def get_token_chart_data(contract_address):
             # Ensure we always have at least one point for area chart
             if not chart_data:
                 if chart_type == 'price':
-                    value = float(token.current_price or 0)
+                    value = float(token.current_price or 0) * kas_to_usd
                 else:  # marketcap
-                    value = float(token.current_market_cap or 0)
+                    value = float(token.current_market_cap or 0) * kas_to_usd
                 chart_data.append({
                     'time': int(now.timestamp()),
                     'value': value,
