@@ -4,6 +4,7 @@ import secrets
 import json
 import time
 import atexit
+import random
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
@@ -5583,6 +5584,20 @@ def build_marketing_vesting_withdraw(token_id):
     # Let 404s propagate correctly
     token = Token.query.get_or_404(token_id)
     
+    # Check if still in cooldown
+    if token.marketing_next_claim_available:
+        now = datetime.now(timezone.utc)
+        if now < token.marketing_next_claim_available:
+            seconds_remaining = (token.marketing_next_claim_available - now).total_seconds()
+            hours_remaining = int(seconds_remaining / 3600)
+            minutes_remaining = int((seconds_remaining % 3600) / 60)
+            return jsonify({
+                'success': False,
+                'error': f'Claim cooldown active. Next claim available in {hours_remaining}h {minutes_remaining}m',
+                'next_claim_available': token.marketing_next_claim_available.isoformat(),
+                'seconds_remaining': int(seconds_remaining)
+            }), 429
+    
     try:
         data = request.get_json()
         if not data:
@@ -5661,6 +5676,20 @@ def build_team_vesting_withdraw(token_id):
     # Let 404s propagate correctly
     token = Token.query.get_or_404(token_id)
     
+    # Check if still in cooldown
+    if token.team_next_claim_available:
+        now = datetime.now(timezone.utc)
+        if now < token.team_next_claim_available:
+            seconds_remaining = (token.team_next_claim_available - now).total_seconds()
+            hours_remaining = int(seconds_remaining / 3600)
+            minutes_remaining = int((seconds_remaining % 3600) / 60)
+            return jsonify({
+                'success': False,
+                'error': f'Claim cooldown active. Next claim available in {hours_remaining}h {minutes_remaining}m',
+                'next_claim_available': token.team_next_claim_available.isoformat(),
+                'seconds_remaining': int(seconds_remaining)
+            }), 429
+    
     try:
         data = request.get_json()
         if not data:
@@ -5712,6 +5741,117 @@ def build_team_vesting_withdraw(token_id):
     except Exception as e:
         logging.error(f"Failed to build team vesting withdraw tx: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<int:token_id>/vesting/set-cooldown', methods=['POST'])
+@csrf.exempt
+def set_vesting_cooldown(token_id):
+    """
+    Set random cooldown after successful vesting claim
+    
+    Frontend should call this endpoint after a vesting claim transaction is confirmed.
+    This implements anti-gaming measures by adding a random 12-24 hour cooldown between claims.
+    
+    Request JSON:
+    {
+        "vesting_type": "marketing|team"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "next_claim_available": "2025-10-17T10:30:00Z",
+        "cooldown_hours": 18.5
+    }
+    """
+    token = Token.query.get_or_404(token_id)
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        vesting_type = data.get('vesting_type')
+        
+        if vesting_type not in ['marketing', 'team']:
+            return jsonify({
+                'success': False,
+                'error': 'vesting_type must be "marketing" or "team"'
+            }), 400
+        
+        # Calculate random cooldown: 12h base + random 0-12h
+        base_cooldown = 12 * 3600  # 12 hours in seconds
+        random_addition = random.randint(0, 12 * 3600)  # 0-12 hours random
+        total_cooldown = base_cooldown + random_addition
+        
+        next_available = datetime.now(timezone.utc) + timedelta(seconds=total_cooldown)
+        
+        if vesting_type == 'marketing':
+            token.marketing_next_claim_available = next_available
+        elif vesting_type == 'team':
+            token.team_next_claim_available = next_available
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'next_claim_available': next_available.isoformat(),
+            'cooldown_hours': total_cooldown / 3600
+        })
+        
+    except Exception as e:
+        logging.error(f"Failed to set vesting cooldown: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/token/<int:token_id>/vesting/cooldown-status')
+def get_vesting_cooldown_status(token_id):
+    """
+    Get current cooldown status for all vesting types
+    
+    Frontend can use this to check if claims are available and show countdown timers.
+    
+    Response:
+    {
+        "marketing": {
+            "on_cooldown": true,
+            "next_available": "2025-10-17T10:30:00Z",
+            "seconds_remaining": 43200
+        },
+        "team": {
+            "on_cooldown": false,
+            "next_available": null,
+            "seconds_remaining": 0
+        }
+    }
+    """
+    token = Token.query.get_or_404(token_id)
+    now = datetime.now(timezone.utc)
+    
+    result = {
+        'marketing': {
+            'on_cooldown': False,
+            'next_available': None,
+            'seconds_remaining': 0
+        },
+        'team': {
+            'on_cooldown': False,
+            'next_available': None,
+            'seconds_remaining': 0
+        }
+    }
+    
+    # Marketing cooldown
+    if token.marketing_next_claim_available and now < token.marketing_next_claim_available:
+        result['marketing']['on_cooldown'] = True
+        result['marketing']['next_available'] = token.marketing_next_claim_available.isoformat()
+        result['marketing']['seconds_remaining'] = int((token.marketing_next_claim_available - now).total_seconds())
+    
+    # Team cooldown
+    if token.team_next_claim_available and now < token.team_next_claim_available:
+        result['team']['on_cooldown'] = True
+        result['team']['next_available'] = token.team_next_claim_available.isoformat()
+        result['team']['seconds_remaining'] = int((token.team_next_claim_available - now).total_seconds())
+    
+    return jsonify(result)
 
 # ========================================
 # Admin API Endpoints
