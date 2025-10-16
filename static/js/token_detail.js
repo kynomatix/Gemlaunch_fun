@@ -614,6 +614,13 @@
                 creatorFeeDisplay.textContent = `${creatorFee.toFixed(4)} KAS`;
             }
             
+            // Calculate and update Total Platform Fee
+            const totalPlatformFee = platformFee + creatorFee + antiBotFee;
+            const totalPlatformFeeDisplay = document.getElementById('totalPlatformFee');
+            if (totalPlatformFeeDisplay) {
+                totalPlatformFeeDisplay.textContent = `${totalPlatformFee.toFixed(4)} KAS`;
+            }
+            
             // Update Price Impact with color coding
             const priceImpact = fees.priceImpact || fees.price_impact_percent || 0;
             const impactColor = priceImpact > 5 ? '#FF5252' : 
@@ -2592,6 +2599,23 @@
     window.switchTradeMode = function() { TokenDetail.switchTradeMode(); };
     window.setQuickAmount = function(amount) { TokenDetail.setQuickAmount(amount); };
     window.executeTrade = function() { TokenDetail.executeTrade(); };
+    window.togglePlatformFees = function() {
+        const details = document.getElementById('platformFeeDetails');
+        const toggle = document.querySelector('.platform-fee-toggle');
+        const chevron = document.getElementById('platformFeeChevron');
+        
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+            toggle.classList.add('expanded');
+            chevron.classList.remove('fa-chevron-right');
+            chevron.classList.add('fa-chevron-down');
+        } else {
+            details.style.display = 'none';
+            toggle.classList.remove('expanded');
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-right');
+        }
+    };
     window.sendMessage = function() { TokenDetail.sendMessage(); };
     window.openChatSettings = function() { TokenDetail.openChatSettings(); };
     window.copyContractAddress = function(address) {

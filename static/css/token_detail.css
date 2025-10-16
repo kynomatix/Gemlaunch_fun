@@ -805,6 +805,50 @@
     color: #fff;
 }
 
+.fee-item.fee-impact {
+    font-weight: 600;
+    color: #20B2AA;
+}
+
+.platform-fee-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    margin-top: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #9ca3af;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    transition: color 0.2s ease;
+}
+
+.platform-fee-toggle:hover {
+    color: #20B2AA;
+}
+
+.platform-fee-toggle i {
+    margin-right: 8px;
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.platform-fee-toggle.expanded i {
+    transform: rotate(90deg);
+}
+
+.platform-fee-details {
+    margin-top: 4px;
+    padding-left: 16px;
+    border-left: 2px solid rgba(32, 178, 170, 0.3);
+}
+
+.fee-item.fee-sub {
+    padding: 4px 0;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
 /* Loading state for input fields */
 .input-group input.loading {
     position: relative;

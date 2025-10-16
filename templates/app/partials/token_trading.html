@@ -27,18 +27,8 @@
         <!-- Fee Breakdown Section (Phase 3.3 Step 2 - Spec Compliant) -->
         <div id="feeBreakdown" class="fee-breakdown" style="display: none;">
             <div class="fee-header">Fee Breakdown</div>
-            <div class="fee-item">
-                <span>Anti-Bot Fee:</span>
-                <span id="antiBotFeeDisplay">0 KAS</span>
-            </div>
-            <div class="fee-item">
-                <span>Platform Fee (0.9%):</span>
-                <span id="platformFeeDisplay">0 KAS</span>
-            </div>
-            <div class="fee-item">
-                <span>Creator Fee (0.1%):</span>
-                <span id="creatorFeeDisplay">0 KAS</span>
-            </div>
+            
+            <!-- Prominent Fees (Always Visible) -->
             <div class="fee-item fee-impact">
                 <span>Price Impact:</span>
                 <span id="priceImpactDisplay">0%</span>
@@ -46,6 +36,26 @@
             <div class="fee-item">
                 <span>Auto Slippage:</span>
                 <span id="autoSlippageDisplay">0.50%</span>
+            </div>
+            
+            <!-- Collapsible Platform Fee Breakdown -->
+            <div class="platform-fee-toggle" onclick="togglePlatformFees()">
+                <span><i class="fas fa-chevron-right" id="platformFeeChevron"></i> Platform Fee Breakdown</span>
+                <span id="totalPlatformFee">0 KAS</span>
+            </div>
+            <div id="platformFeeDetails" class="platform-fee-details" style="display: none;">
+                <div class="fee-item fee-sub">
+                    <span>Platform Fee (0.9%):</span>
+                    <span id="platformFeeDisplay">0 KAS</span>
+                </div>
+                <div class="fee-item fee-sub">
+                    <span>Creator Fee (0.1%):</span>
+                    <span id="creatorFeeDisplay">0 KAS</span>
+                </div>
+                <div class="fee-item fee-sub">
+                    <span>Anti-Bot Fee:</span>
+                    <span id="antiBotFeeDisplay">0 KAS</span>
+                </div>
             </div>
         </div>
         
