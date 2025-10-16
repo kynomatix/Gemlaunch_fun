@@ -3581,7 +3581,7 @@ function formatTokenAmount(weiAmount) {
 
 async function claimMarketingVesting() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
-        ModalManager.alert('Wallet Required', 'Please connect your wallet to claim vesting.', 'error');
+        alert('Please connect your wallet to claim vesting.');
         window.walletManager.openWalletModal();
         return;
     }
@@ -3657,7 +3657,7 @@ async function claimMarketingVesting() {
             if (data.status === 'confirmed' || data.status === 'success') {
                 eventSource.close();
                 
-                ModalManager.alert('Success! ✅', `Marketing tokens claimed successfully!<br>Transaction: ${txHash}`, 'success');
+                alert(`✅ Marketing tokens claimed successfully!\nTransaction: ${txHash}`);
                 
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
@@ -3670,7 +3670,7 @@ async function claimMarketingVesting() {
             } else if (data.status === 'failed' || data.status === 'error') {
                 eventSource.close();
                 
-                ModalManager.alert('Transaction Failed', data.message || 'Transaction failed on blockchain', 'error');
+                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain'));
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
@@ -3682,7 +3682,7 @@ async function claimMarketingVesting() {
         eventSource.onerror = () => {
             eventSource.close();
             
-            ModalManager.alert('Monitoring Error', 'Transaction monitoring failed. Please check blockchain explorer to verify status.', 'warning');
+            alert('Transaction monitoring failed. Please check blockchain explorer to verify status.');
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -3692,7 +3692,7 @@ async function claimMarketingVesting() {
         
     } catch (error) {
         console.error('Error claiming marketing vesting:', error);
-        ModalManager.alert('Claim Failed', error.message, 'error');
+        alert('Claim Failed: ' + error.message);
         
         // Reset button
         btn.innerHTML = originalHTML;
@@ -3703,7 +3703,7 @@ async function claimMarketingVesting() {
 
 async function claimTeamVesting() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
-        ModalManager.alert('Wallet Required', 'Please connect your wallet to claim vesting.', 'error');
+        alert('Please connect your wallet to claim vesting.');
         window.walletManager.openWalletModal();
         return;
     }
@@ -3779,7 +3779,7 @@ async function claimTeamVesting() {
             if (data.status === 'confirmed' || data.status === 'success') {
                 eventSource.close();
                 
-                ModalManager.alert('Success! ✅', `Team tokens claimed successfully!<br>Transaction: ${txHash}`, 'success');
+                alert(`✅ Team tokens claimed successfully!\nTransaction: ${txHash}`);
                 
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
@@ -3792,7 +3792,7 @@ async function claimTeamVesting() {
             } else if (data.status === 'failed' || data.status === 'error') {
                 eventSource.close();
                 
-                ModalManager.alert('Transaction Failed', data.message || 'Transaction failed on blockchain', 'error');
+                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain'));
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
@@ -3804,7 +3804,7 @@ async function claimTeamVesting() {
         eventSource.onerror = () => {
             eventSource.close();
             
-            ModalManager.alert('Monitoring Error', 'Transaction monitoring failed. Please check blockchain explorer to verify status.', 'warning');
+            alert('Transaction monitoring failed. Please check blockchain explorer to verify status.');
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -3814,7 +3814,7 @@ async function claimTeamVesting() {
         
     } catch (error) {
         console.error('Error claiming team vesting:', error);
-        ModalManager.alert('Claim Failed', error.message, 'error');
+        alert('Claim Failed: ' + error.message);
         
         // Reset button
         btn.innerHTML = originalHTML;
@@ -3830,7 +3830,7 @@ function closeCreatorFeeModal() {
 
 async function claimCreatorFees() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
-        ModalManager.alert('Wallet Required', 'Please connect your wallet to claim fees.', 'error');
+        alert('Please connect your wallet to claim fees.');
         window.walletManager.openWalletModal();
         return;
     }
@@ -3915,7 +3915,7 @@ async function claimCreatorFees() {
             if (data.status === 'confirmed' || data.status === 'success') {
                 eventSource.close();
                 
-                ModalManager.alert('Success! ✅', `Creator fees claimed successfully!<br>Transaction: ${txHash}`, 'success');
+                alert(`✅ Creator fees claimed successfully!\nTransaction: ${txHash}`);
                 
                 // Close modal and refresh data
                 closeCreatorFeeModal();
@@ -3939,7 +3939,7 @@ async function claimCreatorFees() {
         eventSource.onerror = () => {
             eventSource.close();
             
-            ModalManager.alert('Monitoring Error', 'Transaction monitoring failed. Please check blockchain explorer to verify status.', 'warning');
+            alert('Transaction monitoring failed. Please check blockchain explorer to verify status.');
             
             // Reset button - USE SYNCHRONIZED FUNCTION
             displayBtn.innerHTML = originalHTML;
@@ -3949,7 +3949,7 @@ async function claimCreatorFees() {
         
     } catch (error) {
         console.error('Error claiming creator fees:', error);
-        ModalManager.alert('Claim Failed', error.message, 'error');
+        alert('Claim Failed: ' + error.message);
         
         // Reset button - USE SYNCHRONIZED FUNCTION
         displayBtn.innerHTML = originalHTML;
