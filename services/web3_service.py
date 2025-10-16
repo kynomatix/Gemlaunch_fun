@@ -292,9 +292,9 @@ class Web3Service:
         try:
             contract = self.get_airdrop_vesting_contract(vesting_address)
             
-            total_amount = contract.functions.totalAmount().call()
+            total_amount = contract.functions.totalAllocation().call()
             unlocked_amount = contract.functions.getUnlockedAmount().call()
-            claimed_amount = contract.functions.claimedAmount().call()
+            claimed_amount = contract.functions.withdrawn().call()
             start_time = contract.functions.startTime().call()
             beneficiary = contract.functions.beneficiary().call()
             
@@ -329,9 +329,9 @@ class Web3Service:
         try:
             contract = self.get_linear_vesting_contract(vesting_address)
             
-            total_amount = contract.functions.totalAmount().call()
+            total_amount = contract.functions.totalAllocation().call()
             unlocked_amount = contract.functions.getUnlockedAmount().call()
-            claimed_amount = contract.functions.claimedAmount().call()
+            claimed_amount = contract.functions.withdrawn().call()
             start_time = contract.functions.startTime().call()
             duration = contract.functions.duration().call()
             beneficiary = contract.functions.beneficiary().call()
@@ -369,12 +369,12 @@ class Web3Service:
         try:
             contract = self.get_cliff_vesting_contract(vesting_address)
             
-            total_amount = contract.functions.totalAmount().call()
+            total_amount = contract.functions.totalAllocation().call()
             unlocked_amount = contract.functions.getUnlockedAmount().call()
-            claimed_amount = contract.functions.claimedAmount().call()
+            claimed_amount = contract.functions.withdrawn().call()
             start_time = contract.functions.startTime().call()
-            cliff_duration = contract.functions.cliffDuration().call()
-            vesting_duration = contract.functions.vestingDuration().call()
+            cliff_duration = contract.functions.cliff().call()
+            vesting_end = contract.functions.vestingEnd().call()
             beneficiary = contract.functions.beneficiary().call()
             
             return {
@@ -383,7 +383,7 @@ class Web3Service:
                 'claimed_amount': claimed_amount,
                 'available_to_claim': max(0, unlocked_amount - claimed_amount),
                 'cliff_duration': cliff_duration,
-                'vesting_duration': vesting_duration,
+                'vesting_duration': vesting_end - (start_time + cliff_duration),
                 'start_time': start_time,
                 'cliff_end': start_time + cliff_duration,
                 'beneficiary': beneficiary
