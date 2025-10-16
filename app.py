@@ -4933,6 +4933,11 @@ def api_create_token():
             new_token.reserved_percentage = reserved_percentage
             new_token.anti_bot_enabled = bool(data.get('anti_bot_enabled', False))
             
+            # Vesting allocation percentages (PRO tokens)
+            new_token.airdrops_allocation = int(data.get('airdrops_allocation', 33))
+            new_token.marketing_allocation = int(data.get('marketing_allocation', 33))
+            new_token.team_allocation = int(data.get('team_allocation', 34))
+            
             # Calculate reserved tokens
             if reserved_percentage > 0:
                 new_token.reserved_tokens = int(total_supply * (reserved_percentage / 100))
@@ -4962,6 +4967,11 @@ def api_create_token():
             new_token.total_supply = total_supply
             new_token.reserved_percentage = reserved_percentage
             new_token.anti_bot_enabled = bool(data.get('anti_bot_enabled', False))
+            
+            # Vesting allocation percentages (PRO tokens)
+            new_token.airdrops_allocation = int(data.get('airdrops_allocation', 33))
+            new_token.marketing_allocation = int(data.get('marketing_allocation', 33))
+            new_token.team_allocation = int(data.get('team_allocation', 34))
             
             # Calculate reserved tokens
             if reserved_percentage > 0:
