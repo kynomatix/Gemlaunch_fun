@@ -3568,7 +3568,7 @@ async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad)
         
         if (response.ok) {
             const data = await response.json();
-            let totalClaimable = isGraduated && accumulatedFees > 0 ? accumulatedFees : 0;
+            let totalClaimableTokens = 0;
             let nextUnlock = '--';
             
             // Update Marketing Tab
@@ -3590,9 +3590,10 @@ async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad)
                 
                 document.getElementById('pro-claimMarketingTabBtn').disabled = availableTokens <= 0;
                 if (availableTokens > 0) {
-                    totalClaimable += availableTokens;
                     document.getElementById('pro-marketing-claim-status').style.display = 'block';
                 }
+                
+                totalClaimableTokens += availableTokens;
                 
                 document.getElementById('pro-marketing-schedule-text').textContent = 'Daily unlock over 90 days';
                 document.getElementById('pro-marketing-next-unlock').textContent = availableTokens > 0 ? 'Now' : '24 hours';
@@ -3617,23 +3618,24 @@ async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad)
                 
                 document.getElementById('pro-claimTeamTabBtn').disabled = availableTokens <= 0;
                 if (availableTokens > 0) {
-                    totalClaimable += availableTokens;
                     document.getElementById('pro-team-claim-status').style.display = 'block';
                 }
+                
+                totalClaimableTokens += availableTokens;
                 
                 document.getElementById('pro-team-schedule-text').textContent = '1-year cliff, then daily unlock over 2 years';
                 document.getElementById('pro-team-next-unlock').textContent = availableTokens > 0 ? 'Now' : 'In 365 days';
             }
             
-            // Update summary ribbon
-            document.getElementById('pro-totalClaimableKAS').textContent = totalClaimable.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
+            // Update summary ribbon - show total unlocked TOKENS (not KAS)
+            document.getElementById('pro-totalClaimableKAS').textContent = totalClaimableTokens.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + ' Tokens';
             document.getElementById('pro-nextUnlockTime').textContent = nextUnlock;
         }
         
-        // Hide loading, show first tab
+        // Hide loading, show marketing tab first (most important for PRO)
         document.getElementById('proVestingLoading').style.display = 'none';
-        document.getElementById('pro-feesTab').style.display = 'block';
-        document.getElementById('pro-feesTab').classList.add('active');
+        document.getElementById('pro-marketingTab').style.display = 'block';
+        document.getElementById('pro-marketingTab').classList.add('active');
         
     } catch (error) {
         console.error('Error loading PRO claims data:', error);

@@ -21,94 +21,32 @@
             <div class="claims-summary-ribbon">
                 <div class="summary-item">
                     <div class="summary-label">Total Claimable</div>
-                    <div class="summary-value" id="pro-totalClaimableKAS">0 KAS</div>
+                    <div class="summary-value" id="pro-totalClaimableKAS">0 Tokens</div>
                 </div>
                 <div class="summary-divider"></div>
                 <div class="summary-item">
                     <div class="summary-label">Next Unlock</div>
                     <div class="summary-value" id="pro-nextUnlockTime">--</div>
                 </div>
-                <div class="summary-divider"></div>
-                <div class="summary-item">
-                    <div class="summary-label">Wallet</div>
-                    <div class="summary-value wallet-status" id="pro-walletStatus">Connected</div>
-                </div>
             </div>
             
             <!-- Tab Navigation -->
             <div class="claims-tabs">
-                <button class="claims-tab active" data-tab="fees" onclick="switchClaimsTab('fees')">
-                    <i class="fas fa-wallet"></i> Creator Fees
-                </button>
-                <button class="claims-tab" data-tab="marketing" onclick="switchClaimsTab('marketing')">
+                <button class="claims-tab active" data-tab="marketing" onclick="switchClaimsTab('marketing')">
                     <i class="fas fa-bullhorn"></i> Marketing
                 </button>
                 <button class="claims-tab" data-tab="team" onclick="switchClaimsTab('team')">
                     <i class="fas fa-users"></i> Team
                 </button>
+                <button class="claims-tab" data-tab="fees" onclick="switchClaimsTab('fees')">
+                    <i class="fas fa-wallet"></i> Creator Fees
+                </button>
             </div>
             
             <!-- Tab Content -->
             <div class="claims-tab-content">
-                <!-- Fees Tab -->
-                <div id="pro-feesTab" class="claims-panel active">
-                    <div class="claims-grid">
-                        <div class="claims-metrics">
-                            <div class="metric-card">
-                                <div class="metric-icon"><i class="fas fa-coins"></i></div>
-                                <div class="metric-info">
-                                    <div class="metric-label">Accumulated Fees</div>
-                                    <div class="metric-value" id="pro-fees-accumulated">0 KAS</div>
-                                </div>
-                            </div>
-                            <div class="metric-card">
-                                <div class="metric-icon"><i class="fas fa-exchange-alt"></i></div>
-                                <div class="metric-info">
-                                    <div class="metric-label">Total Trades</div>
-                                    <div class="metric-value" id="pro-fees-trades">0</div>
-                                </div>
-                            </div>
-                            <div class="metric-card">
-                                <div class="metric-icon"><i class="fas fa-percentage"></i></div>
-                                <div class="metric-info">
-                                    <div class="metric-label">Fee Rate</div>
-                                    <div class="metric-value">0.1%</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="claims-action">
-                            <div class="action-header">
-                                <div class="action-amount" id="pro-fees-claimable-amount">0 KAS</div>
-                                <div class="action-label">Available to Claim</div>
-                            </div>
-                            <button class="claim-btn fees-btn" id="pro-claimFeesTabBtn" onclick="claimCreatorFees()" disabled>
-                                <i class="fas fa-hand-holding-usd"></i> Claim Fees
-                            </button>
-                            <div class="claim-status" id="pro-fees-claim-status">
-                                Available after graduation ($70K market cap)
-                            </div>
-                            <div class="collapsible-schedule">
-                                <button class="schedule-toggle" onclick="toggleSchedule('pro-fees')">
-                                    <i class="fas fa-chevron-down"></i> View Details
-                                </button>
-                                <div class="schedule-content" id="pro-fees-schedule" style="display: none;">
-                                    <div class="schedule-item">
-                                        <span>Last Claim:</span>
-                                        <span id="pro-fees-last-claim">Never</span>
-                                    </div>
-                                    <div class="schedule-item">
-                                        <span>Claim Status:</span>
-                                        <span id="pro-fees-graduation-status">Awaiting Graduation</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Marketing Tab -->
-                <div id="pro-marketingTab" class="claims-panel">
+                <div id="pro-marketingTab" class="claims-panel active">
                     <div class="claims-grid">
                         <div class="claims-metrics">
                             <div class="metric-card">
@@ -232,6 +170,63 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Fees Tab -->
+                <div id="pro-feesTab" class="claims-panel">
+                    <div class="claims-grid">
+                        <div class="claims-metrics">
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-coins"></i></div>
+                                <div class="metric-info">
+                                    <div class="metric-label">Accumulated Fees</div>
+                                    <div class="metric-value" id="pro-fees-accumulated">0 KAS</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-exchange-alt"></i></div>
+                                <div class="metric-info">
+                                    <div class="metric-label">Total Trades</div>
+                                    <div class="metric-value" id="pro-fees-trades">0</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-percentage"></i></div>
+                                <div class="metric-info">
+                                    <div class="metric-label">Fee Rate</div>
+                                    <div class="metric-value">0.1%</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="claims-action">
+                            <div class="action-header">
+                                <div class="action-amount" id="pro-fees-claimable-amount">0 KAS</div>
+                                <div class="action-label">Available to Claim</div>
+                            </div>
+                            <button class="claim-btn fees-btn" id="pro-claimFeesTabBtn" onclick="claimCreatorFees()" disabled>
+                                <i class="fas fa-hand-holding-usd"></i> Claim Fees
+                            </button>
+                            <div class="claim-status" id="pro-fees-claim-status">
+                                Available after graduation ($70K market cap)
+                            </div>
+                            <div class="collapsible-schedule">
+                                <button class="schedule-toggle" onclick="toggleSchedule('pro-fees')">
+                                    <i class="fas fa-chevron-down"></i> View Details
+                                </button>
+                                <div class="schedule-content" id="pro-fees-schedule" style="display: none;">
+                                    <div class="schedule-item">
+                                        <span>Last Claim:</span>
+                                        <span id="pro-fees-last-claim">Never</span>
+                                    </div>
+                                    <div class="schedule-item">
+                                        <span>Claim Status:</span>
+                                        <span id="pro-fees-graduation-status">Awaiting Graduation</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Loading State -->
@@ -250,7 +245,7 @@
 <style>
 /* PRO Claims Modal Styles */
 .pro-claims-modal {
-    max-width: 900px;
+    max-width: 700px;
     width: 95%;
     max-height: 90vh;
     overflow: hidden;
@@ -259,7 +254,7 @@
 }
 
 .pro-claims-modal .modal-body {
-    padding: 1rem;
+    padding: 0.75rem;
     overflow-y: auto;
     flex: 1;
 }
@@ -267,12 +262,12 @@
 .pro-token-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 0.75rem;
+    padding: 0.75rem;
     background: linear-gradient(135deg, rgba(177, 156, 217, 0.15), rgba(155, 126, 189, 0.1));
     border: 1px solid rgba(177, 156, 217, 0.3);
-    border-radius: 12px;
-    margin-bottom: 1rem;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
 }
 
 .pro-token-image {
@@ -310,11 +305,11 @@
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 0.75rem;
+    padding: 0.6rem;
     background: rgba(177, 156, 217, 0.1);
     border: 1px solid rgba(177, 156, 217, 0.2);
-    border-radius: 10px;
-    margin-bottom: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
 }
 
 .summary-item {
