@@ -3515,7 +3515,8 @@ function openProClaimsModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCo
     
     // Show loading state
     document.getElementById('proVestingLoading').style.display = 'block';
-    document.querySelectorAll('.claims-panel').forEach(panel => panel.style.display = 'none');
+    // Remove active class from all panels (CSS will handle display: none)
+    document.querySelectorAll('.claims-panel').forEach(panel => panel.classList.remove('active'));
     
     // Load data for all tabs
     loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad);
@@ -3628,7 +3629,8 @@ async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad)
         
         // Hide loading, show marketing tab first (most important for PRO)
         document.getElementById('proVestingLoading').style.display = 'none';
-        document.getElementById('pro-marketingTab').style.display = 'block';
+        // Use CSS classes for tab visibility (don't use inline styles)
+        document.querySelectorAll('.claims-panel').forEach(panel => panel.classList.remove('active'));
         document.getElementById('pro-marketingTab').classList.add('active');
         
     } catch (error) {
