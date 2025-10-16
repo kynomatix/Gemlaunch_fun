@@ -22,6 +22,7 @@
         
         // Chart state
         currentChartType: 'marketcap',
+        currentTimeframe: '24h',
         myChart: null,
         
         // Token settings from backend
@@ -364,7 +365,7 @@
             // Clear container
             container.innerHTML = '';
             
-            const chartResult = await this.fetchChartData(this.currentChartType);
+            const chartResult = await this.fetchChartData(this.currentChartType, this.currentTimeframe);
             const self = this;
             
             // Create chart with teal theme
@@ -2553,6 +2554,30 @@
                     this.classList.add('active');
                     
                     TokenDetail.currentChartType = this.getAttribute('data-type');
+                    TokenDetail.initChart();
+                });
+            }
+        });
+        
+        // Timeframe selector buttons
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            if (!btn.dataset.listenerAdded) {
+                btn.dataset.listenerAdded = 'true';
+                btn.addEventListener('click', function() {
+                    // Update active state
+                    document.querySelectorAll('.timeframe-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.borderColor = '#555';
+                        b.style.color = '#888';
+                    });
+                    this.classList.add('active');
+                    this.style.background = 'rgba(32, 178, 170, 0.2)';
+                    this.style.borderColor = '#20B2AA';
+                    this.style.color = '#20B2AA';
+                    
+                    // Reload chart with new timeframe
+                    TokenDetail.currentTimeframe = this.getAttribute('data-timeframe');
                     TokenDetail.initChart();
                 });
             }
