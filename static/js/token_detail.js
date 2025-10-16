@@ -359,126 +359,95 @@
             }
         },
         
-        // Initialize Chart.js chart
+        // Initialize TradingView Lightweight Charts
         initChart: async function() {
-            const ctx = document.getElementById('tokenChart').getContext('2d');
-            const chartData = await this.fetchChartData(this.currentChartType);
+            const container = document.getElementById('tradingview_chart');
+            if (!container) return;
             
+            // Remove existing chart if it exists
             if (this.myChart) {
-                this.myChart.destroy();
+                this.myChart.remove();
+                this.myChart = null;
             }
             
-            // Reference self for dynamic kasToUsd access in callbacks
+            // Clear container
+            container.innerHTML = '';
+            
+            const chartData = await this.fetchChartData(this.currentChartType);
             const self = this;
             
-            this.myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: chartData.labels,
-                    datasets: [{
-                        label: this.currentChartType === 'marketcap' ? 'Market Cap' : 'Price',
-                        data: chartData.data,
-                        borderColor: 'rgba(32, 178, 170, 1)',
-                        backgroundColor: 'rgba(32, 178, 170, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: '#20B2AA',
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }]
+            // Create chart with teal theme
+            this.myChart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#888',
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: {
+                        color: 'rgba(32, 178, 170, 0.5)',
+                        width: 1,
+                        style: LightweightCharts.LineStyle.Dashed,
                     },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                            titleColor: '#20B2AA',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(32, 178, 170, 0.5)',
-                            borderWidth: 1,
-                            cornerRadius: 5,
-                            displayColors: false,
-                            callbacks: {
-                                label: (context) => {
-                                    const value = context.parsed.y;
-                                    if (self.currentChartType === 'marketcap') {
-                                        return 'Market Cap: $' + (value / 1000).toFixed(2) + 'K';
-                                    } else {
-                                        // Dynamically read current kasToUsd value
-                                        return 'Price: ' + value.toFixed(6) + ' KAS ($' + (value * self.kasToUsd).toFixed(4) + ')';
-                                    }
-                                }
-                            }
-                        },
-                        zoom: {
-                            zoom: {
-                                wheel: {
-                                    enabled: true,
-                                },
-                                pinch: {
-                                    enabled: true
-                                },
-                                mode: 'x',
-                            },
-                            pan: {
-                                enabled: true,
-                                mode: 'x',
-                            }
+                    horzLine: {
+                        color: 'rgba(32, 178, 170, 0.5)',
+                        width: 1,
+                        style: LightweightCharts.LineStyle.Dashed,
+                    },
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+            
+            // Create area series with teal gradient
+            const areaSeries = this.myChart.addAreaSeries({
+                lineColor: '#20B2AA',
+                topColor: 'rgba(32, 178, 170, 0.4)',
+                bottomColor: 'rgba(32, 178, 170, 0.0)',
+                lineWidth: 2,
+                priceFormat: {
+                    type: 'custom',
+                    formatter: (price) => {
+                        if (self.currentChartType === 'marketcap') {
+                            return '$' + self.formatNumber(price, true);
+                        } else {
+                            return price.toFixed(6) + ' KAS';
                         }
                     },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                unit: 'hour',
-                                displayFormats: {
-                                    hour: 'HH:mm'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#888',
-                                font: {
-                                    size: 11
-                                }
-                            }
-                        },
-                        y: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#888',
-                                font: {
-                                    size: 11
-                                },
-                                callback: (value) => {
-                                    if (this.currentChartType === 'marketcap') {
-                                        return '$' + this.formatNumber(value, true);
-                                    } else {
-                                        return value.toFixed(6) + ' KAS';
-                                    }
-                                }
-                            }
-                        }
-                    }
+                },
+            });
+            
+            // Convert data to TradingView format
+            const tvData = chartData.labels.map((label, index) => ({
+                time: Math.floor(label.getTime() / 1000), // Convert to Unix timestamp
+                value: chartData.data[index]
+            }));
+            
+            areaSeries.setData(tvData);
+            
+            // Fit content to view
+            this.myChart.timeScale().fitContent();
+            
+            // Handle window resize
+            const resizeObserver = new ResizeObserver(entries => {
+                if (this.myChart && entries.length > 0) {
+                    const { width, height } = entries[0].contentRect;
+                    this.myChart.applyOptions({ width, height });
                 }
             });
+            resizeObserver.observe(container);
         },
         
         // Trading functions
@@ -2526,8 +2495,8 @@
     
     // Initialize function - runs on turbo:load and DOMContentLoaded
     function initializeTokenPage() {
-        // Chart.js initialization
-        if (window.Chart && document.getElementById('tokenChart')) {
+        // TradingView chart initialization
+        if (window.LightweightCharts && document.getElementById('tradingview_chart')) {
             setTimeout(() => TokenDetail.initChart(), 100);
         }
         
