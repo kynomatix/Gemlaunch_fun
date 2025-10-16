@@ -1106,14 +1106,14 @@ def app_dashboard():
                          referral=referral,
                          kas_price=kas_price)
 
-@app.route('/app/creator-portal')
-def creator_portal():
-    """Creator vesting portal page"""
-    user = get_current_user()
-    if not user:
-        return redirect(url_for('token_marketplace'))
-    
-    return render_template('app/creator_portal.html', user=user)
+# @app.route('/app/creator-portal')
+# def creator_portal():
+#     """Creator vesting portal page"""
+#     user = get_current_user()
+#     if not user:
+#         return redirect(url_for('token_marketplace'))
+#     
+#     return render_template('app/creator_portal.html', user=user)
 
 @app.route('/app/create', methods=['GET', 'POST'])
 def create_token():
