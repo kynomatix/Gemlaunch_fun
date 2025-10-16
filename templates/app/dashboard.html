@@ -3513,12 +3513,6 @@ function openProClaimsModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCo
         imageEl.innerHTML = '💎';
     }
     
-    // Update wallet status
-    const walletConnected = window.walletManager && window.walletManager.isConnected();
-    const walletStatusEl = document.getElementById('pro-walletStatus');
-    walletStatusEl.textContent = walletConnected ? 'Connected' : 'Not Connected';
-    walletStatusEl.style.color = walletConnected ? '#4CAF50' : '#ff6b6b';
-    
     // Show loading state
     document.getElementById('proVestingLoading').style.display = 'block';
     document.querySelectorAll('.claims-panel').forEach(panel => panel.style.display = 'none');
