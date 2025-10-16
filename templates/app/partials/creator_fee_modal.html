@@ -3,7 +3,7 @@
     <div class="modal-overlay" onclick="closeCreatorFeeModal()"></div>
     <div class="modal-content creator-fee-modal">
         <div class="modal-header">
-            <h3><i class="fas fa-coins"></i> Creator Fee Portal</h3>
+            <h3 id="modalTitle"><i class="fas fa-coins"></i> Creator Fee Portal</h3>
             <button class="modal-close" onclick="closeCreatorFeeModal()">&times;</button>
         </div>
         
@@ -17,29 +17,121 @@
                 </div>
             </div>
             
-            <!-- Earnings Display -->
-            <div class="earnings-display">
-                <div class="earnings-main">
-                    <div class="earnings-label">Your Creator Earnings</div>
-                    <div class="earnings-amount" id="accumulatedFees">0.00 KAS</div>
-                    <div class="earnings-usd" id="accumulatedFeesUSD">$0.00 USD</div>
-                </div>
-                <div class="earnings-details">
-                    <div class="earnings-detail-item">
-                        <i class="fas fa-exchange-alt"></i>
-                        <span id="totalTrades">0</span> trades
+            <!-- Section 1: Creator Fees (always visible) -->
+            <div id="feesSection">
+                <!-- Earnings Display -->
+                <div class="earnings-display">
+                    <div class="earnings-main">
+                        <div class="earnings-label">Your Creator Earnings</div>
+                        <div class="earnings-amount" id="accumulatedFees">0.00 KAS</div>
+                        <div class="earnings-usd" id="accumulatedFeesUSD">$0.00 USD</div>
                     </div>
-                    <div class="earnings-detail-item">
-                        <i class="fas fa-percentage"></i>
-                        0.1% fee rate
+                    <div class="earnings-details">
+                        <div class="earnings-detail-item">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span id="totalTrades">0</span> trades
+                        </div>
+                        <div class="earnings-detail-item">
+                            <i class="fas fa-percentage"></i>
+                            0.1% fee rate
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Claim Status -->
+                <div class="claim-status-section">
+                    <div class="claim-status-badge" id="claimStatusBadge">
+                        <span id="claimStatusText">Available after graduation ($70K market cap)</span>
                     </div>
                 </div>
             </div>
             
-            <!-- Claim Status -->
-            <div class="claim-status-section">
-                <div class="claim-status-badge" id="claimStatusBadge">
-                    <span id="claimStatusText">Available after graduation ($70K market cap)</span>
+            <!-- Section 2: Vesting Claims (PRO tokens only) -->
+            <div id="vestingSection" style="display: none;">
+                <!-- Section Divider -->
+                <div class="section-divider">
+                    <span>🔐 Vesting Claims</span>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="vestingLoading" class="vesting-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading vesting data...</p>
+                </div>
+                
+                <!-- Vesting Content (hidden until loaded) -->
+                <div id="vestingContent" style="display: none;">
+                    <!-- Marketing Vesting Card -->
+                    <div class="vesting-card marketing">
+                        <div class="vesting-card-header">
+                            <div class="vesting-icon marketing">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                            <h4>Marketing Vesting</h4>
+                        </div>
+                        
+                        <div class="vesting-stats-compact">
+                            <div class="vesting-stat">
+                                <span class="label">Total</span>
+                                <span class="value" id="marketing-total">0</span>
+                            </div>
+                            <div class="vesting-stat">
+                                <span class="label">Unlocked</span>
+                                <span class="value" id="marketing-unlocked">0</span>
+                            </div>
+                            <div class="vesting-stat">
+                                <span class="label">Available</span>
+                                <span class="value highlight" id="marketing-available">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="vesting-progress-compact">
+                            <div class="progress-bar-wrapper">
+                                <div class="progress-bar-fill marketing" id="marketing-progress-bar" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-text" id="marketing-progress-text">0%</span>
+                        </div>
+                        
+                        <button class="vesting-claim-btn marketing" id="claimMarketingBtn" onclick="claimMarketingVesting()" disabled>
+                            <i class="fas fa-hand-holding-usd"></i> Claim Marketing
+                        </button>
+                    </div>
+                    
+                    <!-- Team Vesting Card -->
+                    <div class="vesting-card team">
+                        <div class="vesting-card-header">
+                            <div class="vesting-icon team">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h4>Team Vesting</h4>
+                        </div>
+                        
+                        <div class="vesting-stats-compact">
+                            <div class="vesting-stat">
+                                <span class="label">Total</span>
+                                <span class="value" id="team-total">0</span>
+                            </div>
+                            <div class="vesting-stat">
+                                <span class="label">Unlocked</span>
+                                <span class="value" id="team-unlocked">0</span>
+                            </div>
+                            <div class="vesting-stat">
+                                <span class="label">Available</span>
+                                <span class="value highlight" id="team-available">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="vesting-progress-compact">
+                            <div class="progress-bar-wrapper">
+                                <div class="progress-bar-fill team" id="team-progress-bar" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-text" id="team-progress-text">0%</span>
+                        </div>
+                        
+                        <button class="vesting-claim-btn team" id="claimTeamBtn" onclick="claimTeamVesting()" disabled>
+                            <i class="fas fa-hand-holding-usd"></i> Claim Team
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -235,6 +327,212 @@
     text-decoration: underline;
 }
 
+/* Section Divider */
+.section-divider {
+    text-align: center;
+    margin: 2rem 0 1.5rem;
+    padding: 0.75rem;
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 10px;
+    font-weight: 600;
+    color: #20B2AA;
+}
+
+/* Vesting Loading State */
+.vesting-loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(32, 178, 170, 0.2);
+    border-top-color: #20B2AA;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.vesting-loading p {
+    color: #20B2AA;
+    font-size: 0.9rem;
+}
+
+/* Vesting Cards - Compact Modal Version */
+.vesting-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.vesting-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.vesting-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.vesting-icon.marketing {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+}
+
+.vesting-icon.team {
+    background: linear-gradient(135deg, #B19CD9, #9B7EBD);
+    color: #000;
+}
+
+.vesting-card-header h4 {
+    margin: 0;
+    color: #FFF;
+    font-size: 1.1rem;
+}
+
+.vesting-stats-compact {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.vesting-stat {
+    text-align: center;
+}
+
+.vesting-stat .label {
+    display: block;
+    font-size: 0.75rem;
+    color: #AAA;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.vesting-stat .value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #20B2AA;
+}
+
+.vesting-stat .value.highlight {
+    color: #00CED1;
+    font-size: 1.2rem;
+}
+
+.vesting-progress-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.progress-bar-wrapper {
+    flex: 1;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+.progress-bar-fill.marketing {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+}
+
+.progress-bar-fill.team {
+    background: linear-gradient(135deg, #B19CD9, #9B7EBD);
+}
+
+.progress-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #20B2AA;
+    min-width: 45px;
+    text-align: right;
+}
+
+.vesting-claim-btn {
+    width: 100%;
+    padding: 0.875rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.vesting-claim-btn.marketing {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+}
+
+.vesting-claim-btn.team {
+    background: linear-gradient(135deg, #B19CD9, #9B7EBD);
+    color: #000;
+}
+
+.vesting-claim-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(32, 178, 170, 0.4);
+}
+
+.vesting-claim-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.vesting-claim-btn.loading {
+    opacity: 0.7;
+    cursor: wait;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .fee-stats-grid {
@@ -243,6 +541,22 @@
     
     .fee-stat-card {
         flex-direction: row;
+    }
+    
+    .vesting-stats-compact {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .vesting-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .vesting-stat .label {
+        text-align: left;
+        margin-bottom: 0;
     }
 }
 </style>
