@@ -5484,18 +5484,31 @@ def sync_token_supply(contract_address):
 @app.route('/api/token/<contract_address>/chart-data', methods=['GET'])
 def get_token_chart_data(contract_address):
     """
-    Get real trade history data for token price/volume chart
+    Get real trade history data for token price/volume chart with OHLC candlesticks
     
     Query params:
     - timeframe: '24h' (default), '7d', '30d'
+    - interval: '1m', '5m', '15m', '1h', '4h', '1d' (default: auto-select based on timeframe)
+    - format: 'candlestick' (OHLC) or 'area' (default: auto-select based on trade count)
     
-    Response:
+    Response (candlestick):
     {
         "success": true,
         "data": [
-            {"timestamp": "2025-10-16T10:00:00Z", "price": 0.000015, "volume": 1500, "market_cap": 15000},
+            {"time": "2025-10-16T10:00:00Z", "open": 0.000015, "high": 0.000017, "low": 0.000014, "close": 0.000016, "volume": 1500},
             ...
-        ]
+        ],
+        "format": "candlestick"
+    }
+    
+    Response (area - fallback for <3 trades):
+    {
+        "success": true,
+        "data": [
+            {"time": "2025-10-16T10:00:00Z", "value": 15000, "volume": 1500},
+            ...
+        ],
+        "format": "area"
     }
     """
     try:
@@ -5507,20 +5520,26 @@ def get_token_chart_data(contract_address):
         if not token:
             return jsonify({'success': False, 'error': 'Token not found'}), 404
         
-        # Get timeframe parameter
+        # Get query parameters
         timeframe = request.args.get('timeframe', '24h')
+        requested_interval = request.args.get('interval', None)
+        requested_format = request.args.get('format', None)
         
         # Calculate time window
         now = datetime.now(timezone.utc)
         if timeframe == '7d':
             start_time = now - timedelta(days=7)
+            default_interval = '1h'
         elif timeframe == '30d':
             start_time = now - timedelta(days=30)
+            default_interval = '4h'
         else:  # Default 24h
             start_time = now - timedelta(hours=24)
+            default_interval = '5m'
+        
+        interval = requested_interval or default_interval
         
         # Calculate starting supply from all trades BEFORE the time window
-        # This ensures we have the correct baseline for price calculations
         prior_trades = TradeEvent.query.filter(
             TradeEvent.token_id == token.id,
             TradeEvent.timestamp < start_time
@@ -5530,7 +5549,7 @@ def get_token_chart_data(contract_address):
         for trade in prior_trades:
             if trade.trade_type == 'buy':
                 starting_supply += float(trade.token_amount)
-            else:  # sell
+            else:
                 starting_supply -= float(trade.token_amount)
         
         # Query trade events within timeframe, ordered by timestamp
@@ -5539,53 +5558,163 @@ def get_token_chart_data(contract_address):
             TradeEvent.timestamp >= start_time
         ).order_by(TradeEvent.timestamp.asc()).all()
         
-        # Build chart data points
-        chart_data = []
-        current_supply = starting_supply  # Start with supply as of start_time
+        # Build trade data points with prices
+        trade_points = []
+        current_supply = starting_supply
         
         for trade in trades:
             # Update cumulative supply
             if trade.trade_type == 'buy':
                 current_supply += float(trade.token_amount)
-            else:  # sell
+            else:
                 current_supply -= float(trade.token_amount)
             
-            # Calculate price from bonding curve (P = k * S^2)
+            # Calculate price from bonding curve
             k = token.bonding_curve_k or 0
             price_kas = float(k) * (current_supply ** 2) if current_supply > 0 else 0
-            
-            # Calculate market cap
             market_cap = price_kas * current_supply if current_supply > 0 else 0
             
-            chart_data.append({
-                'timestamp': trade.timestamp.isoformat(),
+            trade_points.append({
+                'timestamp': trade.timestamp,
                 'price': price_kas,
-                'volume': float(trade.kas_amount),
                 'market_cap': market_cap,
+                'volume': float(trade.kas_amount),
                 'trade_type': trade.trade_type
             })
         
-        # If no trades, return current token stats as single data point
-        if not chart_data:
+        # Decide format based on trade count
+        if requested_format:
+            use_format = requested_format
+        else:
+            # Use area chart for tokens with <3 trades (not enough for candlesticks)
+            use_format = 'area' if len(trade_points) < 3 else 'candlestick'
+        
+        # If no trades, return current stats as area chart
+        if not trade_points:
             current_price = float(token.current_price_kas or 0)
             current_mc = float(token.market_cap_kas or 0)
-            chart_data.append({
-                'timestamp': now.isoformat(),
-                'price': current_price,
-                'volume': 0,
-                'market_cap': current_mc,
-                'trade_type': None
+            return jsonify({
+                'success': True,
+                'data': [{
+                    'time': int(now.timestamp()),  # Unix timestamp (seconds)
+                    'value': current_mc,
+                    'volume': 0
+                }],
+                'format': 'area',
+                'timeframe': timeframe,
+                'interval': interval
             })
+        
+        # Generate chart data based on format
+        if use_format == 'candlestick':
+            chart_data = aggregate_ohlc_data(trade_points, interval, start_time, now)
+        else:  # area format
+            chart_data = []
+            for point in trade_points:
+                chart_data.append({
+                    'time': int(point['timestamp'].timestamp()),  # Unix timestamp (seconds)
+                    'value': point['market_cap'],
+                    'volume': point['volume']
+                })
+            
+            # Ensure we always have at least one point for area chart
+            if not chart_data:
+                current_mc = float(token.market_cap_kas or 0)
+                chart_data.append({
+                    'time': int(now.timestamp()),
+                    'value': current_mc,
+                    'volume': 0
+                })
         
         return jsonify({
             'success': True,
             'data': chart_data,
-            'timeframe': timeframe
+            'format': use_format,
+            'timeframe': timeframe,
+            'interval': interval
         })
         
     except Exception as e:
         logging.error(f"Error fetching chart data for {contract_address}: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def aggregate_ohlc_data(trade_points, interval, start_time, end_time):
+    """
+    Aggregate trade data into OHLC candlesticks
+    
+    Args:
+        trade_points: List of dicts with timestamp, price, market_cap, volume
+        interval: '1m', '5m', '15m', '1h', '4h', '1d'
+        start_time: Start of time window
+        end_time: End of time window
+    
+    Returns:
+        List of OHLC candles: [{"time": unix_seconds, "open": x, "high": y, "low": z, "close": w, "volume": v}, ...]
+    """
+    from collections import defaultdict
+    
+    # Validate and parse interval to seconds
+    valid_intervals = {
+        '1m': 60,
+        '5m': 300,
+        '15m': 900,
+        '1h': 3600,
+        '4h': 14400,
+        '1d': 86400
+    }
+    
+    if interval not in valid_intervals:
+        logging.warning(f"Invalid interval '{interval}', defaulting to 5m")
+        interval = '5m'
+    
+    interval_seconds = valid_intervals[interval]
+    
+    # Group trades into time buckets
+    buckets = defaultdict(list)
+    
+    for point in trade_points:
+        # Calculate bucket timestamp (floor to interval)
+        timestamp = point['timestamp']
+        bucket_time = timestamp.replace(second=0, microsecond=0)
+        
+        # Floor to interval
+        minutes_since_start = (bucket_time - start_time).total_seconds() // 60
+        bucket_minutes = (minutes_since_start // (interval_seconds // 60)) * (interval_seconds // 60)
+        bucket_timestamp = start_time + timedelta(minutes=bucket_minutes)
+        
+        # Use Unix timestamp (seconds) as key for TradingView compatibility
+        bucket_key = int(bucket_timestamp.timestamp())
+        buckets[bucket_key].append(point)
+    
+    # Build OHLC candles
+    candles = []
+    for bucket_timestamp, bucket_trades in sorted(buckets.items()):
+        if not bucket_trades:
+            continue
+        
+        # Get market cap values (what the chart displays)
+        mcap_values = [t['market_cap'] for t in bucket_trades]
+        
+        # OHLC from market cap values
+        open_value = mcap_values[0]
+        close_value = mcap_values[-1]
+        high_value = max(mcap_values)
+        low_value = min(mcap_values)
+        
+        # Sum volume in bucket
+        total_volume = sum(t['volume'] for t in bucket_trades)
+        
+        candles.append({
+            'time': bucket_timestamp,  # Unix timestamp (seconds)
+            'open': open_value,
+            'high': high_value,
+            'low': low_value,
+            'close': close_value,
+            'volume': total_volume
+        })
+    
+    return candles
 
 # ========================================
 # PRO Token Vesting API Endpoints

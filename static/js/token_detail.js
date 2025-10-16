@@ -321,45 +321,36 @@
             }
         },
         
-        // Fetch real chart data from blockchain trade history
-        fetchChartData: async function(type, timeframe = '24h') {
+        // Fetch real chart data from blockchain trade history with candlestick support
+        fetchChartData: async function(type, timeframe = '24h', interval = null) {
             try {
-                const response = await fetch(`/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}`);
+                let url = `/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}`;
+                if (interval) {
+                    url += `&interval=${interval}`;
+                }
+                
+                const response = await fetch(url);
                 const result = await response.json();
                 
                 if (!result.success || !result.data || result.data.length === 0) {
-                    // No trade data available, use current token stats
-                    const now = new Date();
-                    return {
-                        labels: [now],
-                        data: [type === 'marketcap' ? this.marketCap : this.tokenPrice]
-                    };
+                    // No trade data available, return error
+                    return { error: 'No data available', format: 'area' };
                 }
                 
-                // Extract timestamps and values from trade history
-                const labels = result.data.map(point => new Date(point.timestamp));
-                const data = result.data.map(point => {
-                    if (type === 'marketcap') {
-                        return point.market_cap;
-                    } else {
-                        return point.price;
-                    }
-                });
-                
-                return { labels, data };
+                return {
+                    data: result.data,
+                    format: result.format,
+                    interval: result.interval,
+                    timeframe: result.timeframe
+                };
                 
             } catch (error) {
                 console.error('Error fetching chart data:', error);
-                // Fallback to single current value on error
-                const now = new Date();
-                return {
-                    labels: [now],
-                    data: [type === 'marketcap' ? this.marketCap : this.tokenPrice]
-                };
+                return { error: error.message, format: 'area' };
             }
         },
         
-        // Initialize TradingView Lightweight Charts
+        // Initialize TradingView Lightweight Charts with candlestick support
         initChart: async function() {
             const container = document.getElementById('tradingview_chart');
             if (!container) return;
@@ -373,7 +364,7 @@
             // Clear container
             container.innerHTML = '';
             
-            const chartData = await this.fetchChartData(this.currentChartType);
+            const chartResult = await this.fetchChartData(this.currentChartType);
             const self = this;
             
             // Create chart with teal theme
@@ -411,31 +402,84 @@
                 },
             });
             
-            // Create area series with teal gradient
-            const areaSeries = this.myChart.addAreaSeries({
-                lineColor: '#20B2AA',
-                topColor: 'rgba(32, 178, 170, 0.4)',
-                bottomColor: 'rgba(32, 178, 170, 0.0)',
-                lineWidth: 2,
-                priceFormat: {
-                    type: 'custom',
-                    formatter: (price) => {
-                        if (self.currentChartType === 'marketcap') {
-                            return '$' + self.formatNumber(price, true);
-                        } else {
-                            return price.toFixed(6) + ' KAS';
-                        }
+            // Handle error case
+            if (chartResult.error) {
+                console.log('No chart data available:', chartResult.error);
+                const fallbackValue = this.currentChartType === 'marketcap' ? this.marketCap : this.tokenPrice;
+                const areaSeries = this.myChart.addAreaSeries({
+                    lineColor: '#20B2AA',
+                    topColor: 'rgba(32, 178, 170, 0.4)',
+                    bottomColor: 'rgba(32, 178, 170, 0.0)',
+                    lineWidth: 2,
+                });
+                areaSeries.setData([{
+                    time: Math.floor(Date.now() / 1000),
+                    value: fallbackValue || 0
+                }]);
+                this.myChart.timeScale().fitContent();
+                return;
+            }
+            
+            // Choose series type based on format
+            let series;
+            if (chartResult.format === 'candlestick') {
+                // Candlestick chart with teal colors
+                series = this.myChart.addCandlestickSeries({
+                    upColor: '#20B2AA',
+                    downColor: '#FF6B6B',
+                    borderVisible: false,
+                    wickUpColor: '#20B2AA',
+                    wickDownColor: '#FF6B6B',
+                    priceFormat: {
+                        type: 'custom',
+                        formatter: (price) => {
+                            if (self.currentChartType === 'marketcap') {
+                                return '$' + self.formatNumber(price, true);
+                            } else {
+                                return price.toFixed(6) + ' KAS';
+                            }
+                        },
                     },
-                },
-            });
-            
-            // Convert data to TradingView format
-            const tvData = chartData.labels.map((label, index) => ({
-                time: Math.floor(label.getTime() / 1000), // Convert to Unix timestamp
-                value: chartData.data[index]
-            }));
-            
-            areaSeries.setData(tvData);
+                });
+                
+                // Convert OHLC data to TradingView format
+                const tvData = chartResult.data.map(candle => ({
+                    time: candle.time,
+                    open: candle.open,
+                    high: candle.high,
+                    low: candle.low,
+                    close: candle.close
+                }));
+                
+                series.setData(tvData);
+                
+            } else {
+                // Area chart (fallback for low trade count)
+                series = this.myChart.addAreaSeries({
+                    lineColor: '#20B2AA',
+                    topColor: 'rgba(32, 178, 170, 0.4)',
+                    bottomColor: 'rgba(32, 178, 170, 0.0)',
+                    lineWidth: 2,
+                    priceFormat: {
+                        type: 'custom',
+                        formatter: (price) => {
+                            if (self.currentChartType === 'marketcap') {
+                                return '$' + self.formatNumber(price, true);
+                            } else {
+                                return price.toFixed(6) + ' KAS';
+                            }
+                        },
+                    },
+                });
+                
+                // Convert area data to TradingView format
+                const tvData = chartResult.data.map(point => ({
+                    time: point.time,
+                    value: point.value
+                }));
+                
+                series.setData(tvData);
+            }
             
             // Fit content to view
             this.myChart.timeScale().fitContent();
