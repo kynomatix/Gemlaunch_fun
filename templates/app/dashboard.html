@@ -3396,6 +3396,9 @@
 <!-- Include Creator Fee Modal -->
 {% include 'app/partials/creator_fee_modal.html' %}
 
+<!-- Include PRO Claims Portal Modal -->
+{% include 'app/partials/pro_claims_modal.html' %}
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -3425,14 +3428,15 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
         isPro: isPro
     };
     
-    // Update modal title based on token type
-    const modalTitle = document.getElementById('modalTitle');
+    // Route to correct modal based on token type
     if (isPro) {
-        modalTitle.innerHTML = '<i class="fas fa-coins"></i> Claims Portal';
+        openProClaimsModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad);
     } else {
-        modalTitle.innerHTML = '<i class="fas fa-wallet"></i> Creator Fee Portal';
+        openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad);
     }
-    
+}
+
+function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
     // Calculate fee stats (placeholder calculations - will be replaced with SC data)
     // Fees are earned in KAS, then converted to USD for display
     const avgTradeKAS = 5000; // Average 5000 KAS per trade
@@ -3445,6 +3449,10 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     // Update modal content
     document.getElementById('feeTokenName').textContent = tokenName;
     document.getElementById('feeTokenSymbol').textContent = '$' + tokenSymbol;
+    
+    // Update modal title
+    const modalTitle = document.getElementById('modalTitle');
+    modalTitle.innerHTML = '<i class="fas fa-wallet"></i> Creator Fee Portal';
     
     // Update token image
     const imageEl = document.getElementById('feeTokenImage');
@@ -3480,21 +3488,188 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
         updateClaimFeesButtonState(true);
     }
     
-    // Handle PRO token vesting section
+    // Hide vesting section for BASIC tokens
     const vestingSection = document.getElementById('vestingSection');
-    if (isPro) {
-        vestingSection.style.display = 'block';
-        loadVestingData(tokenId);
-    } else {
-        vestingSection.style.display = 'none';
-    }
+    vestingSection.style.display = 'none';
     
-    // Set data-is-pro attribute for conditional styling
+    // Set data-is-pro attribute
     const modal = document.getElementById('creatorFeeModal');
-    modal.setAttribute('data-is-pro', isPro ? 'true' : 'false');
+    modal.setAttribute('data-is-pro', 'false');
     
     // Show modal
     modal.style.display = 'flex';
+}
+
+function openProClaimsModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
+    // Update token info
+    document.getElementById('proTokenName').textContent = tokenName;
+    document.getElementById('proTokenSymbol').textContent = '$' + tokenSymbol;
+    
+    // Update token image
+    const imageEl = document.getElementById('proTokenImage');
+    if (tokenImage) {
+        imageEl.innerHTML = `<img src="${tokenImage}" alt="${tokenName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">`;
+    } else {
+        imageEl.innerHTML = '💎';
+    }
+    
+    // Update wallet status
+    const walletConnected = window.walletManager && window.walletManager.isConnected();
+    const walletStatusEl = document.getElementById('pro-walletStatus');
+    walletStatusEl.textContent = walletConnected ? 'Connected' : 'Not Connected';
+    walletStatusEl.style.color = walletConnected ? '#4CAF50' : '#ff6b6b';
+    
+    // Show loading state
+    document.getElementById('proVestingLoading').style.display = 'block';
+    document.querySelectorAll('.claims-panel').forEach(panel => panel.style.display = 'none');
+    
+    // Load data for all tabs
+    loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad);
+    
+    // Show modal
+    document.getElementById('proClaimsModal').style.display = 'flex';
+}
+
+async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad) {
+    try {
+        // Get KAS price
+        const kasPrice = {{ kas_price if kas_price > 0 else 0.10 }};
+        
+        // Calculate creator fees
+        const avgTradeKAS = 5000;
+        const totalVolumeKAS = tradeCount * avgTradeKAS;
+        const accumulatedFees = totalVolumeKAS * 0.001;
+        
+        // Check graduation status
+        const isGraduated = marketCap >= 70000;
+        
+        // Update Fees Tab
+        document.getElementById('pro-fees-accumulated').textContent = accumulatedFees.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
+        document.getElementById('pro-fees-trades').textContent = tradeCount;
+        document.getElementById('pro-fees-claimable-amount').textContent = (isGraduated && accumulatedFees > 0) ? accumulatedFees.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS' : '0 KAS';
+        
+        const claimFeesTabBtn = document.getElementById('pro-claimFeesTabBtn');
+        const feesClaimStatus = document.getElementById('pro-fees-claim-status');
+        
+        if (isGraduated && accumulatedFees > 0) {
+            claimFeesTabBtn.disabled = false;
+            feesClaimStatus.textContent = '✓ Ready to claim!';
+            feesClaimStatus.className = 'claim-status success';
+        } else {
+            claimFeesTabBtn.disabled = true;
+            feesClaimStatus.textContent = isGraduated ? 'No fees to claim yet' : `Available after graduation (${progressToGrad.toFixed(1)}%)`;
+        }
+        
+        document.getElementById('pro-fees-last-claim').textContent = 'Never';
+        document.getElementById('pro-fees-graduation-status').textContent = isGraduated ? 'Graduated' : 'Awaiting Graduation';
+        
+        // Load vesting data
+        const response = await fetch(`/api/token/${tokenId}/vesting/status`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            let totalClaimable = isGraduated && accumulatedFees > 0 ? accumulatedFees : 0;
+            let nextUnlock = '--';
+            
+            // Update Marketing Tab
+            if (data.vesting && data.vesting.marketing) {
+                const marketing = data.vesting.marketing;
+                const marketingTokens = parseFloat(marketing.total_amount) / Math.pow(10, 18);
+                const unlockedTokens = parseFloat(marketing.unlocked_amount) / Math.pow(10, 18);
+                const claimedTokens = parseFloat(marketing.claimed_amount || 0) / Math.pow(10, 18);
+                const availableTokens = parseFloat(marketing.available_to_claim) / Math.pow(10, 18);
+                
+                document.getElementById('pro-marketing-total').textContent = formatTokenAmount(marketing.total_amount);
+                document.getElementById('pro-marketing-unlocked').textContent = formatTokenAmount(marketing.unlocked_amount);
+                document.getElementById('pro-marketing-claimed').textContent = formatTokenAmount(marketing.claimed_amount || 0);
+                document.getElementById('pro-marketing-claimable-amount').textContent = formatTokenAmount(marketing.available_to_claim);
+                
+                const marketingProgress = marketingTokens > 0 ? (unlockedTokens / marketingTokens * 100) : 0;
+                document.getElementById('pro-marketing-progress-bar').style.width = marketingProgress + '%';
+                document.getElementById('pro-marketing-progress-text').textContent = marketingProgress.toFixed(1) + '% Unlocked';
+                
+                document.getElementById('pro-claimMarketingTabBtn').disabled = availableTokens <= 0;
+                if (availableTokens > 0) {
+                    totalClaimable += availableTokens;
+                    document.getElementById('pro-marketing-claim-status').style.display = 'block';
+                }
+                
+                document.getElementById('pro-marketing-schedule-text').textContent = 'Daily unlock over 90 days';
+                document.getElementById('pro-marketing-next-unlock').textContent = availableTokens > 0 ? 'Now' : '24 hours';
+            }
+            
+            // Update Team Tab
+            if (data.vesting && data.vesting.team) {
+                const team = data.vesting.team;
+                const teamTokens = parseFloat(team.total_amount) / Math.pow(10, 18);
+                const unlockedTokens = parseFloat(team.unlocked_amount) / Math.pow(10, 18);
+                const claimedTokens = parseFloat(team.claimed_amount || 0) / Math.pow(10, 18);
+                const availableTokens = parseFloat(team.available_to_claim) / Math.pow(10, 18);
+                
+                document.getElementById('pro-team-total').textContent = formatTokenAmount(team.total_amount);
+                document.getElementById('pro-team-unlocked').textContent = formatTokenAmount(team.unlocked_amount);
+                document.getElementById('pro-team-claimed').textContent = formatTokenAmount(team.claimed_amount || 0);
+                document.getElementById('pro-team-claimable-amount').textContent = formatTokenAmount(team.available_to_claim);
+                
+                const teamProgress = teamTokens > 0 ? (unlockedTokens / teamTokens * 100) : 0;
+                document.getElementById('pro-team-progress-bar').style.width = teamProgress + '%';
+                document.getElementById('pro-team-progress-text').textContent = teamProgress.toFixed(1) + '% Unlocked';
+                
+                document.getElementById('pro-claimTeamTabBtn').disabled = availableTokens <= 0;
+                if (availableTokens > 0) {
+                    totalClaimable += availableTokens;
+                    document.getElementById('pro-team-claim-status').style.display = 'block';
+                }
+                
+                document.getElementById('pro-team-schedule-text').textContent = '1-year cliff, then daily unlock over 2 years';
+                document.getElementById('pro-team-next-unlock').textContent = availableTokens > 0 ? 'Now' : 'In 365 days';
+            }
+            
+            // Update summary ribbon
+            document.getElementById('pro-totalClaimableKAS').textContent = totalClaimable.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
+            document.getElementById('pro-nextUnlockTime').textContent = nextUnlock;
+        }
+        
+        // Hide loading, show first tab
+        document.getElementById('proVestingLoading').style.display = 'none';
+        document.getElementById('pro-feesTab').style.display = 'block';
+        document.getElementById('pro-feesTab').classList.add('active');
+        
+    } catch (error) {
+        console.error('Error loading PRO claims data:', error);
+        document.getElementById('proVestingLoading').innerHTML = '<p style="color: #ff6b6b;">Failed to load claims data. Please try again.</p>';
+    }
+}
+
+function closeProClaimsModal() {
+    document.getElementById('proClaimsModal').style.display = 'none';
+}
+
+function switchClaimsTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.claims-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`.claims-tab[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Update tab panels
+    document.querySelectorAll('.claims-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    document.getElementById(`pro-${tabName}Tab`).classList.add('active');
+}
+
+function toggleSchedule(type) {
+    const scheduleEl = document.getElementById(`${type}-schedule`);
+    const toggleBtn = event.currentTarget;
+    
+    if (scheduleEl.style.display === 'none') {
+        scheduleEl.style.display = 'block';
+        toggleBtn.classList.add('active');
+    } else {
+        scheduleEl.style.display = 'none';
+        toggleBtn.classList.remove('active');
+    }
 }
 
 async function loadVestingData(tokenId) {
@@ -3598,7 +3773,10 @@ async function claimMarketingVesting() {
         // Phase 1: Build transaction using API
         const response = await fetch(`/api/token/${currentTokenData.id}/vesting/withdraw-marketing`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                creator_address: window.walletManager.getAddress()
+            })
         });
         
         if (!response.ok) {
@@ -3720,7 +3898,10 @@ async function claimTeamVesting() {
         // Phase 1: Build transaction using API
         const response = await fetch(`/api/token/${currentTokenData.id}/vesting/withdraw-team`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                creator_address: window.walletManager.getAddress()
+            })
         });
         
         if (!response.ok) {
