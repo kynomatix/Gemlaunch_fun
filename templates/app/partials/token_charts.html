@@ -27,11 +27,13 @@
             </div>
         </div>
         <div class="chart-controls" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-            <!-- Timeframe Selector -->
-            <div class="timeframe-selector" style="display: flex; gap: 0.25rem; align-items: center;">
-                <button class="timeframe-btn active" data-timeframe="24h" style="background: rgba(32, 178, 170, 0.2); border: 1px solid #20B2AA; color: #20B2AA; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem; font-weight: 600;">24h</button>
-                <button class="timeframe-btn" data-timeframe="7d" style="background: transparent; border: 1px solid #555; color: #888; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem;">7d</button>
-                <button class="timeframe-btn" data-timeframe="30d" style="background: transparent; border: 1px solid #555; color: #888; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem;">30d</button>
+            <!-- Interval Selector (like real trading platforms) -->
+            <div class="interval-selector" style="display: flex; gap: 0.25rem; align-items: center;">
+                <button class="interval-btn" data-interval="5m" style="background: transparent; border: 1px solid #555; color: #888; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem;">5m</button>
+                <button class="interval-btn" data-interval="15m" style="background: transparent; border: 1px solid #555; color: #888; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem;">15m</button>
+                <button class="interval-btn active" data-interval="1h" style="background: rgba(32, 178, 170, 0.2); border: 1px solid #20B2AA; color: #20B2AA; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem; font-weight: 600;">1H</button>
+                <button class="interval-btn" data-interval="4h" style="background: transparent; border: 1px solid #555; color: #888; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem;">4H</button>
+                <button class="interval-btn" data-interval="1d" style="background: transparent; border: 1px solid #555; color: #888; cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 5px; transition: all 0.3s; font-size: 0.85rem;">1D</button>
             </div>
         </div>
     </div>

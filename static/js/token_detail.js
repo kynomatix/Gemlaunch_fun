@@ -22,7 +22,7 @@
         
         // Chart state
         currentChartType: 'marketcap',
-        currentTimeframe: '24h',
+        currentInterval: '1h',  // Default to 1H candles like trading platforms
         myChart: null,
         
         // Token settings from backend
@@ -323,12 +323,19 @@
         },
         
         // Fetch real chart data from blockchain trade history with candlestick support
-        fetchChartData: async function(type, timeframe = '24h', interval = null) {
+        fetchChartData: async function(type, interval = '1h') {
             try {
-                let url = `/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}`;
-                if (interval) {
-                    url += `&interval=${interval}`;
-                }
+                // Calculate appropriate timeframe based on interval (like real trading platforms)
+                const timeframeMap = {
+                    '5m': '6h',    // 5min candles: show last 6 hours
+                    '15m': '24h',  // 15min candles: show last 24 hours
+                    '1h': '7d',    // 1hour candles: show last 7 days
+                    '4h': '30d',   // 4hour candles: show last 30 days
+                    '1d': '90d'    // 1day candles: show last 90 days
+                };
+                const timeframe = timeframeMap[interval] || '7d';
+                
+                let url = `/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}&interval=${interval}`;
                 
                 const response = await fetch(url);
                 const result = await response.json();
@@ -365,7 +372,7 @@
             // Clear container
             container.innerHTML = '';
             
-            const chartResult = await this.fetchChartData(this.currentChartType, this.currentTimeframe);
+            const chartResult = await this.fetchChartData(this.currentChartType, this.currentInterval);
             const self = this;
             
             // Create chart with teal theme
@@ -2559,13 +2566,13 @@
             }
         });
         
-        // Timeframe selector buttons
-        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+        // Interval selector buttons (like real trading platforms)
+        document.querySelectorAll('.interval-btn').forEach(btn => {
             if (!btn.dataset.listenerAdded) {
                 btn.dataset.listenerAdded = 'true';
                 btn.addEventListener('click', function() {
                     // Update active state
-                    document.querySelectorAll('.timeframe-btn').forEach(b => {
+                    document.querySelectorAll('.interval-btn').forEach(b => {
                         b.classList.remove('active');
                         b.style.background = 'transparent';
                         b.style.borderColor = '#555';
@@ -2576,8 +2583,8 @@
                     this.style.borderColor = '#20B2AA';
                     this.style.color = '#20B2AA';
                     
-                    // Reload chart with new timeframe
-                    TokenDetail.currentTimeframe = this.getAttribute('data-timeframe');
+                    // Reload chart with new interval
+                    TokenDetail.currentInterval = this.getAttribute('data-interval');
                     TokenDetail.initChart();
                 });
             }
