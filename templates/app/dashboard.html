@@ -3819,34 +3819,39 @@ async function checkCooldownStatus(tokenId) {
     }
 }
 
-// Update UI based on cooldown status
+// Update UI based on cooldown status (SIMPLE - no countdown timer)
 function updateCooldownUI(vestingType, cooldownData) {
     const btnId = `pro-claim${vestingType.charAt(0).toUpperCase() + vestingType.slice(1)}TabBtn`;
     const button = document.getElementById(btnId);
+    const statusDiv = document.getElementById(`pro-${vestingType}-claim-status`);
     
     if (!button) {
         console.warn(`Button ${btnId} not found`);
         return;
     }
     
-    // Clear any existing countdown for this vesting type
-    if (activeCountdowns[vestingType]) {
-        clearInterval(activeCountdowns[vestingType]);
-        delete activeCountdowns[vestingType];
-    }
-    
     if (cooldownData.on_cooldown) {
-        // Show countdown timer - disable button and show timer in button text
+        // Disable button
         button.disabled = true;
-        button.innerHTML = `<i class="fas fa-clock"></i> Next claim in: <span id="${vestingType}-timer">${formatCooldownTime(cooldownData.seconds_remaining)}</span>`;
         
-        // Start countdown
-        startCountdown(vestingType, cooldownData.seconds_remaining);
+        // Calculate time remaining
+        const hours = Math.floor(cooldownData.seconds_remaining / 3600);
+        const minutes = Math.floor((cooldownData.seconds_remaining % 3600) / 60);
+        
+        // Show simple message in status div below button
+        if (statusDiv) {
+            statusDiv.className = 'claim-status warning';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = `<i class="fas fa-clock"></i> Cooldown active - next claim available in ${hours}h ${minutes}m`;
+        }
     } else {
-        // Show claim button - enable and restore original text
+        // Enable button when no cooldown
         button.disabled = false;
-        const capitalizedType = vestingType.charAt(0).toUpperCase() + vestingType.slice(1);
-        button.innerHTML = `<i class="fas fa-coins"></i> Claim ${capitalizedType} Tokens`;
+        
+        // Hide status message
+        if (statusDiv) {
+            statusDiv.style.display = 'none';
+        }
     }
 }
 
@@ -3918,14 +3923,13 @@ async function claimMarketingVesting() {
             try {
                 const error = JSON.parse(errorText);
                 if (response.status === 429) {
-                    // Cooldown active - refresh status
-                    alert('Claim is on cooldown. Please wait and try again.');
+                    // Cooldown active - silently refresh status to update UI
                     await checkCooldownStatus(currentTokenData.id);
                 }
                 throw new Error(error.error || `Server error: ${response.status}`);
             } catch (parseError) {
                 if (response.status === 429) {
-                    alert('Claim is on cooldown. Please wait and try again.');
+                    // Cooldown active - silently refresh status to update UI
                     await checkCooldownStatus(currentTokenData.id);
                 }
                 throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);
@@ -4084,14 +4088,13 @@ async function claimTeamVesting() {
             try {
                 const error = JSON.parse(errorText);
                 if (response.status === 429) {
-                    // Cooldown active - refresh status
-                    alert('Claim is on cooldown. Please wait and try again.');
+                    // Cooldown active - silently refresh status to update UI
                     await checkCooldownStatus(currentTokenData.id);
                 }
                 throw new Error(error.error || `Server error: ${response.status}`);
             } catch (parseError) {
                 if (response.status === 429) {
-                    alert('Claim is on cooldown. Please wait and try again.');
+                    // Cooldown active - silently refresh status to update UI
                     await checkCooldownStatus(currentTokenData.id);
                 }
                 throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 100)}`);

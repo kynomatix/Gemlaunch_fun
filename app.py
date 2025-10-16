@@ -5586,7 +5586,7 @@ def build_marketing_vesting_withdraw(token_id):
     
     # Check if still in cooldown
     if token.marketing_next_claim_available:
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         if now < token.marketing_next_claim_available:
             seconds_remaining = (token.marketing_next_claim_available - now).total_seconds()
             hours_remaining = int(seconds_remaining / 3600)
@@ -5646,7 +5646,7 @@ def build_marketing_vesting_withdraw(token_id):
         random_addition = random.randint(0, 12 * 3600)  # 0-12 hours random
         total_cooldown = base_cooldown + random_addition
         
-        token.marketing_next_claim_available = datetime.now(timezone.utc) + timedelta(seconds=total_cooldown)
+        token.marketing_next_claim_available = datetime.utcnow() + timedelta(seconds=total_cooldown)
         db.session.commit()
         
         # Return tx_data WITH cooldown info for frontend display
@@ -5691,7 +5691,7 @@ def build_team_vesting_withdraw(token_id):
     
     # Check if still in cooldown
     if token.team_next_claim_available:
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         if now < token.team_next_claim_available:
             seconds_remaining = (token.team_next_claim_available - now).total_seconds()
             hours_remaining = int(seconds_remaining / 3600)
@@ -5751,7 +5751,7 @@ def build_team_vesting_withdraw(token_id):
         random_addition = random.randint(0, 12 * 3600)  # 0-12 hours random
         total_cooldown = base_cooldown + random_addition
         
-        token.team_next_claim_available = datetime.now(timezone.utc) + timedelta(seconds=total_cooldown)
+        token.team_next_claim_available = datetime.utcnow() + timedelta(seconds=total_cooldown)
         db.session.commit()
         
         # Return tx_data WITH cooldown info for frontend display
@@ -5791,7 +5791,7 @@ def get_vesting_cooldown_status(token_id):
     """
     try:
         token = Token.query.get_or_404(token_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         result = {
             'marketing': {
