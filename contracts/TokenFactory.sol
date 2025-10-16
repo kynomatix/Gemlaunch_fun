@@ -73,8 +73,8 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         address _admin,
         address _buybackReserve,
         address _kaspaSupport,
-        address _communityRewards,
-        address _vestingDeployer
+        address _communityRewards
+        // AUDIT FIX H-1: Removed _vestingDeployer param - factory deploys its own
     ) Ownable(msg.sender) {
         require(_graduationController != address(0), "Bad controller");
         require(_treasury != address(0), "Bad treasury");
@@ -85,7 +85,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         require(_buybackReserve != address(0), "Bad buyback");
         require(_kaspaSupport != address(0), "Bad kaspa");
         require(_communityRewards != address(0), "Bad community");
-        require(_vestingDeployer != address(0), "Bad vesting deployer");
         
         // L-2 FIX: Duplicate address validation
         require(_treasury != _admin, "Dup addr");
@@ -101,7 +100,10 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         buybackReserveWallet = _buybackReserve;
         kaspaNetworkSupportWallet = _kaspaSupport;
         communityRewardsWallet = _communityRewards;
-        vestingDeployer = _vestingDeployer;
+        
+        // AUDIT FIX H-1: Factory deploys its own VestingDeployer (eliminates circular dependency)
+        VestingDeployer vd = new VestingDeployer(address(this));
+        vestingDeployer = address(vd);
     }
 
     function createToken(
@@ -195,7 +197,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
                 require(teamTokens >= 100 * 10**18, "Team allocation too small for vesting schedule");
             }
             
-            // Deploy vesting contracts via VestingDeployer (reduces factory size)
+            // Deploy vesting contracts via VestingDeployer (AUDIT FIX M-2: removed deploymentTimestamp)
             (airdropVestingAddress, marketingVestingAddress, teamVestingAddress) = 
                 VestingDeployer(vestingDeployer).deployVestingContracts(
                     poolAddress,
@@ -204,13 +206,16 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
                     teamBeneficiary,
                     airdropTokens,
                     marketingTokens,
-                    teamTokens,
-                    block.timestamp
+                    teamTokens
                 );
             
-            // Transfer tokens to vesting contracts
+            // Transfer tokens to vesting contracts with type tracking (AUDIT FIX CR-1)
             if (airdropTokens > 0) {
-                pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+                pool.transferReserveToVesting(
+                    airdropVestingAddress,
+                    airdropTokens,
+                    BondingCurvePool.VestingType.Airdrop
+                );
                 require(
                     IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens,
                     "Airdrop vesting underfunded"
@@ -218,7 +223,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             }
             
             if (marketingTokens > 0) {
-                pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
+                pool.transferReserveToVesting(
+                    marketingVestingAddress,
+                    marketingTokens,
+                    BondingCurvePool.VestingType.Marketing
+                );
                 require(
                     IERC20(poolAddress).balanceOf(marketingVestingAddress) == marketingTokens,
                     "Marketing vesting underfunded"
@@ -226,7 +235,11 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             }
             
             if (teamTokens > 0) {
-                pool.transferReserveToVesting(teamVestingAddress, teamTokens);
+                pool.transferReserveToVesting(
+                    teamVestingAddress,
+                    teamTokens,
+                    BondingCurvePool.VestingType.Team
+                );
                 require(
                     IERC20(poolAddress).balanceOf(teamVestingAddress) == teamTokens,
                     "Team vesting underfunded"

@@ -36,6 +36,8 @@ contract VestingDeployer {
     /**
      * @notice Deploy all three vesting contracts
      * @dev Only callable by TokenFactory during token creation
+     *      AUDIT FIX H-2: Added validation for beneficiaries, minimum amounts, and pool contract
+     *      AUDIT FIX M-2: Removed unused deploymentTimestamp parameter
      */
     function deployVestingContracts(
         address pool,
@@ -44,8 +46,7 @@ contract VestingDeployer {
         address teamBeneficiary,
         uint256 airdropTokens,
         uint256 marketingTokens,
-        uint256 teamTokens,
-        uint256 /* deploymentTimestamp - unused, contracts use block.timestamp */
+        uint256 teamTokens
     ) external returns (
         address airdropVesting,
         address marketingVesting,
@@ -54,8 +55,18 @@ contract VestingDeployer {
         require(msg.sender == factory, "Only factory");
         require(pool != address(0), "Invalid pool");
         
-        // Deploy AirdropVesting (5% daily unlock)
+        // AUDIT FIX H-2: Validate pool is a contract
+        uint256 poolSize;
+        assembly {
+            poolSize := extcodesize(pool)
+        }
+        require(poolSize > 0, "Pool must be contract");
+        
+        // Deploy AirdropVesting (5% daily unlock) with validation
         if (airdropTokens > 0) {
+            require(airdropBeneficiary != address(0), "Invalid airdrop beneficiary");
+            require(airdropTokens >= 100 * 10**18, "Airdrop allocation too small");
+            
             AirdropVesting av = new AirdropVesting(
                 pool,
                 airdropBeneficiary,
@@ -64,8 +75,11 @@ contract VestingDeployer {
             airdropVesting = address(av);
         }
         
-        // Deploy LinearVesting for marketing (12-month linear)
+        // Deploy LinearVesting for marketing (12-month linear) with validation
         if (marketingTokens > 0) {
+            require(marketingBeneficiary != address(0), "Invalid marketing beneficiary");
+            require(marketingTokens >= 100 * 10**18, "Marketing allocation too small");
+            
             LinearVesting mv = new LinearVesting(
                 pool,
                 marketingBeneficiary,
@@ -75,8 +89,11 @@ contract VestingDeployer {
             marketingVesting = address(mv);
         }
         
-        // Deploy CliffVesting for team (6mo cliff + 18mo vest)
+        // Deploy CliffVesting for team (6mo cliff + 18mo vest) with validation
         if (teamTokens > 0) {
+            require(teamBeneficiary != address(0), "Invalid team beneficiary");
+            require(teamTokens >= 100 * 10**18, "Team allocation too small");
+            
             CliffVesting tv = new CliffVesting(
                 pool,
                 teamBeneficiary,
