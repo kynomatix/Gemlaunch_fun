@@ -3857,7 +3857,7 @@ async function claimMarketingVesting() {
             btn.innerHTML = originalHTML;
             btn.classList.remove('loading');
             btn.disabled = false;
-            alert('Transaction submitted but monitoring timed out. Please check explorer:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+            showTransactionModal('timeout', txHash, 'Transaction submitted but monitoring timed out.');
         }, MONITOR_TIMEOUT);
         
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
@@ -3869,7 +3869,7 @@ async function claimMarketingVesting() {
                 clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert(`✅ Marketing tokens claimed successfully!\nTransaction: ${txHash}\nExplorer: https://explorer.kasplextest.xyz/tx/${txHash}`);
+                showTransactionModal('success', txHash, 'Marketing tokens claimed successfully!');
                 
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
@@ -3883,7 +3883,7 @@ async function claimMarketingVesting() {
                 clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain') + '\nExplorer: https://explorer.kasplextest.xyz/tx/' + txHash);
+                showTransactionModal('error', txHash, 'Marketing token claim failed.');
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
@@ -3897,7 +3897,7 @@ async function claimMarketingVesting() {
             eventSource.close();
             console.error('SSE connection error:', error);
             
-            showTransactionModal('timeout', txHash, 'Transaction monitoring failed. Please check the blockchain explorer to verify status.');
+            showTransactionModal('error', txHash, 'Transaction monitoring failed. Please verify status on explorer.');
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -3999,7 +3999,7 @@ async function claimTeamVesting() {
             btn.innerHTML = originalHTML;
             btn.classList.remove('loading');
             btn.disabled = false;
-            alert('Transaction submitted but monitoring timed out. Please check explorer:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+            showTransactionModal('timeout', txHash, 'Transaction submitted but monitoring timed out.');
         }, MONITOR_TIMEOUT);
         
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
@@ -4011,7 +4011,7 @@ async function claimTeamVesting() {
                 clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert(`✅ Team tokens claimed successfully!\nTransaction: ${txHash}\nExplorer: https://explorer.kasplextest.xyz/tx/${txHash}`);
+                showTransactionModal('success', txHash, 'Team tokens claimed successfully!');
                 
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
@@ -4025,7 +4025,7 @@ async function claimTeamVesting() {
                 clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain') + '\nExplorer: https://explorer.kasplextest.xyz/tx/' + txHash);
+                showTransactionModal('error', txHash, 'Team token claim failed.');
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
@@ -4039,7 +4039,7 @@ async function claimTeamVesting() {
             eventSource.close();
             console.error('SSE connection error:', error);
             
-            showTransactionModal('timeout', txHash, 'Transaction monitoring failed. Please check the blockchain explorer to verify status.');
+            showTransactionModal('error', txHash, 'Transaction monitoring failed. Please verify status on explorer.');
             
             // Reset button
             btn.innerHTML = originalHTML;
