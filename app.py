@@ -4836,8 +4836,11 @@ def api_create_token():
         # Validate total_supply
         try:
             total_supply = int(data.get('total_supply', 1000000000))
-            if total_supply <= 0:
-                return jsonify({'success': False, 'error': 'Total supply must be greater than 0'}), 400
+            # Contract enforces: min 1M, max 1B tokens
+            if total_supply < 1_000_000:
+                return jsonify({'success': False, 'error': 'Total supply must be at least 1,000,000 (1M) tokens'}), 400
+            if total_supply > 1_000_000_000:
+                return jsonify({'success': False, 'error': 'Total supply cannot exceed 1,000,000,000 (1B) tokens'}), 400
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': 'Invalid total_supply format'}), 400
         
