@@ -3704,8 +3704,10 @@ async function loadVestingData(tokenId) {
             document.getElementById('marketing-progress-text').textContent = marketingProgress.toFixed(1) + '%';
             
             // Enable/disable claim button (FIX: use available_to_claim)
-            const claimMarketingBtn = document.getElementById('claimMarketingBtn');
-            claimMarketingBtn.disabled = marketing.available_to_claim <= 0;
+            const claimMarketingBtn = getClaimButton('claimMarketingBtn', 'pro-claimMarketingTabBtn');
+            if (claimMarketingBtn) {
+                claimMarketingBtn.disabled = marketing.available_to_claim <= 0;
+            }
         }
         
         // Update Team Vesting UI (FIX: use data.vesting.team and correct property names)
@@ -3722,8 +3724,10 @@ async function loadVestingData(tokenId) {
             document.getElementById('team-progress-text').textContent = teamProgress.toFixed(1) + '%';
             
             // Enable/disable claim button (FIX: use available_to_claim)
-            const claimTeamBtn = document.getElementById('claimTeamBtn');
-            claimTeamBtn.disabled = team.available_to_claim <= 0;
+            const claimTeamBtn = getClaimButton('claimTeamBtn', 'pro-claimTeamTabBtn');
+            if (claimTeamBtn) {
+                claimTeamBtn.disabled = team.available_to_claim <= 0;
+            }
         }
         
         // Hide loading, show content
@@ -3752,6 +3756,15 @@ function formatTokenAmount(weiAmount) {
     return tokens.toLocaleString('en-US', {maximumFractionDigits: 2});
 }
 
+function getClaimButton(basicId, proId) {
+    const proModal = document.getElementById('proClaimsModal');
+    if (proModal && proModal.style.display === 'flex') {
+        const proBtn = document.getElementById(proId);
+        if (proBtn) return proBtn;
+    }
+    return document.getElementById(basicId);
+}
+
 async function claimMarketingVesting() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
         alert('Please connect your wallet to claim vesting.');
@@ -3759,7 +3772,11 @@ async function claimMarketingVesting() {
         return;
     }
     
-    const btn = document.getElementById('claimMarketingBtn');
+    const btn = getClaimButton('claimMarketingBtn', 'pro-claimMarketingTabBtn');
+    if (!btn) {
+        console.error('Marketing claim button not found');
+        return;
+    }
     const originalHTML = btn.innerHTML;
     
     try {
@@ -3884,7 +3901,11 @@ async function claimTeamVesting() {
         return;
     }
     
-    const btn = document.getElementById('claimTeamBtn');
+    const btn = getClaimButton('claimTeamBtn', 'pro-claimTeamTabBtn');
+    if (!btn) {
+        console.error('Team claim button not found');
+        return;
+    }
     const originalHTML = btn.innerHTML;
     
     try {
@@ -4014,10 +4035,19 @@ async function claimCreatorFees() {
         return;
     }
     
-    // Get both buttons for text updates
-    const footerBtn = document.getElementById('claimFeesBtn');
-    const inlineBtn = document.getElementById('inlineClaimFeesBtn');
-    const displayBtn = footerBtn || inlineBtn;
+    // Check for PRO modal button first, then basic modal buttons
+    const proModal = document.getElementById('proClaimsModal');
+    let displayBtn = null;
+    
+    if (proModal && proModal.style.display === 'flex') {
+        displayBtn = document.getElementById('pro-claimFeesTabBtn');
+    }
+    
+    if (!displayBtn) {
+        const footerBtn = document.getElementById('claimFeesBtn');
+        const inlineBtn = document.getElementById('inlineClaimFeesBtn');
+        displayBtn = footerBtn || inlineBtn;
+    }
     
     if (!displayBtn) {
         console.error('No claim button found');
