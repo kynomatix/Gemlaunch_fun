@@ -1,5 +1,5 @@
 <!-- Creator Fee Modal -->
-<div id="creatorFeeModal" class="modal" style="display: none;">
+<div id="creatorFeeModal" class="modal" style="display: none;" data-is-pro="false">
     <div class="modal-overlay" onclick="closeCreatorFeeModal()"></div>
     <div class="modal-content creator-fee-modal">
         <div class="modal-header">
@@ -36,6 +36,11 @@
                             0.1% fee rate
                         </div>
                     </div>
+                    
+                    <!-- Inline Claim Fees Button (PRO tokens only) -->
+                    <button class="inline-claim-fees-btn" id="inlineClaimFeesBtn" onclick="claimCreatorFees()" disabled>
+                        <i class="fas fa-hand-holding-usd"></i> Claim Fees
+                    </button>
                 </div>
                 
                 <!-- Claim Status -->
@@ -205,14 +210,28 @@
     text-align: center;
 }
 
+/* Compact styles for PRO tokens */
+#creatorFeeModal[data-is-pro="true"] .earnings-display {
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
 .earnings-main {
     margin-bottom: 1.5rem;
+}
+
+#creatorFeeModal[data-is-pro="true"] .earnings-main {
+    margin-bottom: 1rem;
 }
 
 .earnings-label {
     font-size: 0.9rem;
     color: #AAA;
     margin-bottom: 0.75rem;
+}
+
+#creatorFeeModal[data-is-pro="true"] .earnings-label {
+    font-size: 0.85rem;
 }
 
 .earnings-amount {
@@ -225,9 +244,17 @@
     margin-bottom: 0.5rem;
 }
 
+#creatorFeeModal[data-is-pro="true"] .earnings-amount {
+    font-size: 1.8rem;
+}
+
 .earnings-usd {
     font-size: 1rem;
     color: #888;
+}
+
+#creatorFeeModal[data-is-pro="true"] .earnings-usd {
+    font-size: 0.9rem;
 }
 
 .earnings-details {
@@ -250,8 +277,52 @@
     color: #20B2AA;
 }
 
+/* Inline Claim Fees Button (PRO tokens only) */
+.inline-claim-fees-btn {
+    display: none;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.875rem 1.5rem;
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+}
+
+#creatorFeeModal[data-is-pro="true"] .inline-claim-fees-btn {
+    display: flex;
+}
+
+.inline-claim-fees-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(32, 178, 170, 0.4);
+}
+
+.inline-claim-fees-btn:disabled {
+    background: rgba(100, 100, 100, 0.3) !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.inline-claim-fees-btn:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 .claim-status-section {
     margin-bottom: 1.5rem;
+}
+
+#creatorFeeModal[data-is-pro="true"] .claim-status-section {
+    margin-bottom: 1rem;
 }
 
 .claim-status-badge {
@@ -327,6 +398,15 @@
     text-decoration: underline;
 }
 
+/* Footer Button Visibility */
+#creatorFeeModal[data-is-pro="true"] #claimFeesBtn {
+    display: none;
+}
+
+#creatorFeeModal[data-is-pro="false"] #claimFeesBtn {
+    display: inline-flex;
+}
+
 /* Section Divider */
 .section-divider {
     text-align: center;
@@ -337,6 +417,10 @@
     border-radius: 10px;
     font-weight: 600;
     color: #20B2AA;
+}
+
+#creatorFeeModal[data-is-pro="true"] .section-divider {
+    margin: 1.5rem 0 1rem;
 }
 
 /* Vesting Loading State */
@@ -371,6 +455,11 @@
     border-radius: 12px;
     padding: 1.25rem;
     margin-bottom: 1rem;
+}
+
+#creatorFeeModal[data-is-pro="true"] .vesting-card {
+    padding: 1.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .vesting-card-header {

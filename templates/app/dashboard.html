@@ -3403,6 +3403,15 @@
 // Creator Fee Modal Functions
 let currentTokenData = {};
 
+// Centralized button state sync function
+function updateClaimFeesButtonState(disabled) {
+    const footerBtn = document.getElementById('claimFeesBtn');
+    const inlineBtn = document.getElementById('inlineClaimFeesBtn');
+    
+    if (footerBtn) footerBtn.disabled = disabled;
+    if (inlineBtn) inlineBtn.disabled = disabled;
+}
+
 function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad, isPro = false) {
     // Store current token data
     currentTokenData = {
@@ -3453,7 +3462,6 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     // Update claim status
     const claimStatusBadge = document.getElementById('claimStatusBadge');
     const claimStatusText = document.getElementById('claimStatusText');
-    const claimBtn = document.getElementById('claimFeesBtn');
     
     // Check if graduated (market cap >= $70,000)
     const isGraduated = marketCap >= 70000;
@@ -3461,15 +3469,15 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     if (isGraduated && accumulatedFees > 0) {
         claimStatusBadge.className = 'claim-status-badge success';
         claimStatusText.textContent = '✓ Ready to claim! Token has graduated.';
-        claimBtn.disabled = false;
+        updateClaimFeesButtonState(false);
     } else if (isGraduated && accumulatedFees === 0) {
         claimStatusBadge.className = 'claim-status-badge';
         claimStatusText.textContent = 'No fees to claim yet';
-        claimBtn.disabled = true;
+        updateClaimFeesButtonState(true);
     } else {
         claimStatusBadge.className = 'claim-status-badge';
         claimStatusText.textContent = `Claim available after graduation • Currently at ${progressToGrad.toFixed(1)}%`;
-        claimBtn.disabled = true;
+        updateClaimFeesButtonState(true);
     }
     
     // Handle PRO token vesting section
@@ -3481,8 +3489,12 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
         vestingSection.style.display = 'none';
     }
     
+    // Set data-is-pro attribute for conditional styling
+    const modal = document.getElementById('creatorFeeModal');
+    modal.setAttribute('data-is-pro', isPro ? 'true' : 'false');
+    
     // Show modal
-    document.getElementById('creatorFeeModal').style.display = 'flex';
+    modal.style.display = 'flex';
 }
 
 async function loadVestingData(tokenId) {
@@ -3807,16 +3819,134 @@ function closeCreatorFeeModal() {
     currentTokenData = {};
 }
 
-function claimCreatorFees() {
-    // Placeholder for smart contract integration
-    alert('🚧 Smart Contract Integration Coming Soon!\n\nThis will call withdrawCreatorFees() on the smart contract to claim your accumulated fees.\n\nFor now, this is a UI preview only.');
+async function claimCreatorFees() {
+    if (!window.walletManager || !window.walletManager.isConnected()) {
+        ModalManager.alert('Wallet Required', 'Please connect your wallet to claim fees.', 'error');
+        window.walletManager.openWalletModal();
+        return;
+    }
     
-    // When SC is integrated, this will:
-    // 1. Connect wallet
-    // 2. Call contract.withdrawCreatorFees()
-    // 3. Show transaction confirmation
-    // 4. Update fee balances
-    // 5. Show success message
+    // Get both buttons for text updates
+    const footerBtn = document.getElementById('claimFeesBtn');
+    const inlineBtn = document.getElementById('inlineClaimFeesBtn');
+    const displayBtn = footerBtn || inlineBtn;
+    
+    if (!displayBtn) {
+        console.error('No claim button found');
+        return;
+    }
+    
+    const originalHTML = displayBtn.innerHTML;
+    
+    try {
+        // Show loading state - USE SYNCHRONIZED FUNCTION
+        updateClaimFeesButtonState(true);
+        displayBtn.classList.add('loading');
+        displayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        // Phase 1: Build transaction using API
+        const response = await fetch(`/api/token/${currentTokenData.id}/claim-fees`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to build transaction');
+        }
+        
+        const buildData = await response.json();
+        
+        if (!buildData.success) {
+            throw new Error(buildData.error || 'Failed to build transaction');
+        }
+        
+        const txData = buildData.tx_data;
+        
+        // Phase 2: Sign and submit with wallet
+        displayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Please sign...';
+        
+        if (!window.txManager) {
+            window.txManager = new TransactionManager(window.walletManager);
+        }
+        
+        const signResult = await window.txManager.signAndSubmitTransaction(txData);
+        
+        let txHash;
+        
+        // Phase 3: Relay if needed (for Kaspa wallets)
+        if (signResult.needs_relay) {
+            displayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            const relayResponse = await fetch('/api/relay/transaction', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    signed_tx: signResult.signed_tx
+                })
+            });
+            
+            const relayData = await relayResponse.json();
+            if (!relayData.success) {
+                throw new Error(relayData.error || 'Failed to relay transaction');
+            }
+            txHash = relayData.tx_hash;
+        } else {
+            // MetaMask already submitted
+            txHash = signResult.tx_hash;
+        }
+        
+        // Phase 4: Monitor transaction via SSE
+        displayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming...';
+        
+        const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
+        
+        eventSource.addEventListener('status', async (e) => {
+            const data = JSON.parse(e.data);
+            
+            if (data.status === 'confirmed' || data.status === 'success') {
+                eventSource.close();
+                
+                ModalManager.alert('Success! ✅', `Creator fees claimed successfully!<br>Transaction: ${txHash}`, 'success');
+                
+                // Close modal and refresh data
+                closeCreatorFeeModal();
+                location.reload(); // Refresh to update balances
+                
+                // Reset button - USE SYNCHRONIZED FUNCTION
+                displayBtn.innerHTML = originalHTML;
+                displayBtn.classList.remove('loading');
+                updateClaimFeesButtonState(false);
+            } else if (data.status === 'failed' || data.status === 'error') {
+                eventSource.close();
+                throw new Error(data.error || 'Transaction failed');
+            }
+        });
+        
+        eventSource.addEventListener('error', () => {
+            eventSource.close();
+            throw new Error('Transaction monitoring failed');
+        });
+        
+        eventSource.onerror = () => {
+            eventSource.close();
+            
+            ModalManager.alert('Monitoring Error', 'Transaction monitoring failed. Please check blockchain explorer to verify status.', 'warning');
+            
+            // Reset button - USE SYNCHRONIZED FUNCTION
+            displayBtn.innerHTML = originalHTML;
+            displayBtn.classList.remove('loading');
+            updateClaimFeesButtonState(false);
+        };
+        
+    } catch (error) {
+        console.error('Error claiming creator fees:', error);
+        ModalManager.alert('Claim Failed', error.message, 'error');
+        
+        // Reset button - USE SYNCHRONIZED FUNCTION
+        displayBtn.innerHTML = originalHTML;
+        displayBtn.classList.remove('loading');
+        updateClaimFeesButtonState(false);
+    }
 }
 
 // Close modal on outside click
