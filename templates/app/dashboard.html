@@ -3851,15 +3851,25 @@ async function claimMarketingVesting() {
         // Phase 4: Monitor transaction via SSE
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming...';
         
+        const MONITOR_TIMEOUT = 60000; // 60 seconds
+        const timeoutId = setTimeout(() => {
+            eventSource.close();
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('loading');
+            btn.disabled = false;
+            alert('Transaction submitted but monitoring timed out. Please check explorer:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+        }, MONITOR_TIMEOUT);
+        
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
         
-        eventSource.addEventListener('status', async (e) => {
-            const data = JSON.parse(e.data);
+        eventSource.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
             
             if (data.status === 'confirmed' || data.status === 'success') {
+                clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert(`✅ Marketing tokens claimed successfully!\nTransaction: ${txHash}`);
+                alert(`✅ Marketing tokens claimed successfully!\nTransaction: ${txHash}\nExplorer: https://explorer.kasplextest.xyz/tx/${txHash}`);
                 
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
@@ -3870,21 +3880,24 @@ async function claimMarketingVesting() {
                 btn.disabled = false;
                 
             } else if (data.status === 'failed' || data.status === 'error') {
+                clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain'));
+                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain') + '\nExplorer: https://explorer.kasplextest.xyz/tx/' + txHash);
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
                 btn.classList.remove('loading');
                 btn.disabled = false;
             }
-        });
+        };
         
-        eventSource.onerror = () => {
+        eventSource.onerror = (error) => {
+            clearTimeout(timeoutId);
             eventSource.close();
+            console.error('SSE connection error:', error);
             
-            alert('Transaction monitoring failed. Please check blockchain explorer to verify status.');
+            alert('Transaction monitoring failed. Please check blockchain explorer to verify status:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -3980,15 +3993,25 @@ async function claimTeamVesting() {
         // Phase 4: Monitor transaction via SSE
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming...';
         
+        const MONITOR_TIMEOUT = 60000; // 60 seconds
+        const timeoutId = setTimeout(() => {
+            eventSource.close();
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('loading');
+            btn.disabled = false;
+            alert('Transaction submitted but monitoring timed out. Please check explorer:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+        }, MONITOR_TIMEOUT);
+        
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
         
-        eventSource.addEventListener('status', async (e) => {
-            const data = JSON.parse(e.data);
+        eventSource.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
             
             if (data.status === 'confirmed' || data.status === 'success') {
+                clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert(`✅ Team tokens claimed successfully!\nTransaction: ${txHash}`);
+                alert(`✅ Team tokens claimed successfully!\nTransaction: ${txHash}\nExplorer: https://explorer.kasplextest.xyz/tx/${txHash}`);
                 
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
@@ -3999,21 +4022,24 @@ async function claimTeamVesting() {
                 btn.disabled = false;
                 
             } else if (data.status === 'failed' || data.status === 'error') {
+                clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain'));
+                alert('Transaction Failed: ' + (data.message || 'Transaction failed on blockchain') + '\nExplorer: https://explorer.kasplextest.xyz/tx/' + txHash);
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
                 btn.classList.remove('loading');
                 btn.disabled = false;
             }
-        });
+        };
         
-        eventSource.onerror = () => {
+        eventSource.onerror = (error) => {
+            clearTimeout(timeoutId);
             eventSource.close();
+            console.error('SSE connection error:', error);
             
-            alert('Transaction monitoring failed. Please check blockchain explorer to verify status.');
+            alert('Transaction monitoring failed. Please check blockchain explorer to verify status:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
             
             // Reset button
             btn.innerHTML = originalHTML;
@@ -4125,15 +4151,25 @@ async function claimCreatorFees() {
         // Phase 4: Monitor transaction via SSE
         displayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming...';
         
+        const MONITOR_TIMEOUT = 60000; // 60 seconds
+        const timeoutId = setTimeout(() => {
+            eventSource.close();
+            displayBtn.innerHTML = originalHTML;
+            displayBtn.classList.remove('loading');
+            updateClaimFeesButtonState(false);
+            alert('Transaction submitted but monitoring timed out. Please check explorer:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
+        }, MONITOR_TIMEOUT);
+        
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
         
-        eventSource.addEventListener('status', async (e) => {
-            const data = JSON.parse(e.data);
+        eventSource.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
             
             if (data.status === 'confirmed' || data.status === 'success') {
+                clearTimeout(timeoutId);
                 eventSource.close();
                 
-                alert(`✅ Creator fees claimed successfully!\nTransaction: ${txHash}`);
+                alert(`✅ Creator fees claimed successfully!\nTransaction: ${txHash}\nExplorer: https://explorer.kasplextest.xyz/tx/${txHash}`);
                 
                 // Close modal and refresh data
                 closeCreatorFeeModal();
@@ -4144,20 +4180,24 @@ async function claimCreatorFees() {
                 displayBtn.classList.remove('loading');
                 updateClaimFeesButtonState(false);
             } else if (data.status === 'failed' || data.status === 'error') {
+                clearTimeout(timeoutId);
                 eventSource.close();
-                throw new Error(data.error || 'Transaction failed');
+                
+                alert('Transaction Failed: ' + (data.message || data.error || 'Transaction failed on blockchain') + '\nExplorer: https://explorer.kasplextest.xyz/tx/' + txHash);
+                
+                // Reset button - USE SYNCHRONIZED FUNCTION
+                displayBtn.innerHTML = originalHTML;
+                displayBtn.classList.remove('loading');
+                updateClaimFeesButtonState(false);
             }
-        });
+        };
         
-        eventSource.addEventListener('error', () => {
+        eventSource.onerror = (error) => {
+            clearTimeout(timeoutId);
             eventSource.close();
-            throw new Error('Transaction monitoring failed');
-        });
-        
-        eventSource.onerror = () => {
-            eventSource.close();
+            console.error('SSE connection error:', error);
             
-            alert('Transaction monitoring failed. Please check blockchain explorer to verify status.');
+            alert('Transaction monitoring failed. Please check blockchain explorer to verify status:\nhttps://explorer.kasplextest.xyz/tx/' + txHash);
             
             // Reset button - USE SYNCHRONIZED FUNCTION
             displayBtn.innerHTML = originalHTML;
