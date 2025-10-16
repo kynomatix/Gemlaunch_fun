@@ -3622,17 +3622,17 @@ def api_quote_buy():
         
         return jsonify({
             'success': True,
-            'tokens_out': tokens_out,  # In ether units (float)
-            'kas_amount': kas_amount,  # REQUIRED BY FRONTEND
-            'total_cost': kas_amount,  # REQUIRED BY FRONTEND  
-            'price_per_token': price_per_token,  # REQUIRED BY FRONTEND
+            'tokens_out': float(tokens_out),  # Convert to float
+            'kas_amount': float(kas_amount),  # Convert to float
+            'total_cost': float(kas_amount),  # Convert to float
+            'price_per_token': float(price_per_token),  # Convert to float
             'fees': {
-                'anti_bot': anti_bot_fee_kas if anti_bot_fee_kas > 0 else 0,
+                'anti_bot': float(anti_bot_fee_kas) if anti_bot_fee_kas > 0 else 0.0,
                 'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
                 'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
             },
-            'auto_slippage_bps': slippage_bps,
-            'price_impact_percent': round(price_impact, 2)
+            'auto_slippage_bps': int(slippage_bps),  # Convert to int
+            'price_impact_percent': float(round(price_impact, 2))  # Convert to float
         })
         
     except ValueError as e:
@@ -3742,18 +3742,18 @@ def api_quote_sell():
         
         return jsonify({
             'success': True,
-            'kas_out': kas_gross,  # In ether units (float)
-            'token_amount': token_amount_wei / 1e18,  # REQUIRED BY FRONTEND (in ether)
-            'net_kas': kas_net,  # REQUIRED BY FRONTEND
-            'price_per_token': price_per_token,  # REQUIRED BY FRONTEND
-            'new_price': new_price,  # REQUIRED BY FRONTEND
+            'kas_out': float(kas_gross),  # Convert to float
+            'token_amount': float(token_amount_wei / 1e18),  # Convert to float
+            'net_kas': float(kas_net),  # Convert to float
+            'price_per_token': float(price_per_token),  # Convert to float
+            'new_price': float(new_price),  # Convert to float
             'fees': {
-                'anti_bot': 0,
+                'anti_bot': 0.0,
                 'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
                 'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
             },
-            'auto_slippage_bps': slippage_bps,
-            'price_impact_percent': round(price_impact, 2)
+            'auto_slippage_bps': int(slippage_bps),  # Convert to int
+            'price_impact_percent': float(round(price_impact, 2))  # Convert to float
         })
         
     except ValueError as e:
