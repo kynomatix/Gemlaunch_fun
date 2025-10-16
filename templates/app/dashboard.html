@@ -3514,41 +3514,43 @@ async function loadVestingData(tokenId) {
         
         const data = await response.json();
         
-        // Store vesting data in currentTokenData
-        currentTokenData.vestingData = data;
+        // Store vesting data in currentTokenData (use the correct nested structure)
+        currentTokenData.vestingData = data.vesting;
         
-        // Update Marketing Vesting UI
-        if (data.marketing) {
-            document.getElementById('marketing-total').textContent = formatTokenAmount(data.marketing.total_allocation);
-            document.getElementById('marketing-unlocked').textContent = formatTokenAmount(data.marketing.unlocked);
-            document.getElementById('marketing-available').textContent = formatTokenAmount(data.marketing.available);
+        // Update Marketing Vesting UI (FIX: use data.vesting.marketing and correct property names)
+        if (data.vesting && data.vesting.marketing) {
+            const marketing = data.vesting.marketing;
+            document.getElementById('marketing-total').textContent = formatTokenAmount(marketing.total_amount);
+            document.getElementById('marketing-unlocked').textContent = formatTokenAmount(marketing.unlocked_amount);
+            document.getElementById('marketing-available').textContent = formatTokenAmount(marketing.available_to_claim);
             
-            const marketingProgress = data.marketing.total_allocation > 0 
-                ? (data.marketing.unlocked / data.marketing.total_allocation * 100) 
+            const marketingProgress = marketing.total_amount > 0 
+                ? (marketing.unlocked_amount / marketing.total_amount * 100) 
                 : 0;
             document.getElementById('marketing-progress-bar').style.width = marketingProgress + '%';
             document.getElementById('marketing-progress-text').textContent = marketingProgress.toFixed(1) + '%';
             
-            // Enable/disable claim button
+            // Enable/disable claim button (FIX: use available_to_claim)
             const claimMarketingBtn = document.getElementById('claimMarketingBtn');
-            claimMarketingBtn.disabled = data.marketing.available <= 0;
+            claimMarketingBtn.disabled = marketing.available_to_claim <= 0;
         }
         
-        // Update Team Vesting UI
-        if (data.team) {
-            document.getElementById('team-total').textContent = formatTokenAmount(data.team.total_allocation);
-            document.getElementById('team-unlocked').textContent = formatTokenAmount(data.team.unlocked);
-            document.getElementById('team-available').textContent = formatTokenAmount(data.team.available);
+        // Update Team Vesting UI (FIX: use data.vesting.team and correct property names)
+        if (data.vesting && data.vesting.team) {
+            const team = data.vesting.team;
+            document.getElementById('team-total').textContent = formatTokenAmount(team.total_amount);
+            document.getElementById('team-unlocked').textContent = formatTokenAmount(team.unlocked_amount);
+            document.getElementById('team-available').textContent = formatTokenAmount(team.available_to_claim);
             
-            const teamProgress = data.team.total_allocation > 0 
-                ? (data.team.unlocked / data.team.total_allocation * 100) 
+            const teamProgress = team.total_amount > 0 
+                ? (team.unlocked_amount / team.total_amount * 100) 
                 : 0;
             document.getElementById('team-progress-bar').style.width = teamProgress + '%';
             document.getElementById('team-progress-text').textContent = teamProgress.toFixed(1) + '%';
             
-            // Enable/disable claim button
+            // Enable/disable claim button (FIX: use available_to_claim)
             const claimTeamBtn = document.getElementById('claimTeamBtn');
-            claimTeamBtn.disabled = data.team.available <= 0;
+            claimTeamBtn.disabled = team.available_to_claim <= 0;
         }
         
         // Hide loading, show content
@@ -3561,13 +3563,20 @@ async function loadVestingData(tokenId) {
     }
 }
 
-function formatTokenAmount(amount) {
-    if (amount >= 1000000) {
-        return (amount / 1000000).toFixed(2) + 'M';
-    } else if (amount >= 1000) {
-        return (amount / 1000).toFixed(2) + 'K';
+function formatTokenAmount(weiAmount) {
+    // Convert from wei (18 decimals) to tokens
+    const tokens = parseFloat(weiAmount) / Math.pow(10, 18);
+    
+    // Format with K, M, B suffixes
+    if (tokens >= 1000000000) {
+        return (tokens / 1000000000).toFixed(2) + 'B';
+    } else if (tokens >= 1000000) {
+        return (tokens / 1000000).toFixed(2) + 'M';
+    } else if (tokens >= 1000) {
+        return (tokens / 1000).toFixed(2) + 'K';
     }
-    return amount.toLocaleString('en-US', {maximumFractionDigits: 0});
+    
+    return tokens.toLocaleString('en-US', {maximumFractionDigits: 2});
 }
 
 async function claimMarketingVesting() {
