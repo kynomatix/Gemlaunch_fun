@@ -15,7 +15,7 @@
         currentTradeMode: 'buy',
         tokenPrice: null,
         marketCap: null,
-        kasToUsd: 0.8,
+        kasToUsd: 0.15, // Will be updated from oracle
         tokenSymbol: null,
         tokenName: null,
         isProToken: false,
@@ -84,6 +84,9 @@
                 this.initializeChatState();
             }, 100);
             
+            // Fetch real KAS price from oracle
+            this.fetchKasPrice();
+            
             // Initialize graduation status polling
             this.fetchGraduationStatus();
             
@@ -96,6 +99,11 @@
             this.graduationPollingInterval = setInterval(() => {
                 this.fetchGraduationStatus();
             }, 30000);
+            
+            // Poll KAS price every 60 seconds
+            setInterval(() => {
+                this.fetchKasPrice();
+            }, 60000);
             
             // Cleanup on page unload
             window.addEventListener('beforeunload', () => {
@@ -354,6 +362,9 @@
                 this.myChart.destroy();
             }
             
+            // Reference self for dynamic kasToUsd access in callbacks
+            const self = this;
+            
             this.myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -395,10 +406,11 @@
                             callbacks: {
                                 label: (context) => {
                                     const value = context.parsed.y;
-                                    if (this.currentChartType === 'marketcap') {
+                                    if (self.currentChartType === 'marketcap') {
                                         return 'Market Cap: $' + (value / 1000).toFixed(2) + 'K';
                                     } else {
-                                        return 'Price: ' + value.toFixed(6) + ' KAS ($' + (value * 0.8).toFixed(4) + ')';
+                                        // Dynamically read current kasToUsd value
+                                        return 'Price: ' + value.toFixed(6) + ' KAS ($' + (value * self.kasToUsd).toFixed(4) + ')';
                                     }
                                 }
                             }
@@ -2232,6 +2244,34 @@
             } catch (error) {
                 console.error('Failed to create spotlight:', error);
                 this.showNotification('❌ Error', 'Failed to create spotlight message', 'error');
+            }
+        },
+        
+        // Fetch real KAS price from oracle
+        fetchKasPrice: async function() {
+            try {
+                const response = await fetch('/api/oracle/kas-price');
+                const data = await response.json();
+                
+                if (data.success && data.kas_price) {
+                    this.kasToUsd = data.kas_price;
+                    console.log(`💰 KAS Price updated: $${this.kasToUsd.toFixed(4)} USD`);
+                    
+                    // Update quote USD display if quote exists
+                    if (window.lastQuote) {
+                        const action = this.currentTradeMode;
+                        const kasValue = action === 'buy' 
+                            ? parseFloat(document.getElementById('kasAmount').value) || 0
+                            : window.lastQuote.kas_out || 0;
+                        const usdAmount = kasValue * this.kasToUsd;
+                        const inputAddon = document.querySelector('.input-addon');
+                        if (inputAddon && kasValue > 0) {
+                            inputAddon.textContent = `$${usdAmount.toFixed(2)} USD`;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch KAS price from oracle:', error);
             }
         },
         
