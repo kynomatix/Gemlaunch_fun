@@ -3635,6 +3635,9 @@ async function loadProClaimsData(tokenId, tradeCount, marketCap, progressToGrad)
             document.getElementById('pro-nextUnlockTime').textContent = nextUnlock;
         }
         
+        // Fetch and update cooldown status for vesting claims
+        await checkCooldownStatus(tokenId);
+        
         // Hide loading, show marketing tab first (most important for PRO)
         document.getElementById('proVestingLoading').style.display = 'none';
         // Use CSS classes for tab visibility (don't use inline styles)
@@ -3774,6 +3777,99 @@ function getClaimButton(basicId, proId) {
     return document.getElementById(basicId);
 }
 
+// Cooldown Timer Helper Functions
+
+// Global object to store active countdown intervals
+const activeCountdowns = {};
+
+// Format seconds to "Xh Ym" display
+function formatCooldownTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+}
+
+// Check and update cooldown status
+async function checkCooldownStatus(tokenId) {
+    try {
+        const response = await fetch(`/api/token/${tokenId}/vesting/cooldown-status`);
+        const data = await response.json();
+        
+        // Update marketing button/timer
+        if (data.marketing) {
+            updateCooldownUI('marketing', data.marketing);
+        }
+        
+        // Update team button/timer  
+        if (data.team) {
+            updateCooldownUI('team', data.team);
+        }
+    } catch (error) {
+        console.error('Error checking cooldown status:', error);
+    }
+}
+
+// Update UI based on cooldown status
+function updateCooldownUI(vestingType, cooldownData) {
+    const btnId = `pro-claim${vestingType.charAt(0).toUpperCase() + vestingType.slice(1)}TabBtn`;
+    const button = document.getElementById(btnId);
+    
+    if (!button) {
+        console.warn(`Button ${btnId} not found`);
+        return;
+    }
+    
+    // Clear any existing countdown for this vesting type
+    if (activeCountdowns[vestingType]) {
+        clearInterval(activeCountdowns[vestingType]);
+        delete activeCountdowns[vestingType];
+    }
+    
+    if (cooldownData.on_cooldown) {
+        // Show countdown timer - disable button and show timer in button text
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-clock"></i> Next claim in: <span id="${vestingType}-timer">${formatCooldownTime(cooldownData.seconds_remaining)}</span>`;
+        
+        // Start countdown
+        startCountdown(vestingType, cooldownData.seconds_remaining);
+    } else {
+        // Show claim button - enable and restore original text
+        button.disabled = false;
+        const capitalizedType = vestingType.charAt(0).toUpperCase() + vestingType.slice(1);
+        button.innerHTML = `<i class="fas fa-coins"></i> Claim ${capitalizedType} Tokens`;
+    }
+}
+
+// Start countdown timer that updates every second
+function startCountdown(vestingType, seconds) {
+    let remaining = seconds;
+    const timerElement = document.getElementById(`${vestingType}-timer`);
+    
+    if (!timerElement) {
+        console.warn(`Timer element ${vestingType}-timer not found`);
+        return;
+    }
+    
+    const interval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            clearInterval(interval);
+            delete activeCountdowns[vestingType];
+            // Refresh cooldown status to show claim button
+            if (currentTokenData && currentTokenData.id) {
+                checkCooldownStatus(currentTokenData.id);
+            }
+        } else {
+            if (timerElement) {
+                timerElement.textContent = formatCooldownTime(remaining);
+            }
+        }
+    }, 1000);
+    
+    // Store interval reference for cleanup
+    activeCountdowns[vestingType] = interval;
+}
+
 async function claimMarketingVesting() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
         alert('Please connect your wallet to claim vesting.');
@@ -3805,6 +3901,11 @@ async function claimMarketingVesting() {
         
         if (!response.ok) {
             const error = await response.json();
+            if (response.status === 429) {
+                // Cooldown active - refresh status
+                alert('Claim is on cooldown. Please wait and try again.');
+                await checkCooldownStatus(currentTokenData.id);
+            }
             throw new Error(error.error || 'Failed to build transaction');
         }
         
@@ -3871,8 +3972,14 @@ async function claimMarketingVesting() {
                 
                 showTransactionModal('success', txHash, 'Marketing tokens claimed successfully!');
                 
+                // Cooldown is now set automatically by backend during withdraw
+                // No separate call needed - cooldown info returned in withdraw response
+                
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
+                
+                // Refresh cooldown status to update UI
+                await checkCooldownStatus(currentTokenData.id);
                 
                 // Reset button
                 btn.innerHTML = originalHTML;
@@ -3947,6 +4054,11 @@ async function claimTeamVesting() {
         
         if (!response.ok) {
             const error = await response.json();
+            if (response.status === 429) {
+                // Cooldown active - refresh status
+                alert('Claim is on cooldown. Please wait and try again.');
+                await checkCooldownStatus(currentTokenData.id);
+            }
             throw new Error(error.error || 'Failed to build transaction');
         }
         
@@ -4013,8 +4125,14 @@ async function claimTeamVesting() {
                 
                 showTransactionModal('success', txHash, 'Team tokens claimed successfully!');
                 
+                // Cooldown is now set automatically by backend during withdraw
+                // No separate call needed - cooldown info returned in withdraw response
+                
                 // Reload vesting data
                 await loadVestingData(currentTokenData.id);
+                
+                // Refresh cooldown status to update UI
+                await checkCooldownStatus(currentTokenData.id);
                 
                 // Reset button
                 btn.innerHTML = originalHTML;

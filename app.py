@@ -5639,11 +5639,24 @@ def build_marketing_vesting_withdraw(token_id):
             'gas': hex(unsigned_tx['gas'])
         }
         
+        # SET COOLDOWN IMMEDIATELY (BEFORE returning tx_data)
+        # This ensures cooldown is enforced even if client doesn't call set-cooldown
+        # Random 12-24 hour cooldown prevents gaming
+        base_cooldown = 12 * 3600  # 12 hours in seconds
+        random_addition = random.randint(0, 12 * 3600)  # 0-12 hours random
+        total_cooldown = base_cooldown + random_addition
+        
+        token.marketing_next_claim_available = datetime.now(timezone.utc) + timedelta(seconds=total_cooldown)
+        db.session.commit()
+        
+        # Return tx_data WITH cooldown info for frontend display
         return jsonify({
             'success': True,
             'tx_data': tx_data,
             'available_to_claim': available,
-            'estimated_gas': unsigned_tx['gas']
+            'estimated_gas': unsigned_tx['gas'],
+            'next_claim_available': token.marketing_next_claim_available.isoformat(),
+            'cooldown_hours': total_cooldown / 3600
         })
         
     except Exception as e:
@@ -5731,75 +5744,28 @@ def build_team_vesting_withdraw(token_id):
             'gas': hex(unsigned_tx['gas'])
         }
         
-        return jsonify({
-            'success': True,
-            'tx_data': tx_data,
-            'available_to_claim': available,
-            'estimated_gas': unsigned_tx['gas']
-        })
-        
-    except Exception as e:
-        logging.error(f"Failed to build team vesting withdraw tx: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/token/<int:token_id>/vesting/set-cooldown', methods=['POST'])
-@csrf.exempt
-def set_vesting_cooldown(token_id):
-    """
-    Set random cooldown after successful vesting claim
-    
-    Frontend should call this endpoint after a vesting claim transaction is confirmed.
-    This implements anti-gaming measures by adding a random 12-24 hour cooldown between claims.
-    
-    Request JSON:
-    {
-        "vesting_type": "marketing|team"
-    }
-    
-    Response:
-    {
-        "success": true,
-        "next_claim_available": "2025-10-17T10:30:00Z",
-        "cooldown_hours": 18.5
-    }
-    """
-    token = Token.query.get_or_404(token_id)
-    
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
-        
-        vesting_type = data.get('vesting_type')
-        
-        if vesting_type not in ['marketing', 'team']:
-            return jsonify({
-                'success': False,
-                'error': 'vesting_type must be "marketing" or "team"'
-            }), 400
-        
-        # Calculate random cooldown: 12h base + random 0-12h
+        # SET COOLDOWN IMMEDIATELY (BEFORE returning tx_data)
+        # This ensures cooldown is enforced even if client doesn't call set-cooldown
+        # Random 12-24 hour cooldown prevents gaming
         base_cooldown = 12 * 3600  # 12 hours in seconds
         random_addition = random.randint(0, 12 * 3600)  # 0-12 hours random
         total_cooldown = base_cooldown + random_addition
         
-        next_available = datetime.now(timezone.utc) + timedelta(seconds=total_cooldown)
-        
-        if vesting_type == 'marketing':
-            token.marketing_next_claim_available = next_available
-        elif vesting_type == 'team':
-            token.team_next_claim_available = next_available
-        
+        token.team_next_claim_available = datetime.now(timezone.utc) + timedelta(seconds=total_cooldown)
         db.session.commit()
         
+        # Return tx_data WITH cooldown info for frontend display
         return jsonify({
             'success': True,
-            'next_claim_available': next_available.isoformat(),
+            'tx_data': tx_data,
+            'available_to_claim': available,
+            'estimated_gas': unsigned_tx['gas'],
+            'next_claim_available': token.team_next_claim_available.isoformat(),
             'cooldown_hours': total_cooldown / 3600
         })
         
     except Exception as e:
-        logging.error(f"Failed to set vesting cooldown: {e}")
+        logging.error(f"Failed to build team vesting withdraw tx: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/token/<int:token_id>/vesting/cooldown-status')
