@@ -1053,3 +1053,163 @@ unlocked_amount = vesting_contract.functions.getUnlockedAmount().call()
 **Why This Matters**: The airdrop popup shows "5% Unlocked" based on database mock data. After vesting contracts are live, it must show actual on-chain unlocked amounts from the AirdropVesting contract's `getUnlockedAmount()` function.
 
 **When to Implement**: Only AFTER smart contracts are deployed and tested. Do NOT attempt this integration before contracts are ready on testnet/mainnet.
+
+---
+
+### EVM Contract Size Constraint Solution (24KB Limit)
+
+**⚠️ IMPLEMENTATION CONSTRAINT**: The spec (lines 347-396) calls for direct vesting deployment within `TokenFactory.createToken()`. However, this exceeds EVM's 24KB contract size limit.
+
+**The Problem**:
+- TokenFactory base logic: ~10KB
+- Embedded vesting bytecode (3 contracts): ~8KB  
+- Constructor + validation: ~6KB
+- **Total: ~24KB+ (EXCEEDS EVM LIMIT)**
+
+When you use `new AirdropVesting()` inside a contract, Solidity embeds the entire bytecode of that contract into the parent contract. With 3 vesting contracts, TokenFactory exceeds the size limit.
+
+**The Solution: VestingDeployer Helper Contract**
+
+```
+TokenFactory (19KB)
+    └─> Calls VestingDeployer.deployVestingContracts()
+            └─> Deploys AirdropVesting (if allocation > 0)
+            └─> Deploys LinearVesting (if allocation > 0)  
+            └─> Deploys CliffVesting (if allocation > 0)
+            └─> Returns (airdropAddr, marketingAddr, teamAddr)
+    └─> Transfers tokens to vesting contracts
+    └─> Emits VestingDeployed event
+```
+
+**VestingDeployer Contract**:
+```solidity
+contract VestingDeployer {
+    address public immutable factory;
+    
+    constructor(address _factory) {
+        factory = _factory;
+    }
+    
+    function deployVestingContracts(
+        address pool,
+        address airdropBeneficiary,
+        address marketingBeneficiary,
+        address teamBeneficiary,
+        uint256 airdropTokens,
+        uint256 marketingTokens,
+        uint256 teamTokens,
+        uint256 /* deploymentTimestamp */
+    ) external returns (
+        address airdropVesting,
+        address marketingVesting,
+        address teamVesting
+    ) {
+        require(msg.sender == factory, "Only factory");
+        
+        // Deploy only if allocation > 0 (spec behavior)
+        if (airdropTokens > 0) {
+            AirdropVesting av = new AirdropVesting(pool, airdropBeneficiary, airdropTokens);
+            airdropVesting = address(av);
+        }
+        if (marketingTokens > 0) {
+            LinearVesting mv = new LinearVesting(pool, marketingBeneficiary, marketingTokens, 12);
+            marketingVesting = address(mv);
+        }
+        if (teamTokens > 0) {
+            CliffVesting tv = new CliffVesting(pool, teamBeneficiary, teamTokens, 6, 18);
+            teamVesting = address(tv);
+        }
+        
+        return (airdropVesting, marketingVesting, teamVesting);
+    }
+}
+```
+
+**Updated TokenFactory Flow** (lines 324-400 adjusted):
+```solidity
+if (reservedPercentage > 0) {
+    // Calculate token amounts
+    uint256 totalVesting = totalSupply * reservedPercentage / 100;
+    uint256 airdropTokens = totalVesting * airdropsAllocation / 100;
+    uint256 marketingTokens = totalVesting * marketingAllocation / 100;
+    uint256 teamTokens = totalVesting * teamAllocation / 100;
+    
+    // Minimum allocation validation (spec lines 335-345)
+    if (airdropTokens > 0) {
+        require(airdropTokens >= 100 * 10**18, "Airdrop allocation too small");
+    }
+    if (marketingTokens > 0) {
+        require(marketingTokens >= 100 * 10**18, "Marketing allocation too small");
+    }
+    if (teamTokens > 0) {
+        require(teamTokens >= 100 * 10**18, "Team allocation too small");
+    }
+    
+    // Deploy via helper (instead of direct deployment)
+    (airdropVestingAddress, marketingVestingAddress, teamVestingAddress) = 
+        VestingDeployer(vestingDeployer).deployVestingContracts(
+            poolAddress,
+            airdropTreasury,    // Automatic beneficiary
+            msg.sender,         // Automatic beneficiary
+            msg.sender,         // Automatic beneficiary
+            airdropTokens,
+            marketingTokens,
+            teamTokens,
+            block.timestamp
+        );
+    
+    // Transfer tokens (spec lines 355-395)
+    if (airdropTokens > 0) {
+        pool.transferReserveToVesting(airdropVestingAddress, airdropTokens);
+        require(IERC20(poolAddress).balanceOf(airdropVestingAddress) == airdropTokens, "Underfunded");
+    }
+    if (marketingTokens > 0) {
+        pool.transferReserveToVesting(marketingVestingAddress, marketingTokens);
+        require(IERC20(poolAddress).balanceOf(marketingVestingAddress) == marketingTokens, "Underfunded");
+    }
+    if (teamTokens > 0) {
+        pool.transferReserveToVesting(teamVestingAddress, teamTokens);
+        require(IERC20(poolAddress).balanceOf(teamVestingAddress) == teamTokens, "Underfunded");
+    }
+    
+    // Finalize (spec line 399)
+    pool.finalizeVestingSetup();
+}
+
+// Emit event (spec lines 408-417) - UNCHANGED
+emit VestingDeployed(
+    poolAddress,
+    airdropVestingAddress,
+    airdropsAllocation,
+    marketingVestingAddress,
+    marketingAllocation,
+    teamVestingAddress,
+    teamAllocation
+);
+```
+
+**What's Different**:
+- ❌ Direct deployment in TokenFactory (spec lines 347-396)
+- ✅ Delegated deployment via VestingDeployer helper
+
+**What's Identical**:
+- ✅ Automatic beneficiaries (airdropTreasury + msg.sender)
+- ✅ Zero allocation handling (100/0/0, 0/100/0 allowed)
+- ✅ Validation logic (sum == 100%, minimum checks)
+- ✅ Transfer & verification flow
+- ✅ VestingDeployed event structure
+- ✅ Atomic deployment (single transaction)
+- ✅ User pays once for all contracts
+
+**Contract Addresses (Testnet)**:
+- TokenFactory: `0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D`
+- VestingDeployer: `0x07edeC513453f193673639Fd60eC35Bc27f1A5E2`
+
+**Why This Works**:
+- VestingDeployer is deployed once with future factory address
+- TokenFactory calls it during createToken() for vesting deployment
+- All 3 vesting contracts deployed atomically in same transaction
+- Returns address(0) for zero allocations (e.g., 100/0/0 returns (addr, 0x0, 0x0))
+- User experience identical to direct deployment
+
+**Bottom Line**: We built exactly what the spec describes - we just split deployment across 2 contracts to fit within EVM's 24KB limit. This is the standard solution used by Uniswap V3, Compound, and Aave for similar constraints. Functionally and behaviorally identical to the spec.
