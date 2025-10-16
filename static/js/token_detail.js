@@ -832,11 +832,24 @@
                 return;
             }
             
-            // NC-3 FIX: Validate quote freshness
+            // NC-3 FIX: Validate quote freshness with auto-refresh
             if (!this.isQuoteFresh()) {
-                ModalManager.alert('Quote Expired', 'Please wait for updated quote...', 'warning');
+                this.showTradeStatus('Refreshing quote...');
                 await this.updateTokenAmount();  // Refresh quote
-                return;
+                
+                // Wait for quote to complete (with timeout)
+                let attempts = 0;
+                while (!this.isQuoteFresh() && attempts < 10) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                this.hideTradeStatus();
+                
+                if (!this.isQuoteFresh()) {
+                    ModalManager.alert('Quote Unavailable', 'Unable to get current price. Please try again.', 'error');
+                    return;
+                }
             }
             
             const action = this.currentTradeMode; // 'buy' or 'sell'
