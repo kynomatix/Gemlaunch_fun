@@ -1848,6 +1848,7 @@
             try {
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/settings/update`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Wallet-Address': localStorage.getItem('connectedWallet'),
@@ -2054,6 +2055,7 @@
             try {
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/settings/update`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Wallet-Address': localStorage.getItem('connectedWallet'),
