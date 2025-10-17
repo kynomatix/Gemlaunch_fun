@@ -60,6 +60,15 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 ## Database Schema
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.
 
+### Data Architecture Strategy
+**Current (Hybrid):** Database stores user profiles, token metadata, and trade events for UX purposes. Blockchain remains source of truth for reserves and balances.
+
+**Future Migration (Planned):** See `GRAPHQL_MIGRATION_PLAN.md` for production architecture:
+- **Keep in DB:** User profiles, points (aggregated), token creator data (recovery system), social features
+- **Query from Blockscout GraphQL:** Trading data, token transfers, holder balances, real-time market stats
+- **Benefits:** Prevents database bloat, eliminates custom event indexer, scales to many users
+- **Implementation:** Phased migration using Blockscout GraphQL API at `https://explorer.testnet.kasplextest.xyz/graphiql` with Flask-Caching
+
 ## Design Patterns
 The project adheres to an MVC pattern.
 
