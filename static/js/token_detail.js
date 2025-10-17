@@ -431,13 +431,15 @@
             // Choose series type based on format
             let series;
             if (chartResult.format === 'candlestick') {
-                // Candlestick chart with teal colors
+                // Candlestick chart: teal for up, white for down
                 series = this.myChart.addCandlestickSeries({
-                    upColor: '#20B2AA',
-                    downColor: '#FF6B6B',
-                    borderVisible: false,
-                    wickUpColor: '#20B2AA',
-                    wickDownColor: '#FF6B6B',
+                    upColor: '#20B2AA',           // Teal body for bullish candles
+                    downColor: '#1a1a1a',         // Dark body for bearish candles
+                    borderUpColor: '#20B2AA',     // Teal border for bullish
+                    borderDownColor: '#FFFFFF',   // White border for bearish
+                    wickUpColor: '#20B2AA',       // Teal wick for bullish
+                    wickDownColor: '#FFFFFF',     // White wick for bearish
+                    borderVisible: true,          // Show borders for better visibility
                     priceFormat: {
                         type: 'custom',
                         formatter: (price) => {
