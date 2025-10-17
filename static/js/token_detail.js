@@ -522,14 +522,26 @@
             const kasAmountInput = document.getElementById('kasAmount');
             const tokenAmountInput = document.getElementById('tokenAmount');
             
+            // Get label elements
+            const kasLabel = kasAmountInput?.parentElement?.querySelector('label');
+            const tokenLabel = tokenAmountInput?.parentElement?.querySelector('label');
+            
             if (mode === 'buy') {
                 // BUY mode: User edits KAS, tokens are output
                 if (kasAmountInput) kasAmountInput.readOnly = false;
                 if (tokenAmountInput) tokenAmountInput.readOnly = true;
+                
+                // Update labels for buy mode
+                if (kasLabel) kasLabel.textContent = 'You Pay (KAS)';
+                if (tokenLabel) tokenLabel.textContent = `You Receive (${this.tokenSymbol || 'TOKEN'})`;
             } else { // sell
                 // SELL mode: User edits tokens, KAS is output
                 if (kasAmountInput) kasAmountInput.readOnly = true;
                 if (tokenAmountInput) tokenAmountInput.readOnly = false;
+                
+                // Update labels for sell mode
+                if (kasLabel) kasLabel.textContent = 'You Receive (KAS)';
+                if (tokenLabel) tokenLabel.textContent = `You Pay (${this.tokenSymbol || 'TOKEN'})`;
             }
             
             // Update trade button text with icon and symbol
@@ -564,12 +576,12 @@
             const tokenAmountInput = document.getElementById('tokenAmount');
             const kasAmountInput = document.getElementById('kasAmount');
             
-            // ⚠️ FIX: Apply loading to INPUT field (what user is editing)
+            // ⚠️ FIX: Show loading indicator WITHOUT disabling input (allow typing)
             if (this.currentTradeMode === 'buy') {
                 // BUY mode: User edits KAS (input), tokens are output
                 if (kasAmountInput) {
                     kasAmountInput.classList.add('loading');
-                    kasAmountInput.disabled = true;
+                    // DON'T disable - let user continue typing
                 }
                 // Dim the output field
                 if (tokenAmountInput) {
@@ -579,7 +591,7 @@
                 // SELL mode: User edits tokens (input), KAS is output  
                 if (tokenAmountInput) {
                     tokenAmountInput.classList.add('loading');
-                    tokenAmountInput.disabled = true;
+                    // DON'T disable - let user continue typing
                 }
                 // Dim the output field
                 if (kasAmountInput) {
@@ -598,17 +610,17 @@
             const tokenAmountInput = document.getElementById('tokenAmount');
             const kasAmountInput = document.getElementById('kasAmount');
             
-            // Remove loading class from both fields
+            // Remove loading class and restore opacity
             if (tokenAmountInput) {
                 tokenAmountInput.classList.remove('loading');
-                tokenAmountInput.disabled = false;
                 tokenAmountInput.style.opacity = '1';
             }
             if (kasAmountInput) {
                 kasAmountInput.classList.remove('loading');
-                kasAmountInput.disabled = false;
                 kasAmountInput.style.opacity = '1';
             }
+            
+            // Note: readOnly state is managed by setTradeMode(), not here
             
             // Restore fee breakdown opacity
             const feeBreakdown = document.getElementById('feeBreakdown');
