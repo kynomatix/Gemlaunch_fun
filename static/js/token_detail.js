@@ -19,6 +19,8 @@
         tokenSymbol: null,
         tokenName: null,
         isProToken: false,
+        kasBalance: 0,
+        tokenBalance: 0,
         
         // Chart state
         currentChartType: 'marketcap',
@@ -559,6 +561,10 @@
             if (kasAmountInput) kasAmountInput.value = '';
             if (tokenAmountInput) tokenAmountInput.value = '';
             this.clearFeeBreakdown();
+            
+            // Update quick buttons and fetch balances
+            this.updateQuickButtons(mode);
+            this.fetchWalletBalances();
         },
         
         switchTradeMode: function() {
@@ -569,6 +575,96 @@
         setQuickAmount: function(amount) {
             document.getElementById('kasAmount').value = amount;
             this.updateTokenAmount();
+        },
+        
+        setQuickPercentage: function(percentage) {
+            // For sell mode: set token amount based on percentage of balance
+            const tokenAmount = (this.tokenBalance * percentage / 100).toFixed(0);
+            document.getElementById('tokenAmount').value = tokenAmount;
+            this.updateTokenAmount();
+        },
+        
+        // Fetch wallet balances for KAS and token
+        fetchWalletBalances: async function() {
+            try {
+                const wallet = window.walletManager?.getConnectedWallet();
+                if (!wallet) {
+                    this.updateBalanceDisplays();
+                    return;
+                }
+                
+                const provider = window.walletManager.getMetaMaskProvider();
+                
+                // Fetch KAS balance
+                const kasBalanceWei = await provider.request({
+                    method: 'eth_getBalance',
+                    params: [wallet.address, 'latest']
+                });
+                this.kasBalance = parseFloat(ethers.utils.formatEther(kasBalanceWei));
+                
+                // Fetch token balance
+                const tokenContract = new ethers.Contract(
+                    window.tokenContractAddress,
+                    [
+                        'function balanceOf(address) view returns (uint256)',
+                        'function decimals() view returns (uint8)'
+                    ],
+                    provider
+                );
+                
+                const tokenBalanceWei = await tokenContract.balanceOf(wallet.address);
+                const decimals = await tokenContract.decimals();
+                this.tokenBalance = parseFloat(ethers.utils.formatUnits(tokenBalanceWei, decimals));
+                
+                this.updateBalanceDisplays();
+                
+            } catch (error) {
+                console.error('Error fetching wallet balances:', error);
+                this.updateBalanceDisplays();
+            }
+        },
+        
+        // Update balance displays in UI
+        updateBalanceDisplays: function() {
+            const kasBalanceEl = document.getElementById('kasBalanceDisplay');
+            const tokenBalanceEl = document.getElementById('tokenBalanceDisplay');
+            
+            if (kasBalanceEl) {
+                kasBalanceEl.textContent = `Balance: ${this.kasBalance.toFixed(4)} KAS`;
+            }
+            if (tokenBalanceEl) {
+                tokenBalanceEl.textContent = `Balance: ${this.tokenBalance.toLocaleString()} ${this.tokenSymbol}`;
+            }
+        },
+        
+        // Update quick buttons based on trade mode
+        updateQuickButtons: function(mode) {
+            const container = document.getElementById('quickAmountsContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (mode === 'buy') {
+                // Buy mode: Show KAS amount buttons
+                const kasAmounts = [100, 500, 1000, 5000];
+                kasAmounts.forEach(amount => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quick-amount';
+                    btn.textContent = `${amount} KAS`;
+                    btn.onclick = () => this.setQuickAmount(amount);
+                    container.appendChild(btn);
+                });
+            } else {
+                // Sell mode: Show percentage buttons
+                const percentages = [25, 50, 75, 100];
+                percentages.forEach(pct => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quick-amount';
+                    btn.textContent = `${pct}%`;
+                    btn.onclick = () => this.setQuickPercentage(pct);
+                    container.appendChild(btn);
+                });
+            }
         },
         
         // Helper functions for quote UI - Phase 3.6 Enhanced
@@ -990,6 +1086,16 @@
                 
                 if (tokenAmount <= 0) {
                     this.showToast('Invalid Amount', 'Please enter a valid token amount.', 'error');
+                    return;
+                }
+                
+                // Check token balance before sell
+                if (this.tokenBalance < tokenAmount) {
+                    this.showToast(
+                        'Insufficient Balance',
+                        `You need ${tokenAmount.toLocaleString()} ${this.tokenSymbol} but only have ${this.tokenBalance.toLocaleString()} ${this.tokenSymbol}`,
+                        'error'
+                    );
                     return;
                 }
                 
@@ -2627,6 +2733,10 @@
         if (window.LightweightCharts && document.getElementById('tradingview_chart')) {
             setTimeout(() => TokenDetail.initChart(), 100);
         }
+        
+        // Initialize wallet balances and quick buttons
+        TokenDetail.updateQuickButtons(TokenDetail.currentTradeMode);
+        TokenDetail.fetchWalletBalances();
         
         // Chart type toggle buttons - only add if not already added
         document.querySelectorAll('.chart-type-btn').forEach(btn => {
