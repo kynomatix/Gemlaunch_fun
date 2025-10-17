@@ -1478,6 +1478,31 @@ class Web3Service:
             logging.error(f"Failed to get virtual KAS reserve for pool {pool_address}: {str(e)}")
             raise
     
+    def get_virtual_token_reserve(self, pool_address):
+        """
+        Get real-time virtual token reserve from bonding pool contract
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            int: Virtual token reserve in wei (18 decimals)
+        """
+        try:
+            logging.debug(f"Getting virtual token reserve for pool {pool_address}")
+            
+            pool = self.get_bonding_pool_contract(pool_address)
+            token_reserve_wei = pool.functions.virtualTokenReserve().call()
+            
+            token_reserve_tokens = self.w3.from_wei(token_reserve_wei, 'ether')
+            logging.debug(f"Virtual token reserve: {token_reserve_tokens} tokens ({token_reserve_wei} wei)")
+            
+            return token_reserve_wei
+            
+        except Exception as e:
+            logging.error(f"Failed to get virtual token reserve for pool {pool_address}: {str(e)}")
+            raise
+    
     # =========================
     # Task 2.2.3 - GraduationController Interactions (Oracle Only)
     # =========================

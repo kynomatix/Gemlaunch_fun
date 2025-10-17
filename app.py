@@ -5635,22 +5635,67 @@ def get_token_chart_data(contract_address):
         # IMPORTANT: Calculate spot price from bonding curve reserves, NOT trade averages
         trade_points = []
         
-        # Start with initial reserves (these are set when token is deployed)
-        # For graduated tokens, use last known reserves
-        current_kas_reserve = float(token.kas_reserve or 0)
-        current_token_reserve = float(token.token_reserve or float(token.total_supply))
+        # Get ALL trades from the beginning
+        all_trades = TradeEvent.query.filter(
+            TradeEvent.token_id == token.id
+        ).order_by(TradeEvent.timestamp.asc()).all()
         
-        # Replay all prior trades to get accurate starting reserves
+        # Calculate initial reserves by tracking cumulative changes from deployment
+        # Start with bonding curve initial reserves (from token deployment)
+        # The token was deployed with: INITIAL_KAS_RESERVE and total_supply as token reserve
+        
+        #Convert total_supply to wei for calculation
+        total_supply_wei = float(token.total_supply) * 1e18
+        
+        # Use deployment initial KAS reserve (e.g., $200 worth of KAS)
+        # If database has kas_reserve set, use it as initial, otherwise use a default
+        if token.kas_reserve and float(token.kas_reserve) > 0:
+            initial_kas_reserve = float(token.kas_reserve)
+        else:
+            # Default initial reserve: ~$200 worth of KAS at current KAS price
+            initial_kas_reserve = 200 / kas_to_usd if kas_to_usd > 0 else 3773.0
+        
+        # Initial token reserve = total supply (in wei)
+        initial_token_reserve = total_supply_wei
+        
+        # Start with initial values
+        current_kas_reserve = initial_kas_reserve
+        current_token_reserve = initial_token_reserve
+        
+        # Replay ALL trades from deployment to track reserve changes
+        for trade in all_trades:
+            kas_amt = float(trade.kas_amount)
+            token_amt_wei = float(trade.token_amount)
+            
+            # Update reserves based on trade
+            if trade.trade_type == 'buy':
+                # Buy: KAS goes into pool, tokens go out
+                current_kas_reserve += kas_amt
+                current_token_reserve -= token_amt_wei
+            else:
+                # Sell: KAS goes out, tokens go back in
+                current_kas_reserve -= kas_amt
+                current_token_reserve += token_amt_wei
+        
+        app.logger.debug(
+            f"Chart reserves for {token.symbol}: "
+            f"Initial KAS={initial_kas_reserve:.2f}, Current KAS={current_kas_reserve:.2f}, "
+            f"Initial Tokens={initial_token_reserve/1e18:.0f}, Current Tokens={current_token_reserve/1e18:.0f}"
+        )
+        
+        # Now reset and replay only trades in our time window
+        current_kas_reserve = initial_kas_reserve
+        current_token_reserve = initial_token_reserve
+        
+        # Replay trades before time window to get starting point
         for prior_trade in prior_trades:
             kas_amt = float(prior_trade.kas_amount)
             token_amt = float(prior_trade.token_amount)
             
             if prior_trade.trade_type == 'buy':
-                # Buy: KAS goes in, tokens go out
                 current_kas_reserve += kas_amt
                 current_token_reserve -= token_amt
             else:
-                # Sell: KAS goes out, tokens go in
                 current_kas_reserve -= kas_amt
                 current_token_reserve += token_amt
         
@@ -5680,8 +5725,8 @@ def get_token_chart_data(contract_address):
             price_per_token_usd = price_per_token_kas * kas_to_usd
             
             # Market cap = price_per_token * circulating_supply (in USD)
-            # Circulating supply = total_supply - current_token_reserve
-            circulating_supply = (float(token.total_supply) - current_token_reserve) / 1e18
+            # Circulating supply = initial_token_reserve (wei) - current_token_reserve (wei), then convert to tokens
+            circulating_supply = (initial_token_reserve - current_token_reserve) / 1e18
             market_cap_usd = price_per_token_usd * circulating_supply
             
             trade_points.append({
