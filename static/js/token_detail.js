@@ -524,9 +524,13 @@
             const kasAmountInput = document.getElementById('kasAmount');
             const tokenAmountInput = document.getElementById('tokenAmount');
             
-            // Get label elements
+            // Get label elements and input groups for reordering
             const kasLabel = kasAmountInput?.parentElement?.querySelector('label');
             const tokenLabel = tokenAmountInput?.parentElement?.querySelector('label');
+            const kasInputGroup = kasAmountInput?.closest('.input-group');
+            const tokenInputGroup = tokenAmountInput?.closest('.input-group');
+            const quickAmountsContainer = document.getElementById('quickAmountsContainer');
+            const tradeForm = document.querySelector('.trade-form');
             
             if (mode === 'buy') {
                 // BUY mode: User edits KAS, tokens are output
@@ -536,6 +540,12 @@
                 // Update labels for buy mode
                 if (kasLabel) kasLabel.textContent = 'You Pay (KAS)';
                 if (tokenLabel) tokenLabel.textContent = `You Receive (${this.tokenSymbol || 'TOKEN'})`;
+                
+                // DOM order for BUY: KAS input group → quick buttons → token input group
+                if (tradeForm && kasInputGroup && quickAmountsContainer && tokenInputGroup) {
+                    tradeForm.insertBefore(kasInputGroup, quickAmountsContainer);
+                    tradeForm.insertBefore(quickAmountsContainer, tokenInputGroup);
+                }
             } else { // sell
                 // SELL mode: User edits tokens, KAS is output
                 if (kasAmountInput) kasAmountInput.readOnly = true;
@@ -544,6 +554,12 @@
                 // Update labels for sell mode
                 if (kasLabel) kasLabel.textContent = 'You Receive (KAS)';
                 if (tokenLabel) tokenLabel.textContent = `You Pay (${this.tokenSymbol || 'TOKEN'})`;
+                
+                // DOM order for SELL: Token input group → quick buttons → KAS input group
+                if (tradeForm && kasInputGroup && quickAmountsContainer && tokenInputGroup) {
+                    tradeForm.insertBefore(tokenInputGroup, quickAmountsContainer);
+                    tradeForm.insertBefore(quickAmountsContainer, kasInputGroup);
+                }
             }
             
             // Update trade button text with icon and symbol
