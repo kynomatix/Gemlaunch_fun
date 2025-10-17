@@ -1928,19 +1928,19 @@
                                     
                                     <div class="form-group">
                                         <label>Minimum tokens to chat</label>
-                                        <input type="number" class="form-control" id="minTokensToChat" value="${TokenDetail.tokenSettings.minTokensToChat || 0}">
+                                        <input type="number" class="form-control" id="minTokensToChat" value="${TokenDetail.tokenSettings.minTokensToChat ?? 0}">
                                         <small class="setting-hint">Minimum balance required to chat</small>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label>Minimum tokens for spotlight</label>
-                                        <input type="number" class="form-control" id="minTokensForSpotlight" value="${TokenDetail.tokenSettings.minTokensForSpotlight || 500}">
+                                        <input type="number" class="form-control" id="minTokensForSpotlight" value="${TokenDetail.tokenSettings.minTokensForSpotlight ?? 500}">
                                         <small class="setting-hint">Tokens required to create spotlight messages</small>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label>Minimum tokens to create poll</label>
-                                        <input type="number" class="form-control" id="minTokensToCreatePoll" value="${TokenDetail.tokenSettings.minTokensToCreatePoll || 1000}">
+                                        <input type="number" class="form-control" id="minTokensToCreatePoll" value="${TokenDetail.tokenSettings.minTokensToCreatePoll ?? 1000}">
                                         <small class="setting-hint">Tokens required to create polls</small>
                                     </div>
                                 </div>
@@ -1979,19 +1979,19 @@
                                     
                                     <div class="form-group">
                                         <label>Minimum tokens to chat</label>
-                                        <input type="number" class="form-control" id="minTokensToChat" value="${TokenDetail.tokenSettings.minTokensToChat || 0}">
+                                        <input type="number" class="form-control" id="minTokensToChat" value="${TokenDetail.tokenSettings.minTokensToChat ?? 0}">
                                         <small class="setting-hint">Minimum balance required to chat</small>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label>Minimum tokens for spotlight</label>
-                                        <input type="number" class="form-control" id="minTokensForSpotlight" value="${TokenDetail.tokenSettings.minTokensForSpotlight || 500}">
+                                        <input type="number" class="form-control" id="minTokensForSpotlight" value="${TokenDetail.tokenSettings.minTokensForSpotlight ?? 500}">
                                         <small class="setting-hint">Tokens required to create spotlight messages</small>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label>Minimum tokens to create poll</label>
-                                        <input type="number" class="form-control" id="minTokensToCreatePoll" value="${TokenDetail.tokenSettings.minTokensToCreatePoll || 1000}">
+                                        <input type="number" class="form-control" id="minTokensToCreatePoll" value="${TokenDetail.tokenSettings.minTokensToCreatePoll ?? 1000}">
                                         <small class="setting-hint">Tokens required to create polls</small>
                                     </div>
                                 </div>

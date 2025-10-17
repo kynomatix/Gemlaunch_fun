@@ -51,11 +51,11 @@ class HolderService:
         Returns:
             float: User's token balance (0 if not found or error)
         """
-        from flask import current_app
-        
-        # Use global cache instance from app.py
-        cache = current_app.extensions.get('cache')
-        if not cache:
+        # Import cache from app.py
+        try:
+            from app import cache
+        except ImportError:
+            cache = None
             logger.warning("⚠️  Cache not configured, querying blockchain directly")
         
         cache_key = f"balance_{wallet_address}_{token_address}".lower()
