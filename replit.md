@@ -61,13 +61,17 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.
 
 ### Data Architecture Strategy
-**Current (Hybrid):** Database stores user profiles, token metadata, and trade events for UX purposes. Blockchain remains source of truth for reserves and balances.
+**Current (Hybrid - GraphQL Migration In Progress):** 
+- ✅ **Trading data**: Migrated to Blockscout GraphQL API (real-time blockchain queries)
+- ✅ **Holder verification**: Web3 direct queries via balanceOf() (no database)
+- ⚠️ **Portfolio aggregation**: Temporarily disabled (TODO: blockchain-backed implementation)
+- 📦 **Database still used for**: User profiles, token creator data, achievements, social features
 
-**Future Migration (Planned):** See `GRAPHQL_MIGRATION_PLAN.md` for production architecture:
-- **Keep in DB:** User profiles, points (aggregated), token creator data (recovery system), social features
-- **Query from Blockscout GraphQL:** Trading data, token transfers, holder balances, real-time market stats
-- **Benefits:** Prevents database bloat, eliminates custom event indexer, scales to many users
-- **Implementation:** Phased migration using Blockscout GraphQL API at `https://explorer.testnet.kasplextest.xyz/graphiql` with Flask-Caching
+**Migration Status (October 2025):** See `GRAPHQL_MIGRATION_PLAN.md` for full details:
+- ✅ **Phase 0-4 Complete**: GraphQL client, recent trades API, holder service, schema cleanup
+- 🔄 **Event indexer**: Still running (Phase 5 - removal planned)
+- **API Endpoint**: `https://explorer.testnet.kasplextest.xyz/api/v1/graphql` (10s caching via Flask-Caching)
+- **Benefits Achieved**: Real-time blockchain data, no trade event storage, scalable architecture
 
 ## Design Patterns
 The project adheres to an MVC pattern.

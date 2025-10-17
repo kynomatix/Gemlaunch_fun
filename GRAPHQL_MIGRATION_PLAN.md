@@ -1,5 +1,31 @@
 # GraphQL Migration Plan - Decentralizing Trading Data
 
+## ✅ MIGRATION STATUS: PHASES 0-4 COMPLETE (October 17, 2025)
+
+**Completed Work:**
+- ✅ Phase 0: Endpoint discovery → Found `/api/v1/graphql` (not `/graphiql`)
+- ✅ Phase 1: BlockscoutClient with 8-transfer complexity limit, 10s caching, error handling
+- ✅ Phase 2: Recent trades API migrated from TradeEvent database to GraphQL
+- ✅ Phase 3: Points system simplified to on-demand calculation
+- ✅ Phase 4: HolderService using web3.balanceOf() direct queries (architect approved)
+
+**What's Working:**
+- Real-time trading data from blockchain via GraphQL
+- Token gating via direct blockchain balance queries (no database)
+- Flask-Caching with 10-second TTL for performance
+- All token detail pages showing live blockchain data
+
+**Known Limitations:**
+- Dashboard portfolio temporarily disabled (TODO: blockchain-backed aggregation)
+- Event indexer still running (Phase 5 - removal planned for future)
+
+**Next Steps:**
+- Consider removing event indexer when no longer needed
+- Implement blockchain-based portfolio aggregation for dashboard
+- Add integration tests for balance/holder verification
+
+---
+
 ## 🚨 Critical Fixes Applied (Claude's Feedback)
 
 **This plan has been updated with the following critical corrections:**
