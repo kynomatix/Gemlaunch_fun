@@ -661,6 +661,66 @@ def process_graduation_events(from_block, to_block):
         return {'success': False, 'error': str(e)}
 
 
+def index_transaction_immediately(tx_hash):
+    """
+    Index events from a specific transaction immediately (for real-time updates)
+    
+    Args:
+        tx_hash: Transaction hash to index
+    
+    Returns:
+        dict: Indexing result with success status
+    """
+    try:
+        web3_service = get_web3_service()
+        w3 = web3_service.w3
+        
+        # Get transaction receipt
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+        if not receipt:
+            return {'success': False, 'error': 'Transaction not found'}
+        
+        block_number = receipt['blockNumber']
+        
+        # Find the token by contract address from logs
+        token_address = None
+        for log in receipt['logs']:
+            # The first log's address is usually the pool/token contract
+            if log['address']:
+                token_address = log['address'].lower()
+                break
+        
+        if not token_address:
+            return {'success': False, 'error': 'Could not find token address'}
+        
+        # Find token in database
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == token_address
+        ).first()
+        
+        if not token:
+            logger.debug(f"Token not found for address {token_address}")
+            return {'success': False, 'error': 'Token not found'}
+        
+        # Process events from this specific block and token
+        result = process_bonding_pool_events(
+            token.contract_address,
+            block_number,
+            block_number
+        )
+        
+        if result.get('success'):
+            logger.info(f"✅ Immediately indexed transaction {tx_hash[:10]}... - {result.get('buy_count', 0)} buys, {result.get('sell_count', 0)} sells")
+            return {'success': True, 'result': result}
+        else:
+            return {'success': False, 'error': result.get('error', 'Unknown error')}
+            
+    except Exception as e:
+        logger.error(f"Error immediately indexing transaction {tx_hash}: {str(e)}")
+        db.session.rollback()
+        return {'success': False, 'error': str(e)}
+
+
 def index_all_events(from_block=None, to_block='latest'):
     """
     Index all events from all contracts

@@ -518,6 +518,17 @@ def stream_tx_status(tx_hash):
                     
                     # Stop if terminal state reached
                     if status.get('status') in ['confirmed', 'failed']:
+                        # Immediately index this transaction so it appears in recent trades
+                        if status.get('status') == 'confirmed':
+                            try:
+                                from services.event_indexer import index_transaction_immediately
+                                index_result = index_transaction_immediately(tx_hash)
+                                if index_result.get('success'):
+                                    logging.info(f"✅ Immediately indexed confirmed tx: {tx_hash[:10]}...")
+                                else:
+                                    logging.warning(f"Failed to immediately index tx {tx_hash[:10]}...: {index_result.get('error')}")
+                            except Exception as e:
+                                logging.error(f"Error immediately indexing tx {tx_hash}: {str(e)}")
                         break
                     
                     time.sleep(2)  # Check every 2 seconds
