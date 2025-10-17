@@ -1262,8 +1262,6 @@ def token_detail(contract_address):
     
     return render_template('app/token_detail.html', 
                          token=token, 
-                         recent_trades=recent_trades,
-                         user_holding=user_holding,
                          user=user,
                          is_owner=is_owner,
                          is_pro_token=is_pro_token,
