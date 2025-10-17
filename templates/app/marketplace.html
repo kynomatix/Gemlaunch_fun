@@ -824,9 +824,9 @@
                                             <i class="fas fa-clock"></i>
                                             <span class="pill-text">{{ token_age }}</span>
                                         </span>
-                                        <span class="metric-pill change-pill positive" title="Bonding curve filled">
-                                            <i class="fas fa-chart-area"></i>
-                                            <span class="pill-text">{{ "%.1f"|format(token.bonding_curve_fill or 0) }}% filled</span>
+                                        <span class="metric-pill change-pill {{ 'positive' if token.price_change_24h >= 0 else 'negative' }}" title="24h price change">
+                                            <i class="fas fa-chart-line"></i>
+                                            <span class="pill-text">{{ '+' if token.price_change_24h >= 0 else '' }}{{ "%.1f"|format(token.price_change_24h or 0) }}%</span>
                                         </span>
                                         <span class="metric-pill type-pill {{ 'advanced' if token.is_pro else 'basic' }}" title="Token type">
                                             {% if token.is_pro %}

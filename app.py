@@ -1188,8 +1188,13 @@ def token_marketplace():
     for token in tokens:
         token.is_pro = TokenService.is_pro_token(token)
     
-    # TODO: Re-enable with caching/batching to prevent timeout
-    # Enrich tokens with real-time marketplace data (bonding curve progress, 24h volume)
+    # Set default values for marketplace metrics
+    for token in tokens:
+        token.volume_24h = 0
+        token.price_change_24h = 0
+        token.graduation_progress = 0
+    
+    # TODO: Re-enable enrichment after optimizing for speed
     # from services.marketplace_service import MarketplaceService
     # tokens = MarketplaceService.enrich_tokens_with_marketplace_data(tokens)
     

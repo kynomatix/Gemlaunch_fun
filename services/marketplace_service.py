@@ -114,33 +114,157 @@ class MarketplaceService:
             return 0
     
     @staticmethod
+    def get_24h_metrics(token_address: str) -> Dict:
+        """
+        Get 24h metrics (volume and price change) from GraphQL efficiently.
+        
+        Returns:
+            dict: {
+                'volume_24h': float,        # 24h volume in KAS
+                'price_change_24h': float   # 24h price change percentage
+            }
+        """
+        try:
+            from services.blockscout_client import BlockscoutClient
+            from services.web3_service import get_web3_service
+            from datetime import timezone
+            
+            client = BlockscoutClient()
+            web3_service = get_web3_service()
+            
+            # Get recent transfers (trades) from GraphQL
+            transfers = client.get_token_transfers(token_address, first=8)
+            
+            if not transfers:
+                return {'volume_24h': 0, 'price_change_24h': 0}
+            
+            # Calculate volume and price change from transfers within last 24 hours
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+            
+            total_volume = 0
+            prices_24h_ago = []
+            current_prices = []
+            
+            for transfer in transfers:
+                # Parse timestamp
+                timestamp = datetime.fromisoformat(transfer['timestamp'].replace('Z', '+00:00'))
+                
+                # Calculate trade price (KAS per token)
+                kas_value = float(transfer.get('kas_value', 0)) / 1e18
+                token_amount = float(transfer.get('token_amount', 0)) / 1e18
+                
+                if token_amount > 0:
+                    price = kas_value / token_amount
+                    
+                    # Track recent prices for current price
+                    current_prices.append(price)
+                    
+                    # Track older prices for 24h comparison
+                    if timestamp < cutoff_time:
+                        prices_24h_ago.append(price)
+                
+                # Add to volume if within 24h
+                if timestamp >= cutoff_time:
+                    total_volume += kas_value
+            
+            # Calculate price change
+            price_change = 0
+            if current_prices:
+                current_price = current_prices[0]  # Most recent price
+                
+                if prices_24h_ago:
+                    # Compare to 24h ago price
+                    old_price = prices_24h_ago[-1]  # Oldest price beyond 24h
+                    if old_price > 0:
+                        price_change = ((current_price - old_price) / old_price) * 100
+                elif len(current_prices) > 1:
+                    # If no data beyond 24h, compare first to last trade
+                    old_price = current_prices[-1]
+                    if old_price > 0:
+                        price_change = ((current_price - old_price) / old_price) * 100
+            
+            return {
+                'volume_24h': round(total_volume, 2),
+                'price_change_24h': round(price_change, 1)
+            }
+            
+        except Exception as e:
+            logger.debug(f"Could not fetch 24h metrics for {token_address}: {e}")
+            return {'volume_24h': 0, 'price_change_24h': 0}
+    
+    @staticmethod
+    def is_valid_address(address: str) -> bool:
+        """Check if address is a valid hex address"""
+        if not address or not isinstance(address, str):
+            return False
+        if not address.startswith('0x'):
+            return False
+        if len(address) != 42:  # 0x + 40 hex chars
+            return False
+        try:
+            # Try to convert to checksum address to validate
+            from web3 import Web3
+            Web3.to_checksum_address(address)
+            return True
+        except:
+            return False
+    
+    @staticmethod
     def enrich_tokens_with_marketplace_data(tokens: List[Token]) -> List[Token]:
         """
         Enrich token objects with real-time marketplace data.
+        Only processes tokens with valid contract addresses.
         
         Args:
             tokens: List of Token model instances
             
         Returns:
             List of Token instances with added attributes:
-                - bonding_curve_fill: Percentage of bonding curve filled
                 - volume_24h: 24h trading volume in KAS
+                - price_change_24h: 24h price change percentage
                 - graduation_progress: Progress toward graduation
         """
+        # Limit number of tokens to enrich to prevent timeout
+        MAX_TOKENS_TO_ENRICH = 10
+        enriched_count = 0
+        
         for token in tokens:
-            if not token.contract_address:
-                # Token not deployed yet
-                token.bonding_curve_fill = 0
-                token.volume_24h = 0
-                token.graduation_progress = 0
+            # Set defaults
+            token.volume_24h = 0
+            token.price_change_24h = 0
+            token.graduation_progress = 0
+            
+            # Skip if no address or invalid address
+            if not token.contract_address or not MarketplaceService.is_valid_address(token.contract_address):
                 continue
             
-            # Get bonding curve data
-            curve_data = MarketplaceService.get_bonding_curve_progress(token.contract_address)
-            token.bonding_curve_fill = curve_data['fill_percentage']
-            token.graduation_progress = curve_data['graduation_progress']
+            # Limit enrichment to prevent timeout
+            if enriched_count >= MAX_TOKENS_TO_ENRICH:
+                continue
             
-            # Get 24h volume
-            token.volume_24h = MarketplaceService.get_24h_trade_volume(token.contract_address)
+            enriched_count += 1
+            
+            # Get 24h metrics (volume + price change) 
+            try:
+                metrics = MarketplaceService.get_24h_metrics(token.contract_address)
+                token.volume_24h = metrics['volume_24h']
+                token.price_change_24h = metrics['price_change_24h']
+            except Exception as e:
+                logger.debug(f"Error fetching metrics for {token.contract_address}: {e}")
+            
+            # Get graduation progress from bonding curve
+            try:
+                from services.web3_service import get_web3_service
+                web3_service = get_web3_service()
+                pool_contract = web3_service.get_bonding_pool_contract(token.contract_address)
+                
+                if pool_contract:
+                    virtual_kas_reserve = pool_contract.functions.virtualKasReserve().call()
+                    initial_virtual_kas = pool_contract.functions.INITIAL_VIRTUAL_KAS().call()
+                    kas_collected = virtual_kas_reserve - initial_virtual_kas
+                    graduation_target = 5000 * 1e18
+                    token.graduation_progress = min((kas_collected / graduation_target) * 100, 100) if graduation_target > 0 else 0
+            except Exception as e:
+                logger.debug(f"Error fetching graduation progress for {token.contract_address}: {e}")
         
         return tokens
