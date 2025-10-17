@@ -5632,27 +5632,61 @@ def get_token_chart_data(contract_address):
         ).order_by(TradeEvent.timestamp.asc()).all()
         
         # Build trade data points with prices
+        # IMPORTANT: Calculate spot price from bonding curve reserves, NOT trade averages
         trade_points = []
         
+        # Start with initial reserves (these are set when token is deployed)
+        # For graduated tokens, use last known reserves
+        current_kas_reserve = float(token.kas_reserve or 0)
+        current_token_reserve = float(token.token_reserve or float(token.total_supply))
+        
+        # Replay all prior trades to get accurate starting reserves
+        for prior_trade in prior_trades:
+            kas_amt = float(prior_trade.kas_amount)
+            token_amt = float(prior_trade.token_amount)
+            
+            if prior_trade.trade_type == 'buy':
+                # Buy: KAS goes in, tokens go out
+                current_kas_reserve += kas_amt
+                current_token_reserve -= token_amt
+            else:
+                # Sell: KAS goes out, tokens go in
+                current_kas_reserve -= kas_amt
+                current_token_reserve += token_amt
+        
+        # Now process trades in our time window
         for trade in trades:
-            # Calculate price per token from trade amounts
-            # Note: kas_amount is already in KAS, but token_amount is in wei (18 decimals)
             kas_amt = float(trade.kas_amount) if trade.kas_amount else 0
             token_amt_wei = float(trade.token_amount) if trade.token_amount else 0
-            token_amt = token_amt_wei / 1e18  # Convert from wei to full tokens
             
-            # Price per token in KAS
-            price_per_token_kas = (kas_amt / token_amt) if token_amt > 0 else 0
+            # Update reserves based on trade type
+            if trade.trade_type == 'buy':
+                # Buy: KAS goes in, tokens go out
+                current_kas_reserve += kas_amt
+                current_token_reserve -= token_amt_wei
+            else:
+                # Sell: KAS goes out, tokens go in  
+                current_kas_reserve -= kas_amt
+                current_token_reserve += token_amt_wei
+            
+            # Calculate spot price from reserve ratio (bonding curve formula)
+            # Price per token (in KAS) = virtualKasReserve / virtualTokenReserve
+            if current_token_reserve > 0:
+                price_per_token_kas = current_kas_reserve / (current_token_reserve / 1e18)
+            else:
+                price_per_token_kas = 0
             
             # Convert to USD using oracle price
             price_per_token_usd = price_per_token_kas * kas_to_usd
             
-            # Market cap = price_per_token * total_supply (in USD)
-            market_cap_usd = price_per_token_usd * float(token.total_supply) if token.total_supply else 0
+            # Market cap = price_per_token * circulating_supply (in USD)
+            # Circulating supply = total_supply - current_token_reserve
+            circulating_supply = (float(token.total_supply) - current_token_reserve) / 1e18
+            market_cap_usd = price_per_token_usd * circulating_supply
             
             trade_points.append({
                 'timestamp': trade.timestamp,
-                'price': price_per_token_usd,  # Price per token in USD
+                'price': price_per_token_usd,  # Spot price per token in USD
                 'market_cap': market_cap_usd,  # Market cap in USD
                 'volume': kas_amt,
                 'trade_type': trade.trade_type
