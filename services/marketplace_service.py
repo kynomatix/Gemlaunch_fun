@@ -214,6 +214,7 @@ class MarketplaceService:
         """
         Enrich token objects with real-time marketplace data.
         Only processes tokens with valid contract addresses.
+        Optimized to enrich valid tokens first for better UX.
         
         Args:
             tokens: List of Token model instances
@@ -224,47 +225,61 @@ class MarketplaceService:
                 - price_change_24h: 24h price change percentage
                 - graduation_progress: Progress toward graduation
         """
-        # Limit number of tokens to enrich to prevent timeout
-        MAX_TOKENS_TO_ENRICH = 10
-        enriched_count = 0
+        # Separate valid and invalid tokens
+        valid_tokens = []
+        invalid_tokens = []
         
         for token in tokens:
-            # Set defaults
+            if token.contract_address and MarketplaceService.is_valid_address(token.contract_address):
+                valid_tokens.append(token)
+            else:
+                invalid_tokens.append(token)
+        
+        # Set defaults for all invalid tokens
+        for token in invalid_tokens:
+            token.volume_24h = 0
+            token.price_change_24h = 0
+            token.graduation_progress = 0
+        
+        # Enrich valid tokens (limit to prevent timeout)
+        MAX_TOKENS_TO_ENRICH = 20  # Reduced for performance
+        
+        for i, token in enumerate(valid_tokens):
+            # Set defaults first
             token.volume_24h = 0
             token.price_change_24h = 0
             token.graduation_progress = 0
             
-            # Skip if no address or invalid address
-            if not token.contract_address or not MarketplaceService.is_valid_address(token.contract_address):
+            # Stop after limit
+            if i >= MAX_TOKENS_TO_ENRICH:
                 continue
             
-            # Limit enrichment to prevent timeout
-            if enriched_count >= MAX_TOKENS_TO_ENRICH:
-                continue
-            
-            enriched_count += 1
-            
-            # Get 24h metrics (volume + price change) 
+            # Get 24h metrics (volume + price change) - cached for 10s
             try:
                 metrics = MarketplaceService.get_24h_metrics(token.contract_address)
                 token.volume_24h = metrics['volume_24h']
                 token.price_change_24h = metrics['price_change_24h']
             except Exception as e:
-                logger.debug(f"Error fetching metrics for {token.contract_address}: {e}")
+                # Skip metrics on error
+                pass
             
-            # Get graduation progress from bonding curve
-            try:
-                from services.web3_service import get_web3_service
-                web3_service = get_web3_service()
-                pool_contract = web3_service.get_bonding_pool_contract(token.contract_address)
-                
-                if pool_contract:
-                    virtual_kas_reserve = pool_contract.functions.virtualKasReserve().call()
-                    initial_virtual_kas = pool_contract.functions.INITIAL_VIRTUAL_KAS().call()
-                    kas_collected = virtual_kas_reserve - initial_virtual_kas
-                    graduation_target = 5000 * 1e18
-                    token.graduation_progress = min((kas_collected / graduation_target) * 100, 100) if graduation_target > 0 else 0
-            except Exception as e:
-                logger.debug(f"Error fetching graduation progress for {token.contract_address}: {e}")
+            # Get graduation progress from bonding curve (only if we got metrics successfully)
+            if token.volume_24h > 0 or i < 10:  # Prioritize tokens with activity
+                try:
+                    from services.web3_service import get_web3_service
+                    web3_service = get_web3_service()
+                    pool_contract = web3_service.get_bonding_pool_contract(token.contract_address)
+                    
+                    if pool_contract:
+                        virtual_kas_reserve = pool_contract.functions.virtualKasReserve().call()
+                        initial_virtual_kas = pool_contract.functions.INITIAL_VIRTUAL_KAS().call()
+                        kas_collected = virtual_kas_reserve - initial_virtual_kas
+                        graduation_target = 5000 * 1e18
+                        token.graduation_progress = min((kas_collected / graduation_target) * 100, 100) if graduation_target > 0 else 0
+                except Exception as e:
+                    # Skip graduation progress on error
+                    pass
+        
+        logger.info(f"✅ Enriched {min(len(valid_tokens), MAX_TOKENS_TO_ENRICH)} of {len(valid_tokens)} valid tokens ({len(invalid_tokens)} invalid)")
         
         return tokens

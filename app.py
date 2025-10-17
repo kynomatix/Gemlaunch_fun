@@ -1188,15 +1188,9 @@ def token_marketplace():
     for token in tokens:
         token.is_pro = TokenService.is_pro_token(token)
     
-    # Set default values for marketplace metrics
-    for token in tokens:
-        token.volume_24h = 0
-        token.price_change_24h = 0
-        token.graduation_progress = 0
-    
-    # TODO: Re-enable enrichment after optimizing for speed
-    # from services.marketplace_service import MarketplaceService
-    # tokens = MarketplaceService.enrich_tokens_with_marketplace_data(tokens)
+    # Enrich tokens with real-time marketplace data (with validation and limits)
+    from services.marketplace_service import MarketplaceService
+    tokens = MarketplaceService.enrich_tokens_with_marketplace_data(tokens)
     
     return render_template('app/marketplace.html', tokens=tokens, user=user, now=datetime.now(timezone.utc))
 
