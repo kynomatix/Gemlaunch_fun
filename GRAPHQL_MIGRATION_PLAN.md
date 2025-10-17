@@ -1117,3 +1117,84 @@ class BlockscoutClient:
 2. ⬜ Update Phase 1 to use REST API
 3. ⬜ Create `services/blockscout_client.py` with REST API
 4. ⬜ Continue with migration using REST endpoints
+
+---
+
+### ⚠️ Update: GraphQL Endpoint Investigation (Continued)
+
+**Date:** October 17, 2025  
+**Status:** User instructed to use GraphQL, not REST API  
+
+**User Feedback:**
+- GraphQL ≠ REST API (missing: flexible queries, subscriptions, batch operations)
+- Instructions suggest `/graphiql` IS the GraphQL endpoint (POST requests)
+- Same URL serves UI (GET) and API (POST)
+
+**Testing Results with `gql` library:**
+```python
+# Installed: gql[all]==4.0.0
+# Endpoint: https://explorer.testnet.kasplextest.xyz/graphiql
+# Result: TransportProtocolError - "Not a JSON answer: <!DOCTYPE html>"
+```
+
+**Observation:** `/graphiql` returns HTML for both GET and POST requests, even with proper headers and `gql` library.
+
+**Blocker:** Cannot find working GraphQL API endpoint.
+
+**Possible Solutions:**
+1. Inspect GraphiQL UI network requests to find actual GraphQL endpoint
+2. Check Blockscout documentation for Kasplex-specific configuration
+3. Contact Kasplex team for correct GraphQL endpoint
+4. Re-evaluate if GraphQL is actually available on this instance
+
+**Decision Needed:** How to proceed with migration?
+
+---
+
+### 🔍 Final Investigation Results
+
+**Architect's Solution Tested:**
+```python
+# POST with raw GraphQL body and Content-Type: application/graphql
+response = requests.post(
+    "https://explorer.testnet.kasplextest.xyz/graphiql",
+    data=raw_query,
+    headers={"Content-Type": "application/graphql"}
+)
+# Result: Still returns HTML (200 OK, text/html)
+```
+
+**All Attempts Failed:**
+1. ❌ JSON payload `{"query": "..."}` → HTML
+2. ❌ Raw GraphQL with `Content-Type: application/graphql` → HTML  
+3. ❌ Using `gql` library with proper transport → HTML
+4. ❌ All endpoint variations (`/graphiql`, `/graphql`, `/api/graphql`) → HTML or 404
+
+**Conclusion:** This Blockscout instance may not have GraphQL API publicly enabled.
+
+---
+
+### 📊 What We CAN Do vs What We CANNOT Do
+
+#### ✅ **Working: REST API**
+- Token transfers: `/api?module=account&action=tokentx&address={addr}`
+- Token info: `/api?module=token&action=getToken&contractaddress={addr}`
+- Address info: `/api/v2/addresses/{addr}`
+- Transaction data: All available
+
+#### ❌ **Not Available: GraphQL Features**
+- Real-time subscriptions (would need WebSocket)
+- Flexible single-query nested data
+- GraphQL-specific batching
+
+#### ✅ **Can Still Achieve Migration Goals with REST:**
+1. **Decentralize trading data** → Query from REST API instead of database
+2. **Prevent database bloat** → Store only aggregated user points
+3. **Remove event indexer** → Use REST API for trade queries
+4. **Scale to many users** → REST API is maintained by network
+5. **Caching** → Flask-Caching works with REST just like GraphQL
+
+**What changes with REST:**
+- Need multiple API calls for related data (vs 1 GraphQL query)
+- No real-time subscriptions (use polling instead - same as we would with GraphQL)
+- Pagination uses page/offset (vs cursor)
