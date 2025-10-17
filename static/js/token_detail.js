@@ -633,7 +633,12 @@
                 this.updateBalanceDisplays();
                 
             } catch (error) {
-                console.error('Error fetching wallet balances:', error);
+                // Detailed error logging for diagnostics
+                console.error('❌ Error fetching wallet balances');
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                console.error('Contract address:', window.tokenContractAddress);
+                console.error('Provider network:', await provider.getNetwork());
                 this.updateBalanceDisplays();
             }
         },
