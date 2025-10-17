@@ -1210,10 +1210,11 @@
                 const slippageBps = window.lastQuote?.auto_slippage_bps || 50;
                 const minKasOut = expectedKas * (10000 - slippageBps) / 10000;
                 
+                // CRITICAL: Backend expects token_amount in wei as string
                 params = {
                     token_address: window.tokenContractAddress,
                     user_address: wallet.address,  // REQUIRED FOR METAMASK
-                    token_amount: tokenAmount,
+                    token_amount: tokenAmountWei.toString(),  // Convert to wei for backend
                     min_kas_out: minKasOut,
                     deadline: Math.floor(Date.now() / 1000) + 300
                 };
