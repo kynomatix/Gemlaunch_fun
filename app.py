@@ -1204,7 +1204,7 @@ def token_detail(contract_address):
     from services.kas_oracle import oracle
     kas_price = oracle.get_kas_price()
     
-    # Calculate real-time market cap from blockchain (for non-graduated tokens)
+    # Calculate real-time price and market cap from blockchain (for non-graduated tokens)
     if not token.is_graduated and token.contract_address:
         try:
             from services.web3_service import get_web3_service
@@ -1216,20 +1216,35 @@ def token_detail(contract_address):
             )
             
             if len(contract_code) > 2:  # Contract exists ('0x' means no contract)
-                # Read real-time virtualKasReserve
-                kas_reserve_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
-                kas_amount = kas_reserve_wei / 10**18
+                # Get bonding pool contract to read both reserves
+                pool = web3_service.get_bonding_pool_contract(token.contract_address)
                 
-                # Calculate real-time market cap = KAS reserve * KAS price
+                # Read both reserves
+                kas_reserve_wei = pool.functions.virtualKasReserve().call()
+                token_reserve_wei = pool.functions.virtualTokenReserve().call()
+                
+                kas_amount = kas_reserve_wei / 10**18
+                token_amount = token_reserve_wei / 10**18
+                
+                # Calculate price per token (in KAS)
+                if token_amount > 0:
+                    price_in_kas = kas_amount / token_amount
+                    token.current_price = price_in_kas
+                else:
+                    token.current_price = 0
+                
+                # Calculate real-time market cap = KAS reserve * KAS/USD price
                 token.current_market_cap = kas_amount * kas_price
                 
                 app.logger.debug(
-                    f"Real-time market cap for {token.symbol}: ${token.current_market_cap:.2f} "
-                    f"(virtualKasReserve: {kas_amount:.8f} KAS)"
+                    f"Real-time data for {token.symbol}: "
+                    f"Price=${price_in_kas * kas_price:.8f}, "
+                    f"Market Cap=${token.current_market_cap:.2f} "
+                    f"(KAS reserve: {kas_amount:.8f}, Token reserve: {token_amount:.2f})"
                 )
         except Exception as e:
-            app.logger.debug(f"Could not fetch real-time market cap for {token.symbol}: {e}")
-            # Keep existing database value as fallback
+            app.logger.debug(f"Could not fetch real-time data for {token.symbol}: {e}")
+            # Keep existing database values as fallback
     
     return render_template('app/token_detail.html', 
                          token=token, 
