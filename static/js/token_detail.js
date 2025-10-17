@@ -880,6 +880,7 @@
             } else { // sell
                 // SELL: User enters tokens, gets KAS amount
                 const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
+                console.log('💱 SELL quote - Token amount string:', tokenAmountStr);
                 
                 if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
                     document.getElementById('kasAmount').value = 0;
@@ -891,9 +892,10 @@
                 // Use raw string to avoid parseFloat scientific notation issues
                 try {
                     const tokenAmountWei = ethers.utils.parseUnits(tokenAmountStr, 18).toString();
+                    console.log('💱 SELL quote - Token amount in wei:', tokenAmountWei);
                     params.token_amount = tokenAmountWei;  // ✅ Sell needs token_amount in wei
                 } catch (error) {
-                    console.error('Failed to convert token amount to wei:', error);
+                    console.error('❌ Failed to convert token amount to wei:', error);
                     this.showQuoteError('Invalid token amount');
                     return;
                 }
@@ -932,6 +934,7 @@
                                 Math.floor(quote.tokens_out);
                         } else { // sell
                             // Show KAS user will receive
+                            console.log('💱 SELL quote response - KAS out:', quote.kas_out);
                             document.getElementById('kasAmount').value = 
                                 quote.kas_out.toFixed(6);
                         }
