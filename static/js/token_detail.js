@@ -602,7 +602,8 @@
         
         setQuickPercentage: function(percentage) {
             // For sell mode: set token amount based on percentage of balance
-            const tokenAmount = (this.tokenBalance * percentage / 100).toFixed(0);
+            // Preserve decimals for accurate calculations
+            const tokenAmount = (this.tokenBalance * percentage / 100).toFixed(6);
             document.getElementById('tokenAmount').value = tokenAmount;
             this.updateTokenAmount();
         },
@@ -1166,7 +1167,8 @@
                 
                 // CB-1 FIX: CHECK ERC20 APPROVAL
                 const wallet = window.walletManager.getConnectedWallet();
-                const provider = window.walletManager.getMetaMaskProvider();
+                const rawProvider = window.walletManager.getMetaMaskProvider();
+                const provider = new ethers.providers.Web3Provider(rawProvider);
                 
                 // ⚠️ FIX #2: Token and Pool are SEPARATE contracts
                 // Token is at window.tokenContractAddress
