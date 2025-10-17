@@ -1767,6 +1767,32 @@ def update_token_settings(contract_address):
         db.session.rollback()
         return jsonify({'error': f'Failed to update settings: {str(e)}'}), 500
 
+@app.route('/api/token/<contract_address>/recent-trades', methods=['GET'])
+def get_recent_trades(contract_address):
+    """Get recent trades for a token"""
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Get recent trades from TradeEvent (blockchain data)
+    recent_trades = TradeEvent.query.filter_by(
+        token_id=token.id
+    ).order_by(TradeEvent.timestamp.desc()).limit(10).all()
+    
+    # Format trades for frontend
+    trades_data = []
+    for trade in recent_trades:
+        trades_data.append({
+            'trade_type': trade.trade_type,
+            'token_amount': str(trade.token_amount),
+            'kas_amount': float(trade.kas_amount),
+            'user_wallet_address': trade.user_wallet_address,
+            'timestamp': trade.timestamp.isoformat() if trade.timestamp else None
+        })
+    
+    return jsonify({
+        'success': True,
+        'trades': trades_data
+    })
+
 @app.route('/api/token/<contract_address>/airdrop/available', methods=['GET'])
 @require_wallet_connection
 def get_airdrop_available(contract_address):

@@ -1290,6 +1290,84 @@
             }
         },
         
+        // Refresh recent trades after a successful trade
+        refreshRecentTrades: async function() {
+            try {
+                const tokenAddress = window.tokenContractAddress;
+                const response = await fetch(`/api/token/${tokenAddress}/recent-trades`);
+                
+                if (!response.ok) {
+                    console.error('Failed to fetch recent trades');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.trades) {
+                    this.updateRecentTradesUI(data.trades);
+                }
+            } catch (error) {
+                console.error('Error refreshing recent trades:', error);
+            }
+        },
+        
+        // Update recent trades UI
+        updateRecentTradesUI: function(trades) {
+            const tradesListContainer = document.querySelector('.trades-list');
+            if (!tradesListContainer) return;
+            
+            if (trades.length === 0) {
+                tradesListContainer.innerHTML = `
+                    <div style="padding: 2rem; text-align: center; color: #999;">
+                        <i class="fas fa-exchange-alt" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+                        <p style="margin: 0;">No trades yet</p>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: #666;">Be the first to trade!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const tradesHTML = trades.slice(0, 10).map(trade => {
+                const tradeType = trade.trade_type;
+                const badgeBg = tradeType === 'buy' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                const badgeColor = tradeType === 'buy' ? '#22c55e' : '#ef4444';
+                const tokenAmount = (parseFloat(trade.token_amount) / 1e18).toFixed(2);
+                const kasAmount = parseFloat(trade.kas_amount).toFixed(2);
+                const walletShort = trade.user_wallet_address 
+                    ? `${trade.user_wallet_address.slice(0, 6)}...${trade.user_wallet_address.slice(-4)}`
+                    : 'Unknown';
+                const timeStr = trade.timestamp ? new Date(trade.timestamp).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false}) : 'Unknown';
+                
+                return `
+                    <div class="trade-item" style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="trade-type-badge" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: ${badgeBg}; color: ${badgeColor};">
+                                ${tradeType.toUpperCase()}
+                            </span>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="color: #FFF; font-size: 0.9rem;">
+                                    ${tokenAmount} ${this.tokenSymbol}
+                                </span>
+                                <span style="color: #999; font-size: 0.75rem;">
+                                    ${kasAmount} KAS
+                                </span>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: #BBB; font-size: 0.85rem;">
+                                ${walletShort}
+                            </div>
+                            <div style="color: #777; font-size: 0.75rem;">
+                                ${timeStr}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            tradesListContainer.innerHTML = tradesHTML;
+        },
+        
         // SSE Transaction Monitoring
         monitorTransaction: function(txHash) {
             const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
@@ -1314,10 +1392,9 @@
                         window.WalletManager.updateWalletBalance();
                     }
                     
-                    // Reload page to update charts and balances
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
+                    // Update balances and recent trades without full reload
+                    this.fetchWalletBalances();
+                    this.refreshRecentTrades();
                     
                 } else if (data.status === 'failed' || data.status === 'error') {
                     eventSource.close();
@@ -1349,10 +1426,9 @@
                             window.WalletManager.updateWalletBalance();
                         }
                         
-                        // Reload page to update charts and balances
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
+                        // Update balances and recent trades without full reload
+                        this.fetchWalletBalances();
+                        this.refreshRecentTrades();
                         
                     } else if (status.status === 'failed' || status.status === 'error') {
                         this.showToast('Transaction Failed', status.message || 'Transaction failed', 'error');
