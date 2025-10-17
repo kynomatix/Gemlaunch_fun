@@ -5594,8 +5594,8 @@ def get_token_chart_data(contract_address):
         if requested_format:
             use_format = requested_format
         else:
-            # Use area chart for tokens with <3 trades (not enough for candlesticks)
-            use_format = 'area' if len(trade_points) < 3 else 'candlestick'
+            # Always use candlesticks when there's trade data
+            use_format = 'candlestick' if len(trade_points) > 0 else 'area'
         
         # If no trades, return current stats as area chart
         if not trade_points:
@@ -5697,10 +5697,19 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         timestamp = point['timestamp']
         bucket_time = timestamp.replace(second=0, microsecond=0)
         
+        # Ensure both timestamps are timezone-aware for comparison
+        if start_time.tzinfo is None:
+            start_time_aware = start_time.replace(tzinfo=timezone.utc)
+        else:
+            start_time_aware = start_time
+            
+        if bucket_time.tzinfo is None:
+            bucket_time = bucket_time.replace(tzinfo=timezone.utc)
+        
         # Floor to interval
-        minutes_since_start = (bucket_time - start_time).total_seconds() // 60
+        minutes_since_start = (bucket_time - start_time_aware).total_seconds() // 60
         bucket_minutes = (minutes_since_start // (interval_seconds // 60)) * (interval_seconds // 60)
-        bucket_timestamp = start_time + timedelta(minutes=bucket_minutes)
+        bucket_timestamp = start_time_aware + timedelta(minutes=bucket_minutes)
         
         # Use Unix timestamp (seconds) as key for TradingView compatibility
         bucket_key = int(bucket_timestamp.timestamp())
