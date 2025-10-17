@@ -5890,8 +5890,10 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         bucket_key = int(bucket_timestamp.timestamp())
         buckets[bucket_key].append(point)
     
-    # Build OHLC candles
+    # Build OHLC candles with proper open/close tracking
     candles = []
+    previous_close = None
+    
     for bucket_timestamp, bucket_trades in sorted(buckets.items()):
         if not bucket_trades:
             continue
@@ -5902,11 +5904,21 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         else:  # marketcap
             values = [t['market_cap'] for t in bucket_trades]
         
-        # OHLC from values
-        open_value = values[0]
+        # OHLC calculation with proper open tracking
+        # Open: use previous candle's close, or first trade if no previous
+        if previous_close is not None:
+            open_value = previous_close
+        else:
+            open_value = values[0]
+        
+        # Close: always the last value in this bucket
         close_value = values[-1]
-        high_value = max(values)
-        low_value = min(values)
+        
+        # High: max of all values AND the open (to ensure wick shows properly)
+        high_value = max(max(values), open_value)
+        
+        # Low: min of all values AND the open (to ensure wick shows properly)
+        low_value = min(min(values), open_value)
         
         # Sum volume in bucket
         total_volume = sum(t['volume'] for t in bucket_trades)
@@ -5919,6 +5931,9 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
             'close': close_value,
             'volume': total_volume
         })
+        
+        # Update previous close for next candle
+        previous_close = close_value
     
     return candles
 
