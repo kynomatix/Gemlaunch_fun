@@ -541,10 +541,14 @@
                 if (kasLabel) kasLabel.textContent = 'You Pay (KAS)';
                 if (tokenLabel) tokenLabel.textContent = `You Receive (${this.tokenSymbol || 'TOKEN'})`;
                 
-                // DOM order for BUY: KAS input group → quick buttons → token input group
+                // BUY mode order: KAS input (pay) → buttons → Token input (receive)
+                // This is the natural HTML order, just ensure it's correct
                 if (tradeForm && kasInputGroup && quickAmountsContainer && tokenInputGroup) {
-                    tradeForm.insertBefore(kasInputGroup, quickAmountsContainer);
-                    tradeForm.insertBefore(quickAmountsContainer, tokenInputGroup);
+                    // Insert in correct order: KAS, buttons, token
+                    const firstElement = tradeForm.firstElementChild;
+                    tradeForm.insertBefore(kasInputGroup, firstElement);
+                    tradeForm.insertBefore(quickAmountsContainer, kasInputGroup.nextElementSibling);
+                    tradeForm.insertBefore(tokenInputGroup, quickAmountsContainer.nextElementSibling);
                 }
             } else { // sell
                 // SELL mode: User edits tokens, KAS is output
@@ -555,10 +559,13 @@
                 if (kasLabel) kasLabel.textContent = 'You Receive (KAS)';
                 if (tokenLabel) tokenLabel.textContent = `You Pay (${this.tokenSymbol || 'TOKEN'})`;
                 
-                // DOM order for SELL: Token input group → quick buttons → KAS input group
+                // SELL mode order: Token input (pay) → buttons → KAS input (receive)
                 if (tradeForm && kasInputGroup && quickAmountsContainer && tokenInputGroup) {
-                    tradeForm.insertBefore(tokenInputGroup, quickAmountsContainer);
-                    tradeForm.insertBefore(quickAmountsContainer, kasInputGroup);
+                    // Insert in correct order: token, buttons, KAS
+                    const firstElement = tradeForm.firstElementChild;
+                    tradeForm.insertBefore(tokenInputGroup, firstElement);
+                    tradeForm.insertBefore(quickAmountsContainer, tokenInputGroup.nextElementSibling);
+                    tradeForm.insertBefore(kasInputGroup, quickAmountsContainer.nextElementSibling);
                 }
             }
             
