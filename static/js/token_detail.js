@@ -220,7 +220,9 @@
             
             // Load spotlight messages from database
             try {
-                const response = await fetch(`/api/token/${window.tokenContractAddress}/spotlight`);
+                const response = await fetch(`/api/token/${window.tokenContractAddress}/spotlight`, {
+                    credentials: 'include'
+                });
                 if (response.ok) {
                     const data = await response.json();
                     
@@ -2609,6 +2611,7 @@
             try {
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/spotlight`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Wallet-Address': localStorage.getItem('connectedWallet')
