@@ -232,6 +232,45 @@ class BlockscoutClient:
             logger.error(f"❌ Get transaction failed: {type(e).__name__}: {str(e)}")
             return None
     
+    def get_all_token_transfers(
+        self,
+        token_address: str,
+        max_transfers: int = 1000
+    ) -> List[Dict[str, Any]]:
+        """
+        Get ALL token transfers for a token.
+        
+        NOTE: Blockscout GraphQL doesn't support cursor pagination effectively.
+        This fetches recent transfers only (up to 8 due to complexity limits).
+        For complete history, we rely on the event indexer or accept limitations.
+        
+        Args:
+            token_address: Token contract address (e.g., 0x...)
+            max_transfers: Maximum number of transfers to fetch (default 1000, but limited to 8)
+            
+        Returns:
+            List of transfer events sorted by timestamp (oldest first)
+        """
+        logger.info(f"📊 Fetching transfer history for {token_address[:10]}...")
+        
+        try:
+            # Due to Blockscout complexity limits, we can only fetch ~8 transfers per query
+            # and cursor pagination isn't properly supported
+            transfers = self.get_token_transfers(
+                token_address=token_address,
+                first=8  # Max we can reliably fetch
+            )
+            
+            # Sort by timestamp (oldest first) for proper reserve calculation
+            transfers.sort(key=lambda x: x.get('timestamp', ''))
+            
+            logger.info(f"✅ Fetched {len(transfers)} transfers (limited by GraphQL complexity)")
+            return transfers
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch transfers: {type(e).__name__}: {str(e)}")
+            return []
+    
     def health_check(self) -> bool:
         """
         Check if GraphQL API is accessible

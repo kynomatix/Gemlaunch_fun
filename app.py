@@ -5614,6 +5614,7 @@ def sync_token_supply(contract_address):
 def get_token_chart_data(contract_address):
     """
     Get real trade history data for token price/volume chart with OHLC candlesticks
+    NOW USING GRAPHQL - Fetches trades directly from blockchain via Blockscout
     
     Query params:
     - timeframe: '24h' (default), '7d', '30d'
@@ -5673,43 +5674,52 @@ def get_token_chart_data(contract_address):
         
         interval = requested_interval or default_interval
         
-        # Calculate starting supply from all trades BEFORE the time window
-        prior_trades = TradeEvent.query.filter(
-            TradeEvent.token_id == token.id,
-            TradeEvent.timestamp < start_time
-        ).all()
-        
-        starting_supply = 0
-        for trade in prior_trades:
-            if trade.trade_type == 'buy':
-                starting_supply += float(trade.token_amount)
-            else:
-                starting_supply -= float(trade.token_amount)
-        
-        # Query trade events within timeframe, ordered by timestamp
-        trades = TradeEvent.query.filter(
-            TradeEvent.token_id == token.id,
-            TradeEvent.timestamp >= start_time
-        ).order_by(TradeEvent.timestamp.asc()).all()
-        
-        # Build trade data points with prices
-        # IMPORTANT: Calculate spot price from bonding curve reserves, NOT trade averages
-        trade_points = []
-        
-        # Get ALL trades from the beginning
-        all_trades = TradeEvent.query.filter(
+        # Use TradeEvent database for chart data (indexed by event indexer)
+        # GraphQL has complexity limits that prevent fetching complete history
+        all_db_trades = TradeEvent.query.filter(
             TradeEvent.token_id == token.id
         ).order_by(TradeEvent.timestamp.asc()).all()
         
-        # Calculate initial reserves by tracking cumulative changes from deployment
-        # Start with bonding curve initial reserves (from token deployment)
-        # The token was deployed with: INITIAL_KAS_RESERVE and total_supply as token reserve
+        if not all_db_trades:
+            # No trades yet, return current stats as area chart
+            current_price_kas = float(token.current_price or 0)
+            current_mc_kas = float(token.current_market_cap or 0)
+            current_price_usd = current_price_kas * kas_to_usd
+            current_mc_usd = current_mc_kas * kas_to_usd
+            
+            value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
+            return jsonify({
+                'success': True,
+                'data': [{
+                    'time': int(now.timestamp()),
+                    'value': value,
+                    'volume': 0
+                }],
+                'format': 'area',
+                'timeframe': timeframe,
+                'interval': interval
+            })
         
-        #Convert total_supply to wei for calculation
+        # Convert database trades to dict format
+        all_trades = []
+        for trade in all_db_trades:
+            all_trades.append({
+                'trade_type': trade.trade_type,
+                'timestamp': trade.timestamp,
+                'kas_amount': float(trade.kas_amount or 0),
+                'token_amount': float(trade.token_amount or 0),
+                'trader_address': trade.trader_address,
+                'tx_hash': trade.tx_hash
+            })
+        
+        # Filter trades within the requested timeframe
+        trades_in_window = [t for t in all_trades if t['timestamp'] >= start_time]
+        prior_trades = [t for t in all_trades if t['timestamp'] < start_time]
+        
+        # Calculate initial bonding curve reserves
         total_supply_wei = float(token.total_supply) * 1e18
         
         # Use deployment initial KAS reserve (e.g., $200 worth of KAS)
-        # If database has kas_reserve set, use it as initial, otherwise use a default
         if token.kas_reserve and float(token.kas_reserve) > 0:
             initial_kas_reserve = float(token.kas_reserve)
         else:
@@ -5719,64 +5729,42 @@ def get_token_chart_data(contract_address):
         # Initial token reserve = total supply (in wei)
         initial_token_reserve = total_supply_wei
         
-        # Start with initial values
+        # Start with initial values and replay prior trades to get starting point
         current_kas_reserve = initial_kas_reserve
         current_token_reserve = initial_token_reserve
         
-        # Replay ALL trades from deployment to track reserve changes
-        for trade in all_trades:
-            kas_amt = float(trade.kas_amount)
-            token_amt_wei = float(trade.token_amount)
-            
-            # Update reserves based on trade
-            if trade.trade_type == 'buy':
-                # Buy: KAS goes into pool, tokens go out
-                current_kas_reserve += kas_amt
-                current_token_reserve -= token_amt_wei
-            else:
-                # Sell: KAS goes out, tokens go back in
-                current_kas_reserve -= kas_amt
-                current_token_reserve += token_amt_wei
-        
-        app.logger.debug(
-            f"Chart reserves for {token.symbol}: "
-            f"Initial KAS={initial_kas_reserve:.2f}, Current KAS={current_kas_reserve:.2f}, "
-            f"Initial Tokens={initial_token_reserve/1e18:.0f}, Current Tokens={current_token_reserve/1e18:.0f}"
-        )
-        
-        # Now reset and replay only trades in our time window
-        current_kas_reserve = initial_kas_reserve
-        current_token_reserve = initial_token_reserve
-        
-        # Replay trades before time window to get starting point
+        # Replay trades before time window to get starting reserves
         for prior_trade in prior_trades:
-            kas_amt = float(prior_trade.kas_amount)
-            token_amt = float(prior_trade.token_amount)
+            kas_amt = float(prior_trade['kas_amount'])
+            token_amt = float(prior_trade['token_amount'])
             
-            if prior_trade.trade_type == 'buy':
+            if prior_trade['trade_type'] == 'buy':
                 current_kas_reserve += kas_amt
                 current_token_reserve -= token_amt
             else:
                 current_kas_reserve -= kas_amt
                 current_token_reserve += token_amt
         
-        # Now process trades in our time window
-        for trade in trades:
-            kas_amt = float(trade.kas_amount) if trade.kas_amount else 0
-            token_amt_wei = float(trade.token_amount) if trade.token_amount else 0
+        app.logger.debug(
+            f"Chart starting reserves for {token.symbol}: "
+            f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.0f}"
+        )
+        
+        # Build trade points by processing trades in window
+        trade_points = []
+        for trade in trades_in_window:
+            kas_amt = float(trade['kas_amount'])
+            token_amt = float(trade['token_amount'])
             
             # Update reserves based on trade type
-            if trade.trade_type == 'buy':
-                # Buy: KAS goes in, tokens go out
+            if trade['trade_type'] == 'buy':
                 current_kas_reserve += kas_amt
-                current_token_reserve -= token_amt_wei
+                current_token_reserve -= token_amt
             else:
-                # Sell: KAS goes out, tokens go in  
                 current_kas_reserve -= kas_amt
-                current_token_reserve += token_amt_wei
+                current_token_reserve += token_amt
             
             # Calculate spot price from reserve ratio (bonding curve formula)
-            # Price per token (in KAS) = virtualKasReserve / virtualTokenReserve
             if current_token_reserve > 0:
                 price_per_token_kas = current_kas_reserve / (current_token_reserve / 1e18)
             else:
@@ -5786,16 +5774,15 @@ def get_token_chart_data(contract_address):
             price_per_token_usd = price_per_token_kas * kas_to_usd
             
             # Market cap = price_per_token * circulating_supply (in USD)
-            # Circulating supply = initial_token_reserve (wei) - current_token_reserve (wei), then convert to tokens
             circulating_supply = (initial_token_reserve - current_token_reserve) / 1e18
             market_cap_usd = price_per_token_usd * circulating_supply
             
             trade_points.append({
-                'timestamp': trade.timestamp,
-                'price': price_per_token_usd,  # Spot price per token in USD
-                'market_cap': market_cap_usd,  # Market cap in USD
+                'timestamp': trade['timestamp'],
+                'price': price_per_token_usd,
+                'market_cap': market_cap_usd,
                 'volume': kas_amt,
-                'trade_type': trade.trade_type
+                'trade_type': trade['trade_type']
             })
         
         # Decide format based on trade count

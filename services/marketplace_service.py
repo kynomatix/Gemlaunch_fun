@@ -11,6 +11,69 @@ from models import Token
 logger = logging.getLogger(__name__)
 
 
+def parse_transfer_to_trade(transfer: Dict, token_address: str) -> Optional[Dict]:
+    """
+    Parse a GraphQL token transfer into a trade event.
+    
+    Filters out vesting contract transfers and other non-trade activity.
+    Determines buy vs sell based on the direction (to/from bonding curve pool).
+    
+    Args:
+        transfer: GraphQL transfer dict with buyer, seller, token_amount, timestamp, kas_value
+        token_address: Token contract address (the bonding curve pool address)
+        
+    Returns:
+        Dict with trade_type, timestamp, kas_amount, token_amount, trader_address
+        Or None if not a valid trade (vesting, airdrop, etc.)
+    """
+    from datetime import datetime, timezone
+    
+    # Extract addresses
+    from_addr = transfer.get('seller', '').lower()
+    to_addr = transfer.get('buyer', '').lower()
+    pool_addr = token_address.lower()
+    
+    # Skip if either address is missing
+    if not from_addr or not to_addr:
+        return None
+    
+    # Determine if this is a buy or sell
+    # Buy: Pool (from) → User (to), User pays KAS
+    # Sell: User (from) → Pool (to), User receives KAS
+    
+    if from_addr == pool_addr:
+        # Buy: tokens going FROM pool TO user
+        trade_type = 'buy'
+        trader_address = to_addr
+    elif to_addr == pool_addr:
+        # Sell: tokens going FROM user TO pool
+        trade_type = 'sell'
+        trader_address = from_addr
+    else:
+        # Not a trade with the pool (could be vesting, airdrop, transfer, etc.)
+        return None
+    
+    # Parse timestamp
+    timestamp_str = transfer.get('timestamp', '')
+    try:
+        timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+    except:
+        timestamp = datetime.now(timezone.utc)
+    
+    # Extract amounts
+    token_amount = float(transfer.get('token_amount', 0))
+    kas_value = float(transfer.get('kas_value', 0)) / 1e18  # Convert from wei to KAS
+    
+    return {
+        'trade_type': trade_type,
+        'timestamp': timestamp,
+        'kas_amount': kas_value,
+        'token_amount': token_amount,
+        'trader_address': trader_address,
+        'tx_hash': transfer.get('tx_hash', '')
+    }
+
+
 class MarketplaceService:
     """Service for fetching marketplace token data with bonding curve metrics"""
     
