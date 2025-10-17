@@ -88,6 +88,11 @@
                 this.initializeChatState();
             }, 100);
             
+            // Load recent trades from GraphQL
+            setTimeout(() => {
+                this.refreshRecentTrades();
+            }, 200);
+            
             // Initialize graduation status polling
             this.fetchGraduationStatus();
             
