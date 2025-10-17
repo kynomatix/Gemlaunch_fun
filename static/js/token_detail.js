@@ -879,15 +879,24 @@
                 
             } else { // sell
                 // SELL: User enters tokens, gets KAS amount
-                const tokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
+                const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
                 
-                if (tokenAmount <= 0) {
+                if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
                     document.getElementById('kasAmount').value = 0;
                     this.clearFeeBreakdown();
                     return;  // ✅ Now safe to return - already cancelled pending work
                 }
                 
-                params.token_amount = tokenAmount;  // ✅ Sell needs token_amount
+                // Convert token amount to wei (backend expects wei as string)
+                // Use raw string to avoid parseFloat scientific notation issues
+                try {
+                    const tokenAmountWei = ethers.utils.parseUnits(tokenAmountStr, 18).toString();
+                    params.token_amount = tokenAmountWei;  // ✅ Sell needs token_amount in wei
+                } catch (error) {
+                    console.error('Failed to convert token amount to wei:', error);
+                    this.showQuoteError('Invalid token amount');
+                    return;
+                }
             }
             
             // Create NEW AbortController for this request
