@@ -4059,8 +4059,21 @@ def api_trade_sell():
         logging.debug(f"Validation error in trade/sell: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        logging.error(f"Error in trade/sell: {str(e)}")
-        return jsonify({'success': False, 'error': 'Failed to execute sell trade'}), 500
+        error_msg = str(e)
+        logging.error(f"Error in trade/sell: {error_msg}")
+        
+        # Extract revert reason from web3 errors
+        if 'execution reverted' in error_msg.lower():
+            # Extract the actual revert message
+            if 'Slippage too high' in error_msg:
+                error_msg = 'Slippage too high - price moved too much. Try increasing slippage tolerance or using a smaller amount.'
+            elif ':' in error_msg:
+                # Try to extract message after colon
+                parts = error_msg.split(':')
+                if len(parts) > 1:
+                    error_msg = parts[-1].strip()
+        
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/api/trade/<action>/estimate-gas', methods=['POST'])
 @csrf.exempt

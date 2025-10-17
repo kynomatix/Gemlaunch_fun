@@ -1207,7 +1207,8 @@
                 }
                 
                 // Calculate slippage protection
-                const slippageBps = window.lastQuote?.auto_slippage_bps || 50;
+                // Use 500 bps (5%) default for volatile bonding curves
+                const slippageBps = window.lastQuote?.auto_slippage_bps || 500;
                 const minKasOut = expectedKas * (10000 - slippageBps) / 10000;
                 
                 // CRITICAL: Backend expects token_amount in wei as string
