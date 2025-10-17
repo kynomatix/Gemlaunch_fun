@@ -1279,5 +1279,33 @@ response = requests.post(
 
 **Next Steps:**
 - ✅ Phase 0 Complete - Endpoint discovered
-- ⬜ Phase 1 - Build BlockscoutClient with `/api/v1/graphql`
-- ⬜ Continue with migration plan using GraphQL (as intended)
+- ✅ Phase 1 Complete - BlockscoutClient created with `/api/v1/graphql`
+- ✅ Phase 2 Complete - Recent trades endpoint migrated to GraphQL
+- ⏭️ Phase 3 Simplified - Trading volume can be calculated on-demand from GraphQL
+- ⬜ Continue with Phase 4 (Database Cleanup)
+
+---
+
+### ✅ Phase 3 Implementation Decision
+
+**Date:** October 17, 2025  
+**Status:** Simplified approach adopted
+
+**Original Plan:**
+- Create points_aggregator.py service
+- Scheduled job to query GraphQL and update user.total_trading_volume
+- Store aggregated trading metrics
+
+**Revised Approach:**
+- **Keep:** user.total_trading_volume field (used by achievements)
+- **Strategy:** Calculate on-demand from GraphQL when checking achievements
+- **Rationale:** 
+  - GraphQL queries with caching (10s TTL) are fast enough
+  - No need for additional scheduled jobs
+  - Simpler architecture, fewer moving parts
+  - Can add aggregation later if performance requires it
+
+**Implementation:**
+- Achievement service can call blockscout_client.get_user_trades() when evaluating trading_volume achievements
+- With caching, this won't cause performance issues
+- Reduces complexity compared to maintaining separate aggregation tables
