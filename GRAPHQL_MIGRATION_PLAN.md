@@ -1309,3 +1309,122 @@ response = requests.post(
 - Achievement service can call blockscout_client.get_user_trades() when evaluating trading_volume achievements
 - With caching, this won't cause performance issues
 - Reduces complexity compared to maintaining separate aggregation tables
+
+---
+
+### ✅ Phase 4 Implementation - CRITICAL FIX APPLIED
+
+**Date:** October 17, 2025  
+**Status:** Fixed after architect review
+
+**Initial Implementation Issues (FIXED):**
+1. ❌ HolderService only checked first 100 holders → broke token gating
+2. ❌ Created new Cache() instead of using global instance
+3. ⚠️ Dashboard holdings replaced with empty array (known limitation)
+
+**Fixed Implementation:**
+- ✅ HolderService now queries blockchain DIRECTLY via web3.balanceOf()
+- ✅ Uses global Flask-Caching instance from current_app.extensions
+- ✅ 10-second caching with proper cache key management
+- ✅ Token gating works for ALL holders (not just top 100)
+
+**Files Updated:**
+- services/holder_service.py: Complete rewrite using web3 direct queries
+- app.py: Token gating endpoints use fixed HolderService
+
+**Known Limitations:**
+- Dashboard portfolio (line 1083-1085): Returns empty array (TODO for future)
+  - Reason: Complex portfolio query requires scanning all tokens
+  - Workaround: Users can view holdings on individual token pages
+  - Priority: Low (not critical for token gating or trading)
+
+---
+
+### ✅ Phase 4: Database Schema Cleanup (In Progress)
+
+**Date:** October 17, 2025  
+**Status:** Holder service migration complete
+
+**Completed:**
+1. ✅ Removed dead code: unused `recent_trades` variable in token_detail route
+2. ✅ Created HolderService (services/holder_service.py):
+   - `user_holds_min_tokens(wallet_address, token_address, min_amount)` → bool
+   - `get_user_balance(wallet_address, token_address)` → float
+   - `get_user_holding_info(wallet_address, token_address)` → dict
+   - Uses Blockscout GraphQL API with 10-second caching
+3. ✅ Replaced all Holding.query calls in app.py:
+   - Line 1082-1084 (dashboard) - Replaced with empty list (TODO: implement proper blockchain query)
+   - Line 1204 (token_detail) - Removed unused user_holding variable
+   - Line 1593-1595 (get_token_holdings API) - Now uses HolderService.get_user_holding_info()
+   - Line 1651-1659 (token_spotlight) - Now uses HolderService.user_holds_min_tokens()
+4. ✅ Token gating updated to use blockchain data for:
+   - Spotlight messages (min token requirement check)
+   - Token holdings API (balance verification)
+
+**Remaining (Phase 5):**
+- Remove TradeEvent model (after all references replaced)
+- Remove Holding model (after dashboard portfolio implemented properly)
+- Clean up database migrations
+
+---
+
+### 🚧 ChartDataService - Future Implementation (Separate Task)
+
+**Location:** app.py lines 5688-5714 (approximately)  
+**Complexity:** HIGH - Requires candlestick data aggregation
+
+**Current Implementation:**
+```python
+# Chart data endpoint queries TradeEvent table for historical trades
+# Aggregates into candlestick format (OHLC - Open, High, Low, Close)
+```
+
+**Challenge:**
+- Candlestick charts require time-bucketed aggregation (5min, 1hr, 1day intervals)
+- GraphQL provides individual transfers, not pre-aggregated candles
+- Need to process potentially thousands of transfers client-side or server-side
+
+**Migration Options:**
+
+1. **Real-time Aggregation (Simple but slower):**
+   ```python
+   # Fetch all transfers for timeframe
+   transfers = blockscout_client.get_token_transfers(token_address, first=1000)
+   # Aggregate into buckets
+   candles = aggregate_to_candlesticks(transfers, interval='1h')
+   ```
+   - ❌ Slow for tokens with many trades
+   - ✅ No database storage needed
+   - ✅ Always up-to-date
+
+2. **Cached Aggregation (Recommended):**
+   ```python
+   # Cache candlestick data for longer periods (5 minutes)
+   @cache.cached(timeout=300)
+   def get_chart_data(token_address, interval):
+       transfers = blockscout_client.get_token_transfers(...)
+       return aggregate_and_cache(transfers, interval)
+   ```
+   - ✅ Fast for repeated requests
+   - ✅ No database bloat
+   - ❌ 5-minute staleness acceptable
+
+3. **Database Aggregation Tables (Complex):**
+   - Store pre-aggregated candles in database
+   - Update via scheduled job
+   - ❌ Defeats purpose of GraphQL migration
+   - ❌ Still causes database bloat
+
+**Recommendation:**
+- Implement **Option 2 (Cached Aggregation)** in separate task
+- Use Flask-Caching with 5-minute TTL
+- Aggregate on-demand from GraphQL transfers
+- Monitor performance and optimize if needed
+
+**Implementation Steps (Future Task):**
+1. Create ChartDataService (services/chart_data_service.py)
+2. Implement aggregation logic for OHLC buckets
+3. Add caching layer (5-minute TTL)
+4. Replace chart endpoint to use new service
+5. Test with high-volume tokens
+6. Remove TradeEvent queries from chart endpoints

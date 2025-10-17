@@ -1077,11 +1077,12 @@ def app_dashboard():
     # Evaluate and award achievements
     achievement_progress = evaluate_user_achievements(user.id)
     
-    # Get user's created tokens and holdings with eager loading
+    # Get user's created tokens
     created_tokens = Token.query.filter_by(creator_id=user.id).all()
-    holdings = Holding.query.options(
-        joinedload(Holding.token)
-    ).filter_by(user_id=user.id).all()
+    
+    # TODO: Replace with HolderService to fetch holdings from blockchain
+    # For now, return empty list to remove database dependency
+    holdings = []
     
     # Get user's activities with eager loading of related entities
     activities = Activity.query.options(
@@ -1197,18 +1198,8 @@ def token_detail(contract_address):
         joinedload(Token.settings)  # Load token settings
     ).filter_by(contract_address=contract_address).first_or_404()
     
-    # Get recent trades from TradeEvent (blockchain data)
-    recent_trades = TradeEvent.query.filter_by(
-        token_id=token.id
-    ).order_by(TradeEvent.timestamp.desc()).limit(10).all()
-    
-    # Get user's holding if connected
-    user_holding = None
-    user = get_current_user()
-    if user:
-        user_holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
-    
     # Check if current user is the token owner
+    user = get_current_user()
     is_owner = False
     if user and token.creator:
         is_owner = user.wallet_address.lower() == token.creator.wallet_address.lower()
@@ -1596,26 +1587,11 @@ def get_token_holdings(contract_address):
     # Get token
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
     
-    # Get user by wallet
-    user = User.query.filter_by(wallet_address=wallet_address.lower()).first()
+    # Use HolderService to get balance from blockchain
+    from services.holder_service import HolderService
+    holding_info = HolderService.get_user_holding_info(wallet_address, token.contract_address)
     
-    if not user:
-        return jsonify({'balance': 0, 'isHolder': False})
-    
-    # Get user's holding for this token
-    holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
-    
-    if not holding:
-        return jsonify({'balance': 0, 'isHolder': False})
-    
-    # Return actual token balance
-    balance = float(holding.token_amount) if holding.token_amount else 0
-    
-    return jsonify({
-        'balance': balance,
-        'isHolder': balance > 0,
-        'wallet': wallet_address
-    })
+    return jsonify(holding_info)
 
 @app.route('/api/token/<contract_address>/spotlight', methods=['GET', 'POST'])
 @require_wallet_connection
@@ -1668,15 +1644,16 @@ def token_spotlight(contract_address):
         if settings:
             min_tokens_for_spotlight = settings.min_tokens_for_spotlight or 500
         
-        # VERIFY USER ACTUALLY HOLDS ENOUGH TOKENS (TOKEN GATE!)
-        holding = Holding.query.filter_by(user_id=user.id, token_id=token.id).first()
+        # VERIFY USER ACTUALLY HOLDS ENOUGH TOKENS (TOKEN GATE!) - Use HolderService
+        from services.holder_service import HolderService
+        has_enough_tokens = HolderService.user_holds_min_tokens(
+            user.wallet_address, 
+            token.contract_address, 
+            min_tokens_for_spotlight
+        )
         
-        if not holding:
-            return jsonify({'error': f'You need to hold at least {min_tokens_for_spotlight} {token.symbol} tokens to create spotlight messages'}), 403
-        
-        user_balance = float(holding.token_amount) if holding.token_amount else 0
-        
-        if user_balance < min_tokens_for_spotlight:
+        if not has_enough_tokens:
+            user_balance = HolderService.get_user_balance(user.wallet_address, token.contract_address)
             return jsonify({'error': f'You need to hold at least {min_tokens_for_spotlight} {token.symbol} tokens to create spotlight messages (You hold: {int(user_balance)})'}), 403
         
         # User has enough tokens - create spotlight message (NO DEDUCTION!)
