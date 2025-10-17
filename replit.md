@@ -61,17 +61,19 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.
 
 ### Data Architecture Strategy
-**Current (Hybrid - GraphQL Migration In Progress):** 
-- ✅ **Trading data**: Migrated to Blockscout GraphQL API (real-time blockchain queries)
+**Current (Hybrid - Optimal Architecture):** 
+- ✅ **Recent trading data**: Blockscout GraphQL API (real-time, last ~8 transfers, 10s cache)
 - ✅ **Holder verification**: Web3 direct queries via balanceOf() (no database)
+- ✅ **Chart historical data**: TradeEvent database (complete trade history for bonding curve calculations)
 - ⚠️ **Portfolio aggregation**: Temporarily disabled (TODO: blockchain-backed implementation)
-- 📦 **Database still used for**: User profiles, token creator data, achievements, social features
+- 📦 **Database retained for**: User profiles, token metadata, trade history (charts), social features
 
-**Migration Status (October 2025):** See `GRAPHQL_MIGRATION_PLAN.md` for full details:
-- ✅ **Phase 0-4 Complete**: GraphQL client, recent trades API, holder service, schema cleanup
-- 🔄 **Event indexer**: Still running (Phase 5 - removal planned)
+**Why Hybrid Architecture:** See `GRAPHQL_MIGRATION_STATUS.md` for full analysis:
+- **GraphQL Limitation**: Blockscout API complexity limits prevent fetching complete trade history (max ~8 transfers per query, no effective pagination)
+- **Chart Requirement**: TradingView charts require replaying ALL trades from deployment to calculate accurate bonding curve reserve changes
+- **Event Indexer**: Still running to populate TradeEvent table for chart data (critical feature, cannot be removed)
 - **API Endpoint**: `https://explorer.testnet.kasplextest.xyz/api/v1/graphql` (10s caching via Flask-Caching)
-- **Benefits Achieved**: Real-time blockchain data, no trade event storage, scalable architecture
+- **Benefits**: Real-time current state (GraphQL) + complete historical data (database) = best of both worlds
 
 ## Design Patterns
 The project adheres to an MVC pattern.
