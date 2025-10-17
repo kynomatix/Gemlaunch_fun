@@ -15,6 +15,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_caching import Cache
 from apscheduler.schedulers.background import BackgroundScheduler
 from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
@@ -23,6 +24,7 @@ from services.achievement_service import evaluate_user_achievements
 from services.web3_service import get_web3_service
 from services.tx_monitor import get_tx_monitor
 from services.event_indexer import index_all_events
+from services.blockscout_client import get_blockscout_client
 from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 from web3 import Web3
 
@@ -140,6 +142,12 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # Initialize database
 db.init_app(app)
+
+# Initialize Flask-Caching for GraphQL API responses
+cache = Cache(app, config={
+    'CACHE_TYPE': 'simple',  # In-memory cache
+    'CACHE_DEFAULT_TIMEOUT': 10  # 10 second cache for real-time trading data
+})
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -1783,29 +1791,65 @@ def update_token_settings(contract_address):
         return jsonify({'error': f'Failed to update settings: {str(e)}'}), 500
 
 @app.route('/api/token/<contract_address>/recent-trades', methods=['GET'])
+@cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
 def get_recent_trades(contract_address):
-    """Get recent trades for a token"""
+    """
+    Get recent trades for a token via Blockscout GraphQL API
+    
+    Migrated from database to GraphQL (Phase 2 of GraphQL Migration Plan)
+    """
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
     
-    # Get recent trades from TradeEvent (blockchain data)
-    recent_trades = TradeEvent.query.filter_by(
-        token_id=token.id
-    ).order_by(TradeEvent.timestamp.desc()).limit(10).all()
+    # Get BlockscoutClient
+    blockscout = get_blockscout_client()
     
-    # Format trades for frontend
+    # Fetch recent token transfers from GraphQL API
+    transfers = blockscout.get_token_transfers(contract_address, first=10)
+    
+    # Transform GraphQL transfers to trades format
     trades_data = []
-    for trade in recent_trades:
+    for transfer in transfers:
+        # Determine trade type based on transfer direction
+        # Bonding curve trades:
+        # - Buy: pool sends tokens to user (seller=pool, buyer=user)
+        # - Sell: user sends tokens to pool (seller=user, buyer=pool)
+        # - Mint: initial pool creation (seller=0x000, buyer=pool) - SKIP THIS
+        seller = transfer['seller'].lower()
+        buyer = transfer['buyer'].lower()
+        pool_address = contract_address.lower()
+        null_address = '0x0000000000000000000000000000000000000000'
+        
+        # Skip mint/burn events (not real trades)
+        if seller == null_address or buyer == null_address:
+            continue
+        
+        # Determine trade type
+        if seller == pool_address:
+            trade_type = 'buy'
+            user_address = buyer
+        elif buyer == pool_address:
+            trade_type = 'sell'
+            user_address = seller
+        else:
+            # Transfer between wallets (not a trade)
+            continue
+        
+        # Convert Wei to KAS (18 decimals) - safe fallback for None values
+        kas_value_wei = int(transfer.get('kas_value') or '0')
+        kas_amount = kas_value_wei / 1e18
+        
         trades_data.append({
-            'trade_type': trade.trade_type,
-            'token_amount': str(trade.token_amount),
-            'kas_amount': float(trade.kas_amount),
-            'user_wallet_address': trade.user_wallet_address,
-            'timestamp': trade.timestamp.isoformat() if trade.timestamp else None
+            'trade_type': trade_type,
+            'token_amount': transfer['token_amount'],
+            'kas_amount': kas_amount,
+            'user_wallet_address': user_address,
+            'timestamp': transfer['timestamp']
         })
     
     return jsonify({
         'success': True,
-        'trades': trades_data
+        'trades': trades_data,
+        'source': 'graphql'  # Indicate data source for debugging
     })
 
 @app.route('/api/token/<contract_address>/airdrop/available', methods=['GET'])

@@ -36,7 +36,7 @@ class BlockscoutClient:
     def get_token_transfers(
         self, 
         token_address: str, 
-        first: int = 20,
+        first: int = 5,
         after: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -44,7 +44,7 @@ class BlockscoutClient:
         
         Args:
             token_address: Token contract address (e.g., 0x...)
-            first: Number of transfers to fetch (default 20, max recommended)
+            first: Number of transfers to fetch (default 5, max 10 due to complexity limit)
             after: Cursor for pagination
             
         Returns:
@@ -52,7 +52,7 @@ class BlockscoutClient:
             
         Note:
             Blockscout has query complexity limit of 100.
-            Reduced fields and items to stay under limit.
+            Each transfer ~10 complexity points, so max ~10 transfers per query.
         """
         # Simplified query to reduce complexity (stays under limit of 100)
         query = gql("""
@@ -82,7 +82,7 @@ class BlockscoutClient:
         try:
             variables = {
                 "tokenAddress": token_address,
-                "first": min(first, 20)  # Cap at 20 to stay under complexity limit
+                "first": min(first, 8)  # Cap at 8 to stay under complexity limit (~90 complexity)
             }
                 
             result = self.client.execute(query, variable_values=variables)
