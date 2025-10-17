@@ -1018,3 +1018,102 @@ query GetUserTransactions($address: AddressHash!, $first: Int!) {
 - Blockscout GraphQL Explorer: https://explorer.testnet.kasplextest.xyz/graphiql
 - GQL Python Library: https://gql.readthedocs.io/
 - Blockscout API Docs: https://docs.blockscout.com/
+
+---
+
+## Implementation Notes & Issues
+
+### 🚨 Critical Finding: GraphQL Not Available - Using REST API Instead
+
+**Date:** October 17, 2025  
+**Phase:** Phase 0 - Endpoint Discovery  
+**Issue:** Blockscout GraphQL endpoints are not publicly accessible
+
+#### Discovery Results:
+
+**Tested GraphQL Endpoints (ALL FAILED):**
+- ❌ `https://explorer.testnet.kasplextest.xyz/graphiql` - Returns HTML (UI only)
+- ❌ `https://explorer.testnet.kasplextest.xyz/api/v2/graphql` - Requires module/action params (REST API)
+- ❌ `https://explorer.testnet.kasplextest.xyz/graphql` - 404 Not Found
+- ❌ `https://explorer.testnet.kasplextest.xyz/api/graphql` - Requires module/action params (REST API)
+
+**Working REST API Endpoints (ALL SUCCESS):**
+- ✅ **Token Transfers:** `/api?module=account&action=tokentx&address={address}`
+- ✅ **Address Transactions:** `/api?module=account&action=txlist&address={address}`
+- ✅ **Token Info:** `/api?module=token&action=getToken&contractaddress={address}`
+- ✅ **V2 Address Info:** `/api/v2/addresses/{address}`
+- ✅ **V2 Transactions:** `/api/v2/addresses/{address}/transactions`
+
+#### Decision: Adapt Plan to Use REST API
+
+**What changes:**
+1. Replace `gql` library with `requests` (already available)
+2. Use REST API endpoints instead of GraphQL queries
+3. Same architecture principles apply (caching, error handling, aggregation)
+4. Rename `services/blockscout_client.py` methods to use REST API
+
+**What stays the same:**
+- Database strategy (keep user data, remove trading data)
+- Caching strategy (Flask-Caching with Redis)
+- Points aggregation (query from API, store totals only)
+- Migration phases and timeline
+- Success metrics
+
+#### Updated Implementation for Phase 1:
+
+**No longer need:**
+```bash
+pip install gql[all]  # Not needed - GraphQL unavailable
+```
+
+**Instead use:**
+```python
+import requests  # Already available
+```
+
+**REST API Client Structure:**
+```python
+class BlockscoutClient:
+    def __init__(self):
+        self.base_url = "https://explorer.testnet.kasplextest.xyz/api"
+        self.v2_url = "https://explorer.testnet.kasplextest.xyz/api/v2"
+    
+    def get_token_transfers(self, address):
+        """Get token transfers using REST API"""
+        response = requests.get(
+            self.base_url,
+            params={
+                "module": "account",
+                "action": "tokentx",
+                "address": address
+            }
+        )
+        return response.json()['result']
+```
+
+**Functional Equivalence:**
+| GraphQL (Planned) | REST API (Actual) | Status |
+|------------------|-------------------|---------|
+| tokenTransfers query | `/api?module=account&action=tokentx` | ✅ Works |
+| tokenBalances query | `/api/v2/addresses/{addr}` | ✅ Works |
+| transactions query | `/api?module=account&action=txlist` | ✅ Works |
+| Token info | `/api?module=token&action=getToken` | ✅ Works |
+
+#### Impact Assessment:
+
+**Positive:**
+- ✅ REST API is simpler (no GraphQL learning curve)
+- ✅ Standard HTTP requests (already familiar)
+- ✅ No additional dependencies
+- ✅ Likely faster (less overhead)
+
+**Neutral:**
+- ⚠️ Pagination different (page/offset vs cursor)
+- ⚠️ Response format different (JSON arrays vs edges/nodes)
+- ⚠️ No subscriptions (would have needed polling anyway)
+
+**Action Items:**
+1. ✅ Document this finding
+2. ⬜ Update Phase 1 to use REST API
+3. ⬜ Create `services/blockscout_client.py` with REST API
+4. ⬜ Continue with migration using REST endpoints
