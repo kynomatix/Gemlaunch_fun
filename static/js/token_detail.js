@@ -645,9 +645,25 @@
             
             if (kasBalanceEl) {
                 kasBalanceEl.textContent = `Balance: ${this.kasBalance.toFixed(4)} KAS`;
+                // Highlight KAS balance in buy mode
+                if (this.currentTradeMode === 'buy') {
+                    kasBalanceEl.style.color = '#20B2AA';
+                    kasBalanceEl.style.fontWeight = '600';
+                } else {
+                    kasBalanceEl.style.color = '#888';
+                    kasBalanceEl.style.fontWeight = 'normal';
+                }
             }
             if (tokenBalanceEl) {
                 tokenBalanceEl.textContent = `Balance: ${this.tokenBalance.toLocaleString()} ${this.tokenSymbol}`;
+                // Highlight token balance in sell mode
+                if (this.currentTradeMode === 'sell') {
+                    tokenBalanceEl.style.color = '#20B2AA';
+                    tokenBalanceEl.style.fontWeight = '600';
+                } else {
+                    tokenBalanceEl.style.color = '#888';
+                    tokenBalanceEl.style.fontWeight = 'normal';
+                }
             }
         },
         
