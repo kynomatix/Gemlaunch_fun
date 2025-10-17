@@ -1219,7 +1219,12 @@
                 };
                 
                 // H-4 FIX: Get gas estimate for display
-                const gasEstimate = await this.estimateTradeGas(action, params);
+                // Gas estimation needs token_amount in wei as integer
+                const gasEstParams = {
+                    ...params,
+                    token_amount: tokenAmountWei.toString()
+                };
+                const gasEstimate = await this.estimateTradeGas(action, gasEstParams);
                 const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
                 const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
                 
