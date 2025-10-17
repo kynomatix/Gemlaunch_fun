@@ -589,11 +589,17 @@
             try {
                 const wallet = window.walletManager?.getConnectedWallet();
                 if (!wallet) {
+                    console.log('No wallet connected, skipping balance fetch');
                     this.updateBalanceDisplays();
                     return;
                 }
                 
                 const provider = window.walletManager.getMetaMaskProvider();
+                if (!provider) {
+                    console.error('MetaMask provider not available');
+                    this.updateBalanceDisplays();
+                    return;
+                }
                 
                 // Fetch KAS balance
                 const kasBalanceWei = await provider.request({
@@ -601,8 +607,15 @@
                     params: [wallet.address, 'latest']
                 });
                 this.kasBalance = parseFloat(ethers.utils.formatEther(kasBalanceWei));
+                console.log(`💰 KAS Balance: ${this.kasBalance.toFixed(4)} KAS`);
                 
                 // Fetch token balance
+                if (!window.tokenContractAddress) {
+                    console.error('Token contract address not available');
+                    this.updateBalanceDisplays();
+                    return;
+                }
+                
                 const tokenContract = new ethers.Contract(
                     window.tokenContractAddress,
                     [
@@ -615,6 +628,7 @@
                 const tokenBalanceWei = await tokenContract.balanceOf(wallet.address);
                 const decimals = await tokenContract.decimals();
                 this.tokenBalance = parseFloat(ethers.utils.formatUnits(tokenBalanceWei, decimals));
+                console.log(`💰 Token Balance: ${this.tokenBalance.toLocaleString()} ${this.tokenSymbol}`);
                 
                 this.updateBalanceDisplays();
                 
