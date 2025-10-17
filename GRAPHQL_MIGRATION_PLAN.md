@@ -1247,3 +1247,37 @@ curl 'https://eth-sepolia.blockscout.com/graphiql' \
 - Fixed endpoints → REST API provides all needed data
 
 **Decision:** Adapt migration plan to use Blockscout REST API while maintaining all architectural benefits (caching, aggregation, database cleanup).
+
+---
+
+### ✅ BREAKTHROUGH: GraphQL Endpoint Found!
+
+**Date:** October 17, 2025  
+**Status:** Phase 0 COMPLETE  
+
+**User found actual endpoint from browser DevTools:**
+```
+POST https://explorer.testnet.kasplextest.xyz/api/v1/graphql
+```
+
+**Test Results:**
+```python
+response = requests.post(
+    "https://explorer.testnet.kasplextest.xyz/api/v1/graphql",
+    json={"query": "{ __schema { queryType { name } } }"},
+    headers={"Content-Type": "application/json"}
+)
+# ✅ Status: 200 OK
+# ✅ Content-Type: application/json
+# ✅ Query type: RootQueryType
+# ✅ 48 GraphQL types available (Address, Transaction, etc.)
+```
+
+**Lesson Learned:** 
+- ❌ `/graphiql` = UI interface only (returns HTML)
+- ✅ `/api/v1/graphql` = Actual GraphQL API endpoint (returns JSON)
+
+**Next Steps:**
+- ✅ Phase 0 Complete - Endpoint discovered
+- ⬜ Phase 1 - Build BlockscoutClient with `/api/v1/graphql`
+- ⬜ Continue with migration plan using GraphQL (as intended)
