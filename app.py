@@ -1188,9 +1188,10 @@ def token_marketplace():
     for token in tokens:
         token.is_pro = TokenService.is_pro_token(token)
     
+    # TODO: Re-enable with caching/batching to prevent timeout
     # Enrich tokens with real-time marketplace data (bonding curve progress, 24h volume)
-    from services.marketplace_service import MarketplaceService
-    tokens = MarketplaceService.enrich_tokens_with_marketplace_data(tokens)
+    # from services.marketplace_service import MarketplaceService
+    # tokens = MarketplaceService.enrich_tokens_with_marketplace_data(tokens)
     
     return render_template('app/marketplace.html', tokens=tokens, user=user, now=datetime.now(timezone.utc))
 

@@ -89,18 +89,23 @@ class MarketplaceService:
         """
         try:
             from services.blockscout_client import BlockscoutClient
+            from datetime import timezone
             client = BlockscoutClient()
             
-            # Get trades from last 24 hours
-            since_timestamp = int((datetime.now() - timedelta(hours=24)).timestamp())
-            trades = client.get_token_trades(
-                token_address=token_address,
-                limit=1000,  # Get up to 1000 trades
-                since_timestamp=since_timestamp
-            )
+            # Get recent transfers (trades) from GraphQL
+            transfers = client.get_token_transfers(token_address, first=8)
             
-            # Sum up KAS volume
-            total_volume = sum(trade.get('kas_amount', 0) for trade in trades)
+            # Calculate volume from transfers within last 24 hours
+            # Use timezone-aware datetime for comparison
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+            
+            total_volume = 0
+            for transfer in transfers:
+                # Parse timestamp and check if within 24h window
+                timestamp = datetime.fromisoformat(transfer['timestamp'].replace('Z', '+00:00'))
+                if timestamp >= cutoff_time:
+                    kas_amount = float(transfer.get('kas_value', 0)) / 1e18  # Convert from wei
+                    total_volume += kas_amount
             
             return round(total_volume, 2)
             
