@@ -10,7 +10,7 @@
         <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
     </div>
     <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
-        Market Cap: <span id="marketCapValue">${{ "%.0f"|format(token.current_market_cap|float * 0.08) }}</span> / $70,000
+        Market Cap: <span id="marketCapValue">${{ "%.0f"|format(token.current_market_cap|float * kas_price) }}</span> / $70,000
     </p>
     <div id="graduationStatus" style="margin-top: 1rem;"></div>
 </div>

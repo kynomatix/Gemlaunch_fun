@@ -1233,8 +1233,12 @@ def token_detail(contract_address):
                 else:
                     token.current_price = 0
                 
-                # Calculate real-time market cap = KAS reserve * KAS/USD price
-                token.current_market_cap = kas_amount * kas_price
+                # Calculate real-time market cap = price × circulating_supply × KAS/USD
+                # Circulating supply = total_supply - tokens_in_reserve
+                total_supply_wei = float(token.total_supply) if token.total_supply else 1000000000 * 10**18
+                circulating_supply = (total_supply_wei - token_reserve_wei) / 10**18
+                market_cap_kas = price_in_kas * circulating_supply  # Market cap in KAS
+                token.current_market_cap = market_cap_kas  # Store in KAS (will convert to USD in template using kas_price)
                 
                 app.logger.debug(
                     f"Real-time data for {token.symbol}: "

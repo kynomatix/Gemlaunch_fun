@@ -85,11 +85,11 @@
         <div class="stat-item">
             <div class="stat-label">PRICE</div>
             <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
-            <div class="stat-sub">${{ "%.6f"|format(token.current_price|float * 0.08) }}</div>
+            <div class="stat-sub">${{ "%.6f"|format(token.current_price|float * kas_price) }}</div>
         </div>
         <div class="stat-item">
             <div class="stat-label">MARKET CAP</div>
-            <div class="stat-value">${{ ((token.current_market_cap|float or 0) * 0.08)|format_number(True) }}</div>
+            <div class="stat-value">${{ ((token.current_market_cap|float or 0) * kas_price)|format_number(True) }}</div>
             <div class="stat-sub">{{ (token.current_market_cap|float or 0)|format_number }} KAS</div>
         </div>
         <div class="stat-item">
