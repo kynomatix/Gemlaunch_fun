@@ -842,7 +842,7 @@
                 return data.gas_estimate;
             } catch (error) {
                 console.error('Gas estimation error:', error);
-                ModalManager.alert(
+                this.showToast(
                     'Gas Estimation Failed',
                     'Unable to estimate gas cost. Please try again.',
                     'error'
@@ -909,7 +909,7 @@
                 this.hideTradeStatus();
                 
                 if (!this.isQuoteFresh()) {
-                    ModalManager.alert('Quote Unavailable', 'Unable to get current price. Please try again.', 'error');
+                    this.showToast('Quote Unavailable', 'Unable to get current price. Please try again.', 'error');
                     return;
                 }
             }
@@ -924,7 +924,7 @@
                 const expectedTokens = parseFloat(document.getElementById('tokenAmount').value) || 0;
                 
                 if (kasAmount <= 0) {
-                    ModalManager.alert('Invalid Amount', 'Please enter a valid KAS amount.', 'error');
+                    this.showToast('Invalid Amount', 'Please enter a valid KAS amount.', 'error');
                     return;
                 }
                 
@@ -941,7 +941,7 @@
                 const requiredKAS = kasAmount * 1.01; // Add 1% for gas
                 
                 if (balanceKAS < requiredKAS) {
-                    ModalManager.alert(
+                    this.showToast(
                         'Insufficient Balance',
                         `You need ${requiredKAS.toFixed(4)} KAS (including gas) but only have ${balanceKAS.toFixed(4)} KAS`,
                         'error'
@@ -975,7 +975,7 @@
                 const expectedKas = parseFloat(document.getElementById('kasAmount').value) || 0;
                 
                 if (tokenAmount <= 0) {
-                    ModalManager.alert('Invalid Amount', 'Please enter a valid token amount.', 'error');
+                    this.showToast('Invalid Amount', 'Please enter a valid token amount.', 'error');
                     return;
                 }
                 
@@ -1093,7 +1093,7 @@
             } catch (error) {
                 console.error('Trade execution error:', error);
                 this.hideTradeStatus();
-                ModalManager.alert('Trade Failed', error.message || 'Transaction failed', 'error');
+                this.showToast('Trade Failed', error.message || 'Transaction failed', 'error');
             }
         },
         
@@ -1109,10 +1109,10 @@
                     eventSource.close();
                     this.hideTradeStatus();
                     
-                    // Use txHash from closure (no receipt variable)
-                    ModalManager.alert(
+                    // Show subtle toast notification instead of modal
+                    this.showToast(
                         'Trade Successful! ✅',
-                        `Transaction: ${txHash}`,
+                        `Transaction confirmed`,
                         'success'
                     );
                     
@@ -1129,7 +1129,7 @@
                 } else if (data.status === 'failed' || data.status === 'error') {
                     eventSource.close();
                     this.hideTradeStatus();
-                    ModalManager.alert('Transaction Failed', data.message || 'Transaction failed', 'error');
+                    this.showToast('Transaction Failed', data.message || 'Transaction failed', 'error');
                 }
             });
             
@@ -1145,9 +1145,9 @@
                     
                     if (status.status === 'confirmed' || status.status === 'success') {
                         // Transaction succeeded! Show success even though monitoring failed
-                        ModalManager.alert(
+                        this.showToast(
                             'Trade Successful! ✅',
-                            `Transaction: ${txHash}`,
+                            `Transaction confirmed`,
                             'success'
                         );
                         
@@ -1162,22 +1162,22 @@
                         }, 2000);
                         
                     } else if (status.status === 'failed' || status.status === 'error') {
-                        ModalManager.alert('Transaction Failed', status.message || 'Transaction failed', 'error');
+                        this.showToast('Transaction Failed', status.message || 'Transaction failed', 'error');
                     } else {
                         // Still pending or unknown
-                        ModalManager.alert(
+                        this.showToast(
                             'Monitoring Error',
-                            'Transaction monitoring failed. Please check the blockchain explorer to verify status.',
-                            'warning'
+                            'Please check the blockchain explorer to verify status.',
+                            'error'
                         );
                     }
                 } catch (err) {
                     this.hideTradeStatus();
                     console.error('Error checking final transaction status:', err);
-                    ModalManager.alert(
+                    this.showToast(
                         'Monitoring Error',
-                        'Transaction monitoring failed. Please check the blockchain explorer to verify status.',
-                        'warning'
+                        'Please check the blockchain explorer to verify status.',
+                        'error'
                     );
                 }
             };
@@ -1812,17 +1812,73 @@
         },
         
         showNotification: function(title, message, type = 'info') {
-            const modal = document.getElementById('notificationModal');
-            const modalTitle = document.getElementById('notificationTitle');
-            const modalMessage = document.getElementById('notificationMessage');
-            const modalContent = modal.querySelector('.modal-content');
+            // Create toast notification instead of modal
+            this.showToast(title, message, type);
+        },
+        
+        showToast: function(title, message, type = 'info') {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toastContainer';
+                toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;';
+                document.body.appendChild(toastContainer);
+            }
             
-            modalTitle.textContent = title;
-            modalMessage.textContent = message;
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: ${type === 'success' ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.95))' : 
+                             type === 'error' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95))' : 
+                             'linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95))'};
+                color: white;
+                padding: 16px 20px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                min-width: 300px;
+                max-width: 400px;
+                backdrop-filter: blur(10px);
+                border: 1px solid ${type === 'success' ? 'rgba(34, 197, 94, 0.5)' : 
+                                   type === 'error' ? 'rgba(239, 68, 68, 0.5)' : 
+                                   'rgba(59, 130, 246, 0.5)'};
+                transform: translateX(100%);
+                transition: transform 0.3s ease-out;
+                cursor: pointer;
+            `;
             
-            modalContent.className = `modal-content notification-modal ${type}`;
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
             
-            modal.style.display = 'flex';
+            toast.innerHTML = `
+                <div style="display: flex; align-items: start; gap: 12px;">
+                    <div style="font-size: 20px;">${icon}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${this.escapeHtml(title)}</div>
+                        <div style="font-size: 0.9rem; opacity: 0.95;">${this.escapeHtml(message)}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Click to dismiss
+            toast.onclick = () => {
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            };
+            
+            toastContainer.appendChild(toast);
+            
+            // Slide in
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // Auto dismiss after 4 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 4000);
         },
         
         // HTML escape utility to prevent XSS
@@ -1999,17 +2055,17 @@
                 
                 if (response.ok) {
                     // Show success message
-                    ModalManager.alert('✅ Vote Recorded', 'Your vote has been successfully recorded!', 'success');
+                    this.showToast('Vote Recorded', 'Your vote has been successfully recorded!', 'success');
                     
                     // Reload polls to update the display
                     await this.reloadPolls();
                 } else {
                     // Show error message
-                    ModalManager.alert('❌ Error', data.error || 'Failed to vote on poll. Please try again.', 'error');
+                    this.showToast('Vote Failed', data.error || 'Failed to vote on poll. Please try again.', 'error');
                 }
             } catch (error) {
                 console.error('Failed to vote on poll:', error);
-                ModalManager.alert('❌ Error', 'Failed to vote on poll. Please try again.', 'error');
+                this.showToast('Vote Failed', 'Failed to vote on poll. Please try again.', 'error');
             }
         },
         
@@ -2255,7 +2311,7 @@
                 const message = document.getElementById('spotlightMessageInput').value;
                 
                 if (!message || message.trim() === '') {
-                    ModalManager.alert(
+                    self.showToast(
                         'Empty Message',
                         'Please enter a message to spotlight.',
                         'error'
@@ -2671,9 +2727,9 @@
     window.openChatSettings = function() { TokenDetail.openChatSettings(); };
     window.copyContractAddress = function(address) {
         navigator.clipboard.writeText(address).then(() => {
-            ModalManager.alert(
+            TokenDetail.showToast(
                 'Copied!',
-                'Contract address has been copied to clipboard.',
+                'Contract address copied to clipboard',
                 'success'
             );
         });
