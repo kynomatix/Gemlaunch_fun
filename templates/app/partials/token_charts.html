@@ -63,26 +63,26 @@
                         </span>
                         <div style="display: flex; flex-direction: column;">
                             <span style="color: #FFF; font-size: 0.9rem;">
-                                {{ "{:,.0f}".format(trade.token_amount) }} {{ token.symbol }}
+                                {{ "{:,.2f}".format(trade.token_amount|float / 1e18) }} {{ token.symbol }}
                             </span>
                             <span style="color: #999; font-size: 0.75rem;">
-                                {{ "{:,.2f}".format(trade.kas_amount) }} KAS
+                                {{ "{:,.2f}".format(trade.kas_amount|float) }} KAS
                             </span>
                         </div>
                     </div>
                     <div style="text-align: right;">
                         <div style="color: #BBB; font-size: 0.85rem;">
-                            {% if trade.user %}
-                                {{ trade.user.wallet_address[:6] }}...{{ trade.user.wallet_address[-4:] }}
+                            {% if trade.user_wallet_address %}
+                                {{ trade.user_wallet_address[:6] }}...{{ trade.user_wallet_address[-4:] }}
                             {% else %}
                                 Unknown
                             {% endif %}
                         </div>
                         <div style="color: #777; font-size: 0.75rem;">
-                            {% if trade.confirmed_at %}
-                                {{ trade.confirmed_at.strftime('%H:%M:%S') }}
+                            {% if trade.timestamp %}
+                                {{ trade.timestamp.strftime('%H:%M:%S') }}
                             {% else %}
-                                Pending
+                                Unknown
                             {% endif %}
                         </div>
                     </div>

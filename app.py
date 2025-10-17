@@ -1178,10 +1178,10 @@ def token_detail(contract_address):
         joinedload(Token.settings)  # Load token settings
     ).filter_by(contract_address=contract_address).first_or_404()
     
-    # Get recent trades with eager loading of user information
-    recent_trades = Trade.query.options(
-        joinedload(Trade.user)
-    ).filter_by(token_id=token.id, tx_status='confirmed').order_by(Trade.confirmed_at.desc()).limit(10).all()
+    # Get recent trades from TradeEvent (blockchain data)
+    recent_trades = TradeEvent.query.filter_by(
+        token_id=token.id
+    ).order_by(TradeEvent.timestamp.desc()).limit(10).all()
     
     # Get user's holding if connected
     user_holding = None
