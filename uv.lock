@@ -875,6 +875,10 @@ all = [
     { name = "requests-toolbelt" },
     { name = "websockets" },
 ]
+requests = [
+    { name = "requests" },
+    { name = "requests-toolbelt" },
+]
 
 [[package]]
 name = "graphql-core"
@@ -1749,7 +1753,7 @@ dependencies = [
     { name = "flask-login" },
     { name = "flask-sqlalchemy" },
     { name = "flask-wtf" },
-    { name = "gql", extra = ["all"] },
+    { name = "gql", extra = ["all", "requests"] },
     { name = "gunicorn" },
     { name = "pillow" },
     { name = "psycopg2-binary" },
@@ -1773,7 +1777,7 @@ requires-dist = [
     { name = "flask-login", specifier = ">=0.6.3" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
     { name = "flask-wtf", specifier = ">=1.2.2" },
-    { name = "gql", extras = ["all"], specifier = ">=4.0.0" },
+    { name = "gql", extras = ["all", "requests"], specifier = ">=4.0.0" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
