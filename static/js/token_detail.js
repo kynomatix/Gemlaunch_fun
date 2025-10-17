@@ -1339,9 +1339,7 @@
                 const badgeColor = tradeType === 'buy' ? '#22c55e' : '#ef4444';
                 const tokenAmount = (parseFloat(trade.token_amount) / 1e18).toFixed(2);
                 const kasAmount = parseFloat(trade.kas_amount).toFixed(2);
-                const walletShort = trade.user_wallet_address 
-                    ? `${trade.user_wallet_address.slice(0, 6)}...${trade.user_wallet_address.slice(-4)}`
-                    : 'Unknown';
+                const walletAddress = trade.user_wallet_address || 'Unknown';
                 const timeStr = trade.timestamp ? new Date(trade.timestamp).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false}) : 'Unknown';
                 
                 return `
@@ -1360,8 +1358,8 @@
                             </div>
                         </div>
                         <div style="text-align: right;">
-                            <div style="color: #BBB; font-size: 0.85rem;">
-                                ${walletShort}
+                            <div style="color: #BBB; font-size: 0.75rem; font-family: monospace;">
+                                ${walletAddress}
                             </div>
                             <div style="color: #777; font-size: 0.75rem;">
                                 ${timeStr}

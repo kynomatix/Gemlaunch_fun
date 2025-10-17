@@ -1243,10 +1243,20 @@ def token_detail(contract_address):
                 else:
                     token.current_price = 0
                 
-                # Calculate real-time market cap = price × circulating_supply × KAS/USD
-                # Circulating supply = total_supply - tokens_in_reserve
-                total_supply_wei = float(token.total_supply) if token.total_supply else 1000000000 * 10**18
-                circulating_supply = (total_supply_wei - token_reserve_wei) / 10**18
+                # Calculate real-time market cap = price × circulating_supply
+                # Get total supply in base units (tokens, not wei)
+                if token.total_supply and token.total_supply > 10**15:
+                    # Stored in wei, convert to base
+                    total_supply = float(token.total_supply) / 10**18
+                elif token.total_supply:
+                    # Already in base units
+                    total_supply = float(token.total_supply)
+                else:
+                    # Default 1 billion tokens
+                    total_supply = 1000000000
+                
+                # Circulating supply = total_supply - tokens_still_in_reserve (both in base units)
+                circulating_supply = total_supply - token_amount
                 market_cap_kas = price_in_kas * circulating_supply  # Market cap in KAS
                 token.current_market_cap = market_cap_kas  # Store in KAS (will convert to USD in template using kas_price)
                 
