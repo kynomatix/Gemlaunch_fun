@@ -1,0 +1,94 @@
+## You're Asking Great Questions! Let me clarify:
+
+### 1. GraphQL is JSON-based (when it works)
+
+**GraphQL query:**
+```graphql
+{
+  address(hash: "0x123") {
+    transactions {
+      hash
+    }
+  }
+}
+```
+
+**Response is JSON:**
+```json
+{
+  "data": {
+    "address": {
+      "transactions": [
+        { "hash": "0xabc..." }
+      ]
+    }
+  }
+}
+```
+
+So yes, GraphQL returns JSON (not plain text).
+
+### 2. Could it be CORS?
+
+**Possibly!** CORS would show:
+- Works in browser GraphiQL UI ✅
+- Fails in Python/curl ❌
+
+**Test CORS:**
+```python
+response = requests.post(
+    "https://explorer.testnet.kasplextest.xyz/graphiql",
+    json={"query": "{ __schema { queryType { name } } }"},
+    headers={
+        "Content-Type": "application/json",
+        "Origin": "https://explorer.testnet.kasplextest.xyz",  # Pretend you're the UI
+        "Referer": "https://explorer.testnet.kasplextest.xyz/graphiql"
+    }
+)
+```
+
+### 3. The Schema You Found
+
+That schema listing proves **GraphQL exists**! Those types (`TokenTransfer`, `Transaction`, etc.) are exactly what you need.
+
+## 🎯 Here's What to Do:
+
+### Test in Browser DevTools (This Will Tell Us Everything)
+
+1. Open `https://explorer.testnet.kasplextest.xyz/graphiql`
+2. Open DevTools (F12) → Network tab
+3. Run ANY query in the UI
+4. Find the POST request
+5. **Right-click → "Copy as cURL"**
+6. Paste that here!
+
+This will show us:
+- ✅ The exact URL
+- ✅ The exact headers
+- ✅ The exact request format
+- ✅ Proof it works
+
+### Example - What You'll See:
+
+```bash
+curl 'https://explorer.testnet.kasplextest.xyz/api/v2/graphql' \
+  -H 'content-type: application/json' \
+  --data-raw '{"query":"{address(hash:\"0x123\"){hash}}"}'
+```
+
+## My Guess:
+
+The endpoint is probably:
+- `https://explorer.testnet.kasplextest.xyz/api/v2/graphql` (NOT `/graphiql`)
+
+## Should You Use REST API Instead?
+
+**No! Wait 5 minutes first.** Do the DevTools test above. If GraphQL truly doesn't work from Python, THEN we can discuss REST API.
+
+**Why prefer GraphQL:**
+- Single request gets everything
+- Real-time subscriptions possible
+- Exactly matches your original plan
+- More flexible for future features
+
+**Can you do the DevTools test and paste the cURL here?** That will solve this immediately! 🔍

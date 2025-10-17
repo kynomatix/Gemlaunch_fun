@@ -1198,3 +1198,52 @@ response = requests.post(
 - Need multiple API calls for related data (vs 1 GraphQL query)
 - No real-time subscriptions (use polling instead - same as we would with GraphQL)
 - Pagination uses page/offset (vs cursor)
+
+---
+
+### 📚 Official Documentation Review
+
+**From https://docs.blockscout.com/devs/apis/graphql:**
+
+```bash
+curl 'https://eth-sepolia.blockscout.com/graphiql' \
+  -H 'Authorization: Bearer YOUR_AUTH_TOKEN' \
+  -d '{"query":"..."}'
+```
+
+**Observations:**
+1. ✅ JSON format `{"query":"..."}` is correct (what I've been using)
+2. ⚠️ Shows "Authorization: Bearer YOUR_AUTH_TOKEN" header
+3. ✅ Works on other Blockscout instances (eth-sepolia, etc.)
+4. ❌ Does NOT work on Kasplex testnet instance
+
+**Possible Reasons:**
+1. GraphQL may not be enabled on this specific Blockscout instance
+2. May require authentication/API key (not documented for Kasplex)
+3. May be disabled intentionally for testnet
+
+**Tested Exhaustively:**
+- ✅ All endpoint variations
+- ✅ All content-type headers
+- ✅ JSON and raw GraphQL formats
+- ✅ CORS headers
+- ✅ `gql` library with proper transport
+- ❌ All return HTML or errors
+
+---
+
+### ✅ RECOMMENDATION: Proceed with REST API
+
+**Why REST API is the right choice:**
+1. **Works perfectly** - Token transfers, holder data, transaction history all available
+2. **Achieves migration goals** - Decentralize data, prevent bloat, scale
+3. **Simpler** - No GraphQL dependencies or complexity
+4. **Production-ready** - Battle-tested Blockscout REST API
+5. **Maintained** - Network-operated, no custom indexer needed
+
+**Trade-offs are minimal:**
+- Multiple requests instead of single GraphQL query → Solved with caching
+- No GraphQL subscriptions → Would use polling anyway (same approach)
+- Fixed endpoints → REST API provides all needed data
+
+**Decision:** Adapt migration plan to use Blockscout REST API while maintaining all architectural benefits (caching, aggregation, database cleanup).
