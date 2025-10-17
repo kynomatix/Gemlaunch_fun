@@ -655,6 +655,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
             to != graduationOracle &&
             to != owner() &&
             !isVestingContract[to] &&
+            !isVestingContract[from] &&
             from != airdropTreasury &&
             from != address(this) &&
             !graduated) {
