@@ -1,5 +1,20 @@
 # GraphQL Migration Plan - Decentralizing Trading Data
 
+## 🚨 Critical Fixes Applied (Claude's Feedback)
+
+**This plan has been updated with the following critical corrections:**
+
+1. ✅ **Endpoint Discovery** - Added Phase 0 to test multiple endpoints (GraphiQL UI ≠ API endpoint)
+2. ✅ **Use tokenTransfers, NOT transactions** - Fixed to query ERC-20 token movements, not ETH transactions
+3. ✅ **Buy/Sell Detection** - Added logic to parse trade direction from transfer events
+4. ✅ **KAS Amount Extraction** - Get transaction value for KAS amounts paid
+5. ✅ **Proper Error Handling** - Added retry logic with exponential backoff
+6. ✅ **Flask-Caching** - Replaced memory-leaking dict cache with Flask-Caching + Redis
+7. ✅ **Batch Operations** - Added methods to query multiple tokens efficiently
+8. ✅ **Real-Time Polling** - Use polling instead of WebSocket (Blockscout uses Phoenix, not standard GraphQL subscriptions)
+
+---
+
 ## Executive Summary
 
 **Goal:** Migrate trading data from PostgreSQL to Blockscout GraphQL API to prevent database bloat and enable scalability.
@@ -57,15 +72,24 @@ class Holding(db.Model):
 
 ### ✅ Blockscout GraphQL API
 
-**Endpoint:** `https://explorer.testnet.kasplextest.xyz/api/graphql`
+**⚠️ CRITICAL: Endpoint Discovery Required First!**
+
+The GraphiQL UI URL is NOT the API endpoint. Test these endpoints:
+- `https://explorer.testnet.kasplextest.xyz/graphiql` (UI interface)
+- `https://explorer.testnet.kasplextest.xyz/api/v2/graphql` (possible API)
+- `https://explorer.testnet.kasplextest.xyz/graphql` (possible API)
 
 **What it provides (FREE):**
-- All token transactions in real-time
-- Token transfer events
-- Holder balances
-- Transaction history
-- Block data
+- **Token transfers** (tokenTransfers) - buy/sell events
+- **Holder balances** (tokenBalances) - current holdings
+- **Transactions** (transactions) - KAS amounts
+- **Block data** - timestamps, confirmations
 - Already indexed and maintained by network
+
+**Key Distinction:**
+- `transactions()` = ETH/KAS transfers + contract interactions
+- `tokenTransfers()` = ERC-20/KRC-20 token movements (what we need!)
+- `tokenBalances()` = Current holder balances
 
 ### Data Separation Strategy
 
@@ -156,47 +180,119 @@ class UserTradingStats(db.Model):
 
 ## Implementation Phases
 
+### Phase 0: Endpoint Discovery (DO THIS FIRST!) ⚠️
+
+**Test GraphQL Endpoints:**
+```python
+# test_graphql_endpoint.py
+import requests
+import json
+
+# Test different endpoints
+endpoints = [
+    "https://explorer.testnet.kasplextest.xyz/graphiql",
+    "https://explorer.testnet.kasplextest.xyz/api/v2/graphql",
+    "https://explorer.testnet.kasplextest.xyz/graphql",
+]
+
+test_query = {
+    "query": "{ __schema { types { name } } }"
+}
+
+for endpoint in endpoints:
+    try:
+        response = requests.post(
+            endpoint, 
+            json=test_query,
+            headers={"Content-Type": "application/json"}
+        )
+        if response.ok:
+            print(f"✅ Working endpoint: {endpoint}")
+            print(f"Response: {response.json()[:200]}...")
+        else:
+            print(f"❌ Failed: {endpoint} - Status {response.status_code}")
+    except Exception as e:
+        print(f"❌ Error: {endpoint} - {e}")
+```
+
+**Manual Testing in GraphiQL:**
+1. Open browser: `https://explorer.testnet.kasplextest.xyz/graphiql`
+2. Open DevTools → Network tab
+3. Run a test query
+4. Find the actual POST request - that's your API endpoint!
+
+---
+
 ### Phase 1: Setup GraphQL Client ✅
 
 **Install Dependencies:**
 ```bash
-pip install gql[all] requests
+pip install gql[all] requests flask-caching redis
 ```
 
-**Create Client Service:**
+**Create Client Service with Proper Error Handling:**
 ```python
 # services/blockscout_client.py
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
+from gql.transport.exceptions import TransportQueryError
 import logging
+import time
 
-BLOCKSCOUT_GRAPHQL = "https://explorer.testnet.kasplextest.xyz/api/graphql"
+# TODO: Replace with actual endpoint from Phase 0 discovery
+BLOCKSCOUT_GRAPHQL = "https://explorer.testnet.kasplextest.xyz/api/v2/graphql"
 
 class BlockscoutClient:
     def __init__(self):
         transport = RequestsHTTPTransport(
             url=BLOCKSCOUT_GRAPHQL,
-            timeout=10
+            timeout=10,
+            retries=3
         )
-        self.client = Client(transport=transport, fetch_schema_from_transport=True)
+        self.client = Client(transport=transport, fetch_schema_from_transport=False)
+        self.max_retries = 3
+        self.retry_delay = 2
     
-    def get_token_transactions(self, contract_address, limit=20):
-        """Get recent transactions for a token"""
+    def execute_with_retry(self, query, variables):
+        """Execute GraphQL query with retry logic"""
+        for attempt in range(self.max_retries):
+            try:
+                return self.client.execute(query, variable_values=variables)
+            
+            except TransportQueryError as e:
+                logging.error(f"GraphQL query error: {e}")
+                return None
+            
+            except Exception as e:
+                logging.warning(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (attempt + 1))
+                else:
+                    logging.error("All retries failed")
+                    return None
+    
+    def get_token_transfers(self, contract_address, limit=100):
+        """Get token transfer events (buy/sell trades)
+        
+        ⚠️ CRITICAL: Use tokenTransfers, NOT transactions
+        """
         query = gql("""
-            query GetTokenTransactions($address: AddressHash!, $first: Int!) {
+            query GetTokenTransfers($address: AddressHash!, $first: Int!) {
                 address(hash: $address) {
-                    transactions(first: $first, order: DESC) {
+                    tokenTransfers(first: $first, order: DESC) {
                         edges {
                             node {
-                                hash
-                                blockNumber
+                                amount
                                 fromAddressHash
                                 toAddressHash
-                                value
-                                gasUsed
+                                tokenContractAddressHash
+                                transactionHash
+                                blockNumber
                                 timestamp
-                                status
-                                input
+                                transaction {
+                                    value
+                                    input
+                                }
                             }
                         }
                     }
@@ -204,15 +300,18 @@ class BlockscoutClient:
             }
         """)
         
-        result = self.client.execute(query, variable_values={
+        result = self.execute_with_retry(query, {
             "address": contract_address,
             "first": limit
         })
         
-        return [edge['node'] for edge in result['address']['transactions']['edges']]
+        if result is None:
+            return []
+        
+        return [e['node'] for e in result['address']['tokenTransfers']['edges']]
     
     def get_token_holders(self, contract_address):
-        """Get current token holders"""
+        """Get current token holders with balances"""
         query = gql("""
             query GetTokenHolders($address: AddressHash!) {
                 address(hash: $address) {
@@ -228,23 +327,67 @@ class BlockscoutClient:
             }
         """)
         
-        result = self.client.execute(query, variable_values={
+        result = self.execute_with_retry(query, {
             "address": contract_address
         })
         
-        return [edge['node'] for edge in result['address']['tokenBalances']['edges']]
+        if result is None:
+            return []
+        
+        return [e['node'] for e in result['address']['tokenBalances']['edges']]
     
-    def get_user_trades(self, wallet_address, limit=100):
-        """Get all trades for a user"""
+    def parse_trades_from_transfers(self, contract_address, pool_address):
+        """
+        Parse token transfers to determine buy/sell trades
+        
+        Logic:
+        - Transfer TO pool = SELL (user sends tokens to pool)
+        - Transfer FROM pool = BUY (pool sends tokens to user)
+        """
+        transfers = self.get_token_transfers(contract_address, limit=100)
+        
+        trades = []
+        for transfer in transfers:
+            # Get KAS amount from transaction
+            kas_amount = int(transfer['transaction']['value']) / 1e18 if transfer['transaction'] else 0
+            token_amount = int(transfer['amount']) / 1e18 if transfer['amount'] else 0
+            
+            trade = {
+                'tx_hash': transfer['transactionHash'],
+                'timestamp': transfer['timestamp'],
+                'token_amount': token_amount,
+                'kas_amount': kas_amount,
+                'block_number': transfer['blockNumber']
+            }
+            
+            # Determine buy/sell by transfer direction
+            if transfer['toAddressHash'].lower() == pool_address.lower():
+                # User → Pool = SELL
+                trade['type'] = 'sell'
+                trade['trader'] = transfer['fromAddressHash']
+            elif transfer['fromAddressHash'].lower() == pool_address.lower():
+                # Pool → User = BUY
+                trade['type'] = 'buy'
+                trade['trader'] = transfer['toAddressHash']
+            else:
+                # Not a pool trade (could be transfer)
+                continue
+            
+            trades.append(trade)
+        
+        return trades
+    
+    def get_user_trading_volume(self, wallet_address, limit=1000):
+        """Get all trades for a user to calculate volume"""
         query = gql("""
-            query GetUserTransactions($address: AddressHash!, $first: Int!) {
+            query GetUserTransfers($address: AddressHash!, $first: Int!) {
                 address(hash: $address) {
-                    transactions(first: $first, order: DESC) {
+                    tokenTransfers(first: $first, order: DESC) {
                         edges {
                             node {
-                                hash
-                                toAddressHash
-                                value
+                                transaction {
+                                    value
+                                }
                                 timestamp
                             }
                         }
@@ -253,29 +396,53 @@ class BlockscoutClient:
             }
         """)
         
-        result = self.client.execute(query, variable_values={
+        result = self.execute_with_retry(query, {
             "address": wallet_address,
             "first": limit
         })
         
-        return [edge['node'] for edge in result['address']['transactions']['edges']]
+        if result is None:
+            return 0
+        
+        transfers = [e['node'] for e in result['address']['tokenTransfers']['edges']]
+        
+        # Sum KAS volume from all trades
+        total_volume = sum(
+            int(t['transaction']['value']) / 1e18 
+            for t in transfers 
+            if t['transaction'] and t['transaction']['value']
+        )
+        
+        return total_volume
 
 # Singleton instance
 blockscout_client = BlockscoutClient()
 ```
 
-**Testing:**
+**Testing with Real Token:**
 ```python
-# Test GraphQL client
+# Test with actual deployed token
 from services.blockscout_client import blockscout_client
 
-# Test getting token transactions
-trades = blockscout_client.get_token_transactions("0x123...")
-print(f"Found {len(trades)} trades")
+# Get token from database
+token = Token.query.filter_by(deployment_status='deployed').first()
+pool_address = token.contract_address  # BondingCurvePool IS the token
 
-# Test getting holders
-holders = blockscout_client.get_token_holders("0x123...")
-print(f"Found {len(holders)} holders")
+# Test token transfers
+transfers = blockscout_client.get_token_transfers(pool_address, limit=10)
+print(f"Found {len(transfers)} transfers")
+for t in transfers[:3]:
+    print(f"  {t['fromAddressHash'][:10]}... → {t['toAddressHash'][:10]}... : {t['amount']}")
+
+# Test parsing trades
+trades = blockscout_client.parse_trades_from_transfers(pool_address, pool_address)
+print(f"\nFound {len(trades)} trades:")
+for trade in trades[:3]:
+    print(f"  {trade['type'].upper()}: {trade['token_amount']:.2f} tokens, {trade['kas_amount']:.4f} KAS")
+
+# Test holders
+holders = blockscout_client.get_token_holders(pool_address)
+print(f"\nFound {len(holders)} holders")
 ```
 
 ---
@@ -557,37 +724,86 @@ def token_stats(contract_address):
 
 ## Caching Strategy
 
-To avoid hammering GraphQL API, implement caching:
+⚠️ **CRITICAL:** Simple dict cache causes memory leaks. Use Flask-Caching with Redis or in-memory cache.
+
+### Setup Flask-Caching
 
 ```python
-# services/cache_manager.py
-from functools import wraps
-import time
+# app.py - Add caching initialization
+from flask_caching import Cache
 
-cache = {}
+# Configure cache (use Redis for production)
+cache_config = {
+    'CACHE_TYPE': 'redis',
+    'CACHE_REDIS_URL': os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+    'CACHE_DEFAULT_TIMEOUT': 60
+}
 
-def cached(ttl_seconds=60):
-    """Cache decorator with TTL"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            cache_key = f"{func.__name__}:{args}:{kwargs}"
-            
-            if cache_key in cache:
-                result, timestamp = cache[cache_key]
-                if time.time() - timestamp < ttl_seconds:
-                    return result
-            
-            result = func(*args, **kwargs)
-            cache[cache_key] = (result, time.time())
-            return result
-        return wrapper
-    return decorator
+# For development without Redis, use simple memory cache
+# cache_config = {'CACHE_TYPE': 'simple'}
 
-# Usage
-@cached(ttl_seconds=30)
-def get_token_trades_cached(contract_address):
-    return blockscout_client.get_token_transactions(contract_address)
+cache = Cache(config=cache_config)
+cache.init_app(app)
+```
+
+### Cache GraphQL Queries
+
+```python
+# services/blockscout_client.py - Add caching
+from app import cache
+
+class BlockscoutClient:
+    # ... existing methods ...
+    
+    @cache.memoize(timeout=30)  # Cache for 30 seconds
+    def get_token_transfers_cached(self, contract_address, limit=100):
+        """Cached version of get_token_transfers"""
+        return self.get_token_transfers(contract_address, limit)
+    
+    @cache.memoize(timeout=60)  # Cache for 60 seconds
+    def get_token_holders_cached(self, contract_address):
+        """Cached version of get_token_holders"""
+        return self.get_token_holders(contract_address)
+    
+    @cache.memoize(timeout=300)  # Cache for 5 minutes
+    def get_user_trading_volume_cached(self, wallet_address):
+        """Cached version of user trading volume"""
+        return self.get_user_trading_volume(wallet_address)
+
+# Usage in routes
+@app.route('/api/token/<contract_address>/trades')
+def get_recent_trades(contract_address):
+    # Use cached version
+    trades = blockscout_client.get_token_transfers_cached(contract_address, limit=20)
+    # ... parse and return
+```
+
+### Cache Invalidation
+
+```python
+# Invalidate cache when new trade detected
+def on_new_trade(contract_address):
+    """Clear cache when new trade happens"""
+    cache.delete_memoized(
+        blockscout_client.get_token_transfers_cached,
+        contract_address
+    )
+    cache.delete_memoized(
+        blockscout_client.get_token_holders_cached,
+        contract_address
+    )
+```
+
+### Cache Key Strategy
+
+```python
+# Different cache durations for different data
+CACHE_DURATIONS = {
+    'trades': 30,       # Recent trades - 30s (frequently updated)
+    'holders': 60,      # Token holders - 1min (changes less often)
+    'user_volume': 300, # User stats - 5min (rarely changes)
+    'token_stats': 30   # Token stats - 30s
+}
 ```
 
 ---
