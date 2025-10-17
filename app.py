@@ -1204,6 +1204,33 @@ def token_detail(contract_address):
     from services.kas_oracle import oracle
     kas_price = oracle.get_kas_price()
     
+    # Calculate real-time market cap from blockchain (for non-graduated tokens)
+    if not token.is_graduated and token.contract_address:
+        try:
+            from services.web3_service import get_web3_service
+            web3_service = get_web3_service()
+            
+            # Check if contract exists on blockchain
+            contract_code = web3_service.w3.eth.get_code(
+                web3_service.w3.to_checksum_address(token.contract_address)
+            )
+            
+            if len(contract_code) > 2:  # Contract exists ('0x' means no contract)
+                # Read real-time virtualKasReserve
+                kas_reserve_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+                kas_amount = kas_reserve_wei / 10**18
+                
+                # Calculate real-time market cap = KAS reserve * KAS price
+                token.current_market_cap = kas_amount * kas_price
+                
+                app.logger.debug(
+                    f"Real-time market cap for {token.symbol}: ${token.current_market_cap:.2f} "
+                    f"(virtualKasReserve: {kas_amount:.8f} KAS)"
+                )
+        except Exception as e:
+            app.logger.debug(f"Could not fetch real-time market cap for {token.symbol}: {e}")
+            # Keep existing database value as fallback
+    
     return render_template('app/token_detail.html', 
                          token=token, 
                          recent_trades=recent_trades,
