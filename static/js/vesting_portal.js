@@ -119,7 +119,7 @@
             } catch (error) {
                 console.error('Error loading vesting status:', error);
                 document.getElementById('loadingState').style.display = 'none';
-                alert('Failed to load vesting status. Please try again.');
+                this.showToast('Error Loading Vesting', 'Failed to load vesting status. Please try again.', 'error');
             }
         },
 
@@ -219,6 +219,79 @@
             await this.handleWithdrawal('team', 'withdraw-team');
         },
 
+        // Toast notification system
+        showToast: function(title, message, type = 'info') {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toastContainer';
+                toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: ${type === 'success' ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.95))' : 
+                             type === 'error' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95))' : 
+                             'linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95))'};
+                color: white;
+                padding: 16px 20px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                min-width: 300px;
+                max-width: 400px;
+                backdrop-filter: blur(10px);
+                border: 1px solid ${type === 'success' ? 'rgba(34, 197, 94, 0.5)' : 
+                                   type === 'error' ? 'rgba(239, 68, 68, 0.5)' : 
+                                   'rgba(59, 130, 246, 0.5)'};
+                transform: translateX(100%);
+                transition: transform 0.3s ease-out;
+                cursor: pointer;
+            `;
+            
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            
+            toast.innerHTML = `
+                <div style="display: flex; align-items: start; gap: 12px;">
+                    <div style="font-size: 20px;">${icon}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${this.escapeHtml(title)}</div>
+                        <div style="font-size: 0.9rem; opacity: 0.95;">${this.escapeHtml(message)}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Click to dismiss
+            toast.onclick = () => {
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            };
+            
+            toastContainer.appendChild(toast);
+            
+            // Slide in
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        },
+
+        // HTML escape utility to prevent XSS
+        escapeHtml: function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+
         // Handle withdrawal transaction
         handleWithdrawal: async function(type, endpoint) {
             const btn = document.getElementById(`withdraw${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
@@ -226,7 +299,7 @@
             try {
                 // Check wallet connection
                 if (!this.walletManager.isWalletConnected()) {
-                    alert('Please connect your wallet first');
+                    this.showToast('Wallet Required', 'Please connect your wallet first', 'info');
                     await this.walletManager.connectWallet();
                     return;
                 }
@@ -257,14 +330,22 @@
                 }
 
                 // Show success message
-                alert(`Successfully withdrew ${type} tokens! Transaction: ${signResult.txHash}`);
+                this.showToast(
+                    'Claim Successful!',
+                    `Successfully claimed ${type} vesting tokens. Transaction: ${signResult.txHash.slice(0, 10)}...`,
+                    'success'
+                );
 
                 // Reload vesting status
                 await this.loadVestingStatus();
 
             } catch (error) {
                 console.error(`Error withdrawing ${type} tokens:`, error);
-                alert(`Failed to withdraw ${type} tokens: ${error.message}`);
+                this.showToast(
+                    'Claim Failed',
+                    `Unable to claim ${type} vesting tokens: ${error.message}`,
+                    'error'
+                );
             } finally {
                 // Reset button state
                 btn.classList.remove('loading');
