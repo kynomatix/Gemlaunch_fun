@@ -4041,7 +4041,16 @@ async function claimMarketingVesting() {
         
     } catch (error) {
         console.error('Error claiming marketing vesting:', error);
-        showTransactionModal('error', '', 'Claim Failed: ' + error.message);
+        
+        // Clean up error message - remove technical prefixes if present
+        let errorMsg = error.message;
+        if (errorMsg.startsWith('Token Limit Reached:')) {
+            // Already formatted - use as is
+            showTransactionModal('error', '', errorMsg);
+        } else {
+            // Add "Claim Failed:" prefix for other errors
+            showTransactionModal('error', '', 'Claim Failed: ' + errorMsg);
+        }
         
         // Reset button
         btn.innerHTML = originalHTML;
@@ -4206,7 +4215,16 @@ async function claimTeamVesting() {
         
     } catch (error) {
         console.error('Error claiming team vesting:', error);
-        showTransactionModal('error', '', 'Claim Failed: ' + error.message);
+        
+        // Clean up error message - remove technical prefixes if present
+        let errorMsg = error.message;
+        if (errorMsg.startsWith('Token Limit Reached:')) {
+            // Already formatted - use as is
+            showTransactionModal('error', '', errorMsg);
+        } else {
+            // Add "Claim Failed:" prefix for other errors
+            showTransactionModal('error', '', 'Claim Failed: ' + errorMsg);
+        }
         
         // Reset button
         btn.innerHTML = originalHTML;

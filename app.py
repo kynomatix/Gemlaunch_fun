@@ -6167,8 +6167,18 @@ def build_marketing_vesting_withdraw(token_id):
         })
         
     except Exception as e:
-        logging.error(f"Failed to build marketing vesting withdraw tx: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_msg = str(e)
+        logging.error(f"Failed to build marketing vesting withdraw tx: {error_msg}")
+        
+        # Clean up error messages for user-friendly display
+        if 'exceeds max wallet' in error_msg.lower():
+            return jsonify({
+                'success': False,
+                'error': 'Token Limit Reached: Your wallet already holds the maximum allowed amount (10% of total supply). This is a rug protection mechanism to protect other users. Please claim to a different wallet or reduce your holdings first.'
+            }), 400
+        
+        # Return generic error for other cases
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/api/token/<int:token_id>/vesting/withdraw-team', methods=['POST'])
 @csrf.exempt
@@ -6272,8 +6282,18 @@ def build_team_vesting_withdraw(token_id):
         })
         
     except Exception as e:
-        logging.error(f"Failed to build team vesting withdraw tx: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_msg = str(e)
+        logging.error(f"Failed to build team vesting withdraw tx: {error_msg}")
+        
+        # Clean up error messages for user-friendly display
+        if 'exceeds max wallet' in error_msg.lower():
+            return jsonify({
+                'success': False,
+                'error': 'Token Limit Reached: Your wallet already holds the maximum allowed amount (10% of total supply). This is a rug protection mechanism to protect other users. Please claim to a different wallet or reduce your holdings first.'
+            }), 400
+        
+        # Return generic error for other cases
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/api/token/<int:token_id>/vesting/cooldown-status')
 def get_vesting_cooldown_status(token_id):
