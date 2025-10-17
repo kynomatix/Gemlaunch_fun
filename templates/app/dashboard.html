@@ -3887,7 +3887,7 @@ function startCountdown(vestingType, seconds) {
 
 async function claimMarketingVesting() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
-        alert('Please connect your wallet to claim vesting.');
+        showTransactionModal('error', '', 'Please connect your wallet to claim vesting.');
         window.walletManager.openWalletModal();
         return;
     }
@@ -4041,7 +4041,7 @@ async function claimMarketingVesting() {
         
     } catch (error) {
         console.error('Error claiming marketing vesting:', error);
-        alert('Claim Failed: ' + error.message);
+        showTransactionModal('error', '', 'Claim Failed: ' + error.message);
         
         // Reset button
         btn.innerHTML = originalHTML;
@@ -4052,7 +4052,7 @@ async function claimMarketingVesting() {
 
 async function claimTeamVesting() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
-        alert('Please connect your wallet to claim vesting.');
+        showTransactionModal('error', '', 'Please connect your wallet to claim vesting.');
         window.walletManager.openWalletModal();
         return;
     }
@@ -4206,7 +4206,7 @@ async function claimTeamVesting() {
         
     } catch (error) {
         console.error('Error claiming team vesting:', error);
-        alert('Claim Failed: ' + error.message);
+        showTransactionModal('error', '', 'Claim Failed: ' + error.message);
         
         // Reset button
         btn.innerHTML = originalHTML;
@@ -4222,7 +4222,7 @@ function closeCreatorFeeModal() {
 
 async function claimCreatorFees() {
     if (!window.walletManager || !window.walletManager.isConnected()) {
-        alert('Please connect your wallet to claim fees.');
+        showTransactionModal('error', '', 'Please connect your wallet to claim fees.');
         window.walletManager.openWalletModal();
         return;
     }
@@ -4551,7 +4551,7 @@ function copyTransactionHash() {
             }, 2000);
         }).catch(err => {
             console.error('Failed to copy:', err);
-            alert('Failed to copy transaction hash');
+            showTransactionModal('error', '', 'Failed to copy transaction hash');
         });
     }
 }
