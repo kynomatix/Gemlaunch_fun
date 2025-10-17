@@ -594,18 +594,18 @@
                     return;
                 }
                 
-                const provider = window.walletManager.getMetaMaskProvider();
-                if (!provider) {
+                const rawProvider = window.walletManager.getMetaMaskProvider();
+                if (!rawProvider) {
                     console.error('MetaMask provider not available');
                     this.updateBalanceDisplays();
                     return;
                 }
                 
+                // Wrap MetaMask provider with ethers for Contract compatibility
+                const provider = new ethers.providers.Web3Provider(rawProvider);
+                
                 // Fetch KAS balance
-                const kasBalanceWei = await provider.request({
-                    method: 'eth_getBalance',
-                    params: [wallet.address, 'latest']
-                });
+                const kasBalanceWei = await provider.getBalance(wallet.address);
                 this.kasBalance = parseFloat(ethers.utils.formatEther(kasBalanceWei));
                 console.log(`💰 KAS Balance: ${this.kasBalance.toFixed(4)} KAS`);
                 
@@ -633,12 +633,7 @@
                 this.updateBalanceDisplays();
                 
             } catch (error) {
-                // Detailed error logging for diagnostics
-                console.error('❌ Error fetching wallet balances');
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
-                console.error('Contract address:', window.tokenContractAddress);
-                console.error('Provider network:', await provider.getNetwork());
+                console.error('❌ Error fetching wallet balances:', error.message);
                 this.updateBalanceDisplays();
             }
         },
