@@ -1247,21 +1247,13 @@ def token_detail(contract_address):
                 else:
                     token.current_price = 0
                 
-                # Calculate real-time market cap = price × circulating_supply
-                # Get total supply in base units (tokens, not wei)
-                if token.total_supply and token.total_supply > 10**15:
-                    # Stored in wei, convert to base
-                    total_supply = float(token.total_supply) / 10**18
-                elif token.total_supply:
-                    # Already in base units
-                    total_supply = float(token.total_supply)
-                else:
-                    # Default 1 billion tokens
-                    total_supply = 1000000000
-                
-                # Circulating supply = total_supply - tokens_still_in_reserve (both in base units)
-                circulating_supply = total_supply - token_amount
-                market_cap_kas = price_in_kas * circulating_supply  # Market cap in KAS
+                # Calculate real-time market cap for bonding curve
+                # For constant product bonding curves (k = x * y), market cap = KAS reserve
+                # This represents total value locked in pool (what users actually paid)
+                # NOTE: Do NOT use price × circulating_supply - that overestimates because
+                # it assumes all tokens were bought at current (high) price, but early
+                # buyers paid much less due to the curve
+                market_cap_kas = kas_amount  # Market cap in KAS = KAS reserve
                 token.current_market_cap = market_cap_kas  # Store in KAS (will convert to USD in template using kas_price)
                 
                 app.logger.debug(
@@ -5788,9 +5780,10 @@ def get_token_chart_data(contract_address):
             # Convert to USD using oracle price
             price_per_token_usd = price_per_token_kas * kas_to_usd
             
-            # Market cap = price_per_token * circulating_supply (in USD)
-            circulating_supply = (initial_token_reserve - current_token_reserve) / 1e18
-            market_cap_usd = price_per_token_usd * circulating_supply
+            # Market cap for bonding curve = KAS reserve (total value locked)
+            # NOTE: Do NOT use price × circulating_supply - that overestimates
+            # because it assumes all tokens were bought at current price
+            market_cap_usd = current_kas_reserve * kas_to_usd
             
             trade_points.append({
                 'timestamp': trade['timestamp'],
