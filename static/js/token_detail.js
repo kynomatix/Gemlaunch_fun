@@ -1339,6 +1339,189 @@
             }
         },
         
+        // Refresh chart and stats after trade (no page reload)
+        refreshAfterTrade: async function() {
+            // Debounce: prevent multiple simultaneous refreshes
+            if (this._isRefreshing) {
+                console.log('[RefreshAfterTrade] Already refreshing, skipping duplicate call');
+                return;
+            }
+            this._isRefreshing = true;
+            
+            const tokenAddress = window.tokenContractAddress;
+            let attempts = 0;
+            const maxAttempts = 10; // Max 10 attempts = 20 seconds
+            const pollInterval = 2000; // Poll every 2 seconds
+            
+            // Use PRE-TRADE snapshot captured before transaction was submitted
+            const snapshotBeforeTrade = this._preTradeSnapshot;
+            const marketCapBefore = this._preTradeMarketCap;
+            const priceBefore = this._preTradePrice;
+            
+            // Poll for NEW chart data (not just any data)
+            const pollChartData = async () => {
+                attempts++;
+                
+                try {
+                    // Fetch latest chart data
+                    const response = await fetch(`/api/token/${tokenAddress}/chart-data?interval=${this.currentInterval || '1h'}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.data && data.data.length > 0) {
+                        // CRITICAL: Check if data is NEWER than before trade
+                        const latestCandle = data.data[data.data.length - 1];
+                        const hasNewData = !snapshotBeforeTrade || 
+                                          latestCandle.time > snapshotBeforeTrade.lastTime ||
+                                          latestCandle.volume !== snapshotBeforeTrade.lastVolume;
+                        
+                        if (hasNewData) {
+                            console.log(`[RefreshAfterTrade] NEW chart data detected, refreshing (attempt ${attempts})`);
+                            this.initChart();
+                            this._isRefreshing = false;
+                            return true; // Success
+                        } else {
+                            console.log(`[RefreshAfterTrade] Chart data unchanged, continuing poll (attempt ${attempts}/${maxAttempts})`);
+                        }
+                    }
+                    
+                    // No NEW data yet, retry if under max attempts
+                    if (attempts < maxAttempts) {
+                        setTimeout(pollChartData, pollInterval);
+                    } else {
+                        console.warn('[RefreshAfterTrade] Max attempts reached, refreshing with current data');
+                        this.initChart();
+                        this._isRefreshing = false;
+                    }
+                } catch (error) {
+                    console.error('[RefreshAfterTrade] Error polling chart data:', error);
+                    if (attempts < maxAttempts) {
+                        setTimeout(pollChartData, pollInterval);
+                    } else {
+                        this._isRefreshing = false;
+                    }
+                }
+            };
+            
+            // Start polling
+            pollChartData();
+            
+            // Also poll for updated token stats using pre-trade baseline
+            this._pollTokenStats(tokenAddress, maxAttempts, pollInterval, marketCapBefore, priceBefore);
+        },
+        
+        // Capture chart snapshot to detect changes
+        _captureChartSnapshot: async function(tokenAddress) {
+            try {
+                const response = await fetch(`/api/token/${tokenAddress}/chart-data?interval=${this.currentInterval || '1h'}`);
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    const lastCandle = data.data[data.data.length - 1];
+                    return {
+                        lastTime: lastCandle.time,
+                        lastVolume: lastCandle.volume
+                    };
+                }
+            } catch (error) {
+                console.error('[CaptureSnapshot] Error:', error);
+            }
+            return null;
+        },
+        
+        // Poll token stats until they change from PRE-TRADE baseline
+        _pollTokenStats: async function(tokenAddress, maxAttempts, pollInterval, baselineMarketCap, baselinePrice) {
+            let attempts = 0;
+            
+            const poll = async () => {
+                attempts++;
+                
+                try {
+                    // Fetch fresh HTML
+                    const response = await fetch(window.location.href);
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Extract new values
+                    const newMarketCap = doc.querySelector('.market-cap-value')?.textContent;
+                    const newPrice = doc.querySelector('.token-price')?.textContent;
+                    
+                    // Check if values changed from PRE-TRADE baseline
+                    if (newMarketCap && newPrice && 
+                        (newMarketCap !== baselineMarketCap || newPrice !== baselinePrice)) {
+                        console.log('[PollTokenStats] Stats changed from baseline, updating DOM');
+                        console.log(`  Market Cap: ${baselineMarketCap} → ${newMarketCap}`);
+                        console.log(`  Price: ${baselinePrice} → ${newPrice}`);
+                        
+                        // Update DOM
+                        const marketCapEl = document.querySelector('.market-cap-value');
+                        const priceEl = document.querySelector('.token-price');
+                        if (marketCapEl) marketCapEl.textContent = newMarketCap;
+                        if (priceEl) priceEl.textContent = newPrice;
+                        
+                        return true; // Success
+                    }
+                    
+                    // No change yet
+                    if (attempts < maxAttempts) {
+                        console.log(`[PollTokenStats] Stats unchanged from baseline, retrying (${attempts}/${maxAttempts})`);
+                        setTimeout(poll, pollInterval);
+                    } else {
+                        console.warn('[PollTokenStats] Max attempts reached, stats may be stale');
+                    }
+                } catch (error) {
+                    console.error('[PollTokenStats] Error:', error);
+                    if (attempts < maxAttempts) {
+                        setTimeout(poll, pollInterval);
+                    }
+                }
+            };
+            
+            // Start after 2s delay (give indexer time to process)
+            setTimeout(poll, 2000);
+        },
+        
+        // Refresh token stats (market cap, price) without page reload
+        refreshTokenStats: async function() {
+            try {
+                const tokenAddress = window.tokenContractAddress;
+                
+                // Fetch fresh token page HTML to extract updated stats
+                const response = await fetch(window.location.href);
+                const html = await response.text();
+                
+                // Parse HTML to extract stats
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Update market cap
+                const marketCapEl = doc.querySelector('.market-cap-value');
+                if (marketCapEl) {
+                    const currentMarketCapEl = document.querySelector('.market-cap-value');
+                    if (currentMarketCapEl) {
+                        currentMarketCapEl.textContent = marketCapEl.textContent;
+                        console.log('[RefreshTokenStats] Updated market cap:', marketCapEl.textContent);
+                    }
+                }
+                
+                // Update token price
+                const priceEl = doc.querySelector('.token-price');
+                if (priceEl) {
+                    const currentPriceEl = document.querySelector('.token-price');
+                    if (currentPriceEl) {
+                        currentPriceEl.textContent = priceEl.textContent;
+                        console.log('[RefreshTokenStats] Updated price:', priceEl.textContent);
+                    }
+                }
+                
+                // Update other stats as needed (volume, etc.)
+                // Add more selectors as needed
+                
+            } catch (error) {
+                console.error('[RefreshTokenStats] Error refreshing token stats:', error);
+            }
+        },
+        
         // Update recent trades UI
         updateRecentTradesUI: function(trades) {
             const tradesListContainer = document.querySelector('.trades-list');
@@ -1409,7 +1592,7 @@
                     // Show subtle toast notification instead of modal
                     this.showToast(
                         'Trade Successful! ✅',
-                        `Transaction confirmed`,
+                        `Transaction confirmed - refreshing data...`,
                         'success'
                     );
                     
@@ -1418,9 +1601,16 @@
                         window.WalletManager.updateWalletBalance();
                     }
                     
-                    // Update balances and recent trades without full reload
+                    // Update balances and recent trades
                     this.fetchWalletBalances();
                     this.refreshRecentTrades();
+                    
+                    // Reload page after 4 seconds to refresh chart and stats
+                    // Simple, reliable, guarantees fresh data for all UI elements
+                    setTimeout(() => {
+                        console.log('[Trade] Reloading page to show updated chart and stats');
+                        location.reload();
+                    }, 4000);
                     
                 } else if (data.status === 'failed' || data.status === 'error') {
                     eventSource.close();
@@ -1443,7 +1633,7 @@
                         // Transaction succeeded! Show success even though monitoring failed
                         this.showToast(
                             'Trade Successful! ✅',
-                            `Transaction confirmed`,
+                            `Transaction confirmed - refreshing data...`,
                             'success'
                         );
                         
@@ -1452,9 +1642,15 @@
                             window.WalletManager.updateWalletBalance();
                         }
                         
-                        // Update balances and recent trades without full reload
+                        // Update balances and recent trades
                         this.fetchWalletBalances();
                         this.refreshRecentTrades();
+                        
+                        // Reload page after 4 seconds to refresh chart and stats
+                        setTimeout(() => {
+                            console.log('[Trade] Reloading page to show updated chart and stats');
+                            location.reload();
+                        }, 4000);
                         
                     } else if (status.status === 'failed' || status.status === 'error') {
                         this.showToast('Transaction Failed', status.message || 'Transaction failed', 'error');
