@@ -5735,11 +5735,20 @@ def get_token_chart_data(contract_address):
                 'timestamp': trade.timestamp,
                 'kas_amount': float(trade.kas_amount or 0),
                 'token_amount': float(trade.token_amount or 0),
-                'trader_address': trade.trader_address,
+                'trader_address': trade.user_wallet_address,
                 'tx_hash': trade.tx_hash
             })
         
-        # Filter trades within the requested timeframe
+        # Filter trades within the requested timeframe (ensure timezone-aware comparison)
+        # Make start_time timezone-aware if it isn't already
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+        
+        # Ensure all timestamps are timezone-aware for comparison
+        for trade in all_trades:
+            if trade['timestamp'].tzinfo is None:
+                trade['timestamp'] = trade['timestamp'].replace(tzinfo=timezone.utc)
+        
         trades_in_window = [t for t in all_trades if t['timestamp'] >= start_time]
         prior_trades = [t for t in all_trades if t['timestamp'] < start_time]
         
@@ -5753,7 +5762,16 @@ def get_token_chart_data(contract_address):
                 start_time = min(t['timestamp'] for t in all_trades)
         
         # Calculate initial bonding curve reserves
-        total_supply_wei = float(token.total_supply) * 1e18
+        # token.total_supply is already stored in human-readable format (not wei)
+        total_supply_tokens = float(token.total_supply or 0)
+        
+        # Account for reserved percentage (tokens NOT in bonding curve)
+        reserved_pct = float(token.reserved_percentage or 0)
+        bonding_curve_percentage = 100 - reserved_pct
+        bonding_curve_tokens = total_supply_tokens * (bonding_curve_percentage / 100)
+        
+        # Initial token reserve = bonding curve tokens (in wei)
+        initial_token_reserve = bonding_curve_tokens * 1e18
         
         # Use deployment initial KAS reserve (e.g., $200 worth of KAS)
         if token.kas_reserve and float(token.kas_reserve) > 0:
@@ -5761,9 +5779,6 @@ def get_token_chart_data(contract_address):
         else:
             # Default initial reserve: ~$200 worth of KAS at current KAS price
             initial_kas_reserve = 200 / kas_to_usd if kas_to_usd > 0 else 3773.0
-        
-        # Initial token reserve = total supply (in wei)
-        initial_token_reserve = total_supply_wei
         
         # Start with initial values and replay prior trades to get starting point
         current_kas_reserve = initial_kas_reserve
