@@ -66,7 +66,7 @@ class TransactionManager {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Request failed');
+            throw new Error(error.error || error.message || 'Request failed');
         }
         
         return await response.json();
@@ -105,7 +105,7 @@ class TransactionManager {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Request failed');
+            throw new Error(error.error || error.message || 'Request failed');
         }
         
         return await response.json();
@@ -297,7 +297,7 @@ class TransactionManager {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Request failed');
+            throw new Error(error.error || error.message || 'Request failed');
         }
         
         return await response.json();
@@ -620,7 +620,8 @@ class TransactionManager {
                 };
                 
             } catch (error) {
-                console.error(`[AutoSlippage] Attempt ${attempt + 1} failed:`, error);
+                console.error(`[AutoSlippage] Attempt ${attempt + 1} failed:`, error.message || error.toString());
+                console.error('Full error:', error.stack);
                 
                 // Check if this is a slippage error and we have retries left
                 if (this._isSlippageError(error) && attempt < maxAttempts - 1) {
