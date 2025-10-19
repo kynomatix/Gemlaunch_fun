@@ -1425,6 +1425,7 @@
         },
         
         // Poll token stats until they change from PRE-TRADE baseline
+        // ✅ ARCHITECTURAL FIX: Use JSON endpoint instead of HTML scraping
         _pollTokenStats: async function(tokenAddress, maxAttempts, pollInterval, baselineMarketCap, baselinePrice) {
             let attempts = 0;
             
@@ -1432,15 +1433,21 @@
                 attempts++;
                 
                 try {
-                    // Fetch fresh HTML
-                    const response = await fetch(window.location.href);
-                    const html = await response.text();
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
+                    // Fetch stats from JSON endpoint (not HTML!)
+                    const response = await fetch(`/api/token/${tokenAddress}/stats`);
                     
-                    // Extract new values
-                    const newMarketCap = doc.querySelector('.market-cap-value')?.textContent;
-                    const newPrice = doc.querySelector('.token-price')?.textContent;
+                    if (!response.ok) {
+                        throw new Error('Stats fetch failed');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        throw new Error('Stats unsuccessful');
+                    }
+                    
+                    const newMarketCap = data.market_cap_formatted;
+                    const newPrice = data.price_formatted;
                     
                     // Check if values changed from PRE-TRADE baseline
                     if (newMarketCap && newPrice && 
@@ -1454,6 +1461,11 @@
                         const priceEl = document.querySelector('.token-price');
                         if (marketCapEl) marketCapEl.textContent = newMarketCap;
                         if (priceEl) priceEl.textContent = newPrice;
+                        
+                        // ✅ FIX: Update cached values - API returns USD values directly
+                        this.marketCap = data.market_cap;
+                        // Backend returns USD price, convert to KAS price for internal calculations
+                        this.tokenPrice = data.price / this.kasToUsd;
                         
                         return true; // Success
                     }
@@ -1478,40 +1490,46 @@
         },
         
         // Refresh token stats (market cap, price) without page reload
+        // ✅ ARCHITECTURAL FIX: Use JSON endpoint instead of HTML scraping
         refreshTokenStats: async function() {
             try {
                 const tokenAddress = window.tokenContractAddress;
                 
-                // Fetch fresh token page HTML to extract updated stats
-                const response = await fetch(window.location.href);
-                const html = await response.text();
+                // Fetch stats from lightweight JSON endpoint (no HTML parsing!)
+                const response = await fetch(`/api/token/${tokenAddress}/stats`);
                 
-                // Parse HTML to extract stats
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
+                if (!response.ok) {
+                    console.warn('[RefreshTokenStats] Failed to fetch stats');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    console.warn('[RefreshTokenStats] Stats fetch unsuccessful');
+                    return;
+                }
                 
                 // Update market cap
-                const marketCapEl = doc.querySelector('.market-cap-value');
-                if (marketCapEl) {
-                    const currentMarketCapEl = document.querySelector('.market-cap-value');
-                    if (currentMarketCapEl) {
-                        currentMarketCapEl.textContent = marketCapEl.textContent;
-                        console.log('[RefreshTokenStats] Updated market cap:', marketCapEl.textContent);
-                    }
+                const marketCapEl = document.querySelector('.market-cap-value');
+                if (marketCapEl && data.market_cap_formatted) {
+                    marketCapEl.textContent = data.market_cap_formatted;
+                    console.log('[RefreshTokenStats] Updated market cap:', data.market_cap_formatted);
                 }
                 
                 // Update token price
-                const priceEl = doc.querySelector('.token-price');
-                if (priceEl) {
-                    const currentPriceEl = document.querySelector('.token-price');
-                    if (currentPriceEl) {
-                        currentPriceEl.textContent = priceEl.textContent;
-                        console.log('[RefreshTokenStats] Updated price:', priceEl.textContent);
-                    }
+                const priceEl = document.querySelector('.token-price');
+                if (priceEl && data.price_formatted) {
+                    priceEl.textContent = data.price_formatted;
+                    console.log('[RefreshTokenStats] Updated price:', data.price_formatted);
                 }
                 
-                // Update other stats as needed (volume, etc.)
-                // Add more selectors as needed
+                // ✅ FIX: Update cached values - API returns USD values directly
+                this.marketCap = data.market_cap;
+                // Backend returns USD price, convert to KAS price for internal calculations
+                this.tokenPrice = data.price / this.kasToUsd;
+                
+                console.log('[RefreshTokenStats] ✅ Stats refreshed from JSON endpoint');
                 
             } catch (error) {
                 console.error('[RefreshTokenStats] Error refreshing token stats:', error);
@@ -1601,12 +1619,12 @@
                     this.fetchWalletBalances();
                     this.refreshRecentTrades();
                     
-                    // Reload page after 4 seconds to refresh chart and stats
-                    // Simple, reliable, guarantees fresh data for all UI elements
+                    // Refresh chart and stats WITHOUT page reload (preserves SPA state)
+                    // ✅ UX FIX: Use refreshAfterTrade() instead of location.reload()
                     setTimeout(() => {
-                        console.log('[Trade] Reloading page to show updated chart and stats');
-                        location.reload();
-                    }, 4000);
+                        console.log('[Trade] Refreshing chart and stats without page reload');
+                        this.refreshAfterTrade();
+                    }, 2000);
                     
                 } else if (data.status === 'failed' || data.status === 'error') {
                     eventSource.close();
@@ -1642,11 +1660,12 @@
                         this.fetchWalletBalances();
                         this.refreshRecentTrades();
                         
-                        // Reload page after 4 seconds to refresh chart and stats
+                        // Refresh chart and stats WITHOUT page reload (preserves SPA state)
+                        // ✅ UX FIX: Use refreshAfterTrade() instead of location.reload()
                         setTimeout(() => {
-                            console.log('[Trade] Reloading page to show updated chart and stats');
-                            location.reload();
-                        }, 4000);
+                            console.log('[Trade] Refreshing chart and stats without page reload');
+                            this.refreshAfterTrade();
+                        }, 2000);
                         
                     } else if (status.status === 'failed' || status.status === 'error') {
                         this.showToast('Transaction Failed', status.message || 'Transaction failed', 'error');

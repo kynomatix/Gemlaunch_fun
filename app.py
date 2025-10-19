@@ -2096,6 +2096,112 @@ def api_token_graduation_status(address):
         logging.error(f"Error fetching graduation status for {address}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch graduation status'}), 500
 
+@app.route('/api/token/<address>/stats', methods=['GET'])
+def api_token_stats(address):
+    """
+    Lightweight JSON endpoint for token stats (replaces HTML scraping)
+    
+    Returns real-time token statistics for client-side updates without page reload.
+    
+    Response:
+    {
+        "success": true,
+        "market_cap": 95.88,
+        "market_cap_formatted": "$95.88",
+        "price": 0.00000234,
+        "price_formatted": "$0.00000234",
+        "price_change_24h": 5.2,
+        "holders": 123,
+        "volume_24h": 1234.56,
+        "is_graduated": false
+    }
+    """
+    try:
+        # Normalize address
+        address_normalized = address.strip().lower()
+        
+        # Get token
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == address_normalized
+        ).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        from services.web3_service import get_web3_service
+        from services.kas_oracle import oracle as kas_oracle
+        
+        web3_service = get_web3_service()
+        kas_price_usd = kas_oracle.get_kas_price()
+        
+        # Get real-time data from blockchain
+        current_price_usd = 0
+        current_market_cap_usd = 0
+        
+        if not token.is_graduated and token.contract_address:
+            try:
+                # Check if contract exists
+                contract_code = web3_service.w3.eth.get_code(
+                    web3_service.w3.to_checksum_address(token.contract_address)
+                )
+                
+                if len(contract_code) > 2:  # Contract exists
+                    # Read blockchain reserves
+                    pool = web3_service.get_bonding_pool_contract(token.contract_address)
+                    kas_reserve_wei = pool.functions.virtualKasReserve().call()
+                    token_reserve_wei = pool.functions.virtualTokenReserve().call()
+                    
+                    kas_amount = kas_reserve_wei / 10**18
+                    token_amount = token_reserve_wei / 10**18
+                    
+                    # Calculate price per token (in KAS first, then convert to USD)
+                    if token_amount > 0:
+                        price_in_kas = kas_amount / token_amount
+                        current_price_usd = price_in_kas * kas_price_usd
+                    
+                    # Market cap = KAS reserve * KAS price (in USD)
+                    current_market_cap_usd = kas_amount * kas_price_usd
+            except Exception as e:
+                logging.error(f"Error fetching real-time stats: {e}")
+                # ✅ FIX: Database stores USD values directly, NO multiplication needed
+                current_price_usd = float(token.current_price or 0)
+                current_market_cap_usd = float(token.current_market_cap or 0)
+        else:
+            # ✅ FIX: Graduated tokens - database values are already in USD
+            current_price_usd = float(token.current_price or 0)
+            current_market_cap_usd = float(token.current_market_cap or 0)
+        
+        # Format values for display
+        def format_usd(val):
+            if val >= 1e6:
+                return f"${val/1e6:.2f}M"
+            elif val >= 1e3:
+                return f"${val/1e3:.2f}K"
+            else:
+                return f"${val:.2f}"
+        
+        def format_price(val):
+            if val >= 1:
+                return f"${val:.4f}"
+            else:
+                return f"${val:.8f}"
+        
+        return jsonify({
+            'success': True,
+            'market_cap': current_market_cap_usd,
+            'market_cap_formatted': format_usd(current_market_cap_usd),
+            'price': current_price_usd,
+            'price_formatted': format_price(current_price_usd),
+            'price_change_24h': 0,  # TODO: Calculate from TradeEvent history
+            'holders': token.holder_count or 0,
+            'volume_24h': 0,  # TODO: Calculate from TradeEvent history
+            'is_graduated': token.is_graduated
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching token stats for {address}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch stats'}), 500
+
 @app.route('/api/token/<address>/dex-pool', methods=['GET'])
 def api_token_dex_pool(address):
     """
