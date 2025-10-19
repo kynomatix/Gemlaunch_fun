@@ -721,13 +721,14 @@ def index_transaction_immediately(tx_hash):
         return {'success': False, 'error': str(e)}
 
 
-def index_all_events(from_block=None, to_block='latest'):
+def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000):
     """
     Index all events from all contracts
     
     Args:
         from_block: Starting block number (defaults to last indexed block + 1)
         to_block: Ending block number (defaults to 'latest')
+        max_blocks_per_run: Maximum blocks to process in one run (default: 2000)
     
     Returns:
         dict: Summary of indexing results
@@ -743,13 +744,20 @@ def index_all_events(from_block=None, to_block='latest'):
         if to_block == 'latest':
             to_block = w3.eth.block_number
         
-        # Sanity check: Warn if indexer is significantly behind
+        # Calculate blocks behind and chunk if necessary
         blocks_behind = to_block - from_block
-        if blocks_behind > 100:  # ~15 minutes at 6 sec blocks (Kasplex)
-            logger.warning(f"⚠️ Event indexer {blocks_behind} blocks behind")
-            logger.warning("Possible missed events during downtime - check manually if needed")
         
-        logger.info(f"🔍 Indexing events from block {from_block} to {to_block}")
+        # If we're behind by more than max_blocks_per_run, chunk it
+        if blocks_behind > max_blocks_per_run:
+            original_to_block = to_block
+            to_block = from_block + max_blocks_per_run
+            logger.warning(f"⚠️ Event indexer {blocks_behind:,} blocks behind")
+            logger.warning(f"📦 Chunking: Processing blocks {from_block:,} to {to_block:,} ({max_blocks_per_run:,} blocks)")
+            logger.warning(f"   Remaining: {original_to_block - to_block:,} blocks will be processed in future runs")
+        elif blocks_behind > 100:  # ~15 minutes at 6 sec blocks (Kasplex)
+            logger.warning(f"⚠️ Event indexer {blocks_behind} blocks behind")
+        
+        logger.info(f"🔍 Indexing events from block {from_block:,} to {to_block:,} ({blocks_behind if blocks_behind <= max_blocks_per_run else max_blocks_per_run} blocks)")
         
         if from_block > to_block:
             logger.info("No new blocks to index")
