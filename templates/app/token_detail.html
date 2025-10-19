@@ -150,7 +150,7 @@
             
             TokenDetail.init({
                 tokenPrice: {{ token.current_price }},
-                marketCap: {{ token.current_market_cap }},
+                marketCap: {{ (token.current_market_cap or 0) * kas_price }},
                 tokenSymbol: '{{ token.symbol }}',
                 tokenName: '{{ token.name }}',
                 isProToken: {{ 'true' if is_pro_token else 'false' }},
