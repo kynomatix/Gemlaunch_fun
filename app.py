@@ -3835,7 +3835,10 @@ def api_quote_sell():
         kas_gross_wei = kas_net_wei + platform_fee_wei + creator_fee_wei
         total_fees_wei = platform_fee_wei + creator_fee_wei
         
-        slippage_bps = quote_result.get('auto_slippage_bps', 50)
+        # Use higher slippage for sells to account for price movement between quote and execution
+        # Smart contract returns 50-200 bps, but this is too tight for volatile bonding curves
+        slippage_bps = quote_result.get('auto_slippage_bps', 500)
+        slippage_bps = max(slippage_bps, 500)  # Minimum 5% for sell transactions
         
         kas_gross = float(Web3.from_wei(kas_gross_wei, 'ether'))
         kas_net = float(Web3.from_wei(kas_net_wei, 'ether'))
@@ -4074,8 +4077,10 @@ def api_trade_sell():
             quote_result = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
             kas_net_wei = quote_result['kas_out']  # NET amount user receives
             min_kas_out_wei = kas_net_wei * 9950 // 10000  # 0.5% default slippage on net amount
+            logging.info(f"Sell tx - No min_kas_out provided, calculated from quote: kas_net={kas_net_wei} wei, min_kas_out={min_kas_out_wei} wei")
         else:
             min_kas_out_wei = Web3.to_wei(min_kas_out, 'ether')
+            logging.info(f"Sell tx - Using provided min_kas_out: {min_kas_out} KAS = {min_kas_out_wei} wei")
         
         # Use provided deadline or default to 5 minutes from now
         if deadline is None:
