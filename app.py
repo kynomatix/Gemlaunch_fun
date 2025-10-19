@@ -2191,7 +2191,7 @@ def api_token_dex_pool(address):
         logging.error(f"Error fetching DEX pool data for {address}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch DEX pool data'}), 500
 
-@app.route('/token/<address>/trade')
+@app.route('/app/token/<address>/trade')
 def redirect_to_dex(address):
     """Redirect to Kaspa Finance DEX for graduated tokens"""
     try:
@@ -5761,26 +5761,55 @@ def get_token_chart_data(contract_address):
             if all_trades:
                 start_time = min(t['timestamp'] for t in all_trades)
         
-        # Calculate initial bonding curve reserves
-        # token.total_supply is already stored in human-readable format (not wei)
+        # Calculate initial bonding curve reserves at deployment
         total_supply_tokens = float(token.total_supply or 0)
-        
-        # Account for reserved percentage (tokens NOT in bonding curve)
         reserved_pct = float(token.reserved_percentage or 0)
-        bonding_curve_percentage = 100 - reserved_pct
-        bonding_curve_tokens = total_supply_tokens * (bonding_curve_percentage / 100)
-        
-        # Initial token reserve = bonding curve tokens (in wei)
+        bonding_curve_tokens = total_supply_tokens * ((100 - reserved_pct) / 100)
         initial_token_reserve = bonding_curve_tokens * 1e18
         
-        # Use deployment initial KAS reserve (e.g., $200 worth of KAS)
-        if token.kas_reserve and float(token.kas_reserve) > 0:
-            initial_kas_reserve = float(token.kas_reserve)
+        # Get REAL deployment KAS reserve (work backwards from current blockchain state)
+        if all_trades:
+            # Work backwards from current blockchain state
+            web3_service = get_web3_service()
+            try:
+                final_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+                final_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
+                final_kas = float(Web3.from_wei(final_kas_wei, 'ether'))
+                final_token = float(final_token_wei)
+                
+                # Work backwards through ALL trades to get initial state
+                current_kas_reserve = final_kas
+                current_token_reserve = final_token
+                
+                # Reverse all trades to get back to initial state
+                for trade in reversed(all_trades):
+                    kas_amt = float(trade['kas_amount'])
+                    token_amt = float(trade['token_amount'])
+                    
+                    if trade['trade_type'] == 'buy':
+                        # Undo buy: remove KAS, add back tokens
+                        current_kas_reserve -= kas_amt
+                        current_token_reserve += token_amt
+                    else:
+                        # Undo sell: add back KAS, remove tokens
+                        current_kas_reserve += kas_amt
+                        current_token_reserve -= token_amt
+                
+                initial_kas_reserve = current_kas_reserve
+                initial_token_reserve = current_token_reserve
+                
+                app.logger.info(
+                    f"[Chart] Calculated initial reserves for {token.symbol} by working backwards: "
+                    f"KAS={initial_kas_reserve:.2f}, Tokens={initial_token_reserve/1e18:.2f}"
+                )
+            except Exception as e:
+                app.logger.error(f"Failed to calculate initial reserves, using fallback: {e}")
+                initial_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
         else:
-            # Default initial reserve: ~$200 worth of KAS at current KAS price
-            initial_kas_reserve = 200 / kas_to_usd if kas_to_usd > 0 else 3773.0
+            # No trades yet, use deployment values
+            initial_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
         
-        # Start with initial values and replay prior trades to get starting point
+        # Start from initial reserves and replay prior trades to get to window start
         current_kas_reserve = initial_kas_reserve
         current_token_reserve = initial_token_reserve
         
