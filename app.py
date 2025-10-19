@@ -1218,6 +1218,9 @@ def token_detail(contract_address):
     from services.kas_oracle import oracle
     kas_price = oracle.get_kas_price()
     
+    # Get graduation threshold from platform settings
+    graduation_threshold_usd = token.graduation_threshold  # Uses property that pulls from PlatformSettings
+    
     # Calculate real-time price and market cap from blockchain (for non-graduated tokens)
     if not token.is_graduated and token.contract_address:
         try:
@@ -1271,7 +1274,8 @@ def token_detail(contract_address):
                          user=user,
                          is_owner=is_owner,
                          is_pro_token=is_pro_token,
-                         kas_price=kas_price)
+                         kas_price=kas_price,
+                         graduation_threshold_usd=graduation_threshold_usd)
 
 # Fallback route for legacy numeric IDs (backwards compatibility)
 @app.route('/app/token/<int:token_id>')

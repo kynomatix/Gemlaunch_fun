@@ -214,7 +214,15 @@ class Token(db.Model):
         """Progress percentage to graduation"""
         if self.is_graduated:
             return 100
-        return min((float(self.current_market_cap) / self.graduation_threshold) * 100, 100)
+        
+        # Get current KAS price to convert market cap from KAS to USD
+        from services.kas_oracle import oracle
+        kas_price = oracle.get_kas_price()
+        
+        # current_market_cap is stored in KAS, convert to USD
+        market_cap_usd = float(self.current_market_cap) * kas_price if self.current_market_cap else 0
+        
+        return min((market_cap_usd / self.graduation_threshold) * 100, 100) if self.graduation_threshold > 0 else 0
     
     def update_market_data(self, new_price, kas_reserve, token_reserve):
         """Update market data after trade"""
