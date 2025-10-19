@@ -3728,8 +3728,11 @@ def api_quote_buy():
         min_tokens_out = float(Web3.from_wei(min_tokens_out_wei, 'ether'))
         price_per_token = kas_amount / tokens_out if tokens_out > 0 else 0
         
-        current_kas_reserve = float(Web3.from_wei(int(token.kas_reserve * 1e18) if token.kas_reserve else 0, 'ether'))
-        current_token_reserve = float(token.token_reserve) if token.token_reserve else 1
+        # Get REAL-TIME blockchain reserves for accurate price impact calculation
+        current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+        current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
+        current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
+        current_token_reserve = float(current_token_wei / 1e18)
         
         new_kas_reserve = current_kas_reserve + (float(Web3.from_wei(trade_amount_wei, 'ether')))
         new_token_reserve = current_token_reserve - tokens_out
@@ -3864,8 +3867,11 @@ def api_quote_sell():
         
         price_per_token = kas_gross / (token_amount_wei / 1e18) if token_amount_wei > 0 else 0
         
-        current_kas_reserve = float(Web3.from_wei(int(token.kas_reserve * 1e18) if token.kas_reserve else 0, 'ether'))
-        current_token_reserve = float(token.token_reserve) if token.token_reserve else 1
+        # Get REAL-TIME blockchain reserves for accurate price impact calculation
+        current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+        current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
+        current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
+        current_token_reserve = float(current_token_wei / 1e18)
         
         new_kas_reserve = current_kas_reserve - kas_gross
         new_token_reserve = current_token_reserve + (token_amount_wei / 1e18)
@@ -5761,69 +5767,45 @@ def get_token_chart_data(contract_address):
             if all_trades:
                 start_time = min(t['timestamp'] for t in all_trades)
         
-        # Calculate initial bonding curve reserves at deployment
-        total_supply_tokens = float(token.total_supply or 0)
-        reserved_pct = float(token.reserved_percentage or 0)
-        bonding_curve_tokens = total_supply_tokens * ((100 - reserved_pct) / 100)
-        initial_token_reserve = bonding_curve_tokens * 1e18
-        
-        # Get REAL deployment KAS reserve (work backwards from current blockchain state)
-        if all_trades:
-            # Work backwards from current blockchain state
-            web3_service = get_web3_service()
-            try:
-                final_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
-                final_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
-                final_kas = float(Web3.from_wei(final_kas_wei, 'ether'))
-                final_token = float(final_token_wei)
-                
-                # Work backwards through ALL trades to get initial state
-                current_kas_reserve = final_kas
-                current_token_reserve = final_token
-                
-                # Reverse all trades to get back to initial state
-                for trade in reversed(all_trades):
-                    kas_amt = float(trade['kas_amount'])
-                    token_amt = float(trade['token_amount'])
-                    
-                    if trade['trade_type'] == 'buy':
-                        # Undo buy: remove KAS, add back tokens
-                        current_kas_reserve -= kas_amt
-                        current_token_reserve += token_amt
-                    else:
-                        # Undo sell: add back KAS, remove tokens
-                        current_kas_reserve += kas_amt
-                        current_token_reserve -= token_amt
-                
-                initial_kas_reserve = current_kas_reserve
-                initial_token_reserve = current_token_reserve
-                
-                app.logger.info(
-                    f"[Chart] Calculated initial reserves for {token.symbol} by working backwards: "
-                    f"KAS={initial_kas_reserve:.2f}, Tokens={initial_token_reserve/1e18:.2f}"
-                )
-            except Exception as e:
-                app.logger.error(f"Failed to calculate initial reserves, using fallback: {e}")
-                initial_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
-        else:
-            # No trades yet, use deployment values
-            initial_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
-        
-        # Start from initial reserves and replay prior trades to get to window start
-        current_kas_reserve = initial_kas_reserve
-        current_token_reserve = initial_token_reserve
-        
-        # Replay trades before time window to get starting reserves
-        for prior_trade in prior_trades:
-            kas_amt = float(prior_trade['kas_amount'])
-            token_amt = float(prior_trade['token_amount'])
+        # Get CURRENT blockchain reserves (live state)
+        web3_service = get_web3_service()
+        try:
+            current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+            current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
+            current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
+            current_token_reserve = float(current_token_wei)
             
-            if prior_trade['trade_type'] == 'buy':
-                current_kas_reserve += kas_amt
-                current_token_reserve -= token_amt
-            else:
-                current_kas_reserve -= kas_amt
-                current_token_reserve += token_amt
+            app.logger.info(
+                f"[Chart] Starting from CURRENT blockchain reserves for {token.symbol}: "
+                f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.2f}"
+            )
+            
+            # Work BACKWARDS through trades in window to get starting reserves for the chart
+            for trade in reversed(trades_in_window):
+                kas_amt = float(trade['kas_amount'])
+                token_amt = float(trade['token_amount'])
+                
+                if trade['trade_type'] == 'buy':
+                    # Undo buy: remove KAS, add back tokens
+                    current_kas_reserve -= kas_amt
+                    current_token_reserve += token_amt
+                else:
+                    # Undo sell: add back KAS, remove tokens
+                    current_kas_reserve += kas_amt
+                    current_token_reserve -= token_amt
+            
+            # Clamp to prevent negative reserves from incomplete trade history
+            current_kas_reserve = max(0.001, current_kas_reserve)
+            current_token_reserve = max(1e18, current_token_reserve)
+            
+        except Exception as e:
+            app.logger.error(f"Failed to get blockchain reserves for {token.symbol}, using fallback: {e}")
+            # Fallback: Calculate from database (less accurate)
+            total_supply_tokens = float(token.total_supply or 0)
+            reserved_pct = float(token.reserved_percentage or 0)
+            bonding_curve_tokens = total_supply_tokens * ((100 - reserved_pct) / 100)
+            current_token_reserve = bonding_curve_tokens * 1e18
+            current_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
         
         app.logger.debug(
             f"Chart starting reserves for {token.symbol}: "
