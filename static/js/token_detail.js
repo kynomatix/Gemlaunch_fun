@@ -1241,39 +1241,50 @@
                 this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
             }
             
-            // Execute via TransactionManager with manual flow
+            // Execute via TransactionManager with AUTO-SLIPPAGE retry system
             try {
-                // Phase 1: Build unsigned transaction
-                this.showTradeStatus('Preparing transaction...');
+                // Build base parameters without slippage (auto-slippage system handles this)
+                const baseParams = {
+                    token_address: window.tokenContractAddress
+                };
                 
-                const buildEndpoint = action === 'buy' ? '/api/trade/buy' : '/api/trade/sell';
-                const buildResponse = await fetch(buildEndpoint, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(params)
-                });
-                
-                const buildData = await buildResponse.json();
-                if (!buildData.success) {
-                    throw new Error(buildData.error || 'Failed to build transaction');
+                if (action === 'buy') {
+                    baseParams.kas_amount = params.kas_amount;
+                } else {
+                    baseParams.token_amount = params.token_amount;
                 }
                 
-                const txData = buildData.tx_data;
+                // Execute with progressive auto-slippage retry
+                const result = await window.txManager.executeTradeWithAutoSlippage(
+                    action,  // 'buy' or 'sell'
+                    baseParams,
+                    {
+                        onRetry: (retryInfo) => {
+                            // Show retry attempt in UI
+                            this.showTradeStatus(
+                                `Retry ${retryInfo.attempt}/${retryInfo.maxAttempts}: Trying ${retryInfo.slippage_percent}% slippage...`
+                            );
+                            console.log(`[AutoSlippage] Retry attempt ${retryInfo.attempt} with ${retryInfo.slippage_percent}% slippage`);
+                        },
+                        onStatusUpdate: (message) => {
+                            // Update status message
+                            this.showTradeStatus(message);
+                        }
+                    }
+                );
                 
-                // Phase 2: Sign and submit with wallet
-                this.showTradeStatus('Please sign the transaction in your wallet...');
-                const signResult = await window.txManager.signAndSubmitTransaction(txData);
+                // Success! Transaction submitted
+                console.log(`[Trade] Success with ${result.slippage_percent}% slippage after ${result.attempts} attempts`);
                 
+                // Relay if needed (for Kaspa wallets)
                 let txHash;
-                
-                // Phase 3: Relay if needed (for Kaspa wallets)
-                if (signResult.needs_relay) {
+                if (result.needs_relay) {
                     this.showTradeStatus('Submitting to blockchain...');
                     const relayResponse = await fetch('/api/relay/transaction', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
-                            signed_tx: signResult.signed_tx
+                            signed_tx: result.signed_tx
                         })
                     });
                     
@@ -1284,10 +1295,19 @@
                     txHash = relayData.tx_hash;
                 } else {
                     // MetaMask already submitted
-                    txHash = signResult.tx_hash;
+                    txHash = result.tx_hash;
                 }
                 
-                // Phase 4: Monitor transaction via SSE
+                // Show success message with slippage used
+                if (result.attempts > 1) {
+                    this.showToast(
+                        'Transaction Submitted',
+                        `Succeeded with ${result.slippage_percent}% slippage after ${result.attempts} attempts`,
+                        'success'
+                    );
+                }
+                
+                // Monitor transaction via SSE
                 this.showTradeStatus('Waiting for confirmation...');
                 this.monitorTransaction(txHash);
                 

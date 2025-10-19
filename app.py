@@ -3642,28 +3642,30 @@ def api_quote_buy():
     Request JSON:
     {
         "token_address": "0x...",
-        "kas_amount": 10.5
+        "kas_amount": 10.5,
+        "slippage_bps": 100  // Optional: custom slippage in basis points (0.5% = 50)
     }
     
     Response JSON:
     {
         "success": true,
         "tokens_out": "1234567890000000000",
+        "min_tokens_out": "1222222222000000000",
         "price_per_token": "0.00000845",
         "kas_amount": "10.5",
         "platform_fee": "0.0945",
         "creator_fee": "0.0105",
         "anti_bot_fee": "5.25",
         "total_cost": "15.855",
-        "slippage_bps": 50,
+        "slippage_bps": 100,
         "price_impact": "2.3%",
         "new_price": "0.00000862"
     }
     
     Example curl:
     curl -X POST http://localhost:5000/api/trade/quote-buy \
-      -H "Content-Type: application/json" \
-      -d '{"token_address": "0x...", "kas_amount": 10.5}'
+      -H "Content-Type": application/json" \
+      -d '{"token_address": "0x...", "kas_amount": 10.5, "slippage_bps": 100}'
     """
     try:
         data = request.get_json(silent=True)
@@ -3672,6 +3674,7 @@ def api_quote_buy():
         
         token_address = data.get('token_address', '').strip()
         kas_amount = data.get('kas_amount')
+        custom_slippage_bps = data.get('slippage_bps')  # Optional override
         
         if not token_address:
             return jsonify({'success': False, 'error': 'token_address is required'}), 400
@@ -3708,10 +3711,21 @@ def api_quote_buy():
         # get_buy_quote returns a dict with tokens_out, fees, etc.
         quote_result = web3_service.get_buy_quote(token.contract_address, trade_amount_wei)
         tokens_out_wei = quote_result['tokens_out']  # tokens user will receive
-        slippage_bps = quote_result.get('auto_slippage_bps', 50)
+        
+        # Use custom slippage or auto-calculated slippage
+        if custom_slippage_bps is not None:
+            if not isinstance(custom_slippage_bps, (int, float)) or custom_slippage_bps < 0 or custom_slippage_bps > 2000:
+                return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 2000 (0-20%)'}), 400
+            slippage_bps = int(custom_slippage_bps)
+        else:
+            slippage_bps = quote_result.get('auto_slippage_bps', 50)
+        
+        # Calculate minimum tokens out with slippage
+        min_tokens_out_wei = tokens_out_wei * (10000 - slippage_bps) // 10000
         
         # Convert wei to ether for calculations (preserve precision where needed)
         tokens_out = float(Web3.from_wei(tokens_out_wei, 'ether'))
+        min_tokens_out = float(Web3.from_wei(min_tokens_out_wei, 'ether'))
         price_per_token = kas_amount / tokens_out if tokens_out > 0 else 0
         
         current_kas_reserve = float(Web3.from_wei(int(token.kas_reserve * 1e18) if token.kas_reserve else 0, 'ether'))
@@ -3731,6 +3745,8 @@ def api_quote_buy():
         return jsonify({
             'success': True,
             'tokens_out': float(tokens_out),  # Convert to float
+            'min_tokens_out': float(min_tokens_out),  # Min tokens after slippage
+            'min_tokens_out_wei': str(min_tokens_out_wei),  # Wei value for transaction
             'kas_amount': float(kas_amount),  # Convert to float
             'total_cost': float(kas_amount),  # Convert to float
             'price_per_token': float(price_per_token),  # Convert to float
@@ -3739,7 +3755,7 @@ def api_quote_buy():
                 'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
                 'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
             },
-            'auto_slippage_bps': int(slippage_bps),  # Convert to int
+            'slippage_bps': int(slippage_bps),  # Applied slippage
             'price_impact_percent': float(round(price_impact, 2))  # Convert to float
         })
         
@@ -3759,19 +3775,22 @@ def api_quote_sell():
     Request JSON:
     {
         "token_address": "0x...",
-        "token_amount": "1000000000000000000"
+        "token_amount": "1000000000000000000",
+        "slippage_bps": 100  // Optional: custom slippage in basis points
     }
     
     Response JSON:
     {
         "success": true,
         "kas_out": "9.45",
+        "min_kas_out": "9.35",
+        "min_kas_out_wei": "9350000000000000000",
         "price_per_token": "0.00000945",
         "token_amount": "1000000000000000000",
         "platform_fee": "0.0945",
         "creator_fee": "0.0105",
         "net_kas": "9.345",
-        "slippage_bps": 50,
+        "slippage_bps": 100,
         "price_impact": "1.8%",
         "new_price": "0.00000928"
     }
@@ -3779,7 +3798,7 @@ def api_quote_sell():
     Example curl:
     curl -X POST http://localhost:5000/api/trade/quote-sell \
       -H "Content-Type: application/json" \
-      -d '{"token_address": "0x...", "token_amount": "1000000000000000000"}'
+      -d '{"token_address": "0x...", "token_amount": "1000000000000000000", "slippage_bps": 100}'
     """
     try:
         data = request.get_json(silent=True)
@@ -3788,6 +3807,7 @@ def api_quote_sell():
         
         token_address = data.get('token_address', '').strip()
         token_amount = data.get('token_amount')
+        custom_slippage_bps = data.get('slippage_bps')  # Optional override
         
         if not token_address:
             return jsonify({'success': False, 'error': 'token_address is required'}), 400
@@ -3827,13 +3847,20 @@ def api_quote_sell():
         kas_gross_wei = kas_net_wei + platform_fee_wei + creator_fee_wei
         total_fees_wei = platform_fee_wei + creator_fee_wei
         
-        # Use higher slippage for sells to account for price movement between quote and execution
-        # Smart contract returns 50-200 bps, but this is too tight for volatile bonding curves
-        slippage_bps = quote_result.get('auto_slippage_bps', 500)
-        slippage_bps = max(slippage_bps, 500)  # Minimum 5% for sell transactions
+        # Use custom slippage or auto-calculated slippage
+        if custom_slippage_bps is not None:
+            if not isinstance(custom_slippage_bps, (int, float)) or custom_slippage_bps < 0 or custom_slippage_bps > 2000:
+                return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 2000 (0-20%)'}), 400
+            slippage_bps = int(custom_slippage_bps)
+        else:
+            slippage_bps = quote_result.get('auto_slippage_bps', 50)
+        
+        # Calculate minimum KAS out with slippage
+        min_kas_out_wei = kas_net_wei * (10000 - slippage_bps) // 10000
         
         kas_gross = float(Web3.from_wei(kas_gross_wei, 'ether'))
         kas_net = float(Web3.from_wei(kas_net_wei, 'ether'))
+        min_kas_out = float(Web3.from_wei(min_kas_out_wei, 'ether'))
         
         price_per_token = kas_gross / (token_amount_wei / 1e18) if token_amount_wei > 0 else 0
         
@@ -3854,6 +3881,8 @@ def api_quote_sell():
         return jsonify({
             'success': True,
             'kas_out': float(kas_gross),  # Convert to float
+            'min_kas_out': float(min_kas_out),  # Min KAS after slippage
+            'min_kas_out_wei': str(min_kas_out_wei),  # Wei value for transaction
             'token_amount': float(token_amount_wei / 1e18),  # Convert to float
             'net_kas': float(kas_net),  # Convert to float
             'price_per_token': float(price_per_token),  # Convert to float
@@ -3863,7 +3892,7 @@ def api_quote_sell():
                 'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
                 'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
             },
-            'auto_slippage_bps': int(slippage_bps),  # Convert to int
+            'slippage_bps': int(slippage_bps),  # Applied slippage
             'price_impact_percent': float(round(price_impact, 2))  # Convert to float
         })
         

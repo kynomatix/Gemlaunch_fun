@@ -486,6 +486,161 @@ class TransactionManager {
         this.activeTransactions.forEach(eventSource => eventSource.close());
         this.activeTransactions.clear();
     }
+    
+    // ===== AUTO-SLIPPAGE: Progressive Retry System =====
+    
+    /**
+     * Check if error is slippage-related
+     * @private
+     * @param {Error} error - Error from transaction or quote
+     * @returns {boolean} True if slippage-related error
+     */
+    _isSlippageError(error) {
+        if (!error) return false;
+        
+        const errorMsg = (error.message || error.toString()).toLowerCase();
+        const errorData = error.data?.message?.toLowerCase() || '';
+        
+        // Known slippage error patterns
+        const slippagePatterns = [
+            'slippage too high',
+            'insufficient_output_amount',
+            'insufficient output amount',
+            'price impact too high',
+            'max_slippage',
+            'exceeds maximum slippage',
+            'slippage tolerance exceeded',
+            'price movement',
+            'execution reverted',  // Generic revert that might be slippage
+            'transaction would fail'  // Gas estimation failure often means slippage
+        ];
+        
+        return slippagePatterns.some(pattern => 
+            errorMsg.includes(pattern) || errorData.includes(pattern)
+        );
+    }
+    
+    /**
+     * Execute buy/sell trade with automatic progressive slippage retry
+     * Starts with tight slippage and increases until transaction succeeds
+     * 
+     * @param {string} tradeType - 'buy' | 'sell'
+     * @param {Object} params - Base parameters (token_address, kas_amount/token_amount)
+     * @param {Object} callbacks - {onRetry, onStatusUpdate} for UI updates
+     * @param {AbortSignal} signal - Optional abort signal for cancellation
+     * @returns {Promise<Object>} {success, tx_hash, slippage_used}
+     */
+    async executeTradeWithAutoSlippage(tradeType, params, callbacks = {}, signal = null) {
+        // Progressive slippage ladder: 0.5% → 1% → 2% → 5% → 7.5% → 10%
+        const slippageLadder = [50, 100, 200, 500, 750, 1000];
+        const maxAttempts = slippageLadder.length;
+        
+        const {onRetry, onStatusUpdate} = callbacks;
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const slippage_bps = slippageLadder[attempt];
+            const slippage_percent = (slippage_bps / 100).toFixed(2);
+            
+            try {
+                // Notify UI of retry attempt
+                if (onRetry && attempt > 0) {
+                    onRetry({
+                        attempt: attempt + 1,
+                        maxAttempts,
+                        slippage_bps,
+                        slippage_percent
+                    });
+                }
+                
+                if (onStatusUpdate) {
+                    const statusMsg = attempt === 0 
+                        ? `Getting quote with ${slippage_percent}% slippage...`
+                        : `Retrying with ${slippage_percent}% slippage (attempt ${attempt + 1}/${maxAttempts})...`;
+                    onStatusUpdate(statusMsg);
+                }
+                
+                // PHASE 1: Get quote with current slippage
+                const quoteParams = {
+                    ...params,
+                    slippage_bps
+                };
+                
+                const quote = await this.getQuote(tradeType, quoteParams, signal);
+                
+                if (!quote.success) {
+                    // If quote fails with slippage error and we have retries left, continue
+                    if (this._isSlippageError(new Error(quote.error)) && attempt < maxAttempts - 1) {
+                        console.log(`[AutoSlippage] Quote failed with slippage error, retrying...`);
+                        continue;
+                    }
+                    throw new Error(quote.error || 'Quote failed');
+                }
+                
+                if (onStatusUpdate) {
+                    onStatusUpdate('Building transaction...');
+                }
+                
+                // PHASE 2: Build transaction with min values from quote
+                const buildParams = {
+                    ...params
+                };
+                
+                if (tradeType === 'buy') {
+                    buildParams.min_tokens_out = quote.min_tokens_out_wei;
+                } else {
+                    buildParams.min_kas_out = quote.min_kas_out_wei;
+                }
+                
+                const buildResult = await this.buildTransaction(tradeType, buildParams);
+                
+                if (!buildResult.success) {
+                    if (this._isSlippageError(new Error(buildResult.error)) && attempt < maxAttempts - 1) {
+                        console.log(`[AutoSlippage] Build failed with slippage error, retrying...`);
+                        continue;
+                    }
+                    throw new Error(buildResult.error || 'Failed to build transaction');
+                }
+                
+                if (onStatusUpdate) {
+                    onStatusUpdate('Please sign the transaction in your wallet...');
+                }
+                
+                // PHASE 3: Sign and submit
+                const signResult = await this.signAndSubmitTransaction(buildResult.tx_data);
+                
+                // Success! Return result with slippage used
+                return {
+                    success: true,
+                    tx_hash: signResult.tx_hash,
+                    signed_tx: signResult.signed_tx,
+                    needs_relay: signResult.needs_relay,
+                    slippage_used: slippage_bps,
+                    slippage_percent,
+                    attempts: attempt + 1
+                };
+                
+            } catch (error) {
+                console.error(`[AutoSlippage] Attempt ${attempt + 1} failed:`, error);
+                
+                // Check if this is a slippage error and we have retries left
+                if (this._isSlippageError(error) && attempt < maxAttempts - 1) {
+                    console.log(`[AutoSlippage] Slippage error detected, will retry with ${(slippageLadder[attempt + 1] / 100).toFixed(2)}%`);
+                    // Continue to next retry
+                    continue;
+                }
+                
+                // Non-slippage error or max retries reached - fail immediately
+                throw new Error(
+                    attempt === maxAttempts - 1 
+                        ? `Transaction failed after ${maxAttempts} attempts. Last error: ${error.message}`
+                        : error.message
+                );
+            }
+        }
+        
+        // Should never reach here
+        throw new Error('Auto-slippage retry loop completed without result');
+    }
 }
 
 // Initialize globally for use across the application
