@@ -64,16 +64,23 @@ The `Token` model includes blockchain integration fields. New models include `Tr
 **Current (Hybrid - Optimal Architecture):** 
 - ✅ **Recent trading data**: Blockscout GraphQL API (real-time, last ~8 transfers, 10s cache)
 - ✅ **Holder verification**: Web3 direct queries via balanceOf() (no database)
-- ✅ **Chart historical data**: TradeEvent database (complete trade history for bonding curve calculations)
+- ✅ **Chart historical data**: Live blockchain reserves + TradeEvent database replay
+- ✅ **Quote endpoints**: Real-time blockchain virtualKasReserve/virtualTokenReserve queries
 - ⚠️ **Portfolio aggregation**: Temporarily disabled (TODO: blockchain-backed implementation)
 - 📦 **Database retained for**: User profiles, token metadata, trade history (charts), social features
+
+**Real-Time Reserve Integration (Oct 2025):**
+- **Chart endpoint**: Queries current on-chain reserves via `get_virtual_kas_reserve()` and `get_virtual_token_reserve()`, then works backwards through trades_in_window to calculate starting state
+- **Buy/Sell quotes**: Query live blockchain reserves for accurate price impact calculations instead of stale database values
+- **Market cap display**: Shows correct bonding curve TVL ($95.88 vs previous incorrect $297) based on real virtualKasReserve
+- **Benefits**: Eliminates drift between database cache and actual on-chain state, ensures price quotes match blockchain reality
 
 **Why Hybrid Architecture:** See `GRAPHQL_MIGRATION_STATUS.md` for full analysis:
 - **GraphQL Limitation**: Blockscout API complexity limits prevent fetching complete trade history (max ~8 transfers per query, no effective pagination)
 - **Chart Requirement**: TradingView charts require replaying ALL trades from deployment to calculate accurate bonding curve reserve changes
 - **Event Indexer**: Still running to populate TradeEvent table for chart data (critical feature, cannot be removed)
 - **API Endpoint**: `https://explorer.testnet.kasplextest.xyz/api/v1/graphql` (10s caching via Flask-Caching)
-- **Benefits**: Real-time current state (GraphQL) + complete historical data (database) = best of both worlds
+- **Benefits**: Real-time current state (blockchain + GraphQL) + complete historical data (database) = best of both worlds
 
 ## Design Patterns
 The project adheres to an MVC pattern.
