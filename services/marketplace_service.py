@@ -305,7 +305,7 @@ class MarketplaceService:
             token.graduation_progress = 0
         
         # Enrich valid tokens (limit to prevent timeout)
-        MAX_TOKENS_TO_ENRICH = 20  # Reduced for performance
+        MAX_TOKENS_TO_ENRICH = 8  # Optimized for mobile performance (was 20)
         
         for i, token in enumerate(valid_tokens):
             # Set defaults first

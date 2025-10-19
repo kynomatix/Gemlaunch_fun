@@ -5716,6 +5716,15 @@ def get_token_chart_data(contract_address):
         trades_in_window = [t for t in all_trades if t['timestamp'] >= start_time]
         prior_trades = [t for t in all_trades if t['timestamp'] < start_time]
         
+        # If no trades in time window but trades exist, show all available data
+        if not trades_in_window and all_trades:
+            logging.info(f"No trades in {timeframe} window for {token.symbol}, showing all {len(all_trades)} trades")
+            trades_in_window = all_trades
+            prior_trades = []
+            # Adjust start_time to earliest trade
+            if all_trades:
+                start_time = min(t['timestamp'] for t in all_trades)
+        
         # Calculate initial bonding curve reserves
         total_supply_wei = float(token.total_supply) * 1e18
         
