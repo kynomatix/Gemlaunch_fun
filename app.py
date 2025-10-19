@@ -4110,8 +4110,15 @@ def api_trade_sell():
             min_kas_out_wei = kas_net_wei * 9950 // 10000  # 0.5% default slippage on net amount
             logging.info(f"Sell tx - No min_kas_out provided, calculated from quote: kas_net={kas_net_wei} wei, min_kas_out={min_kas_out_wei} wei")
         else:
-            min_kas_out_wei = Web3.to_wei(min_kas_out, 'ether')
-            logging.info(f"Sell tx - Using provided min_kas_out: {min_kas_out} KAS = {min_kas_out_wei} wei")
+            # Accept either wei (int/string) or KAS (float) for backwards compatibility
+            try:
+                # Try parsing as wei first (if it's a large integer or string of digits)
+                min_kas_out_wei = int(min_kas_out)
+                logging.info(f"Sell tx - Using provided min_kas_out (wei): {min_kas_out_wei} wei")
+            except (ValueError, TypeError):
+                # Fall back to KAS (float) conversion
+                min_kas_out_wei = Web3.to_wei(min_kas_out, 'ether')
+                logging.info(f"Sell tx - Using provided min_kas_out (KAS): {min_kas_out} KAS = {min_kas_out_wei} wei")
         
         # Use provided deadline or default to 5 minutes from now
         if deadline is None:

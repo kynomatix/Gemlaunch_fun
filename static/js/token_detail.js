@@ -1213,18 +1213,14 @@
                     this.showTradeStatus('Approval confirmed! Proceeding with sell...');
                 }
                 
-                // Calculate slippage protection
-                // Use 500 bps (5%) default for volatile bonding curves
-                const slippageBps = window.lastQuote?.auto_slippage_bps || 500;
-                const minKasOut = expectedKas * (10000 - slippageBps) / 10000;
-                
                 // CRITICAL: Backend expects token_amount in wei as string
+                // min_kas_out will be calculated by auto-slippage system
                 params = {
                     token_address: window.tokenContractAddress,
                     user_address: wallet.address,  // REQUIRED FOR METAMASK
                     token_amount: tokenAmountWei.toString(),  // Convert to wei for backend
-                    min_kas_out: minKasOut,
                     deadline: Math.floor(Date.now() / 1000) + 300
+                    // Note: min_kas_out will be calculated by executeTradeWithAutoSlippage with proper slippage
                 };
                 
                 // H-4 FIX: Get gas estimate for display

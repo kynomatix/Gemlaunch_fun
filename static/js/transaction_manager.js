@@ -588,6 +588,7 @@ class TransactionManager {
                 if (tradeType === 'buy') {
                     buildParams.min_tokens_out = quote.min_tokens_out_wei;
                 } else {
+                    // Send wei value to avoid float precision loss
                     buildParams.min_kas_out = quote.min_kas_out_wei;
                 }
                 
