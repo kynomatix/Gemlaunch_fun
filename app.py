@@ -4071,8 +4071,9 @@ def api_trade_sell():
         
         # Use provided min_kas_out or calculate with slippage
         if min_kas_out is None:
-            kas_gross_wei = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
-            min_kas_out_wei = kas_gross_wei * 9950 // 10000  # 0.5% default slippage
+            quote_result = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
+            kas_net_wei = quote_result['kas_out']  # NET amount user receives
+            min_kas_out_wei = kas_net_wei * 9950 // 10000  # 0.5% default slippage on net amount
         else:
             min_kas_out_wei = Web3.to_wei(min_kas_out, 'ether')
         
