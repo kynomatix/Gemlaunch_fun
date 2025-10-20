@@ -321,7 +321,13 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         
         # Use case-insensitive comparison (ILIKE in PostgreSQL)
         from sqlalchemy import func
-        token = Token.query.filter(func.lower(Token.contract_address) == pool_address.lower()).first()
+        # Look up token by liquidity_pool_address (BondingCurvePool) since that's where trade events are emitted
+        token = Token.query.filter(
+            db.or_(
+                func.lower(Token.liquidity_pool_address) == pool_address.lower(),
+                func.lower(Token.contract_address) == pool_address.lower()  # Fallback for old data
+            )
+        ).first()
         if not token:
             logger.warning(f"Token not found for pool address: {pool_address}")
             return {'success': False, 'error': 'Token not found'}
@@ -467,8 +473,11 @@ def process_token_created_events(from_block, to_block):
                 ).first()
                 
                 if token:
-                    # Update with real pool/contract address (they're the same in BondingCurvePool)
-                    token.contract_address = pool_address
+                    # Update with real pool/contract address
+                    # In BondingCurvePool design, the pool IS the ERC20 token (inherits from ERC20)
+                    # tokenAddress and poolAddress from the event are the same contract
+                    token.contract_address = pool_address  # The pool contract (which is also the ERC20 token)
+                    token.liquidity_pool_address = pool_address  # Same address, stored for event indexing
                     token.deployment_tx = tx_hash
                     token.deployment_status = 'deployed'
                     token.deployment_block_number = block_number
@@ -703,8 +712,10 @@ def index_transaction_immediately(tx_hash):
             return {'success': False, 'error': 'Token not found'}
         
         # Process events from this specific block and token
+        # Use liquidity_pool_address (BondingCurvePool) which emits trade events
+        pool_address = token.liquidity_pool_address or token.contract_address
         result = process_bonding_pool_events(
-            token.contract_address,
+            pool_address,
             block_number,
             block_number
         )
@@ -836,8 +847,10 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
         
         for token in deployed_tokens:
             try:
+                # Use liquidity_pool_address (BondingCurvePool) which emits trade events
+                pool_address = token.liquidity_pool_address or token.contract_address
                 result = process_bonding_pool_events(
-                    token.contract_address,
+                    pool_address,
                     from_block,
                     to_block
                 )
