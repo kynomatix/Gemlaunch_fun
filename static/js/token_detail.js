@@ -1137,19 +1137,29 @@
             }
             
             // NC-3 FIX: Validate quote freshness with auto-refresh
+            // ✅ UX IMPROVEMENT: Extended retry period for fast clickers
             if (!this.isQuoteFresh()) {
-                this.showTradeStatus('Refreshing quote...');
+                this.showTradeStatus('Getting price...');
                 await this.updateTokenAmount();  // Refresh quote
                 
-                // Wait for quote to complete (with timeout)
+                // Wait for quote to complete (extended timeout for fast clickers)
+                // 30 attempts × 100ms = 3 seconds (was 1 second)
                 let attempts = 0;
-                while (!this.isQuoteFresh() && attempts < 10) {
+                const maxAttempts = 30;  // ✅ INCREASED: 3 seconds instead of 1 second
+                
+                while (!this.isQuoteFresh() && attempts < maxAttempts) {
                     await new Promise(resolve => setTimeout(resolve, 100));
                     attempts++;
+                    
+                    // Show progress every 10 attempts to keep user informed
+                    if (attempts % 10 === 0) {
+                        this.showTradeStatus(`Getting price... (${Math.round(attempts/maxAttempts*100)}%)`);
+                    }
                 }
                 
                 this.hideTradeStatus();
                 
+                // Only show error if quote genuinely failed after 3 seconds
                 if (!this.isQuoteFresh()) {
                     this.showToast('Quote Unavailable', 'Unable to get current price. Please try again.', 'error');
                     return;
