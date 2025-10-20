@@ -681,15 +681,38 @@
                 // Add average entry price line if user has bought tokens
                 if (result.average_entry_price_usd > 0) {
                     // Determine price based on current chart type
-                    let priceLineValue;
+                    let priceLineValue, priceLineTitle;
                     if (this.currentChartType === 'marketcap') {
-                        // For market cap chart, we need to calculate what market cap would be at average entry price
-                        // This is complex, so we'll skip price line for market cap view
-                        console.log('Skipping price line for market cap view');
-                        return;
+                        // For market cap chart, calculate market cap at average entry price
+                        // Derive circulating supply: supply = marketCap / (tokenPrice * kasToUsd)
+                        const avgEntryPriceUsd = result.average_entry_price_usd;
+                        
+                        // Calculate circulating supply from current market data
+                        let circulatingSupply;
+                        if (this.marketCap > 0 && this.tokenPrice > 0 && this.kasToUsd > 0) {
+                            const currentPriceUsd = this.tokenPrice * this.kasToUsd;
+                            circulatingSupply = this.marketCap / currentPriceUsd;
+                        }
+                        
+                        // Only show line if we have valid supply data
+                        if (!circulatingSupply || circulatingSupply <= 0) {
+                            console.log('Cannot calculate average entry MC: insufficient market data');
+                            return;
+                        }
+                        
+                        priceLineValue = avgEntryPriceUsd * circulatingSupply;
+                        // Format using same pattern as market cap display
+                        const formattedMC = priceLineValue >= 1000000 
+                            ? `$${(priceLineValue / 1000000).toFixed(2)}M`
+                            : priceLineValue >= 1000
+                            ? `$${(priceLineValue / 1000).toFixed(2)}K`
+                            : `$${priceLineValue.toFixed(2)}`;
+                        priceLineTitle = `Avg Entry MC: ${formattedMC}`;
+                        console.log(`Calculated avg entry market cap: ${formattedMC} (supply: ${circulatingSupply.toFixed(0)})`);
                     } else {
                         // For price chart, use average entry price in KAS
                         priceLineValue = result.average_entry_price_kas;
+                        priceLineTitle = `Avg Entry: ${priceLineValue.toFixed(8)} KAS`;
                     }
                     
                     // Remove existing price line if it exists
@@ -708,12 +731,12 @@
                         lineWidth: 2,
                         lineStyle: LightweightCharts.LineStyle.Dashed,
                         axisLabelVisible: true,
-                        title: `Avg Entry: ${priceLineValue.toFixed(8)} KAS`,
+                        title: priceLineTitle,
                         axisLabelColor: '#20B2AA',
                         axisLabelTextColor: '#FFFFFF'
                     });
                     
-                    console.log(`✅ Added average entry price line at ${priceLineValue.toFixed(8)} KAS (${inProfit ? 'profit' : 'loss'})`);
+                    console.log(`✅ Added average entry price line: ${priceLineTitle} (${inProfit ? 'profit' : 'loss'})`);
                 }
                 
             } catch (error) {

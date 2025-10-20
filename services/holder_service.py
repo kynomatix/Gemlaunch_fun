@@ -83,9 +83,9 @@ class HolderService:
             # Convert from Wei (18 decimals) to tokens
             balance = float(balance_wei) / 1e18
             
-            # Cache for 10 seconds
+            # Cache for 2 seconds (reduced from 10s for faster updates after trades/transfers)
             if cache:
-                cache.set(cache_key, balance, timeout=10)
+                cache.set(cache_key, balance, timeout=2)
             
             logger.info(f"✅ Balance fetched: {wallet_address[:10]}... = {balance} tokens")
             return balance
