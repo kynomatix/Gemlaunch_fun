@@ -580,6 +580,21 @@
         // ✨ NEW: Fetch and display user's trade markers on chart
         addUserTradeMarkers: async function() {
             try {
+                // Check if markers are enabled
+                if (this.tradeMarkersVisible === false) {
+                    // Clear markers when hidden
+                    if (this.currentSeries) {
+                        this.currentSeries.setMarkers([]);
+                        console.log('🚫 Trade markers hidden');
+                    }
+                    // Remove average entry line
+                    if (this.userEntryPriceLine) {
+                        this.currentSeries.removePriceLine(this.userEntryPriceLine);
+                        this.userEntryPriceLine = null;
+                    }
+                    return;
+                }
+                
                 // Check if wallet is connected
                 const wallet = window.walletManager?.getConnectedWallet();
                 if (!wallet || !wallet.address) {
@@ -3522,19 +3537,61 @@
         TokenDetail.updateQuickButtons(TokenDetail.currentTradeMode);
         TokenDetail.fetchWalletBalances();
         
-        // Chart type toggle buttons - only add if not already added
+        // Chart type toggle buttons - toggle switch styling
         document.querySelectorAll('.chart-type-btn').forEach(btn => {
             if (!btn.dataset.listenerAdded) {
                 btn.dataset.listenerAdded = 'true';
                 btn.addEventListener('click', function() {
-                    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                    // Update all buttons to inactive state
+                    document.querySelectorAll('.chart-type-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = '#888';
+                        b.style.fontWeight = '500';
+                    });
+                    
+                    // Set active state on clicked button
                     this.classList.add('active');
+                    this.style.background = 'rgba(32, 178, 170, 0.25)';
+                    this.style.color = '#20B2AA';
+                    this.style.fontWeight = '600';
                     
                     TokenDetail.currentChartType = this.getAttribute('data-type');
                     TokenDetail.initChart();
                 });
             }
         });
+        
+        // Toggle Trade Markers button
+        const toggleMarkersBtn = document.getElementById('toggleTradeMarkers');
+        if (toggleMarkersBtn && !toggleMarkersBtn.dataset.listenerAdded) {
+            toggleMarkersBtn.dataset.listenerAdded = 'true';
+            
+            // Initialize state (default: visible)
+            if (TokenDetail.tradeMarkersVisible === undefined) {
+                TokenDetail.tradeMarkersVisible = true;
+            }
+            
+            toggleMarkersBtn.addEventListener('click', function() {
+                TokenDetail.tradeMarkersVisible = !TokenDetail.tradeMarkersVisible;
+                
+                // Update button styling
+                if (TokenDetail.tradeMarkersVisible) {
+                    this.style.background = 'rgba(32, 178, 170, 0.15)';
+                    this.style.borderColor = 'rgba(32, 178, 170, 0.3)';
+                    this.style.color = '#20B2AA';
+                    this.querySelector('i').classList.replace('fa-eye-slash', 'fa-eye');
+                } else {
+                    this.style.background = 'rgba(255, 255, 255, 0.05)';
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    this.style.color = '#888';
+                    this.querySelector('i').classList.replace('fa-eye', 'fa-eye-slash');
+                }
+                
+                // Re-add markers (or hide them)
+                TokenDetail.addUserTradeMarkers();
+            });
+        }
         
         // Interval selector buttons (like real trading platforms)
         document.querySelectorAll('.interval-btn').forEach(btn => {
