@@ -1609,10 +1609,9 @@ def get_token_holdings(contract_address):
     
     return jsonify(holding_info)
 
-@app.route('/api/token/<contract_address>/spotlight', methods=['GET', 'POST'])
-@require_wallet_connection
-def token_spotlight(contract_address):
-    """Get or create spotlight messages - TOKEN GATED, not token cost!"""
+@app.route('/api/token/<contract_address>/spotlight', methods=['GET'])
+def token_spotlight_get(contract_address):
+    """Get spotlight messages - no auth required"""
     try:
         from datetime import datetime, timedelta, timezone
         
@@ -1620,90 +1619,103 @@ def token_spotlight(contract_address):
         token = Token.query.filter(
             db.func.lower(Token.contract_address) == contract_address.lower()
         ).first_or_404()
-        user = get_current_user()
         
+        # Get active spotlight messages (only those less than 1 hour old)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        
+        spotlights = ChatMessage.query.options(
+            joinedload(ChatMessage.user).joinedload(User.profile)
+        ).filter(
+            ChatMessage.token_id == token.id,
+            ChatMessage.is_pinned == True,
+            ChatMessage.is_deleted == False,
+            ChatMessage.created_at >= one_hour_ago
+        ).order_by(ChatMessage.created_at.desc()).limit(5).all()
+        
+        spotlight_list = []
+        for msg in spotlights:
+            expires_at = msg.created_at + timedelta(hours=1)
+            expires_at_ms = int(expires_at.timestamp() * 1000)
+            spotlight_list.append({
+                'id': msg.id,
+                'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
+                'message': msg.content,
+                'created_at': msg.created_at.isoformat(),
+                'expires_at_ms': expires_at_ms
+            })
+        
+        return jsonify({'spotlights': spotlight_list})
+    except Exception as e:
+        logging.error(f"❌ Spotlight GET error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to get spotlights'}), 500
+
+@app.route('/api/token/<contract_address>/spotlight', methods=['POST'])
+@require_wallet_connection
+def token_spotlight_post(contract_address):
+    """Create spotlight message - TOKEN GATED, requires session auth!"""
+    try:
+        from datetime import datetime, timedelta, timezone
+        
+        # Normalize address to lowercase for case-insensitive lookup
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == contract_address.lower()
+        ).first_or_404()
+        
+        # Get authenticated user from session
+        user = get_current_user()
         if not user:
             logging.error("❌ Spotlight: User not found in session")
             return jsonify({'error': 'Wallet connection required'}), 401
         
-        if request.method == 'GET':
-            # Get active spotlight messages (only those less than 1 hour old)
-            one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-            
-            spotlights = ChatMessage.query.options(
-                joinedload(ChatMessage.user).joinedload(User.profile)
-            ).filter(
-                ChatMessage.token_id == token.id,
-                ChatMessage.is_pinned == True,
-                ChatMessage.is_deleted == False,
-                ChatMessage.created_at >= one_hour_ago  # Only show spotlights less than 1 hour old
-            ).order_by(ChatMessage.created_at.desc()).limit(5).all()
-            
-            spotlight_list = []
-            for msg in spotlights:
-                # Calculate when this message expires (1 hour after creation)
-                expires_at = msg.created_at + timedelta(hours=1)
-                # Convert to Unix timestamp in milliseconds for JavaScript
-                expires_at_ms = int(expires_at.timestamp() * 1000)
-                spotlight_list.append({
-                    'id': msg.id,
-                    'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
-                    'message': msg.content,
-                    'created_at': msg.created_at.isoformat(),
-                    'expires_at_ms': expires_at_ms  # Send as milliseconds timestamp
-                })
-            
-            return jsonify({'spotlights': spotlight_list})
+        # Parse request
+        data = request.get_json()
+        message_text = data.get('message', '').strip()
         
-        elif request.method == 'POST':
-            data = request.get_json()
-            message_text = data.get('message', '').strip()
+        if not message_text:
+            return jsonify({'error': 'Message cannot be empty'}), 400
             
-            if not message_text:
-                return jsonify({'error': 'Message cannot be empty'}), 400
-            
-            # Get token settings for minimum tokens required
-            settings = TokenSettings.query.filter_by(token_id=token.id).first()
-            min_tokens_for_spotlight = 500  # Default
-            if settings:
-                min_tokens_for_spotlight = settings.min_tokens_for_spotlight or 500
-            
-            # VERIFY USER ACTUALLY HOLDS ENOUGH TOKENS (TOKEN GATE!) - Use HolderService
-            from services.holder_service import HolderService
-            has_enough_tokens = HolderService.user_holds_min_tokens(
-                user.wallet_address, 
-                token.contract_address, 
-                min_tokens_for_spotlight
-            )
-            
-            if not has_enough_tokens:
-                user_balance = HolderService.get_user_balance(user.wallet_address, token.contract_address)
-                return jsonify({'error': f'You need to hold at least {min_tokens_for_spotlight} {token.symbol} tokens to create spotlight messages (You hold: {int(user_balance)})'}), 403
-            
-            # User has enough tokens - create spotlight message (NO DEDUCTION!)
-            message = ChatMessage(
-                token_id=token.id,
-                user_id=user.id,
-                content=message_text,
-                message_type='spotlight',
-                is_pinned=True
-            )
-            db.session.add(message)
-            db.session.commit()
-            
-            # Schedule unpinning after 1 hour (would need a background task)
-            # For now, spotlight messages will stay pinned until manually removed
-            
-            return jsonify({
-                'success': True,
-                'spotlight': {
-                    'id': message.id,
-                    'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
-                    'message': message.content,
-                    'wallet': user.wallet_address,
-                    'created_at': message.created_at.isoformat()
-                }
-            })
+        # Get token settings for minimum tokens required
+        settings = TokenSettings.query.filter_by(token_id=token.id).first()
+        min_tokens_for_spotlight = 500  # Default
+        if settings:
+            min_tokens_for_spotlight = settings.min_tokens_for_spotlight or 500
+        
+        # VERIFY USER ACTUALLY HOLDS ENOUGH TOKENS (TOKEN GATE!) - Use HolderService
+        from services.holder_service import HolderService
+        has_enough_tokens = HolderService.user_holds_min_tokens(
+            user.wallet_address, 
+            token.contract_address, 
+            min_tokens_for_spotlight
+        )
+        
+        if not has_enough_tokens:
+            user_balance = HolderService.get_user_balance(user.wallet_address, token.contract_address)
+            return jsonify({'error': f'You need to hold at least {min_tokens_for_spotlight} {token.symbol} tokens to create spotlight messages (You hold: {int(user_balance)})'}), 403
+        
+        # User has enough tokens - create spotlight message (NO DEDUCTION!)
+        message = ChatMessage(
+            token_id=token.id,
+            user_id=user.id,
+            content=message_text,
+            message_type='spotlight',
+            is_pinned=True
+        )
+        db.session.add(message)
+        db.session.commit()
+        
+        # Schedule unpinning after 1 hour (would need a background task)
+        # For now, spotlight messages will stay pinned until manually removed
+        
+        return jsonify({
+            'success': True,
+            'spotlight': {
+                'id': message.id,
+                'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
+                'message': message.content,
+                'wallet': user.wallet_address,
+                'created_at': message.created_at.isoformat()
+            }
+        })
     except Exception as e:
         logging.error(f"❌ Spotlight error: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to process spotlight request'}), 500

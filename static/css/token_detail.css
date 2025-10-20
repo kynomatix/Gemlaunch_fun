@@ -1993,6 +1993,14 @@ select.airdrop-input-field option {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    padding: 0;
+}
+
+.action-btn i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
 }
 
 
