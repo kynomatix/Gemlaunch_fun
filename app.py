@@ -206,11 +206,11 @@ scheduler.add_job(
     replace_existing=True
 )
 
-# Add event indexer job - runs every 20 seconds
+# Add event indexer job - runs every 30 seconds (optimized for performance)
 scheduler.add_job(
     func=run_event_indexer_with_context,
     trigger='interval',
-    seconds=20,
+    seconds=30,
     id='event_indexer',
     name='Index blockchain events',
     replace_existing=True
@@ -223,7 +223,7 @@ scheduler.start()
 atexit.register(lambda: scheduler.shutdown())
 
 logging.info("Transaction monitor scheduler started - checking every 10 seconds")
-logging.info("Event indexer scheduler started - checking every 20 seconds")
+logging.info("Event indexer scheduler started - checking every 30 seconds (active tokens only)")
 
 def get_current_user():
     """Get current user from session - only if wallet is verified"""

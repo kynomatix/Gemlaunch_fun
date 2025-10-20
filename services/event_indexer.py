@@ -787,13 +787,52 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
         summary['tokens_deployed'] = token_created_stats.get('tokens_deployed', 0)
         summary['errors'] += token_created_stats.get('errors', 0)
         
-        # STEP 2: Query deployed tokens (they should have real addresses now)
-        deployed_tokens = Token.query.filter(
-            Token.contract_address.isnot(None),
-            Token.deployment_status == 'deployed'
-        ).all()
+        # STEP 2: Query deployed tokens (with periodic full scans to catch reactivated tokens)
+        # Performance optimization: Index active tokens most of the time, full scan periodically
+        from datetime import timedelta
         
-        logger.info(f"📊 Processing {len(deployed_tokens)} deployed tokens")
+        # Check if we should do a full scan (every 10 cycles = ~5 min)
+        # This catches tokens that went dormant and then reactivated
+        if not hasattr(index_all_events, '_cycle_counter'):
+            index_all_events._cycle_counter = 0
+        index_all_events._cycle_counter += 1
+        
+        do_full_scan = (index_all_events._cycle_counter % 10 == 0)
+        
+        if do_full_scan:
+            # FULL SCAN: Index all deployed tokens (catches reactivated tokens)
+            deployed_tokens = Token.query.filter(
+                Token.contract_address.isnot(None),
+                Token.deployment_status == 'deployed'
+            ).all()
+            logger.info(f"📊 Processing {len(deployed_tokens)} deployed tokens (FULL SCAN cycle #{index_all_events._cycle_counter})")
+        else:
+            # FAST SCAN: Index only recently active tokens
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            
+            # Get tokens with recent trades OR newly deployed
+            deployed_tokens = Token.query.filter(
+                Token.contract_address.isnot(None),
+                Token.deployment_status == 'deployed'
+            ).join(
+                TradeEvent,
+                TradeEvent.token_id == Token.id,
+                isouter=True  # LEFT JOIN to include tokens with no trades yet
+            ).filter(
+                # Include if: has recent trades OR deployed recently OR no trades yet
+                db.or_(
+                    TradeEvent.timestamp >= recent_cutoff,
+                    Token.created_at >= recent_cutoff,
+                    TradeEvent.id.is_(None)  # No trades yet (newly deployed)
+                )
+            ).distinct().all()
+            
+            all_deployed = Token.query.filter(
+                Token.contract_address.isnot(None),
+                Token.deployment_status == 'deployed'
+            ).count()
+            
+            logger.info(f"📊 Processing {len(deployed_tokens)} active tokens out of {all_deployed} total (cycle #{index_all_events._cycle_counter})")
         
         for token in deployed_tokens:
             try:
