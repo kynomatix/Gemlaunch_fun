@@ -1127,10 +1127,18 @@
                     
                     // Update graduation progress
                     const progressElement = tokenCard.querySelector('.token-grad-progress');
-                    console.log(`📊 Progress element found: ${!!progressElement}, progress value: ${data.progress_to_graduation}`);
-                    if (progressElement && data.progress_to_graduation !== undefined) {
-                        progressElement.textContent = `${data.progress_to_graduation.toFixed(1)}%`;
-                        console.log(`✅ Updated graduation progress to: ${progressElement.textContent}`);
+                    const progressBar = tokenCard.querySelector('.progress-fill-compact');
+                    console.log(`📊 Progress element found: ${!!progressElement}, bar found: ${!!progressBar}, progress value: ${data.progress_to_graduation}`);
+                    if (data.progress_to_graduation !== undefined) {
+                        // Update the text percentage
+                        if (progressElement) {
+                            progressElement.textContent = `${data.progress_to_graduation.toFixed(1)}%`;
+                        }
+                        // Update the visual bar width
+                        if (progressBar) {
+                            progressBar.style.width = `${data.progress_to_graduation}%`;
+                        }
+                        console.log(`✅ Updated graduation progress to: ${data.progress_to_graduation.toFixed(1)}%`);
                     }
                     
                     // Update holders count
