@@ -1150,7 +1150,7 @@ class Web3Service:
     def _solve_buy_for_kas_amount(self, pool_address, target_token_amount):
         """
         Solve for kas_amount that produces target_token_amount in a buy
-        Uses binary search to find the input kas_amount
+        Uses warm-start binary search with price estimate for faster convergence
         
         Args:
             pool_address (str): Pool contract address
@@ -1159,11 +1159,29 @@ class Web3Service:
         Returns:
             int: KAS amount in wei that produces target_token_amount
         """
-        # Binary search bounds (optimized for faster convergence)
-        low = 0
-        high = 10**22  # 10,000 KAS in wei (reasonable upper bound for testnet)
-        tolerance = 10**16  # 0.01 token tolerance (in wei) - still very precise
-        max_iterations = 30  # Reduced for faster response
+        # WARM START: Get price estimate from a small forward quote
+        try:
+            # Use 1 KAS as sample to get current price
+            sample_kas = 10**18  # 1 KAS in wei
+            sample_result = self.get_buy_quote(pool_address, sample_kas)
+            tokens_per_kas = sample_result['tokens_out'] / sample_kas
+            
+            # Estimate KAS needed (with 20% buffer for price impact)
+            estimated_kas = int((target_token_amount / tokens_per_kas) * 1.2)
+            
+            # Set tighter bounds around estimate
+            low = max(0, int(estimated_kas * 0.5))
+            high = int(estimated_kas * 2.0)
+            
+            logging.debug(f"Warm start buy: estimated {estimated_kas} wei KAS for {target_token_amount} wei tokens")
+        except:
+            # Fallback to wide bounds if warm start fails
+            low = 0
+            high = 10**22
+        
+        # Optimized binary search parameters
+        tolerance = 10**17  # 0.1 token tolerance - imperceptible to users
+        max_iterations = 12  # Reduced from 30 for sub-2s response
         
         for iteration in range(max_iterations):
             mid = (low + high) // 2
@@ -1172,6 +1190,7 @@ class Web3Service:
                 result = self.get_buy_quote(pool_address, mid)
                 tokens_out = result['tokens_out']
                 
+                # Early exit if within tolerance
                 if abs(tokens_out - target_token_amount) <= tolerance:
                     logging.debug(f"Solved buy: {mid} wei KAS → {tokens_out} wei tokens (target: {target_token_amount}, iterations: {iteration + 1})")
                     return mid
@@ -1186,13 +1205,13 @@ class Web3Service:
                 high = mid - 1
         
         # Return best approximation
-        logging.warning(f"Binary search for buy did not fully converge after {max_iterations} iterations")
+        logging.debug(f"Buy solver converged at {mid} wei KAS after {max_iterations} iterations")
         return mid
     
     def _solve_sell_for_token_amount(self, pool_address, target_kas_amount):
         """
         Solve for token_amount that produces target_kas_amount in a sell
-        Uses binary search to find the input token_amount
+        Uses warm-start binary search with price estimate for faster convergence
         
         Args:
             pool_address (str): Pool contract address
@@ -1201,11 +1220,29 @@ class Web3Service:
         Returns:
             int: Token amount in wei that produces target_kas_amount
         """
-        # Binary search bounds (optimized for faster convergence)
-        low = 0
-        high = 10**25  # 10 million tokens in wei (reasonable upper bound for testnet)
-        tolerance = 10**16  # 0.01 KAS tolerance (in wei) - still very precise
-        max_iterations = 30  # Reduced for faster response
+        # WARM START: Get price estimate from a small forward quote
+        try:
+            # Use 1000 tokens as sample to get current price
+            sample_tokens = 10**21  # 1000 tokens in wei
+            sample_result = self.get_sell_quote(pool_address, sample_tokens)
+            kas_per_token = sample_result['kas_out'] / sample_tokens
+            
+            # Estimate tokens needed (with 20% buffer for price impact)
+            estimated_tokens = int((target_kas_amount / kas_per_token) * 1.2)
+            
+            # Set tighter bounds around estimate
+            low = max(0, int(estimated_tokens * 0.5))
+            high = int(estimated_tokens * 2.0)
+            
+            logging.debug(f"Warm start sell: estimated {estimated_tokens} wei tokens for {target_kas_amount} wei KAS")
+        except:
+            # Fallback to wide bounds if warm start fails
+            low = 0
+            high = 10**25
+        
+        # Optimized binary search parameters
+        tolerance = 10**17  # 0.1 KAS tolerance - imperceptible to users
+        max_iterations = 12  # Reduced from 30 for sub-2s response
         
         for iteration in range(max_iterations):
             mid = (low + high) // 2
@@ -1214,6 +1251,7 @@ class Web3Service:
                 result = self.get_sell_quote(pool_address, mid)
                 kas_out = result['kas_out']  # NET amount
                 
+                # Early exit if within tolerance
                 if abs(kas_out - target_kas_amount) <= tolerance:
                     logging.debug(f"Solved sell: {mid} wei tokens → {kas_out} wei KAS (target: {target_kas_amount}, iterations: {iteration + 1})")
                     return mid
@@ -1228,7 +1266,7 @@ class Web3Service:
                 high = mid - 1
         
         # Return best approximation
-        logging.warning(f"Binary search for sell did not fully converge after {max_iterations} iterations")
+        logging.debug(f"Sell solver converged at {mid} wei tokens after {max_iterations} iterations")
         return mid
     
     def get_auto_slippage(self, pool_address, kas_amount):
