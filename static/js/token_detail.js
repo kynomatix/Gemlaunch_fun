@@ -1506,30 +1506,41 @@
             
             const poll = async () => {
                 attempts++;
+                console.log(`[PollTokenStats] Attempt ${attempts}: Fetching stats for ${tokenAddress}`);
                 
                 try {
                     // Fetch stats from JSON endpoint (not HTML!)
-                    const response = await fetch(`/api/token/${tokenAddress}/stats`);
+                    const url = `/api/token/${tokenAddress}/stats`;
+                    console.log(`[PollTokenStats] Fetching from: ${url}`);
+                    const response = await fetch(url);
+                    console.log(`[PollTokenStats] Response status: ${response.status} ${response.statusText}`);
                     
                     if (!response.ok) {
-                        throw new Error('Stats fetch failed');
+                        const errorText = await response.text();
+                        console.error(`[PollTokenStats] HTTP ${response.status}: ${errorText}`);
+                        throw new Error(`Stats fetch failed: ${response.status}`);
                     }
                     
                     const data = await response.json();
+                    console.log('[PollTokenStats] Response data:', data);
                     
                     if (!data.success) {
+                        console.error('[PollTokenStats] Response not successful:', data);
                         throw new Error('Stats unsuccessful');
                     }
                     
                     const newMarketCap = data.market_cap_formatted;
                     const newPrice = data.price_formatted;
                     
-                    // Check if values changed from PRE-TRADE baseline
-                    if (newMarketCap && newPrice && 
-                        (newMarketCap !== baselineMarketCap || newPrice !== baselinePrice)) {
+                    // Check if values changed from PRE-TRADE baseline (or if baseline is undefined, always update)
+                    const hasChanged = !baselineMarketCap || !baselinePrice || 
+                                      (newMarketCap !== baselineMarketCap) || 
+                                      (newPrice !== baselinePrice);
+                    
+                    if (newMarketCap && newPrice && hasChanged) {
                         console.log('[PollTokenStats] Stats changed from baseline, updating ALL fields');
-                        console.log(`  Market Cap: ${baselineMarketCap} → ${newMarketCap}`);
-                        console.log(`  Price: ${baselinePrice} → ${newPrice}`);
+                        console.log(`  Market Cap: ${baselineMarketCap || 'N/A'} → ${newMarketCap}`);
+                        console.log(`  Price: ${baselinePrice || 'N/A'} → ${newPrice}`);
                         
                         // ========== UPDATE ALL STATS (same as refreshTokenStats) ==========
                         // Update header stats
@@ -1588,7 +1599,11 @@
                         console.warn('[PollTokenStats] Max attempts reached, stats may be stale');
                     }
                 } catch (error) {
-                    console.error('[PollTokenStats] Error:', error);
+                    console.error('[PollTokenStats] Error caught:', error);
+                    console.error('[PollTokenStats] Error type:', typeof error);
+                    console.error('[PollTokenStats] Error name:', error?.name);
+                    console.error('[PollTokenStats] Error message:', error?.message);
+                    console.error('[PollTokenStats] Error stack:', error?.stack);
                     if (attempts < maxAttempts) {
                         setTimeout(poll, pollInterval);
                     }
