@@ -654,15 +654,15 @@
                     const currentPriceKas = this.tokenPrice; // Current token price in KAS
                     const inProfit = currentPriceKas > result.average_entry_price_kas;
                     
-                    // Create horizontal line for average entry price
+                    // Create horizontal line for average entry price (always teal)
                     this.userEntryPriceLine = this.currentSeries.createPriceLine({
                         price: priceLineValue,
-                        color: inProfit ? '#22C55E' : '#EF4444',  // Green if profit, red if loss
+                        color: '#20B2AA',  // Teal for consistency
                         lineWidth: 2,
                         lineStyle: LightweightCharts.LineStyle.Dashed,
                         axisLabelVisible: true,
                         title: `Avg Entry: ${priceLineValue.toFixed(8)} KAS`,
-                        axisLabelColor: inProfit ? '#22C55E' : '#EF4444',
+                        axisLabelColor: '#20B2AA',
                         axisLabelTextColor: '#FFFFFF'
                     });
                     
