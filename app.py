@@ -3843,7 +3843,8 @@ def api_quote_buy():
         
         # Convert amounts to wei
         kas_amount_wei = Web3.to_wei(kas_amount, 'ether') if kas_amount is not None else None
-        token_amount_wei = int(Web3.to_wei(token_amount, 'ether')) if token_amount is not None else None
+        # Frontend sends token_amount in wei for consistency with sell endpoint
+        token_amount_wei = int(token_amount) if token_amount is not None else None
         
         # Calculate anti-bot fees (applied to KAS amount)
         # Note: For inverse calculation (token_amount provided), we'll need to account for this after solving
