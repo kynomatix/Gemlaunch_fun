@@ -647,20 +647,16 @@
             const kasLabel = document.getElementById('kasAmountLabel');
             const tokenLabel = document.getElementById('tokenAmountLabel');
             
-            // Save current values
-            const tempKas = kasInput.value;
-            const tempToken = tokenInput.value;
-            
             // Toggle direction
             this.inputDirection = this.inputDirection === 'primary' ? 'secondary' : 'primary';
             
             this._updatingProgrammatically = true;
             
-            // Swap the values between fields
-            kasInput.value = tempToken;
-            tokenInput.value = tempKas;
+            // Clear both fields - user will enter fresh value
+            kasInput.value = '';
+            tokenInput.value = '';
             
-            // Update labels based on new direction
+            // Update labels and lastEditedField based on new direction
             const mode = this.currentTradeMode;
             if (mode === 'buy') {
                 if (this.inputDirection === 'primary') {
@@ -670,27 +666,28 @@
                     this.lastEditedField = 'kas';
                 } else {
                     // Reversed: User enters tokens → Get KAS cost
-                    kasLabel.textContent = `You Receive (${this.tokenSymbol})`;
-                    tokenLabel.textContent = 'You Pay (KAS)';
+                    kasLabel.textContent = 'KAS Cost';
+                    tokenLabel.textContent = `${this.tokenSymbol} You Want`;
                     this.lastEditedField = 'token';
                 }
             } else { // sell
                 if (this.inputDirection === 'primary') {
                     // Standard: User enters tokens → Get KAS received
-                    kasLabel.textContent = 'You Receive (KAS)';
-                    tokenLabel.textContent = `You Sell (${this.tokenSymbol})`;
+                    kasLabel.textContent = 'KAS You Receive';
+                    tokenLabel.textContent = `${this.tokenSymbol} You Sell`;
                     this.lastEditedField = 'token';
                 } else {
                     // Reversed: User enters KAS desired → Get tokens needed
                     kasLabel.textContent = 'KAS You Want';
-                    tokenLabel.textContent = `${this.tokenSymbol} You Must Sell`;
+                    tokenLabel.textContent = `${this.tokenSymbol} Required`;
                     this.lastEditedField = 'kas';
                 }
             }
             
             this._updatingProgrammatically = false;
             
-            // DON'T clear fee breakdown - the quote is still valid, just swapped
+            // Clear fee breakdown
+            this.clearFeeBreakdown();
         },
         
         setQuickAmount: function(amount) {
@@ -1070,7 +1067,7 @@
             // Create NEW AbortController for this request
             this.quoteAbortController = new AbortController();
             
-            // Debounce API calls (300ms)
+            // Debounce API calls (600ms - increased to reduce server load)
             this.quoteTimeout = setTimeout(async () => {
                 try {
                     // ✅ FIX 2: Re-validate inputs before fetching quote (prevent stale updates)
@@ -1151,7 +1148,7 @@
                 } finally {
                     this.hideQuoteLoading();
                 }
-            }, 300);
+            }, 600);  // Increased from 300ms to reduce server load
         },
         
         // NC-3 FIX: Quote freshness validation
