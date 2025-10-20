@@ -826,7 +826,7 @@
                                         </span>
                                         <span class="metric-pill change-pill {{ 'positive' if token.price_change_24h >= 0 else 'negative' }}" title="24h price change">
                                             <i class="fas fa-chart-line"></i>
-                                            <span class="pill-text">{{ '+' if token.price_change_24h >= 0 else '' }}{{ "%.1f"|format(token.price_change_24h or 0) }}%</span>
+                                            <span class="pill-text token-price-change">{{ '+' if token.price_change_24h >= 0 else '' }}{{ "%.1f"|format(token.price_change_24h or 0) }}%</span>
                                         </span>
                                         <span class="metric-pill type-pill {{ 'advanced' if token.is_pro else 'basic' }}" title="Token type">
                                             {% if token.is_pro %}
@@ -842,15 +842,15 @@
                                 <div class="token-stats-compact">
                                     <div class="stat-pill">
                                         <div class="stat-pill-label">Market Cap</div>
-                                        <div class="stat-pill-value">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
+                                        <div class="stat-pill-value token-market-cap">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
                                     </div>
                                     <div class="stat-pill">
                                         <div class="stat-pill-label">24h Volume</div>
-                                        <div class="stat-pill-value">{{ "%.1f"|format(token.volume_24h or 0) }} KAS</div>
+                                        <div class="stat-pill-value token-volume-24h">${{ "%.2f"|format(token.volume_24h or 0) }}</div>
                                     </div>
                                     <div class="stat-pill">
                                         <div class="stat-pill-label">Holders</div>
-                                        <div class="stat-pill-value">{{ token.holder_count or 0 }}</div>
+                                        <div class="stat-pill-value token-holders">{{ token.holder_count or 0 }}</div>
                                     </div>
                                 </div>
                                 
@@ -860,7 +860,7 @@
                                 </div>
                                 <div class="progress-label-compact">
                                     <span>DEX Graduation Progress</span>
-                                    <span>{{ "%.0f"|format(token.graduation_progress or 0) }}%</span>
+                                    <span class="token-grad-progress">{{ "%.0f"|format(token.graduation_progress or 0) }}%</span>
                                 </div>
                             </div>
                         </a>
