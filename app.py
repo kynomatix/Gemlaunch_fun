@@ -3813,6 +3813,12 @@ def api_quote_buy():
         if kas_amount is None and token_amount is None:
             return jsonify({'success': False, 'error': 'Either kas_amount or token_amount is required'}), 400
         
+        # Convert string inputs to floats
+        if kas_amount is not None:
+            kas_amount = float(kas_amount)
+        if token_amount is not None:
+            token_amount = float(token_amount)
+        
         # Validate amounts
         if kas_amount is not None and kas_amount <= 0:
             return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
@@ -3979,7 +3985,7 @@ def api_quote_sell():
         if token_amount is None and kas_amount is None:
             return jsonify({'success': False, 'error': 'Either token_amount or kas_amount is required'}), 400
         
-        # Validate amounts
+        # Convert string inputs to proper types
         if token_amount is not None:
             try:
                 token_amount_wei = int(token_amount)
@@ -3988,8 +3994,10 @@ def api_quote_sell():
             except (ValueError, TypeError):
                 return jsonify({'success': False, 'error': 'Invalid token_amount format'}), 400
         
-        if kas_amount is not None and kas_amount <= 0:
-            return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
+        if kas_amount is not None:
+            kas_amount = float(kas_amount)
+            if kas_amount <= 0:
+                return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
         
         try:
             token_address = Web3.to_checksum_address(token_address)

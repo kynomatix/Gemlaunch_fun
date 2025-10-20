@@ -1090,6 +1090,12 @@ class Web3Service:
         if kas_amount is None and token_amount is None:
             raise ValueError("Either kas_amount or token_amount must be provided")
         
+        # Convert string inputs to integers (API may pass strings)
+        if kas_amount is not None:
+            kas_amount = int(kas_amount) if isinstance(kas_amount, str) else kas_amount
+        if token_amount is not None:
+            token_amount = int(token_amount) if isinstance(token_amount, str) else token_amount
+        
         try:
             if direction == 'buy':
                 if kas_amount is not None:
@@ -1153,11 +1159,11 @@ class Web3Service:
         Returns:
             int: KAS amount in wei that produces target_token_amount
         """
-        # Binary search bounds
+        # Binary search bounds (optimized for faster convergence)
         low = 0
-        high = 10**24  # 1 million KAS in wei (reasonable upper bound)
-        tolerance = 10**15  # 0.001 token tolerance (in wei)
-        max_iterations = 50
+        high = 10**22  # 10,000 KAS in wei (reasonable upper bound for testnet)
+        tolerance = 10**16  # 0.01 token tolerance (in wei) - still very precise
+        max_iterations = 30  # Reduced for faster response
         
         for iteration in range(max_iterations):
             mid = (low + high) // 2
@@ -1195,11 +1201,11 @@ class Web3Service:
         Returns:
             int: Token amount in wei that produces target_kas_amount
         """
-        # Binary search bounds
+        # Binary search bounds (optimized for faster convergence)
         low = 0
-        high = 10**27  # 1 billion tokens in wei (reasonable upper bound)
-        tolerance = 10**15  # 0.001 KAS tolerance (in wei)
-        max_iterations = 50
+        high = 10**25  # 10 million tokens in wei (reasonable upper bound for testnet)
+        tolerance = 10**16  # 0.01 KAS tolerance (in wei) - still very precise
+        max_iterations = 30  # Reduced for faster response
         
         for iteration in range(max_iterations):
             mid = (low + high) // 2
