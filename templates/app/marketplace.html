@@ -842,7 +842,7 @@
                                 <div class="token-stats-compact">
                                     <div class="stat-pill">
                                         <div class="stat-pill-label">Market Cap</div>
-                                        <div class="stat-pill-value token-market-cap">${{ (token.current_market_cap|float or 0)|format_number(True) }}</div>
+                                        <div class="stat-pill-value token-market-cap">Loading...</div>
                                     </div>
                                     <div class="stat-pill">
                                         <div class="stat-pill-label">24h Volume</div>
@@ -1157,16 +1157,31 @@
             threshold: 0.01 // Trigger when 1% of token is visible
         };
         
+        // Batch visible tokens and load them together
+        let pendingTokens = new Set();
+        let batchTimeout = null;
+        
         const observer = new IntersectionObserver((entries) => {
-            // Batch load all visible tokens at once instead of one-by-one
-            const visibleTokens = entries
-                .filter(entry => entry.isIntersecting)
-                .map(entry => entry.target);
-            
-            // Load all visible tokens in parallel
-            visibleTokens.forEach(tokenCard => {
-                loadTokenMetrics(tokenCard);
+            // Add visible tokens to pending batch
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    pendingTokens.add(entry.target);
+                }
             });
+            
+            // Debounce: wait 50ms for all tokens to become visible, then load all at once
+            clearTimeout(batchTimeout);
+            batchTimeout = setTimeout(() => {
+                if (pendingTokens.size > 0) {
+                    // Load all pending tokens in parallel
+                    const tokensToLoad = Array.from(pendingTokens);
+                    console.log(`Loading ${tokensToLoad.length} tokens in batch`);
+                    tokensToLoad.forEach(tokenCard => {
+                        loadTokenMetrics(tokenCard);
+                    });
+                    pendingTokens.clear();
+                }
+            }, 50);
         }, observerOptions);
         
         // Observe all token cards

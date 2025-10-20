@@ -184,13 +184,14 @@ class MarketplaceService:
         
         Returns:
             dict: {
-                'volume_24h': float,        # 24h volume in KAS
+                'volume_24h': float,        # 24h volume in USD
                 'price_change_24h': float   # 24h price change percentage
             }
         """
         try:
             from models import Token, db, TradeEvent
             from datetime import timezone
+            from services.kas_oracle import oracle
             
             # Find token by contract address
             token = Token.query.filter(
@@ -208,8 +209,12 @@ class MarketplaceService:
                 TradeEvent.timestamp >= cutoff_time
             ).all()
             
-            # Calculate volume
-            total_volume = sum(float(trade.kas_amount) for trade in recent_trades)
+            # Calculate volume in KAS
+            volume_kas = sum(float(trade.kas_amount) for trade in recent_trades)
+            
+            # Convert to USD
+            kas_price = oracle.get_kas_price()
+            volume_usd = volume_kas * kas_price
             
             # Get most recent trade for current price
             latest_trade = TradeEvent.query.filter(
@@ -217,7 +222,7 @@ class MarketplaceService:
             ).order_by(TradeEvent.timestamp.desc()).first()
             
             if not latest_trade:
-                return {'volume_24h': round(total_volume, 2), 'price_change_24h': 0}
+                return {'volume_24h': round(volume_usd, 2), 'price_change_24h': 0}
             
             # Calculate current price
             current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount) * 1e18
@@ -242,7 +247,7 @@ class MarketplaceService:
                     price_change = ((current_price - old_price) / old_price) * 100
             
             return {
-                'volume_24h': round(total_volume, 2),
+                'volume_24h': round(volume_usd, 2),
                 'price_change_24h': round(price_change, 1)
             }
             
