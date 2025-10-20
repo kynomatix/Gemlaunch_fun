@@ -613,9 +613,14 @@
                 console.log(`📍 Found ${result.trades.length} user trades`);
                 
                 // Convert trades to chart markers
-                const markers = result.trades.map(trade => {
+                const markers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
                     const timestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
+                    
+                    // Debug: Log first few trades to verify timestamps
+                    if (index < 5) {
+                        console.log(`Trade ${index}: ${trade.type} at ${trade.timestamp} → Unix: ${timestamp}`);
+                    }
                     
                     return {
                         time: timestamp,
@@ -626,6 +631,13 @@
                         size: 1
                     };
                 });
+                
+                // Debug: Log the time range of markers
+                if (markers.length > 0) {
+                    const times = markers.map(m => m.time);
+                    console.log(`Marker timestamps: ${Math.min(...times)} to ${Math.max(...times)}`);
+                    console.log(`Unique timestamps: ${new Set(times).size} out of ${times.length}`);
+                }
                 
                 // Add markers to the series
                 this.currentSeries.setMarkers(markers);
