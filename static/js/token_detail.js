@@ -701,14 +701,10 @@
                         }
                         
                         priceLineValue = avgEntryPriceUsd * circulatingSupply;
-                        // Format using same pattern as market cap display
-                        const formattedMC = priceLineValue >= 1000000 
-                            ? `$${(priceLineValue / 1000000).toFixed(2)}M`
-                            : priceLineValue >= 1000
-                            ? `$${(priceLineValue / 1000).toFixed(2)}K`
-                            : `$${priceLineValue.toFixed(2)}`;
-                        priceLineTitle = `Avg Entry MC: ${formattedMC}`;
-                        console.log(`Calculated avg entry market cap: ${formattedMC} (supply: ${circulatingSupply.toFixed(0)})`);
+                        // Format using existing formatter for consistency
+                        const formattedMC = this.formatNumber(priceLineValue, true);
+                        priceLineTitle = `Avg Entry MC: $${formattedMC}`;
+                        console.log(`Calculated avg entry market cap: $${formattedMC} (supply: ${circulatingSupply.toFixed(0)})`);
                     } else {
                         // For price chart, use average entry price in KAS
                         priceLineValue = result.average_entry_price_kas;
