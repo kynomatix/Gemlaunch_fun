@@ -1105,8 +1105,10 @@
             loadingTokens.add(contractAddress);
             
             try {
+                console.log(`📊 Fetching stats for ${contractAddress}`);
                 const response = await fetch(`/api/token/${contractAddress}/stats`);
                 const data = await response.json();
+                console.log(`📊 Stats response for ${contractAddress}:`, data);
                 
                 if (data.success) {
                     // Update volume
@@ -1125,8 +1127,10 @@
                     
                     // Update graduation progress
                     const progressElement = tokenCard.querySelector('.token-grad-progress');
+                    console.log(`📊 Progress element found: ${!!progressElement}, progress value: ${data.progress_to_graduation}`);
                     if (progressElement && data.progress_to_graduation !== undefined) {
                         progressElement.textContent = `${data.progress_to_graduation.toFixed(1)}%`;
+                        console.log(`✅ Updated graduation progress to: ${progressElement.textContent}`);
                     }
                     
                     // Update holders count
