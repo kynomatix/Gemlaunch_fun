@@ -13,7 +13,6 @@
         
         // Trading state
         currentTradeMode: 'buy',
-        inputDirection: 'primary', // 'primary' = standard (KAS for buy, tokens for sell), 'secondary' = reversed
         lastEditedField: 'kas', // Track which field user last edited for bidirectional input
         _updatingProgrammatically: false, // Flag to prevent programmatic updates from triggering listeners
         tokenPrice: null,
@@ -589,8 +588,7 @@
         setTradeMode: function(mode) {
             this.currentTradeMode = mode;
             
-            // Reset to primary direction when switching modes
-            this.inputDirection = 'primary';
+            // Reset which field user edits when switching modes
             this.lastEditedField = (mode === 'buy') ? 'kas' : 'token';
             
             // Update tab styling
@@ -640,11 +638,6 @@
             this.setTradeMode(newMode);
         },
         
-        // Swap input direction - disabled (bidirectional typing already works via lastEditedField)
-        swapInputDirection: function() {
-            // Do nothing - typing in either field already works automatically
-            return;
-        },
         
         setQuickAmount: function(amount) {
             // Set flag to prevent listener from triggering prematurely
@@ -932,14 +925,12 @@
             }
             clearTimeout(this.quoteTimeout);
             
-            // Determine which field is input based on inputDirection
+            // Determine which field is input based on lastEditedField (bidirectional support)
             let params = {
                 token_address: window.tokenContractAddress
             };
             
             let inputField, outputField;
-            
-            // Use lastEditedField to determine input (bidirectional support)
             if (action === 'buy') {
                 if (this.lastEditedField === 'token') {
                     // User typed in token field: calculate KAS needed
@@ -1023,7 +1014,7 @@
             // Create NEW AbortController for this request
             this.quoteAbortController = new AbortController();
             
-            // Debounce API calls (600ms - increased to reduce server load)
+            // Debounce API calls (300ms)
             this.quoteTimeout = setTimeout(async () => {
                 try {
                     // ✅ FIX 2: Re-validate inputs before fetching quote (prevent stale updates)
@@ -1104,7 +1095,7 @@
                 } finally {
                     this.hideQuoteLoading();
                 }
-            }, 600);  // Increased from 300ms to reduce server load
+            }, 300);
         },
         
         // NC-3 FIX: Quote freshness validation
