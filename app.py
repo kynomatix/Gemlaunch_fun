@@ -6133,26 +6133,24 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
     buckets = defaultdict(list)
     
     for point in trade_points:
-        # Calculate bucket timestamp (floor to interval)
+        # Calculate bucket timestamp (floor to ABSOLUTE interval boundaries)
         timestamp = point['timestamp']
-        bucket_time = timestamp.replace(second=0, microsecond=0)
         
-        # Ensure both timestamps are timezone-aware for comparison
-        if start_time.tzinfo is None:
-            start_time_aware = start_time.replace(tzinfo=timezone.utc)
-        else:
-            start_time_aware = start_time
-            
-        if bucket_time.tzinfo is None:
-            bucket_time = bucket_time.replace(tzinfo=timezone.utc)
+        # Ensure timestamp is timezone-aware
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
         
-        # Floor to interval
-        minutes_since_start = (bucket_time - start_time_aware).total_seconds() // 60
-        bucket_minutes = (minutes_since_start // (interval_seconds // 60)) * (interval_seconds // 60)
-        bucket_timestamp = start_time_aware + timedelta(minutes=bucket_minutes)
+        # Get Unix timestamp (seconds since epoch)
+        unix_timestamp = int(timestamp.timestamp())
         
-        # Use Unix timestamp (seconds) as key for TradingView compatibility
-        bucket_key = int(bucket_timestamp.timestamp())
+        # Floor to absolute interval boundary
+        # This ensures candles align to proper time boundaries:
+        # - 1h: :00 of each hour (e.g., 13:00, 14:00, 15:00)
+        # - 15m: :00, :15, :30, :45 of each hour
+        # - 5m: :00, :05, :10, etc.
+        # - 4h: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00
+        # - 1d: 00:00:00 of each day
+        bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
         buckets[bucket_key].append(point)
     
     # Build OHLC candles with proper open/close tracking
