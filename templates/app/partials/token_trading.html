@@ -7,12 +7,18 @@
     
     <div class="trade-form">
         <div class="input-group">
-            <label>You Pay (KAS)</label>
+            <label id="kasAmountLabel">You Pay (KAS)</label>
             <input type="number" id="kasAmount" placeholder="0.0" step="0.000001">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
-                <span class="input-addon" style="font-size: 0.75rem;">${{ "%.2f"|format(0) }} USD</span>
+                <span class="input-addon" id="kasUsdValue" style="font-size: 0.75rem;">${{ "%.2f"|format(0) }} USD</span>
                 <span id="kasBalanceDisplay" style="font-size: 0.75rem; color: #888;">Balance: -- KAS</span>
             </div>
+        </div>
+        
+        <div style="display: flex; justify-content: center; align-items: center; margin: 0.5rem 0;">
+            <button type="button" class="swap-button" onclick="TokenDetail.swapInputDirection()" title="Swap input direction">
+                <i class="fas fa-exchange-alt"></i>
+            </button>
         </div>
         
         <div id="quickAmountsContainer" class="quick-amounts">
@@ -20,8 +26,8 @@
         </div>
         
         <div class="input-group">
-            <label>You Receive ({{ token.symbol }})</label>
-            <input type="number" id="tokenAmount" placeholder="0" readonly>
+            <label id="tokenAmountLabel">You Receive ({{ token.symbol }})</label>
+            <input type="number" id="tokenAmount" placeholder="0" step="1">
             <span id="tokenBalanceDisplay" style="font-size: 0.75rem; color: #888; display: block; margin-top: 0.25rem;">Balance: -- {{ token.symbol }}</span>
         </div>
         

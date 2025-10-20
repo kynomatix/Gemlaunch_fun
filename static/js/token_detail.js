@@ -13,6 +13,7 @@
         
         // Trading state
         currentTradeMode: 'buy',
+        inputDirection: 'primary', // 'primary' = standard (KAS for buy, tokens for sell), 'secondary' = reversed
         tokenPrice: null,
         marketCap: null,
         kasToUsd: 0.15, // Will be updated from oracle
@@ -586,57 +587,26 @@
         setTradeMode: function(mode) {
             this.currentTradeMode = mode;
             
+            // Reset to primary direction when switching modes
+            this.inputDirection = 'primary';
+            
             // Update tab styling
             document.querySelectorAll('.trade-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelector(`.trade-tab.${mode}`).classList.add('active');
             
-            // ⚠️ M-10 FIX: Update field readonly states
-            const kasAmountInput = document.getElementById('kasAmount');
-            const tokenAmountInput = document.getElementById('tokenAmount');
+            // Get label elements
+            const kasLabel = document.getElementById('kasAmountLabel');
+            const tokenLabel = document.getElementById('tokenAmountLabel');
             
-            // Get label elements and input groups for reordering
-            const kasLabel = kasAmountInput?.parentElement?.querySelector('label');
-            const tokenLabel = tokenAmountInput?.parentElement?.querySelector('label');
-            const kasInputGroup = kasAmountInput?.closest('.input-group');
-            const tokenInputGroup = tokenAmountInput?.closest('.input-group');
-            const quickAmountsContainer = document.getElementById('quickAmountsContainer');
-            const tradeForm = document.querySelector('.trade-form');
-            
+            // Update labels based on mode (primary direction)
             if (mode === 'buy') {
-                // BUY mode: User edits KAS, tokens are output
-                if (kasAmountInput) kasAmountInput.readOnly = false;
-                if (tokenAmountInput) tokenAmountInput.readOnly = true;
-                
-                // Update labels for buy mode
+                // BUY mode primary: User enters KAS → Get tokens
                 if (kasLabel) kasLabel.textContent = 'You Pay (KAS)';
                 if (tokenLabel) tokenLabel.textContent = `You Receive (${this.tokenSymbol || 'TOKEN'})`;
-                
-                // BUY mode order: KAS input (pay) → buttons → Token input (receive)
-                // This is the natural HTML order, just ensure it's correct
-                if (tradeForm && kasInputGroup && quickAmountsContainer && tokenInputGroup) {
-                    // Insert in correct order: KAS, buttons, token
-                    const firstElement = tradeForm.firstElementChild;
-                    tradeForm.insertBefore(kasInputGroup, firstElement);
-                    tradeForm.insertBefore(quickAmountsContainer, kasInputGroup.nextElementSibling);
-                    tradeForm.insertBefore(tokenInputGroup, quickAmountsContainer.nextElementSibling);
-                }
-            } else { // sell
-                // SELL mode: User edits tokens, KAS is output
-                if (kasAmountInput) kasAmountInput.readOnly = true;
-                if (tokenAmountInput) tokenAmountInput.readOnly = false;
-                
-                // Update labels for sell mode
+            } else {
+                // SELL mode primary: User enters tokens → Get KAS
                 if (kasLabel) kasLabel.textContent = 'You Receive (KAS)';
-                if (tokenLabel) tokenLabel.textContent = `You Pay (${this.tokenSymbol || 'TOKEN'})`;
-                
-                // SELL mode order: Token input (pay) → buttons → KAS input (receive)
-                if (tradeForm && kasInputGroup && quickAmountsContainer && tokenInputGroup) {
-                    // Insert in correct order: token, buttons, KAS
-                    const firstElement = tradeForm.firstElementChild;
-                    tradeForm.insertBefore(tokenInputGroup, firstElement);
-                    tradeForm.insertBefore(quickAmountsContainer, tokenInputGroup.nextElementSibling);
-                    tradeForm.insertBefore(kasInputGroup, quickAmountsContainer.nextElementSibling);
-                }
+                if (tokenLabel) tokenLabel.textContent = `You Sell (${this.tokenSymbol || 'TOKEN'})`;
             }
             
             // Update trade button text with icon and symbol
@@ -651,6 +621,8 @@
             }
             
             // Clear inputs when switching modes
+            const kasAmountInput = document.getElementById('kasAmount');
+            const tokenAmountInput = document.getElementById('tokenAmount');
             if (kasAmountInput) kasAmountInput.value = '';
             if (tokenAmountInput) tokenAmountInput.value = '';
             this.clearFeeBreakdown();
@@ -663,6 +635,50 @@
         switchTradeMode: function() {
             const newMode = this.currentTradeMode === 'buy' ? 'sell' : 'buy';
             this.setTradeMode(newMode);
+        },
+        
+        // Swap input direction - allows user to enter either KAS or tokens
+        swapInputDirection: function() {
+            const kasInput = document.getElementById('kasAmount');
+            const tokenInput = document.getElementById('tokenAmount');
+            const kasLabel = document.getElementById('kasAmountLabel');
+            const tokenLabel = document.getElementById('tokenAmountLabel');
+            
+            // Toggle direction
+            this.inputDirection = this.inputDirection === 'primary' ? 'secondary' : 'primary';
+            
+            // Swap the values
+            const tempKas = kasInput.value;
+            const tempToken = tokenInput.value;
+            kasInput.value = tempToken || '';
+            tokenInput.value = tempKas || '';
+            
+            // Update labels based on mode and direction
+            const mode = this.currentTradeMode;
+            if (mode === 'buy') {
+                if (this.inputDirection === 'primary') {
+                    // Standard: Enter KAS → Get tokens
+                    kasLabel.textContent = 'You Pay (KAS)';
+                    tokenLabel.textContent = `You Receive (${this.tokenSymbol})`;
+                } else {
+                    // Reversed: Enter tokens → Calculate KAS needed
+                    kasLabel.textContent = `You Receive (${this.tokenSymbol})`;
+                    tokenLabel.textContent = 'You Pay (KAS)';
+                }
+            } else { // sell
+                if (this.inputDirection === 'primary') {
+                    // Standard: Enter tokens → Get KAS
+                    kasLabel.textContent = 'You Receive (KAS)';
+                    tokenLabel.textContent = `You Sell (${this.tokenSymbol})`;
+                } else {
+                    // Reversed: Enter KAS → Calculate tokens to sell
+                    kasLabel.textContent = `You Sell (${this.tokenSymbol})`;
+                    tokenLabel.textContent = 'You Receive (KAS)';
+                }
+            }
+            
+            // Recalculate quote
+            this.updateTokenAmount();
         },
         
         setQuickAmount: function(amount) {
@@ -926,7 +942,7 @@
             }
         },
         
-        // PHASE 3 AUDITED IMPLEMENTATION - All 5 audit fixes applied
+        // PHASE 3 AUDITED IMPLEMENTATION - All 5 audit fixes applied + Bidirectional support
         updateTokenAmount: function() {
             const action = this.currentTradeMode; // 'buy' or 'sell'
             
@@ -938,44 +954,82 @@
             }
             clearTimeout(this.quoteTimeout);
             
-            // M-9 FIX: Get appropriate input based on mode
+            // Determine which field is input based on inputDirection
             let params = {
                 token_address: window.tokenContractAddress
             };
             
+            let inputField, outputField;
+            
             if (action === 'buy') {
-                // BUY: User enters KAS, gets token amount
-                const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
-                
-                if (kasAmount <= 0) {
-                    document.getElementById('tokenAmount').value = 0;
-                    this.clearFeeBreakdown();
-                    return;  // ✅ Now safe to return - already cancelled pending work
+                if (this.inputDirection === 'primary') {
+                    // Standard buy: User enters KAS → Get tokens
+                    inputField = 'kasAmount';
+                    outputField = 'tokenAmount';
+                    const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                    
+                    if (kasAmount <= 0) {
+                        document.getElementById('tokenAmount').value = 0;
+                        this.clearFeeBreakdown();
+                        return;
+                    }
+                    
+                    params.kas_amount = kasAmount;
+                } else {
+                    // Reverse buy: User enters tokens → Get KAS needed
+                    inputField = 'tokenAmount';
+                    outputField = 'kasAmount';
+                    const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
+                    
+                    if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
+                        document.getElementById('kasAmount').value = 0;
+                        this.clearFeeBreakdown();
+                        return;
+                    }
+                    
+                    try {
+                        const tokenAmountWei = ethers.utils.parseUnits(tokenAmountStr, 18).toString();
+                        params.token_amount = tokenAmountWei;
+                    } catch (error) {
+                        console.error('❌ Failed to convert token amount to wei:', error);
+                        this.showQuoteError('Invalid token amount');
+                        return;
+                    }
                 }
-                
-                params.kas_amount = kasAmount;  // ✅ Buy needs kas_amount
-                
             } else { // sell
-                // SELL: User enters tokens, gets KAS amount
-                const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
-                console.log('💱 SELL quote - Token amount string:', tokenAmountStr);
-                
-                if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
-                    document.getElementById('kasAmount').value = 0;
-                    this.clearFeeBreakdown();
-                    return;  // ✅ Now safe to return - already cancelled pending work
-                }
-                
-                // Convert token amount to wei (backend expects wei as string)
-                // Use raw string to avoid parseFloat scientific notation issues
-                try {
-                    const tokenAmountWei = ethers.utils.parseUnits(tokenAmountStr, 18).toString();
-                    console.log('💱 SELL quote - Token amount in wei:', tokenAmountWei);
-                    params.token_amount = tokenAmountWei;  // ✅ Sell needs token_amount in wei
-                } catch (error) {
-                    console.error('❌ Failed to convert token amount to wei:', error);
-                    this.showQuoteError('Invalid token amount');
-                    return;
+                if (this.inputDirection === 'primary') {
+                    // Standard sell: User enters tokens → Get KAS
+                    inputField = 'tokenAmount';
+                    outputField = 'kasAmount';
+                    const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
+                    
+                    if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
+                        document.getElementById('kasAmount').value = 0;
+                        this.clearFeeBreakdown();
+                        return;
+                    }
+                    
+                    try {
+                        const tokenAmountWei = ethers.utils.parseUnits(tokenAmountStr, 18).toString();
+                        params.token_amount = tokenAmountWei;
+                    } catch (error) {
+                        console.error('❌ Failed to convert token amount to wei:', error);
+                        this.showQuoteError('Invalid token amount');
+                        return;
+                    }
+                } else {
+                    // Reverse sell: User enters KAS → Get tokens needed
+                    inputField = 'kasAmount';
+                    outputField = 'tokenAmount';
+                    const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                    
+                    if (kasAmount <= 0) {
+                        document.getElementById('tokenAmount').value = 0;
+                        this.clearFeeBreakdown();
+                        return;
+                    }
+                    
+                    params.kas_amount = kasAmount;
                 }
             }
             
@@ -986,13 +1040,15 @@
             this.quoteTimeout = setTimeout(async () => {
                 try {
                     // ✅ FIX 2: Re-validate inputs before fetching quote (prevent stale updates)
+                    // Check based on which field should have input in current direction
                     const currentKasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
                     const currentTokenAmount = parseFloat(document.getElementById('tokenAmount').value) || 0;
                     
-                    if (action === 'buy' && currentKasAmount <= 0) {
+                    // Validate the input field has value
+                    if (inputField === 'kasAmount' && currentKasAmount <= 0) {
                         return;  // Input was cleared, don't fetch quote
                     }
-                    if (action === 'sell' && currentTokenAmount <= 0) {
+                    if (inputField === 'tokenAmount' && currentTokenAmount <= 0) {
                         return;  // Input was cleared, don't fetch quote
                     }
                     
@@ -1000,21 +1056,22 @@
                     
                     const quote = await window.txManager.getQuote(
                         action,
-                        params,  // ✅ Now has correct parameter for each mode
-                        this.quoteAbortController?.signal  // H-5 FIX: Pass abort signal with optional chaining
+                        params,  // Contains either kas_amount or token_amount
+                        this.quoteAbortController?.signal
                     );
                     
                     if (quote.success) {
-                        // M-9 FIX: Update the OUTPUT field based on mode
-                        if (action === 'buy') {
-                            // Show tokens user will receive
+                        // Unified response format - update the output field
+                        if (outputField === 'tokenAmount') {
+                            // Output is tokens (use token_amount from unified response)
+                            const tokensOut = quote.tokens_out || quote.token_amount;
                             document.getElementById('tokenAmount').value = 
-                                Math.floor(quote.tokens_out);
-                        } else { // sell
-                            // Show KAS user will receive
-                            console.log('💱 SELL quote response - KAS out:', quote.kas_out);
+                                Math.floor(tokensOut / 1e18); // Convert from wei
+                        } else {
+                            // Output is KAS (use kas_amount from unified response)
+                            const kasOut = quote.kas_out || quote.kas_amount;
                             document.getElementById('kasAmount').value = 
-                                quote.kas_out.toFixed(6);
+                                kasOut.toFixed(6);
                         }
                         
                         // Display fee breakdown
@@ -1032,14 +1089,12 @@
                             mode: action           // 'buy' or 'sell'
                         };
                         
-                        // M-9 FIX: Update USD value (works for both modes)
-                        const kasValue = action === 'buy' 
-                            ? params.kas_amount 
-                            : quote.kas_out;
+                        // Update USD value display
+                        const kasValue = quote.kas_amount || quote.kas_out;
                         const usdAmount = kasValue * this.kasToUsd;
-                        const inputAddon = document.querySelector('.input-addon');
-                        if (inputAddon) {
-                            inputAddon.textContent = `$${usdAmount.toFixed(2)} USD`;
+                        const kasUsdValue = document.getElementById('kasUsdValue');
+                        if (kasUsdValue) {
+                            kasUsdValue.textContent = `$${usdAmount.toFixed(2)} USD`;
                         }
                     }
                     
@@ -3338,27 +3393,29 @@
             }
         });
         
-        // ⚠️ M-10 FIX: Mode-aware input listeners
+        // Bidirectional input listeners - work in all modes and directions
         const kasAmountInput = document.getElementById('kasAmount');
         const tokenAmountInput = document.getElementById('tokenAmount');
 
         if (kasAmountInput && !kasAmountInput.dataset.listenerAdded) {
             kasAmountInput.dataset.listenerAdded = 'true';
             kasAmountInput.addEventListener('input', () => {
-                // Only trigger in BUY mode (kasAmount is input in buy mode)
-                if (TokenDetail.currentTradeMode === 'buy') {
-                    TokenDetail.updateTokenAmount();
-                }
+                // Trigger in:
+                // - BUY + Primary: User enters KAS
+                // - BUY + Secondary: User enters tokens (displayed in KAS field)
+                // - SELL + Secondary: User enters KAS
+                TokenDetail.updateTokenAmount();
             });
         }
 
         if (tokenAmountInput && !tokenAmountInput.dataset.listenerAdded) {
             tokenAmountInput.dataset.listenerAdded = 'true';
             tokenAmountInput.addEventListener('input', () => {
-                // Only trigger in SELL mode (tokenAmount is input in sell mode)
-                if (TokenDetail.currentTradeMode === 'sell') {
-                    TokenDetail.updateTokenAmount();
-                }
+                // Trigger in:
+                // - SELL + Primary: User enters tokens
+                // - SELL + Secondary: User enters KAS (displayed in token field)
+                // - BUY + Secondary: User enters tokens
+                TokenDetail.updateTokenAmount();
             });
         }
         

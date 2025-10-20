@@ -1054,6 +1054,177 @@ class Web3Service:
             logging.error(f"Failed to get sell quote for pool {pool_address}: {str(e)}")
             raise
     
+    def get_bonding_curve_quote(self, pool_address, direction, kas_amount=None, token_amount=None):
+        """
+        Unified bidirectional quote function for bonding curve trading
+        
+        Args:
+            pool_address (str): Pool contract address
+            direction (str): 'buy' or 'sell'
+            kas_amount (int, optional): KAS amount in wei (input for buy, output for sell)
+            token_amount (int, optional): Token amount in wei (output for buy, input for sell)
+        
+        Returns:
+            dict: {
+                'kas_amount': int (in wei),
+                'token_amount': int (in wei),
+                'fees': {
+                    'anti_bot': int (in wei),
+                    'platform': int (in wei),
+                    'creator': int (in wei)
+                },
+                'price_impact_percent': float,
+                'auto_slippage_bps': int
+            }
+        
+        Raises:
+            ValueError: If both or neither amounts are provided, or invalid direction
+        """
+        # Validate inputs
+        if direction not in ['buy', 'sell']:
+            raise ValueError("direction must be 'buy' or 'sell'")
+        
+        if kas_amount is not None and token_amount is not None:
+            raise ValueError("Exactly one of kas_amount or token_amount must be provided, not both")
+        
+        if kas_amount is None and token_amount is None:
+            raise ValueError("Either kas_amount or token_amount must be provided")
+        
+        try:
+            if direction == 'buy':
+                if kas_amount is not None:
+                    # Forward buy: kas_amount → token_amount
+                    result = self.get_buy_quote(pool_address, kas_amount)
+                    return {
+                        'kas_amount': kas_amount,
+                        'token_amount': result['tokens_out'],
+                        'fees': result['fees'],
+                        'price_impact_percent': result['price_impact_percent'],
+                        'auto_slippage_bps': result['auto_slippage_bps']
+                    }
+                else:
+                    # Inverse buy: token_amount → kas_amount (solve for kas_amount)
+                    solved_kas_amount = self._solve_buy_for_kas_amount(pool_address, token_amount)
+                    result = self.get_buy_quote(pool_address, solved_kas_amount)
+                    return {
+                        'kas_amount': solved_kas_amount,
+                        'token_amount': result['tokens_out'],
+                        'fees': result['fees'],
+                        'price_impact_percent': result['price_impact_percent'],
+                        'auto_slippage_bps': result['auto_slippage_bps']
+                    }
+            
+            else:  # direction == 'sell'
+                if token_amount is not None:
+                    # Forward sell: token_amount → kas_amount
+                    result = self.get_sell_quote(pool_address, token_amount)
+                    return {
+                        'kas_amount': result['kas_out'],
+                        'token_amount': token_amount,
+                        'fees': result['fees'],
+                        'price_impact_percent': result['price_impact_percent'],
+                        'auto_slippage_bps': result['auto_slippage_bps']
+                    }
+                else:
+                    # Inverse sell: kas_amount → token_amount (solve for token_amount)
+                    solved_token_amount = self._solve_sell_for_token_amount(pool_address, kas_amount)
+                    result = self.get_sell_quote(pool_address, solved_token_amount)
+                    return {
+                        'kas_amount': result['kas_out'],
+                        'token_amount': solved_token_amount,
+                        'fees': result['fees'],
+                        'price_impact_percent': result['price_impact_percent'],
+                        'auto_slippage_bps': result['auto_slippage_bps']
+                    }
+                    
+        except Exception as e:
+            logging.error(f"Failed to get bonding curve quote: {str(e)}")
+            raise
+    
+    def _solve_buy_for_kas_amount(self, pool_address, target_token_amount):
+        """
+        Solve for kas_amount that produces target_token_amount in a buy
+        Uses binary search to find the input kas_amount
+        
+        Args:
+            pool_address (str): Pool contract address
+            target_token_amount (int): Desired token amount in wei
+        
+        Returns:
+            int: KAS amount in wei that produces target_token_amount
+        """
+        # Binary search bounds
+        low = 0
+        high = 10**24  # 1 million KAS in wei (reasonable upper bound)
+        tolerance = 10**15  # 0.001 token tolerance (in wei)
+        max_iterations = 50
+        
+        for iteration in range(max_iterations):
+            mid = (low + high) // 2
+            
+            try:
+                result = self.get_buy_quote(pool_address, mid)
+                tokens_out = result['tokens_out']
+                
+                if abs(tokens_out - target_token_amount) <= tolerance:
+                    logging.debug(f"Solved buy: {mid} wei KAS → {tokens_out} wei tokens (target: {target_token_amount}, iterations: {iteration + 1})")
+                    return mid
+                
+                if tokens_out < target_token_amount:
+                    low = mid + 1
+                else:
+                    high = mid - 1
+                    
+            except Exception as e:
+                # If quote fails at this amount, try lower
+                high = mid - 1
+        
+        # Return best approximation
+        logging.warning(f"Binary search for buy did not fully converge after {max_iterations} iterations")
+        return mid
+    
+    def _solve_sell_for_token_amount(self, pool_address, target_kas_amount):
+        """
+        Solve for token_amount that produces target_kas_amount in a sell
+        Uses binary search to find the input token_amount
+        
+        Args:
+            pool_address (str): Pool contract address
+            target_kas_amount (int): Desired KAS amount in wei (NET amount user receives)
+        
+        Returns:
+            int: Token amount in wei that produces target_kas_amount
+        """
+        # Binary search bounds
+        low = 0
+        high = 10**27  # 1 billion tokens in wei (reasonable upper bound)
+        tolerance = 10**15  # 0.001 KAS tolerance (in wei)
+        max_iterations = 50
+        
+        for iteration in range(max_iterations):
+            mid = (low + high) // 2
+            
+            try:
+                result = self.get_sell_quote(pool_address, mid)
+                kas_out = result['kas_out']  # NET amount
+                
+                if abs(kas_out - target_kas_amount) <= tolerance:
+                    logging.debug(f"Solved sell: {mid} wei tokens → {kas_out} wei KAS (target: {target_kas_amount}, iterations: {iteration + 1})")
+                    return mid
+                
+                if kas_out < target_kas_amount:
+                    low = mid + 1
+                else:
+                    high = mid - 1
+                    
+            except Exception as e:
+                # If quote fails at this amount, try lower
+                high = mid - 1
+        
+        # Return best approximation
+        logging.warning(f"Binary search for sell did not fully converge after {max_iterations} iterations")
+        return mid
+    
     def get_auto_slippage(self, pool_address, kas_amount):
         """
         Get minimum tokens out with auto-calculated slippage

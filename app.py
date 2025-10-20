@@ -3764,35 +3764,34 @@ def calculate_anti_bot_fee(kas_amount_wei, token):
 @csrf.exempt
 def api_quote_buy():
     """
-    Get buy quote for a token
+    Get buy quote for a token (bidirectional: accepts kas_amount OR token_amount)
     
     Request JSON:
     {
         "token_address": "0x...",
-        "kas_amount": 10.5,
-        "slippage_bps": 100  // Optional: custom slippage in basis points (0.5% = 50)
+        "kas_amount": 10.5,           // Option 1: provide KAS amount
+        "token_amount": 1000000,      // Option 2: provide desired token amount
+        "slippage_bps": 100           // Optional: custom slippage in basis points (0.5% = 50)
     }
     
     Response JSON:
     {
         "success": true,
-        "tokens_out": "1234567890000000000",
-        "min_tokens_out": "1222222222000000000",
-        "price_per_token": "0.00000845",
-        "kas_amount": "10.5",
-        "platform_fee": "0.0945",
-        "creator_fee": "0.0105",
-        "anti_bot_fee": "5.25",
-        "total_cost": "15.855",
+        "kas_amount": 10.5,
+        "token_amount": 1000000,
+        "tokens_out": 1000000,        // Backward compatibility
+        "min_tokens_out": 990000,
+        "min_tokens_out_wei": "990000000000000000",
+        "price_per_token": "0.0000105",
+        "total_cost": 10.5,
+        "fees": {
+            "anti_bot": 0,
+            "platform": 0.0945,
+            "creator": 0.0105
+        },
         "slippage_bps": 100,
-        "price_impact": "2.3%",
-        "new_price": "0.00000862"
+        "price_impact_percent": 2.3
     }
-    
-    Example curl:
-    curl -X POST http://localhost:5000/api/trade/quote-buy \
-      -H "Content-Type": application/json" \
-      -d '{"token_address": "0x...", "kas_amount": 10.5, "slippage_bps": 100}'
     """
     try:
         data = request.get_json(silent=True)
@@ -3801,12 +3800,195 @@ def api_quote_buy():
         
         token_address = data.get('token_address', '').strip()
         kas_amount = data.get('kas_amount')
-        custom_slippage_bps = data.get('slippage_bps')  # Optional override
+        token_amount = data.get('token_amount')
+        custom_slippage_bps = data.get('slippage_bps')
         
         if not token_address:
             return jsonify({'success': False, 'error': 'token_address is required'}), 400
         
-        if kas_amount is None or kas_amount <= 0:
+        # Validate exactly one of kas_amount or token_amount is provided
+        if kas_amount is not None and token_amount is not None:
+            return jsonify({'success': False, 'error': 'Provide either kas_amount OR token_amount, not both'}), 400
+        
+        if kas_amount is None and token_amount is None:
+            return jsonify({'success': False, 'error': 'Either kas_amount or token_amount is required'}), 400
+        
+        # Validate amounts
+        if kas_amount is not None and kas_amount <= 0:
+            return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
+        
+        if token_amount is not None and token_amount <= 0:
+            return jsonify({'success': False, 'error': 'token_amount must be greater than 0'}), 400
+        
+        try:
+            token_address = Web3.to_checksum_address(token_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
+        
+        # Case-insensitive query (database stores lowercase addresses)
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        if token.deployment_status != 'deployed':
+            return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+        
+        web3_service = get_web3_service()
+        
+        # Convert amounts to wei
+        kas_amount_wei = Web3.to_wei(kas_amount, 'ether') if kas_amount is not None else None
+        token_amount_wei = int(Web3.to_wei(token_amount, 'ether')) if token_amount is not None else None
+        
+        # Calculate anti-bot fees (applied to KAS amount)
+        # Note: For inverse calculation (token_amount provided), we'll need to account for this after solving
+        if kas_amount_wei is not None:
+            anti_bot_result = calculate_anti_bot_fee(kas_amount_wei, token)
+            anti_bot_fee_wei = anti_bot_result['fee_wei']
+            anti_bot_fee_kas = anti_bot_result['fee_kas']
+            
+            remaining_kas_wei = kas_amount_wei - anti_bot_fee_wei
+            platform_fee_wei = remaining_kas_wei * 90 // 10000
+            creator_fee_wei = remaining_kas_wei * 10 // 10000
+            trade_amount_wei = remaining_kas_wei - platform_fee_wei - creator_fee_wei
+            
+            # Forward calculation: kas_amount → token_amount
+            quote_result = web3_service.get_bonding_curve_quote(
+                pool_address=token.contract_address,
+                direction='buy',
+                kas_amount=trade_amount_wei
+            )
+            tokens_out_wei = quote_result['token_amount']
+            final_kas_amount = kas_amount
+        else:
+            # Inverse calculation: token_amount → kas_amount
+            # Call unified quote service to solve for kas_amount
+            quote_result = web3_service.get_bonding_curve_quote(
+                pool_address=token.contract_address,
+                direction='buy',
+                token_amount=token_amount_wei
+            )
+            trade_amount_wei = quote_result['kas_amount']
+            tokens_out_wei = quote_result['token_amount']
+            
+            # Calculate fees from the solved trade amount
+            platform_fee_wei = trade_amount_wei * 90 // 10000
+            creator_fee_wei = trade_amount_wei * 10 // 10000
+            remaining_kas_wei = trade_amount_wei + platform_fee_wei + creator_fee_wei
+            
+            # Calculate anti-bot fee from total KAS
+            anti_bot_result = calculate_anti_bot_fee(remaining_kas_wei, token)
+            anti_bot_fee_wei = anti_bot_result['fee_wei']
+            anti_bot_fee_kas = anti_bot_result['fee_kas']
+            
+            # Total KAS amount user needs to provide
+            total_kas_wei = remaining_kas_wei + anti_bot_fee_wei
+            final_kas_amount = float(Web3.from_wei(total_kas_wei, 'ether'))
+        
+        # Use custom slippage or auto-calculated slippage
+        if custom_slippage_bps is not None:
+            if not isinstance(custom_slippage_bps, (int, float)) or custom_slippage_bps < 0 or custom_slippage_bps > 2000:
+                return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 2000 (0-20%)'}), 400
+            slippage_bps = int(custom_slippage_bps)
+        else:
+            slippage_bps = quote_result.get('auto_slippage_bps', 50)
+        
+        # Calculate minimum tokens out with slippage
+        min_tokens_out_wei = tokens_out_wei * (10000 - slippage_bps) // 10000
+        
+        # Convert wei to ether for display
+        tokens_out = float(Web3.from_wei(tokens_out_wei, 'ether'))
+        min_tokens_out = float(Web3.from_wei(min_tokens_out_wei, 'ether'))
+        price_per_token = final_kas_amount / tokens_out if tokens_out > 0 else 0
+        price_impact = quote_result.get('price_impact_percent', 0.0)
+        
+        return jsonify({
+            'success': True,
+            'kas_amount': float(final_kas_amount),
+            'token_amount': float(tokens_out),
+            'tokens_out': float(tokens_out),  # Backward compatibility
+            'min_tokens_out': float(min_tokens_out),
+            'min_tokens_out_wei': str(min_tokens_out_wei),
+            'price_per_token': float(price_per_token),
+            'total_cost': float(final_kas_amount),
+            'fees': {
+                'anti_bot': float(anti_bot_fee_kas) if anti_bot_fee_kas > 0 else 0.0,
+                'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
+                'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
+            },
+            'slippage_bps': int(slippage_bps),
+            'price_impact_percent': float(round(price_impact, 2))
+        })
+        
+    except ValueError as e:
+        logging.debug(f"Validation error in quote-buy: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in quote-buy: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to get buy quote'}), 500
+
+@app.route('/api/trade/quote-sell', methods=['POST'])
+@csrf.exempt
+def api_quote_sell():
+    """
+    Get sell quote for a token (bidirectional: accepts token_amount OR kas_amount)
+    
+    Request JSON:
+    {
+        "token_address": "0x...",
+        "token_amount": "1000000000000000000",  // Option 1: provide token amount to sell
+        "kas_amount": 10.5,                     // Option 2: provide desired KAS amount
+        "slippage_bps": 100                     // Optional: custom slippage in basis points
+    }
+    
+    Response JSON:
+    {
+        "success": true,
+        "kas_amount": 9.45,
+        "token_amount": 1000000,
+        "kas_out": 9.45,            // Backward compatibility
+        "min_kas_out": 9.35,
+        "min_kas_out_wei": "9350000000000000000",
+        "price_per_token": "0.00000945",
+        "net_kas": 9.345,
+        "fees": {
+            "anti_bot": 0.0,
+            "platform": 0.0945,
+            "creator": 0.0105
+        },
+        "slippage_bps": 100,
+        "price_impact_percent": 1.8
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        token_address = data.get('token_address', '').strip()
+        token_amount = data.get('token_amount')
+        kas_amount = data.get('kas_amount')
+        custom_slippage_bps = data.get('slippage_bps')
+        
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        
+        # Validate exactly one of token_amount or kas_amount is provided
+        if token_amount is not None and kas_amount is not None:
+            return jsonify({'success': False, 'error': 'Provide either token_amount OR kas_amount, not both'}), 400
+        
+        if token_amount is None and kas_amount is None:
+            return jsonify({'success': False, 'error': 'Either token_amount or kas_amount is required'}), 400
+        
+        # Validate amounts
+        if token_amount is not None:
+            try:
+                token_amount_wei = int(token_amount)
+                if token_amount_wei <= 0:
+                    return jsonify({'success': False, 'error': 'token_amount must be greater than 0'}), 400
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'error': 'Invalid token_amount format'}), 400
+        
+        if kas_amount is not None and kas_amount <= 0:
             return jsonify({'success': False, 'error': 'kas_amount must be greater than 0'}), 400
         
         try:
@@ -3823,159 +4005,26 @@ def api_quote_buy():
             return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
         
         web3_service = get_web3_service()
-        kas_amount_wei = Web3.to_wei(kas_amount, 'ether')
         
-        anti_bot_result = calculate_anti_bot_fee(kas_amount_wei, token)
-        anti_bot_fee_wei = anti_bot_result['fee_wei']
-        anti_bot_fee_kas = anti_bot_result['fee_kas']
+        # Convert amounts to wei
+        token_amount_wei = int(token_amount) if token_amount is not None else None
+        kas_amount_wei = Web3.to_wei(kas_amount, 'ether') if kas_amount is not None else None
         
-        remaining_kas_wei = kas_amount_wei - anti_bot_fee_wei
+        # Call unified quote service
+        quote_result = web3_service.get_bonding_curve_quote(
+            pool_address=token.contract_address,
+            direction='sell',
+            kas_amount=kas_amount_wei,
+            token_amount=token_amount_wei
+        )
         
-        platform_fee_wei = remaining_kas_wei * 90 // 10000
-        creator_fee_wei = remaining_kas_wei * 10 // 10000
-        trade_amount_wei = remaining_kas_wei - platform_fee_wei - creator_fee_wei
-        
-        # get_buy_quote returns a dict with tokens_out, fees, etc.
-        quote_result = web3_service.get_buy_quote(token.contract_address, trade_amount_wei)
-        tokens_out_wei = quote_result['tokens_out']  # tokens user will receive
-        
-        # Use custom slippage or auto-calculated slippage
-        if custom_slippage_bps is not None:
-            if not isinstance(custom_slippage_bps, (int, float)) or custom_slippage_bps < 0 or custom_slippage_bps > 2000:
-                return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 2000 (0-20%)'}), 400
-            slippage_bps = int(custom_slippage_bps)
-        else:
-            slippage_bps = quote_result.get('auto_slippage_bps', 50)
-        
-        # Calculate minimum tokens out with slippage
-        min_tokens_out_wei = tokens_out_wei * (10000 - slippage_bps) // 10000
-        
-        # Convert wei to ether for calculations (preserve precision where needed)
-        tokens_out = float(Web3.from_wei(tokens_out_wei, 'ether'))
-        min_tokens_out = float(Web3.from_wei(min_tokens_out_wei, 'ether'))
-        price_per_token = kas_amount / tokens_out if tokens_out > 0 else 0
-        
-        # Get REAL-TIME blockchain reserves for accurate price impact calculation
-        current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
-        current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
-        current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
-        current_token_reserve = float(current_token_wei / 1e18)
-        
-        new_kas_reserve = current_kas_reserve + (float(Web3.from_wei(trade_amount_wei, 'ether')))
-        new_token_reserve = current_token_reserve - tokens_out
-        
-        if new_token_reserve > 0 and current_token_reserve > 0:
-            old_price = current_kas_reserve / current_token_reserve
-            new_price = new_kas_reserve / new_token_reserve
-            price_impact = ((new_price - old_price) / old_price * 100) if old_price > 0 else 0
-        else:
-            new_price = price_per_token
-            price_impact = 0
-        
-        return jsonify({
-            'success': True,
-            'tokens_out': float(tokens_out),  # Convert to float
-            'min_tokens_out': float(min_tokens_out),  # Min tokens after slippage
-            'min_tokens_out_wei': str(min_tokens_out_wei),  # Wei value for transaction
-            'kas_amount': float(kas_amount),  # Convert to float
-            'total_cost': float(kas_amount),  # Convert to float
-            'price_per_token': float(price_per_token),  # Convert to float
-            'fees': {
-                'anti_bot': float(anti_bot_fee_kas) if anti_bot_fee_kas > 0 else 0.0,
-                'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
-                'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
-            },
-            'slippage_bps': int(slippage_bps),  # Applied slippage
-            'price_impact_percent': float(round(price_impact, 2))  # Convert to float
-        })
-        
-    except ValueError as e:
-        logging.debug(f"Validation error in quote-buy: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 400
-    except Exception as e:
-        logging.error(f"Error in quote-buy: {str(e)}")
-        return jsonify({'success': False, 'error': 'Failed to get buy quote'}), 500
-
-@app.route('/api/trade/quote-sell', methods=['POST'])
-@csrf.exempt
-def api_quote_sell():
-    """
-    Get sell quote for a token
-    
-    Request JSON:
-    {
-        "token_address": "0x...",
-        "token_amount": "1000000000000000000",
-        "slippage_bps": 100  // Optional: custom slippage in basis points
-    }
-    
-    Response JSON:
-    {
-        "success": true,
-        "kas_out": "9.45",
-        "min_kas_out": "9.35",
-        "min_kas_out_wei": "9350000000000000000",
-        "price_per_token": "0.00000945",
-        "token_amount": "1000000000000000000",
-        "platform_fee": "0.0945",
-        "creator_fee": "0.0105",
-        "net_kas": "9.345",
-        "slippage_bps": 100,
-        "price_impact": "1.8%",
-        "new_price": "0.00000928"
-    }
-    
-    Example curl:
-    curl -X POST http://localhost:5000/api/trade/quote-sell \
-      -H "Content-Type: application/json" \
-      -d '{"token_address": "0x...", "token_amount": "1000000000000000000", "slippage_bps": 100}'
-    """
-    try:
-        data = request.get_json(silent=True)
-        if not data:
-            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
-        
-        token_address = data.get('token_address', '').strip()
-        token_amount = data.get('token_amount')
-        custom_slippage_bps = data.get('slippage_bps')  # Optional override
-        
-        if not token_address:
-            return jsonify({'success': False, 'error': 'token_address is required'}), 400
-        
-        if token_amount is None:
-            return jsonify({'success': False, 'error': 'token_amount is required'}), 400
-        
-        try:
-            token_amount_wei = int(token_amount)
-            if token_amount_wei <= 0:
-                return jsonify({'success': False, 'error': 'token_amount must be greater than 0'}), 400
-        except (ValueError, TypeError):
-            return jsonify({'success': False, 'error': 'Invalid token_amount format'}), 400
-        
-        try:
-            token_address = Web3.to_checksum_address(token_address)
-        except Exception:
-            return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
-        
-        # Case-insensitive query (database stores lowercase addresses)
-        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
-        if not token:
-            return jsonify({'success': False, 'error': 'Token not found'}), 404
-        
-        if token.deployment_status != 'deployed':
-            return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
-        
-        web3_service = get_web3_service()
-        
-        # get_sell_quote returns a dict with kas_out (net), fees, etc.
-        quote_result = web3_service.get_sell_quote(token.contract_address, token_amount_wei)
-        kas_net_wei = quote_result['kas_out']  # NET amount user receives
+        kas_net_wei = quote_result['kas_amount']  # NET amount user receives
+        final_token_amount_wei = quote_result['token_amount']
         platform_fee_wei = quote_result['fees']['platform']
         creator_fee_wei = quote_result['fees']['creator']
         
         # Calculate gross for display
         kas_gross_wei = kas_net_wei + platform_fee_wei + creator_fee_wei
-        total_fees_wei = platform_fee_wei + creator_fee_wei
         
         # Use custom slippage or auto-calculated slippage
         if custom_slippage_bps is not None:
@@ -3988,45 +4037,31 @@ def api_quote_sell():
         # Calculate minimum KAS out with slippage
         min_kas_out_wei = kas_net_wei * (10000 - slippage_bps) // 10000
         
+        # Convert wei to ether for display
         kas_gross = float(Web3.from_wei(kas_gross_wei, 'ether'))
         kas_net = float(Web3.from_wei(kas_net_wei, 'ether'))
         min_kas_out = float(Web3.from_wei(min_kas_out_wei, 'ether'))
+        final_token_amount = float(final_token_amount_wei / 1e18)
         
-        price_per_token = kas_gross / (token_amount_wei / 1e18) if token_amount_wei > 0 else 0
-        
-        # Get REAL-TIME blockchain reserves for accurate price impact calculation
-        current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
-        current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
-        current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
-        current_token_reserve = float(current_token_wei / 1e18)
-        
-        new_kas_reserve = current_kas_reserve - kas_gross
-        new_token_reserve = current_token_reserve + (token_amount_wei / 1e18)
-        
-        if new_token_reserve > 0 and current_token_reserve > 0 and new_kas_reserve > 0:
-            old_price = current_kas_reserve / current_token_reserve
-            new_price = new_kas_reserve / new_token_reserve
-            price_impact = ((old_price - new_price) / old_price * 100) if old_price > 0 else 0
-        else:
-            new_price = price_per_token
-            price_impact = 0
+        price_per_token = kas_gross / final_token_amount if final_token_amount > 0 else 0
+        price_impact = quote_result.get('price_impact_percent', 0.0)
         
         return jsonify({
             'success': True,
-            'kas_out': float(kas_gross),  # Convert to float
-            'min_kas_out': float(min_kas_out),  # Min KAS after slippage
-            'min_kas_out_wei': str(min_kas_out_wei),  # Wei value for transaction
-            'token_amount': float(token_amount_wei / 1e18),  # Convert to float
-            'net_kas': float(kas_net),  # Convert to float
-            'price_per_token': float(price_per_token),  # Convert to float
-            'new_price': float(new_price),  # Convert to float
+            'kas_amount': float(kas_gross),
+            'token_amount': float(final_token_amount),
+            'kas_out': float(kas_gross),  # Backward compatibility
+            'min_kas_out': float(min_kas_out),
+            'min_kas_out_wei': str(min_kas_out_wei),
+            'net_kas': float(kas_net),
+            'price_per_token': float(price_per_token),
             'fees': {
                 'anti_bot': 0.0,
                 'platform': float(Web3.from_wei(platform_fee_wei, 'ether')),
                 'creator': float(Web3.from_wei(creator_fee_wei, 'ether'))
             },
-            'slippage_bps': int(slippage_bps),  # Applied slippage
-            'price_impact_percent': float(round(price_impact, 2))  # Convert to float
+            'slippage_bps': int(slippage_bps),
+            'price_impact_percent': float(round(price_impact, 2))
         })
         
     except ValueError as e:
