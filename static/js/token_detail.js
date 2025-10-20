@@ -697,8 +697,8 @@
         
         setQuickPercentage: function(percentage) {
             // For sell mode: set token amount based on percentage of balance
-            // Preserve decimals for accurate calculations
-            const tokenAmount = (this.tokenBalance * percentage / 100).toFixed(6);
+            // Use 2 decimal places for display
+            const tokenAmount = (this.tokenBalance * percentage / 100).toFixed(2);
             
             // Set flag to prevent listener from triggering prematurely
             this._updatingProgrammatically = true;
@@ -1094,14 +1094,14 @@
                             if (outputField === 'tokenAmount') {
                                 // Output is tokens (API returns in ether units)
                                 const tokensOut = quote.tokens_out || quote.token_amount;
-                                // Display with appropriate decimals (use 6 decimal places for precision)
+                                // Display with 2 decimal places
                                 document.getElementById('tokenAmount').value = 
-                                    parseFloat(tokensOut.toFixed(6));
+                                    parseFloat(tokensOut.toFixed(2));
                             } else {
                                 // Output is KAS (API returns in ether units)
                                 const kasOut = quote.kas_out || quote.kas_amount;
                                 document.getElementById('kasAmount').value = 
-                                    kasOut.toFixed(6);
+                                    kasOut.toFixed(2);
                             }
                         } finally {
                             // Always reset flag
