@@ -86,11 +86,11 @@ class Poll(db.Model):
     # Relationships
     token = db.relationship('Token', backref='polls')
     creator = db.relationship('User', backref='created_polls')
-    options = db.relationship('PollOption', backref='poll', lazy='dynamic', cascade='all, delete-orphan')
+    options = db.relationship('PollOption', backref='poll', lazy='select', cascade='all, delete-orphan')
     
     @property
     def total_votes(self):
-        return sum(option.vote_count for option in self.options.all())
+        return sum(option.vote_count for option in self.options)
     
     def __repr__(self):
         return f'<Poll {self.question[:50]}...>'
