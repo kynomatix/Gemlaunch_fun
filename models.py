@@ -203,6 +203,16 @@ class Token(db.Model):
     holdings = db.relationship('Holding', backref='token', lazy='dynamic')
     reserve_distributions = db.relationship('ReserveDistribution', backref='token', lazy='dynamic')
     
+    # Database indexes for performance (DeFi best practices)
+    __table_args__ = (
+        # Marketplace sorting by creation date
+        db.Index('idx_token_created_at', 'created_at', postgresql_using='btree'),
+        # Filtered marketplace queries (active vs graduated tokens)
+        db.Index('idx_token_graduated_created', 'is_graduated', 'created_at', postgresql_using='btree'),
+        # Blockchain traceability and fraud detection
+        db.Index('idx_token_deployment_tx', 'deployment_tx', postgresql_using='btree'),
+    )
+    
     @property
     def graduation_threshold(self):
         """Market cap threshold for graduation - pulls from platform settings"""
@@ -920,6 +930,13 @@ class TradeEvent(db.Model):
     
     # Relationships
     token = db.relationship('Token', backref='trade_events')
+    
+    # Database indexes for performance (DeFi best practices)
+    __table_args__ = (
+        # Time-series queries for price charts and bonding curve calculations
+        # DESC order on timestamp for efficient latest-first queries
+        db.Index('idx_trade_event_token_time', 'token_id', 'timestamp', postgresql_using='btree', postgresql_ops={'timestamp': 'DESC'}),
+    )
     
     def __repr__(self):
         return f'<TradeEvent {self.trade_type} {self.token_amount} tokens for {self.kas_amount} KAS>'
