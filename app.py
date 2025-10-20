@@ -2077,6 +2077,7 @@ def create_airdrop(contract_address):
 
 # Post-Graduation DEX Integration Endpoints
 @app.route('/api/token/<address>/graduation-status', methods=['GET'])
+@cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
 def api_token_graduation_status(address):
     """
     Get graduation status for a token
@@ -2222,6 +2223,7 @@ def api_token_graduation_status(address):
         return jsonify({'success': False, 'error': 'Failed to fetch graduation status'}), 500
 
 @app.route('/api/token/<address>/stats', methods=['GET'])
+@cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
 def api_token_stats(address):
     """
     Lightweight JSON endpoint for token stats (replaces HTML scraping)
@@ -6111,6 +6113,7 @@ def sync_token_supply(contract_address):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/token/<contract_address>/chart-data', methods=['GET'])
+@cache.cached(timeout=5, query_string=True)  # Cache for 5 seconds (real-time charts need fresher data)
 def get_token_chart_data(contract_address):
     """
     Get real trade history data for token price/volume chart with OHLC candlesticks
@@ -6490,6 +6493,7 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
 # ========================================
 
 @app.route('/api/token/<int:token_id>/vesting/status', methods=['GET'])
+@cache.cached(timeout=30, query_string=True)  # Cache for 30 seconds (vesting changes slowly)
 @csrf.exempt
 def get_token_vesting_status(token_id):
     """
