@@ -621,7 +621,15 @@ class Airdrop(db.Model):
     recipient_count = db.Column(db.Integer, default=0)
     distributed_amount = db.Column(db.Numeric(precision=30, scale=0), default=0)
     
-    # Transaction info
+    # Distribution type (claim-based vs push-based)
+    distribution_type = db.Column(db.String(16), default='claim')  # 'claim' or 'push'
+    
+    # Transaction tracking for push-based batch distributions (retry support)
+    withdrawal_tx = db.Column(db.String(128), nullable=True)  # Vesting withdrawal TX (null if not needed)
+    approval_tx = db.Column(db.String(128), nullable=True)     # ERC20 approval TX
+    distribution_tx = db.Column(db.String(128), nullable=True) # Batch transfer TX (main distribution)
+    
+    # Legacy transaction field (for claim-based airdrops)
     tx_hash = db.Column(db.String(128))
     
     # Timestamps

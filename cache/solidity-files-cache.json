@@ -433,8 +433,8 @@
       ]
     },
     "/home/runner/workspace/contracts/TokenFactory.sol": {
-      "lastModificationDate": 1760945437244,
-      "contentHash": "5961a7c16c6f545a7021aa1084d159bb",
+      "lastModificationDate": 1760951750600,
+      "contentHash": "dc411ce59c841bbf5249b191b46b363b",
       "sourceName": "contracts/TokenFactory.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -673,6 +673,46 @@
       ],
       "artifacts": [
         "MockWKAS"
+      ]
+    },
+    "/home/runner/workspace/contracts/AirdropDistributor.sol": {
+      "lastModificationDate": 1760951790417,
+      "contentHash": "dc18b5ab5c59a16418b41b6bca44a9cc",
+      "sourceName": "contracts/AirdropDistributor.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "AirdropDistributor"
       ]
     }
   }

@@ -1854,11 +1854,74 @@ def get_airdrop_available(contract_address):
         'days_since_creation': days_since_creation
     })
 
+def get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters):
+    """
+    Get list of recipients based on airdrop type and filters
+    
+    Args:
+        token: Token object
+        airdrop_type: Type of airdrop (active_chatters, token_holders, top_traders, etc.)
+        amount_per_recipient: Amount each recipient receives
+        parameters: Dict with type-specific filters (min_balance, min_messages, etc.)
+    
+    Returns:
+        tuple: (recipients list, amounts list)
+    """
+    recipients = []
+    
+    if airdrop_type == 'active_chatters':
+        # Get users with messages in this token's community
+        min_messages = parameters.get('min_messages', 5)
+        engagements = TokenEngagement.query.filter(
+            TokenEngagement.token_id == token.id,
+            TokenEngagement.messages_sent >= min_messages
+        ).order_by(TokenEngagement.messages_sent.desc()).all()
+        
+        recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
+    
+    elif airdrop_type == 'token_holders':
+        # Get users holding this token
+        min_balance = parameters.get('min_balance', 100)
+        holdings = Holding.query.filter(
+            Holding.token_id == token.id,
+            Holding.token_amount >= min_balance
+        ).order_by(Holding.token_amount.desc()).all()
+        
+        recipients = [h.user.wallet_address for h in holdings if h.user and h.user.wallet_address]
+    
+    elif airdrop_type == 'top_contributors':
+        # Get top traders by volume
+        limit = parameters.get('limit', 20)
+        engagements = TokenEngagement.query.filter(
+            TokenEngagement.token_id == token.id,
+            TokenEngagement.trades_count > 0
+        ).order_by(TokenEngagement.total_traded_volume.desc()).limit(limit).all()
+        
+        recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
+    
+    elif airdrop_type == 'early_supporters':
+        # Get earliest token holders
+        limit = parameters.get('limit', 10)
+        holdings = Holding.query.filter(
+            Holding.token_id == token.id
+        ).order_by(Holding.first_purchase.asc()).limit(limit).all()
+        
+        recipients = [h.user.wallet_address for h in holdings if h.user and h.user.wallet_address]
+    
+    else:
+        raise ValueError(f"Unsupported airdrop type: {airdrop_type}")
+    
+    # Build amounts array (same amount for all recipients)
+    amounts = [amount_per_recipient] * len(recipients)
+    
+    return recipients, amounts
+
 @app.route('/api/token/<contract_address>/airdrop/create', methods=['POST'])
 @require_wallet_connection
 def create_airdrop(contract_address):
-    """Create an airdrop campaign for a PRO token"""
+    """Build transaction bundle for batch airdrop distribution"""
     from datetime import datetime, timezone
+    from services.web3_service import get_web3_service, AIRDROP_DISTRIBUTOR_ADDRESS
     
     user = get_current_user()
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
@@ -1867,64 +1930,136 @@ def create_airdrop(contract_address):
     if not token.creator or user.wallet_address.lower() != token.creator.wallet_address.lower():
         return jsonify({'error': 'Only the token creator can create airdrops'}), 403
     
+    # Verify this is a PRO token with airdrop vesting
+    if not token.airdrop_vesting_address:
+        return jsonify({'error': 'This token does not have airdrop allocation'}), 400
+    
     # Get request data
     data = request.get_json()
-    airdrop_type = data.get('type')
-    total_amount = int(data.get('amount', 0))
+    airdrop_type = data.get('type')  # active_chatters, token_holders, top_contributors, early_supporters
+    amount_per_recipient = int(data.get('amount_per_recipient', 0))
     parameters = data.get('parameters', {})
     
-    # Validate airdrop type
-    valid_types = ['random_raffle', 'top_contributors', 'active_chatters', 'token_holders', 'early_supporters']
+    # Validate airdrop type (removed random_raffle - not implemented)
+    valid_types = ['active_chatters', 'token_holders', 'top_contributors', 'early_supporters']
     if airdrop_type not in valid_types:
-        return jsonify({'error': 'Invalid airdrop type'}), 400
+        return jsonify({'error': f'Invalid airdrop type. Valid types: {", ".join(valid_types)}'}), 400
     
     # Validate amount
-    if total_amount <= 0:
-        return jsonify({'error': 'Invalid airdrop amount'}), 400
-    
-    # Calculate available airdrop amount
-    total_airdrop_allocation = float(token.reserved_tokens or 0) * (float(token.airdrops_allocation) / 100.0)
-    created_at = token.created_at
-    if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
-    days_since_creation = (datetime.now(timezone.utc) - created_at).days
-    unlocked_percentage = min(days_since_creation * 5, 100)
-    unlocked_amount = total_airdrop_allocation * (unlocked_percentage / 100.0)
-    already_airdropped = float(token.total_airdropped or 0)
-    available_amount = max(unlocked_amount - already_airdropped, 0)
-    
-    # Check if amount is available
-    if total_amount > available_amount:
-        return jsonify({
-            'error': f'Insufficient airdrop allocation. Available: {int(available_amount)} {token.symbol}'
-        }), 400
-    
-    # Create airdrop record
-    airdrop = Airdrop(
-        token_id=token.id,
-        creator_id=user.id,
-        airdrop_type=airdrop_type,
-        total_amount=total_amount,
-        parameters=parameters,
-        status='pending'  # Will be processed by smart contract
-    )
-    
-    db.session.add(airdrop)
-    
-    # Update total_airdropped on token (reserve the amount)
-    token.total_airdropped = (token.total_airdropped or 0) + total_amount
+    if amount_per_recipient <= 0:
+        return jsonify({'error': 'Amount per recipient must be positive'}), 400
     
     try:
+        # Get recipients based on type
+        recipients, amounts = get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters)
+        
+        if len(recipients) == 0:
+            return jsonify({'error': 'No eligible recipients found'}), 400
+        
+        total_amount = sum(amounts)
+        
+        # Get web3 service
+        web3_service = get_web3_service()
+        
+        # CRITICAL: Verify AirdropDistributor is deployed
+        if AIRDROP_DISTRIBUTOR_ADDRESS == "0x0000000000000000000000000000000000000000":
+            return jsonify({
+                'error': 'Airdrop system not yet deployed. Contact support.'
+            }), 503
+        
+        # Check creator's token balance
+        creator_balance = web3_service.w3.eth.contract(
+            address=web3_service.w3.to_checksum_address(token.contract_address),
+            abi=web3_service.contracts['BondingCurvePoolABI']
+        ).functions.balanceOf(web3_service.w3.to_checksum_address(user.wallet_address)).call()
+        
+        # Check vesting unlocked balance
+        unlocked_in_vesting = web3_service.check_vesting_unlocked_balance(
+            token.airdrop_vesting_address,
+            vesting_type='airdrop'
+        )
+        
+        total_available = creator_balance + unlocked_in_vesting
+        
+        # Validate sufficient balance
+        if total_available < total_amount:
+            return jsonify({
+                'error': f'Insufficient tokens. Need {total_amount}, have {total_available} (wallet: {creator_balance}, unlocked: {unlocked_in_vesting})'
+            }), 400
+        
+        # Build transaction bundle
+        transactions = []
+        
+        # TX1: Withdraw from vesting (if needed)
+        if creator_balance < total_amount and unlocked_in_vesting > 0:
+            withdrawal_tx = web3_service.build_vesting_withdrawal_tx(
+                user.wallet_address,
+                token.airdrop_vesting_address,
+                vesting_type='airdrop'
+            )
+            transactions.append({
+                'type': 'withdrawal',
+                'description': f'Withdraw {unlocked_in_vesting} tokens from vesting',
+                'tx': withdrawal_tx
+            })
+        
+        # TX2: Approve AirdropDistributor
+        approval_tx = web3_service.build_token_approval_tx(
+            user.wallet_address,
+            token.contract_address,
+            AIRDROP_DISTRIBUTOR_ADDRESS,
+            total_amount
+        )
+        transactions.append({
+            'type': 'approval',
+            'description': f'Approve {total_amount} tokens for distribution',
+            'tx': approval_tx
+        })
+        
+        # TX3: Batch transfer
+        batch_transfer_tx = web3_service.build_batch_transfer_tx(
+            user.wallet_address,
+            token.contract_address,
+            recipients,
+            amounts
+        )
+        transactions.append({
+            'type': 'distribution',
+            'description': f'Distribute to {len(recipients)} recipients',
+            'tx': batch_transfer_tx
+        })
+        
+        # Create airdrop record in DB
+        airdrop = Airdrop(
+            token_id=token.id,
+            creator_id=user.id,
+            airdrop_type=airdrop_type,
+            total_amount=total_amount,
+            parameters=parameters,
+            recipient_count=len(recipients),
+            distribution_type='push',  # Push-based batch distribution
+            status='pending'  # Will be 'completed' after TXs are signed
+        )
+        
+        db.session.add(airdrop)
         db.session.commit()
         
         return jsonify({
             'success': True,
             'airdrop_id': airdrop.id,
-            'message': f'Airdrop created successfully! {total_amount} {token.symbol} reserved for distribution.',
-            'status': 'pending'
+            'transactions': transactions,
+            'recipient_count': len(recipients),
+            'total_amount': total_amount,
+            'available_balance': {
+                'wallet': creator_balance,
+                'unlocked_vesting': unlocked_in_vesting,
+                'total': total_available
+            }
         })
+        
     except Exception as e:
         db.session.rollback()
+        logging.error(f"Failed to create airdrop: {str(e)}")
         return jsonify({'error': f'Failed to create airdrop: {str(e)}'}), 500
 
 # Post-Graduation DEX Integration Endpoints

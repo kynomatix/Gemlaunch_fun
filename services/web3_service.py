@@ -27,6 +27,7 @@ RPC_ENDPOINTS = [
 TOKEN_FACTORY_ADDRESS = "0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D"
 VESTING_DEPLOYER_ADDRESS = "0x07edeC513453f193673639Fd60eC35Bc27f1A5E2"
 GRADUATION_CONTROLLER_ADDRESS = "0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e"
+AIRDROP_DISTRIBUTOR_ADDRESS = "0x0000000000000000000000000000000000000000"  # TODO: Deploy and update
 
 # Contract ABI paths
 ARTIFACTS_DIR = Path("artifacts/contracts")
@@ -219,6 +220,15 @@ class Web3Service:
             contracts['LinearVestingABI'] = self._load_contract_abi('LinearVesting')
             contracts['CliffVestingABI'] = self._load_contract_abi('CliffVesting')
             logging.info("Loaded PRO Token Vesting ABIs")
+            
+            # Load AirdropDistributor (batch transfer helper)
+            airdrop_distributor_abi = self._load_contract_abi('AirdropDistributor')
+            contracts['AirdropDistributor'] = self.w3.eth.contract(
+                address=Web3.to_checksum_address(AIRDROP_DISTRIBUTOR_ADDRESS),
+                abi=airdrop_distributor_abi
+            )
+            contracts['AirdropDistributorABI'] = airdrop_distributor_abi
+            logging.info(f"Loaded AirdropDistributor at {AIRDROP_DISTRIBUTOR_ADDRESS}")
             
             return contracts
             
@@ -2017,6 +2027,180 @@ class Web3Service:
                 'marketing_vesting_address': None,
                 'team_vesting_address': None
             }
+    
+    # =========================
+    # Airdrop Batch Transfer Methods
+    # =========================
+    
+    def build_vesting_withdrawal_tx(self, user_address, vesting_contract_address, vesting_type='airdrop'):
+        """
+        Build transaction for withdrawing unlocked tokens from vesting contract
+        
+        Args:
+            user_address (str): Creator's wallet address (vesting beneficiary)
+            vesting_contract_address (str): Address of vesting contract
+            vesting_type (str): 'airdrop', 'marketing', or 'team'
+        
+        Returns:
+            dict: Transaction data for release() call
+        """
+        try:
+            logging.info(f"Building vesting withdrawal TX for {user_address} from {vesting_contract_address}")
+            
+            # Get appropriate vesting contract
+            if vesting_type == 'airdrop':
+                vesting_contract = self.get_airdrop_vesting_contract(vesting_contract_address)
+            elif vesting_type == 'marketing':
+                vesting_contract = self.get_linear_vesting_contract(vesting_contract_address)
+            elif vesting_type == 'team':
+                vesting_contract = self.get_cliff_vesting_contract(vesting_contract_address)
+            else:
+                raise ValueError(f"Invalid vesting type: {vesting_type}")
+            
+            # Build release() call
+            tx_data = vesting_contract.functions.release().build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address)),
+                'gas': 100000,  # Estimate for release()
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            return {
+                'to': vesting_contract_address,
+                'value': hex(0),
+                'data': tx_data['data'],
+                'gas': hex(tx_data['gas'])
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to build vesting withdrawal TX: {str(e)}")
+            raise
+    
+    def build_token_approval_tx(self, user_address, token_address, spender_address, amount):
+        """
+        Build transaction for ERC20 approve()
+        
+        Args:
+            user_address (str): User's wallet address
+            token_address (str): ERC20 token contract address
+            spender_address (str): Address to approve (AirdropDistributor)
+            amount (int): Amount to approve (in wei/base units)
+        
+        Returns:
+            dict: Transaction data for approve() call
+        """
+        try:
+            logging.info(f"Building approval TX: {amount} tokens from {token_address} to {spender_address}")
+            
+            # Get token contract (use BondingCurvePool ABI since it's also the token)
+            token_contract = self.get_bonding_pool_contract(token_address)
+            
+            # Build approve() call
+            tx_data = token_contract.functions.approve(
+                Web3.to_checksum_address(spender_address),
+                amount
+            ).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address)),
+                'gas': 60000,  # Standard ERC20 approve gas
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            return {
+                'to': token_address,
+                'value': hex(0),
+                'data': tx_data['data'],
+                'gas': hex(tx_data['gas'])
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to build approval TX: {str(e)}")
+            raise
+    
+    def build_batch_transfer_tx(self, user_address, token_address, recipients, amounts):
+        """
+        Build transaction for AirdropDistributor.batchTransfer()
+        
+        Args:
+            user_address (str): Creator's wallet address (msg.sender)
+            token_address (str): ERC20 token contract address
+            recipients (list): List of recipient addresses
+            amounts (list): List of amounts (in wei/base units)
+        
+        Returns:
+            dict: Transaction data for batchTransfer() call
+        """
+        try:
+            logging.info(f"Building batch transfer TX: {len(recipients)} recipients, total {sum(amounts)} tokens")
+            
+            # Validate inputs
+            if len(recipients) != len(amounts):
+                raise ValueError("Recipients and amounts arrays must have same length")
+            
+            if len(recipients) == 0:
+                raise ValueError("Cannot batch transfer to 0 recipients")
+            
+            # Get AirdropDistributor contract
+            distributor = self.contracts['AirdropDistributor']
+            
+            # Convert addresses to checksum format
+            recipients_checksum = [Web3.to_checksum_address(addr) for addr in recipients]
+            token_checksum = Web3.to_checksum_address(token_address)
+            
+            # Build batchTransfer() call
+            tx_data = distributor.functions.batchTransfer(
+                token_checksum,
+                recipients_checksum,
+                amounts
+            ).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address)),
+                'gas': 100000 + (len(recipients) * 60000),  # Base + per-recipient gas estimate
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            return {
+                'to': AIRDROP_DISTRIBUTOR_ADDRESS,
+                'value': hex(0),
+                'data': tx_data['data'],
+                'gas': hex(tx_data['gas'])
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to build batch transfer TX: {str(e)}")
+            raise
+    
+    def check_vesting_unlocked_balance(self, vesting_contract_address, vesting_type='airdrop'):
+        """
+        Check how many tokens are unlocked and ready to withdraw from vesting
+        
+        Args:
+            vesting_contract_address (str): Address of vesting contract
+            vesting_type (str): 'airdrop', 'marketing', or 'team'
+        
+        Returns:
+            int: Unlocked token amount (in wei/base units)
+        """
+        try:
+            # Get appropriate vesting contract
+            if vesting_type == 'airdrop':
+                vesting_contract = self.get_airdrop_vesting_contract(vesting_contract_address)
+            elif vesting_type == 'marketing':
+                vesting_contract = self.get_linear_vesting_contract(vesting_contract_address)
+            elif vesting_type == 'team':
+                vesting_contract = self.get_cliff_vesting_contract(vesting_contract_address)
+            else:
+                raise ValueError(f"Invalid vesting type: {vesting_type}")
+            
+            # Call releasable() to get unlocked amount
+            unlocked_amount = vesting_contract.functions.releasable().call()
+            
+            logging.info(f"Vesting contract {vesting_contract_address} has {unlocked_amount} tokens unlocked")
+            return unlocked_amount
+            
+        except Exception as e:
+            logging.error(f"Failed to check vesting unlocked balance: {str(e)}")
+            raise
 
 
 def get_web3_with_fallback():

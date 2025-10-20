@@ -175,7 +175,7 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         // Deploy vesting contracts if PRO token
         if (reservedPercentage > 0) {
             // Automatic beneficiary logic (no user input required)
-            address airdropBeneficiary = airdropTreasury;   // Platform wallet for airdrops
+            address airdropBeneficiary = msg.sender;         // Creator wallet (creator pays for distributions)
             address marketingBeneficiary = msg.sender;       // Creator wallet
             address teamBeneficiary = msg.sender;            // Creator wallet
             
