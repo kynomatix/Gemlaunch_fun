@@ -1592,8 +1592,10 @@ def get_token_holdings(contract_address):
     if not wallet_address:
         return jsonify({'error': 'Wallet address required'}), 400
     
-    # Get token
-    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    # Get token (case-insensitive lookup)
+    token = Token.query.filter(
+        db.func.lower(Token.contract_address) == contract_address.lower()
+    ).first_or_404()
     
     # Use HolderService to get balance from blockchain
     from services.holder_service import HolderService
@@ -1607,7 +1609,10 @@ def token_spotlight(contract_address):
     """Get or create spotlight messages - TOKEN GATED, not token cost!"""
     from datetime import datetime, timedelta, timezone
     
-    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    # Normalize address to lowercase for case-insensitive lookup
+    token = Token.query.filter(
+        db.func.lower(Token.contract_address) == contract_address.lower()
+    ).first_or_404()
     user = get_current_user()
     
     if request.method == 'GET':
