@@ -2104,7 +2104,7 @@ def api_token_stats(address):
         from services.kas_oracle import oracle as kas_oracle
         
         web3_service = get_web3_service()
-        kas_price_usd = kas_oracle.get_kas_price()
+        kas_price_usd = float(kas_oracle.get_kas_price())
         
         # Get real-time data from blockchain
         current_price_usd = 0
@@ -2139,15 +2139,17 @@ def api_token_stats(address):
             except Exception as e:
                 logging.error(f"Error fetching real-time stats: {e}")
                 # ✅ FIX: Database stores USD values directly, NO multiplication needed
-                current_price_usd = float(token.current_price or 0)
+                # Convert Decimal to float to avoid type errors
+                current_price_usd = float(token.current_price if token.current_price else 0)
                 current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
-                current_market_cap_usd = float(token.current_market_cap or 0)
+                current_market_cap_usd = float(token.current_market_cap if token.current_market_cap else 0)
                 current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
         else:
             # ✅ FIX: Graduated tokens - database values are already in USD
-            current_price_usd = float(token.current_price or 0)
+            # Convert Decimal to float to avoid type errors
+            current_price_usd = float(token.current_price if token.current_price else 0)
             current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
-            current_market_cap_usd = float(token.current_market_cap or 0)
+            current_market_cap_usd = float(token.current_market_cap if token.current_market_cap else 0)
             current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
         
         # Format values for display
@@ -2166,8 +2168,8 @@ def api_token_stats(address):
                 return f"${val:.8f}"
         
         # Calculate graduation progress
-        from config import GRADUATION_THRESHOLD_USD
-        graduation_threshold_usd = GRADUATION_THRESHOLD_USD
+        # Testnet: $200, Mainnet: $70,000
+        graduation_threshold_usd = 200
         progress_to_graduation = min(100, (current_market_cap_usd / graduation_threshold_usd * 100)) if graduation_threshold_usd > 0 else 0
         
         # Format numbers
@@ -2196,8 +2198,8 @@ def api_token_stats(address):
             'market_cap_kas_formatted': f"{format_number(current_market_cap_kas)} KAS",
             
             # Supply and holders
-            'circulating_supply': token.circulating_supply or 0,
-            'circulating_supply_formatted': format_number(token.circulating_supply or 0),
+            'circulating_supply': float(token.circulating_supply if token.circulating_supply else 0),
+            'circulating_supply_formatted': format_number(float(token.circulating_supply if token.circulating_supply else 0)),
             'holders': token.holder_count or 0,
             
             # Graduation progress
