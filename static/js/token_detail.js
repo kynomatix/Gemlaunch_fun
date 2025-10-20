@@ -1063,12 +1063,12 @@
                     if (quote.success) {
                         // Unified response format - update the output field
                         if (outputField === 'tokenAmount') {
-                            // Output is tokens (use token_amount from unified response)
+                            // Output is tokens (API returns in ether units, not wei)
                             const tokensOut = quote.tokens_out || quote.token_amount;
                             document.getElementById('tokenAmount').value = 
-                                Math.floor(tokensOut / 1e18); // Convert from wei
+                                Math.floor(tokensOut);  // Already in ether units
                         } else {
-                            // Output is KAS (use kas_amount from unified response)
+                            // Output is KAS (API returns in ether units)
                             const kasOut = quote.kas_out || quote.kas_amount;
                             document.getElementById('kasAmount').value = 
                                 kasOut.toFixed(6);
