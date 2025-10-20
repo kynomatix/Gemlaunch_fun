@@ -51,6 +51,33 @@
 
 ---
 
+---
+
+## ✅ COMPLETED: Additional Housekeeping (While Waiting for Testnet)
+
+### Marketplace Lazy Loading Implementation
+While waiting for Kasplex testnet to come back online, implemented performance optimization for marketplace:
+
+**Problem:** Marketplace was loading ALL tokens with server-side enrichment (volume, 24h change, grad progress), but only enriching first 8 tokens. This took ~8 seconds for page load.
+
+**Solution:** Implemented lazy loading with IntersectionObserver
+- Updated `/api/token/<address>/stats` to include 24h metrics from MarketplaceService
+- Marketplace route now skips server-side enrichment entirely
+- JavaScript loads metrics only for tokens visible to user
+- Uses 10s cache on GraphQL queries (existing MarketplaceService caching)
+
+**Benefits:**
+- Page loads instantly (no server-side enrichment blocking render)
+- Metrics load on-demand as user scrolls
+- Prevents unnecessary API calls for tokens user never sees
+- 10s cache prevents excessive blockchain queries
+
+**Files Changed:**
+- `app.py` - Updated stats endpoint and marketplace route
+- `templates/app/marketplace.html` - Added IntersectionObserver lazy loading
+
+---
+
 ## ⚠️ PENDING: Contract Deployment (BLOCKER)
 
 ### What Needs to Happen
