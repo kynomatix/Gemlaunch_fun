@@ -2240,6 +2240,7 @@ def api_token_stats(address):
     }
     """
     try:
+        logging.debug(f"📊 Stats request for token: {address}")
         # Normalize address
         address_normalized = address.strip().lower()
         
@@ -2383,8 +2384,8 @@ def api_token_stats(address):
         })
         
     except Exception as e:
-        logging.error(f"Error fetching token stats for {address}: {str(e)}")
-        return jsonify({'success': False, 'error': 'Failed to fetch stats'}), 500
+        logging.error(f"❌ Error fetching token stats for {address}: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Failed to fetch stats: {str(e)}'}), 500
 
 @app.route('/api/token/<address>/user-trades', methods=['GET'])
 def api_token_user_trades(address):
