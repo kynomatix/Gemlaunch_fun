@@ -1173,9 +1173,10 @@ class Web3Service:
             low = max(0, int(estimated_kas * 0.5))
             high = int(estimated_kas * 2.0)
             
-            logging.debug(f"Warm start buy: estimated {estimated_kas} wei KAS for {target_token_amount} wei tokens")
-        except:
+            logging.info(f"✅ Warm start buy: sample {sample_kas} KAS → {sample_result['tokens_out']} tokens, estimated {estimated_kas} KAS for target {target_token_amount} tokens")
+        except Exception as e:
             # Fallback to wide bounds if warm start fails
+            logging.warning(f"⚠️ Warm start buy failed: {str(e)}, using wide bounds")
             low = 0
             high = 10**22
         
@@ -1204,8 +1205,9 @@ class Web3Service:
                 # If quote fails at this amount, try lower
                 high = mid - 1
         
-        # Return best approximation
-        logging.debug(f"Buy solver converged at {mid} wei KAS after {max_iterations} iterations")
+        # Return best approximation (might not have hit exact tolerance)
+        final_result = self.get_buy_quote(pool_address, mid)
+        logging.info(f"🎯 Buy solver: {mid} wei KAS → {final_result['tokens_out']} tokens (target: {target_token_amount}, error: {abs(final_result['tokens_out'] - target_token_amount)})")
         return mid
     
     def _solve_sell_for_token_amount(self, pool_address, target_kas_amount):
@@ -1234,9 +1236,10 @@ class Web3Service:
             low = max(0, int(estimated_tokens * 0.5))
             high = int(estimated_tokens * 2.0)
             
-            logging.debug(f"Warm start sell: estimated {estimated_tokens} wei tokens for {target_kas_amount} wei KAS")
-        except:
+            logging.info(f"✅ Warm start sell: sample {sample_tokens} tokens → {sample_result['kas_out']} KAS, estimated {estimated_tokens} tokens for target {target_kas_amount} KAS")
+        except Exception as e:
             # Fallback to wide bounds if warm start fails
+            logging.warning(f"⚠️ Warm start sell failed: {str(e)}, using wide bounds")
             low = 0
             high = 10**25
         
@@ -1265,8 +1268,9 @@ class Web3Service:
                 # If quote fails at this amount, try lower
                 high = mid - 1
         
-        # Return best approximation
-        logging.debug(f"Sell solver converged at {mid} wei tokens after {max_iterations} iterations")
+        # Return best approximation (might not have hit exact tolerance)
+        final_result = self.get_sell_quote(pool_address, mid)
+        logging.info(f"🎯 Sell solver: {mid} wei tokens → {final_result['kas_out']} KAS (target: {target_kas_amount}, error: {abs(final_result['kas_out'] - target_kas_amount)})")
         return mid
     
     def get_auto_slippage(self, pool_address, kas_amount):
