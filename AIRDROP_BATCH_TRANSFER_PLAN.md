@@ -1,10 +1,51 @@
 # Airdrop Batch Transfer Implementation Plan
 
-## Problem Identified
+**Status:** 🟡 Awaiting User Decision - No Implementation Started  
+**Updated:** January 2025 (after Claude audit review)
+
+---
+
+## 🚨 Critical Issues Identified
+
+### Issue #1: Who Controls Airdrop Tokens?
+
+**CURRENT STATE (TokenFactory.sol line 178):**
+```solidity
+address airdropBeneficiary = airdropTreasury;   // Platform wallet (0x5f837...)
+```
+
+**PROBLEM:**
+- Creator controls marketing vesting ✅
+- Creator controls team vesting ✅  
+- **Platform controls airdrop vesting** ❌
+
+**DECISION NEEDED:**
+- **Option A:** Change to `msg.sender` (creator controls) - requires TokenFactory redeployment
+- **Option B:** Keep as-is (platform custody) - works with existing contracts
+
+**Claude's Recommendation:** Option A (creator should control their own tokens)
+
+---
+
+### Issue #2: Batch Transfer Missing
+
 **Critical Design Gap:** Airdrops are ALWAYS batch transfers (20-500 recipients), but current smart contracts only support single `transfer()` calls. This results in:
 - ❌ Non-atomic distributions (20 separate transactions)
 - ❌ High gas costs (20x transaction overhead)
 - ❌ Poor UX (each transfer could fail independently)
+
+**SOLUTION:** Deploy AirdropDistributor.sol helper contract
+
+---
+
+### Issue #3: Multi-Wallet Recipient Logic
+
+**PROBLEM:** User has multiple wallets linked to profile. Which one gets the airdrop?
+- User participates with Wallet B
+- Airdrop goes to "default" Wallet A
+- User complains they didn't receive it
+
+**SOLUTION:** Send to wallet that participated in token activity (holder, chat, trades)
 
 ## Current State Analysis
 
@@ -25,10 +66,13 @@ contracts/
 ## Solution: AirdropDistributor Helper Contract
 
 ### Architecture
+
+**Note:** Airdrop allocation is DYNAMIC (creator chooses % when deploying token), not hardcoded to 33%.
+
 ```
 ┌─────────────────────────────────────────────────────┐
-│  AirdropVesting.sol (holds 33% tokens)              │
-│  Beneficiary: Platform Wallet                        │
+│  AirdropVesting.sol (holds X% of vesting tokens)    │
+│  Beneficiary: Platform Wallet (DECISION PENDING)    │
 └──────────────────┬──────────────────────────────────┘
                    │ withdraw() → Platform Wallet
                    ▼
