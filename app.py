@@ -23,7 +23,7 @@ from services import TokenService
 from services.achievement_service import evaluate_user_achievements
 from services.web3_service import get_web3_service
 from services.tx_monitor import get_tx_monitor
-from services.event_indexer import index_all_events
+# Import index_all_events inside function to avoid circular import
 from services.blockscout_client import get_blockscout_client
 from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 from web3 import Web3
@@ -191,6 +191,8 @@ def check_pending_with_context():
 def run_event_indexer_with_context():
     with app.app_context():
         try:
+            # Import here to avoid circular import with services/event_indexer.py
+            from services.event_indexer import index_all_events
             index_all_events()
         except Exception as e:
             logging.error(f"Error in event indexer: {str(e)}")

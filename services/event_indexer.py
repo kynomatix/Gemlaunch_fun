@@ -20,12 +20,94 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 INDEXER_STATE_FILE = Path("config/indexer_state.json")
+BATCH_SIZE = 250  # Configurable batch size for event processing (100-500 recommended)
 
 def get_web3_service():
     """Get or create Web3Service instance"""
     if not hasattr(get_web3_service, '_instance'):
         get_web3_service._instance = Web3Service()
     return get_web3_service._instance
+
+
+def bulk_fetch_blocks(w3, block_numbers):
+    """
+    Pre-fetch blocks in bulk for all events in a batch
+    
+    Args:
+        w3: Web3 instance
+        block_numbers: Set/list of block numbers to fetch
+    
+    Returns:
+        dict: Block number -> block data mapping
+    """
+    blocks = {}
+    unique_blocks = set(block_numbers)
+    
+    for block_num in unique_blocks:
+        try:
+            block = w3.eth.get_block(block_num)
+            blocks[block_num] = block
+        except BlockNotFound:
+            logger.warning(f"Block {block_num} not found")
+            continue
+    
+    logger.debug(f"Pre-fetched {len(blocks)} blocks for batch processing")
+    return blocks
+
+
+def filter_existing_tx_hashes(tx_hashes):
+    """
+    Pre-filter duplicate transactions before batch insert
+    
+    Args:
+        tx_hashes: List of transaction hashes to check
+    
+    Returns:
+        set: Transaction hashes that already exist in database
+    """
+    if not tx_hashes:
+        return set()
+    
+    existing = db.session.query(TradeEvent.tx_hash)\
+        .filter(TradeEvent.tx_hash.in_(tx_hashes))\
+        .all()
+    
+    existing_set = {row[0] for row in existing}
+    
+    if existing_set:
+        logger.debug(f"Filtered out {len(existing_set)} duplicate transactions")
+    
+    return existing_set
+
+
+def calculate_holder_counts_batch(token_ids):
+    """
+    Calculate holder counts for multiple tokens in one query
+    
+    Args:
+        token_ids: List of token IDs to calculate holders for
+    
+    Returns:
+        dict: Token ID -> holder count mapping
+    """
+    if not token_ids:
+        return {}
+    
+    # Use efficient GROUP BY query instead of per-token COUNT DISTINCT
+    from sqlalchemy import func
+    
+    results = db.session.query(
+        TradeEvent.token_id,
+        func.count(func.distinct(TradeEvent.user_wallet_address))
+    ).filter(
+        TradeEvent.token_id.in_(token_ids),
+        TradeEvent.trade_type == 'buy'
+    ).group_by(TradeEvent.token_id).all()
+    
+    holder_counts = {token_id: count for token_id, count in results}
+    
+    logger.debug(f"Calculated holder counts for {len(holder_counts)} tokens in batch")
+    return holder_counts
 
 
 def get_last_indexed_block():
@@ -55,38 +137,45 @@ def set_last_indexed_block(block_number):
         logger.error(f"Error saving last indexed block: {str(e)}")
 
 
+def build_trade_event_from_purchase(event, token, block, w3):
+    """Build TradeEvent object from TokensPurchased event (no DB insert)"""
+    args = event['args']
+    tx_hash = event['transactionHash'].hex()
+    block_number = event['blockNumber']
+    
+    timestamp = datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
+    
+    buyer_address = args['buyer'].lower()
+    tokens_out = Decimal(str(args['tokensOut']))
+    trade_amount = Decimal(str(w3.from_wei(args['tradeAmount'], 'ether')))
+    platform_fee = Decimal(str(w3.from_wei(args['platformFee'], 'ether')))
+    creator_fee = Decimal(str(w3.from_wei(args['creatorFee'], 'ether')))
+    anti_bot_fee = Decimal(str(w3.from_wei(args['antiBotFee'], 'ether')))
+    
+    total_kas = trade_amount + platform_fee + creator_fee + anti_bot_fee
+    
+    trade_event = TradeEvent(
+        token_id=token.id,
+        user_wallet_address=buyer_address,
+        trade_type='buy',
+        kas_amount=total_kas,
+        token_amount=tokens_out,
+        platform_fee=platform_fee,
+        creator_fee=creator_fee,
+        anti_bot_fee=anti_bot_fee,
+        tx_hash=tx_hash,
+        block_number=block_number,
+        timestamp=timestamp
+    )
+    
+    return trade_event, total_kas
+
+
 def process_tokens_purchased_event(event, token, w3):
-    """Process TokensPurchased event and create TradeEvent"""
+    """DEPRECATED: Legacy single-event processor (kept for compatibility)"""
     try:
-        args = event['args']
-        tx_hash = event['transactionHash'].hex()
-        block_number = event['blockNumber']
-        
-        block = w3.eth.get_block(block_number)
-        timestamp = datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
-        
-        buyer_address = args['buyer'].lower()
-        tokens_out = Decimal(str(args['tokensOut']))
-        trade_amount = Decimal(str(w3.from_wei(args['tradeAmount'], 'ether')))
-        platform_fee = Decimal(str(w3.from_wei(args['platformFee'], 'ether')))
-        creator_fee = Decimal(str(w3.from_wei(args['creatorFee'], 'ether')))
-        anti_bot_fee = Decimal(str(w3.from_wei(args['antiBotFee'], 'ether')))
-        
-        total_kas = trade_amount + platform_fee + creator_fee + anti_bot_fee
-        
-        trade_event = TradeEvent(
-            token_id=token.id,
-            user_wallet_address=buyer_address,
-            trade_type='buy',
-            kas_amount=total_kas,
-            token_amount=tokens_out,
-            platform_fee=platform_fee,
-            creator_fee=creator_fee,
-            anti_bot_fee=anti_bot_fee,
-            tx_hash=tx_hash,
-            block_number=block_number,
-            timestamp=timestamp
-        )
+        block = w3.eth.get_block(event['blockNumber'])
+        trade_event, total_kas = build_trade_event_from_purchase(event, token, block, w3)
         
         db.session.add(trade_event)
         db.session.flush()
@@ -100,13 +189,13 @@ def process_tokens_purchased_event(event, token, w3):
             .distinct().count()
         token.holder_count = unique_holders
         
-        logger.debug(f"✅ Processed TokensPurchased: {tokens_out} tokens for {total_kas} KAS (tx: {tx_hash[:10]}...)")
+        logger.debug(f"✅ Processed TokensPurchased: {trade_event.token_amount} tokens for {total_kas} KAS")
         
         return trade_event
         
     except IntegrityError as e:
         if 'unique constraint' in str(e).lower() and 'tx_hash' in str(e).lower():
-            logger.debug(f"Skipping duplicate TokensPurchased event: {tx_hash}")
+            logger.debug(f"Skipping duplicate TokensPurchased event")
             db.session.rollback()
             return None
         raise
@@ -116,35 +205,42 @@ def process_tokens_purchased_event(event, token, w3):
         raise
 
 
+def build_trade_event_from_sell(event, token, block, w3):
+    """Build TradeEvent object from TokensSold event (no DB insert)"""
+    args = event['args']
+    tx_hash = event['transactionHash'].hex()
+    block_number = event['blockNumber']
+    
+    timestamp = datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
+    
+    seller_address = args['seller'].lower()
+    tokens_in = Decimal(str(args['tokensIn']))
+    kas_out = Decimal(str(w3.from_wei(args['kasOut'], 'ether')))
+    platform_fee = Decimal(str(w3.from_wei(args['platformFee'], 'ether')))
+    creator_fee = Decimal(str(w3.from_wei(args['creatorFee'], 'ether')))
+    
+    trade_event = TradeEvent(
+        token_id=token.id,
+        user_wallet_address=seller_address,
+        trade_type='sell',
+        kas_amount=kas_out,
+        token_amount=tokens_in,
+        platform_fee=platform_fee,
+        creator_fee=creator_fee,
+        anti_bot_fee=0,
+        tx_hash=tx_hash,
+        block_number=block_number,
+        timestamp=timestamp
+    )
+    
+    return trade_event, kas_out
+
+
 def process_tokens_sold_event(event, token, w3):
-    """Process TokensSold event and create TradeEvent"""
+    """DEPRECATED: Legacy single-event processor (kept for compatibility)"""
     try:
-        args = event['args']
-        tx_hash = event['transactionHash'].hex()
-        block_number = event['blockNumber']
-        
-        block = w3.eth.get_block(block_number)
-        timestamp = datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
-        
-        seller_address = args['seller'].lower()
-        tokens_in = Decimal(str(args['tokensIn']))
-        kas_out = Decimal(str(w3.from_wei(args['kasOut'], 'ether')))
-        platform_fee = Decimal(str(w3.from_wei(args['platformFee'], 'ether')))
-        creator_fee = Decimal(str(w3.from_wei(args['creatorFee'], 'ether')))
-        
-        trade_event = TradeEvent(
-            token_id=token.id,
-            user_wallet_address=seller_address,
-            trade_type='sell',
-            kas_amount=kas_out,
-            token_amount=tokens_in,
-            platform_fee=platform_fee,
-            creator_fee=creator_fee,
-            anti_bot_fee=0,
-            tx_hash=tx_hash,
-            block_number=block_number,
-            timestamp=timestamp
-        )
+        block = w3.eth.get_block(event['blockNumber'])
+        trade_event, kas_out = build_trade_event_from_sell(event, token, block, w3)
         
         db.session.add(trade_event)
         db.session.flush()
@@ -152,13 +248,13 @@ def process_tokens_sold_event(event, token, w3):
         token.trade_count = (token.trade_count or 0) + 1
         token.trading_volume_24h = (token.trading_volume_24h or 0) + kas_out
         
-        logger.debug(f"✅ Processed TokensSold: {tokens_in} tokens for {kas_out} KAS (tx: {tx_hash[:10]}...)")
+        logger.debug(f"✅ Processed TokensSold: {trade_event.token_amount} tokens for {kas_out} KAS")
         
         return trade_event
         
     except IntegrityError as e:
         if 'unique constraint' in str(e).lower() and 'tx_hash' in str(e).lower():
-            logger.debug(f"Skipping duplicate TokensSold event: {tx_hash}")
+            logger.debug(f"Skipping duplicate TokensSold event")
             db.session.rollback()
             return None
         raise
@@ -313,8 +409,118 @@ def process_creator_fees_withdrawn_event(event, token, w3):
         raise
 
 
+def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_cache):
+    """
+    Process trade events in batch for optimal performance
+    
+    Args:
+        purchase_events: List of TokensPurchased events
+        sell_events: List of TokensSold events
+        token: Token model instance
+        w3: Web3 instance
+        blocks_cache: Pre-fetched blocks dict {block_number: block_data}
+    
+    Returns:
+        dict: Statistics about processed events
+    """
+    import time
+    batch_start = time.time()
+    
+    stats = {
+        'purchases': 0,
+        'sells': 0,
+        'duplicates': 0,
+        'errors': 0,
+        'batch_duration': 0
+    }
+    
+    # Step 1: Build all trade event objects (no DB operations yet)
+    trade_events = []
+    
+    # Process purchases
+    for event in purchase_events:
+        try:
+            block_number = event['blockNumber']
+            block = blocks_cache.get(block_number)
+            if not block:
+                logger.warning(f"Block {block_number} not in cache, fetching...")
+                block = w3.eth.get_block(block_number)
+            
+            trade_event, kas_amount = build_trade_event_from_purchase(event, token, block, w3)
+            trade_events.append((trade_event, kas_amount))
+        except Exception as e:
+            logger.error(f"Error building purchase event: {str(e)}")
+            stats['errors'] += 1
+            continue
+    
+    # Process sells
+    for event in sell_events:
+        try:
+            block_number = event['blockNumber']
+            block = blocks_cache.get(block_number)
+            if not block:
+                logger.warning(f"Block {block_number} not in cache, fetching...")
+                block = w3.eth.get_block(block_number)
+            
+            trade_event, kas_amount = build_trade_event_from_sell(event, token, block, w3)
+            trade_events.append((trade_event, kas_amount))
+        except Exception as e:
+            logger.error(f"Error building sell event: {str(e)}")
+            stats['errors'] += 1
+            continue
+    
+    if not trade_events:
+        return stats
+    
+    # Step 2: Pre-filter duplicates
+    tx_hashes = [te[0].tx_hash for te in trade_events]
+    existing_hashes = filter_existing_tx_hashes(tx_hashes)
+    
+    # Filter to only new events (not duplicates)
+    new_trade_events_with_amounts = [(te, amt) for te, amt in trade_events if te.tx_hash not in existing_hashes]
+    stats['duplicates'] = len(existing_hashes)
+    
+    if not new_trade_events_with_amounts:
+        logger.debug(f"All {len(trade_events)} events were duplicates, skipping insert")
+        return stats
+    
+    # Extract trade events for insertion and calculate metrics from NEW events only
+    new_trade_events = [te for te, amt in new_trade_events_with_amounts]
+    
+    # Step 3: Bulk insert trade events
+    try:
+        db.session.bulk_save_objects(new_trade_events)
+        
+        stats['purchases'] = len([e for e in new_trade_events if e.trade_type == 'buy'])
+        stats['sells'] = len([e for e in new_trade_events if e.trade_type == 'sell'])
+        
+        logger.debug(f"✅ Batch inserted {len(new_trade_events)} trade events ({stats['purchases']} buys, {stats['sells']} sells)")
+    except IntegrityError as e:
+        logger.error(f"Unexpected IntegrityError in batch insert: {str(e)}")
+        db.session.rollback()
+        stats['errors'] += 1
+        return stats
+    
+    # Step 4: Update token metrics using ONLY new events (post-duplicate filter)
+    new_trade_count = len(new_trade_events)
+    new_trading_volume = sum(amt for te, amt in new_trade_events_with_amounts)
+    
+    token.trade_count = (token.trade_count or 0) + new_trade_count
+    token.trading_volume_24h = (token.trading_volume_24h or 0) + new_trading_volume
+    
+    # Step 5: Calculate holder count (single query per token, not per event)
+    holder_counts = calculate_holder_counts_batch([token.id])
+    if token.id in holder_counts:
+        token.holder_count = holder_counts[token.id]
+    
+    stats['batch_duration'] = time.time() - batch_start
+    logger.debug(f"📊 Batch metrics: {len(new_trade_events)} events in {stats['batch_duration']:.2f}s ({len(new_trade_events)/stats['batch_duration']:.1f} events/sec)")
+    
+    return stats
+
+
 def process_bonding_pool_events(pool_address, from_block, to_block):
-    """Process all BondingCurvePool events for a token"""
+    """Process all BondingCurvePool events for a token with optimized batch processing"""
     try:
         web3_service = get_web3_service()
         w3 = web3_service.w3
@@ -341,8 +547,13 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
             'anti_bot_fees': 0,
             'graduations': 0,
             'withdrawals': 0,
+            'duplicates': 0,
             'errors': 0
         }
+        
+        # Fetch all events for the block range
+        purchase_events = []
+        sell_events = []
         
         try:
             purchase_filter = pool_contract.events.TokensPurchased.create_filter(
@@ -350,16 +561,7 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
                 to_block=to_block
             )
             purchase_events = purchase_filter.get_all_entries()
-            
-            for event in purchase_events:
-                try:
-                    trade_event = process_tokens_purchased_event(event, token, w3)
-                    if trade_event:
-                        stats['purchases'] += 1
-                except Exception as e:
-                    logger.error(f"Error processing purchase event: {str(e)}")
-                    stats['errors'] += 1
-                    continue
+            logger.debug(f"Found {len(purchase_events)} purchase events for {token.symbol}")
         except Exception as e:
             logger.error(f"Error fetching TokensPurchased events: {str(e)}")
         
@@ -369,19 +571,35 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
                 to_block=to_block
             )
             sell_events = sell_filter.get_all_entries()
-            
-            for event in sell_events:
-                try:
-                    trade_event = process_tokens_sold_event(event, token, w3)
-                    if trade_event:
-                        stats['sells'] += 1
-                except Exception as e:
-                    logger.error(f"Error processing sell event: {str(e)}")
-                    stats['errors'] += 1
-                    continue
+            logger.debug(f"Found {len(sell_events)} sell events for {token.symbol}")
         except Exception as e:
             logger.error(f"Error fetching TokensSold events: {str(e)}")
         
+        # Process trade events in optimized batches
+        if purchase_events or sell_events:
+            # Pre-fetch all blocks needed for this batch
+            block_numbers = set()
+            for event in purchase_events + sell_events:
+                block_numbers.add(event['blockNumber'])
+            
+            blocks_cache = bulk_fetch_blocks(w3, block_numbers)
+            
+            # Process in batch
+            batch_stats = process_trade_events_batch(
+                purchase_events, 
+                sell_events, 
+                token, 
+                w3, 
+                blocks_cache
+            )
+            
+            # Merge batch stats into overall stats
+            stats['purchases'] = batch_stats['purchases']
+            stats['sells'] = batch_stats['sells']
+            stats['duplicates'] = batch_stats.get('duplicates', 0)
+            stats['errors'] += batch_stats.get('errors', 0)
+        
+        # Process anti-bot fee events (not batched yet - less frequent)
         try:
             process_anti_bot_fee_events(w3, pool_contract, token, from_block, to_block)
         except Exception as e:
