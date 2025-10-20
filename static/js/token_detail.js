@@ -684,7 +684,7 @@
                 }
             } else { // sell
                 if (this.inputDirection === 'primary') {
-                    // Switching to: Enter tokens → Get KAS
+                    // Standard sell: Enter tokens to sell → Get KAS received
                     // Keep token value, clear KAS (will be recalculated)
                     kasLabel.textContent = 'You Receive (KAS)';
                     tokenLabel.textContent = `You Sell (${this.tokenSymbol})`;
@@ -693,10 +693,10 @@
                     kasInput.value = '';
                     this._updatingProgrammatically = false;
                 } else {
-                    // Switching to: Enter KAS → Calculate tokens to sell
+                    // Reversed sell: Enter KAS desired → Calculate tokens needed
                     // Keep KAS value, clear tokens (will be recalculated)
-                    kasLabel.textContent = `You Sell (${this.tokenSymbol})`;
-                    tokenLabel.textContent = 'You Receive (KAS)';
+                    kasLabel.textContent = 'KAS You Want';
+                    tokenLabel.textContent = `${this.tokenSymbol} You Must Sell`;
                     this.lastEditedField = 'kas'; // KAS field is now the input
                     this._updatingProgrammatically = true;
                     tokenInput.value = '';
