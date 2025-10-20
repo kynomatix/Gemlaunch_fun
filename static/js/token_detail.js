@@ -14,6 +14,7 @@
         // Trading state
         currentTradeMode: 'buy',
         inputDirection: 'primary', // 'primary' = standard (KAS for buy, tokens for sell), 'secondary' = reversed
+        lastEditedField: 'kas', // Track which field user last edited for bidirectional input
         tokenPrice: null,
         marketCap: null,
         kasToUsd: 0.15, // Will be updated from oracle
@@ -589,6 +590,7 @@
             
             // Reset to primary direction when switching modes
             this.inputDirection = 'primary';
+            this.lastEditedField = (mode === 'buy') ? 'kas' : 'token';
             
             // Update tab styling
             document.querySelectorAll('.trade-tab').forEach(tab => tab.classList.remove('active'));
@@ -961,28 +963,16 @@
             
             let inputField, outputField;
             
+            // Use lastEditedField to determine input (bidirectional support)
             if (action === 'buy') {
-                if (this.inputDirection === 'primary') {
-                    // Standard buy: User enters KAS → Get tokens
-                    inputField = 'kasAmount';
-                    outputField = 'tokenAmount';
-                    const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
-                    
-                    if (kasAmount <= 0) {
-                        document.getElementById('tokenAmount').value = 0;
-                        this.clearFeeBreakdown();
-                        return;
-                    }
-                    
-                    params.kas_amount = kasAmount;
-                } else {
-                    // Reverse buy: User enters tokens → Get KAS needed
+                if (this.lastEditedField === 'token') {
+                    // User typed in token field: calculate KAS needed
                     inputField = 'tokenAmount';
                     outputField = 'kasAmount';
                     const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
                     
                     if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
-                        document.getElementById('kasAmount').value = 0;
+                        document.getElementById('kasAmount').value = '';
                         this.clearFeeBreakdown();
                         return;
                     }
@@ -995,16 +985,42 @@
                         this.showQuoteError('Invalid token amount');
                         return;
                     }
+                } else {
+                    // User typed in KAS field (default): calculate tokens out
+                    inputField = 'kasAmount';
+                    outputField = 'tokenAmount';
+                    const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                    
+                    if (kasAmount <= 0) {
+                        document.getElementById('tokenAmount').value = '';
+                        this.clearFeeBreakdown();
+                        return;
+                    }
+                    
+                    params.kas_amount = kasAmount;
                 }
             } else { // sell
-                if (this.inputDirection === 'primary') {
-                    // Standard sell: User enters tokens → Get KAS
+                if (this.lastEditedField === 'kas') {
+                    // User typed in KAS field: calculate tokens to sell
+                    inputField = 'kasAmount';
+                    outputField = 'tokenAmount';
+                    const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                    
+                    if (kasAmount <= 0) {
+                        document.getElementById('tokenAmount').value = '';
+                        this.clearFeeBreakdown();
+                        return;
+                    }
+                    
+                    params.kas_amount = kasAmount;
+                } else {
+                    // User typed in token field (default): calculate KAS out
                     inputField = 'tokenAmount';
                     outputField = 'kasAmount';
                     const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
                     
                     if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
-                        document.getElementById('kasAmount').value = 0;
+                        document.getElementById('kasAmount').value = '';
                         this.clearFeeBreakdown();
                         return;
                     }
@@ -1017,19 +1033,6 @@
                         this.showQuoteError('Invalid token amount');
                         return;
                     }
-                } else {
-                    // Reverse sell: User enters KAS → Get tokens needed
-                    inputField = 'kasAmount';
-                    outputField = 'tokenAmount';
-                    const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
-                    
-                    if (kasAmount <= 0) {
-                        document.getElementById('tokenAmount').value = 0;
-                        this.clearFeeBreakdown();
-                        return;
-                    }
-                    
-                    params.kas_amount = kasAmount;
                 }
             }
             
@@ -1063,10 +1066,11 @@
                     if (quote.success) {
                         // Unified response format - update the output field
                         if (outputField === 'tokenAmount') {
-                            // Output is tokens (API returns in ether units, not wei)
+                            // Output is tokens (API returns in ether units)
                             const tokensOut = quote.tokens_out || quote.token_amount;
+                            // Display with appropriate decimals (use 6 decimal places for precision)
                             document.getElementById('tokenAmount').value = 
-                                Math.floor(tokensOut);  // Already in ether units
+                                parseFloat(tokensOut.toFixed(6));
                         } else {
                             // Output is KAS (API returns in ether units)
                             const kasOut = quote.kas_out || quote.kas_amount;
@@ -3400,10 +3404,8 @@
         if (kasAmountInput && !kasAmountInput.dataset.listenerAdded) {
             kasAmountInput.dataset.listenerAdded = 'true';
             kasAmountInput.addEventListener('input', () => {
-                // Trigger in:
-                // - BUY + Primary: User enters KAS
-                // - BUY + Secondary: User enters tokens (displayed in KAS field)
-                // - SELL + Secondary: User enters KAS
+                // Mark which field was last edited
+                TokenDetail.lastEditedField = 'kas';
                 TokenDetail.updateTokenAmount();
             });
         }
@@ -3411,10 +3413,8 @@
         if (tokenAmountInput && !tokenAmountInput.dataset.listenerAdded) {
             tokenAmountInput.dataset.listenerAdded = 'true';
             tokenAmountInput.addEventListener('input', () => {
-                // Trigger in:
-                // - SELL + Primary: User enters tokens
-                // - SELL + Secondary: User enters KAS (displayed in token field)
-                // - BUY + Secondary: User enters tokens
+                // Mark which field was last edited
+                TokenDetail.lastEditedField = 'token';
                 TokenDetail.updateTokenAmount();
             });
         }
