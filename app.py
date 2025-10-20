@@ -1779,62 +1779,34 @@ def update_token_settings(contract_address):
 @cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
 def get_recent_trades(contract_address):
     """
-    Get recent trades for a token via Blockscout GraphQL API
+    Get recent trades for a token using TradeEvent database
     
-    Migrated from database to GraphQL (Phase 2 of GraphQL Migration Plan)
+    Uses event indexer data for accurate KAS amounts (including sell trades).
+    GraphQL API can't show KAS received from pool internal transfers.
     """
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
     
-    # Get BlockscoutClient
-    blockscout = get_blockscout_client()
+    # Query recent TradeEvent records (populated by event indexer)
+    recent_trades = TradeEvent.query.filter(
+        TradeEvent.token_id == token.id
+    ).order_by(TradeEvent.timestamp.desc()).limit(10).all()
     
-    # Fetch recent token transfers from GraphQL API
-    transfers = blockscout.get_token_transfers(contract_address, first=10)
-    
-    # Transform GraphQL transfers to trades format
+    # Transform to API format
     trades_data = []
-    for transfer in transfers:
-        # Determine trade type based on transfer direction
-        # Bonding curve trades:
-        # - Buy: pool sends tokens to user (seller=pool, buyer=user)
-        # - Sell: user sends tokens to pool (seller=user, buyer=pool)
-        # - Mint: initial pool creation (seller=0x000, buyer=pool) - SKIP THIS
-        seller = transfer['seller'].lower()
-        buyer = transfer['buyer'].lower()
-        pool_address = contract_address.lower()
-        null_address = '0x0000000000000000000000000000000000000000'
-        
-        # Skip mint/burn events (not real trades)
-        if seller == null_address or buyer == null_address:
-            continue
-        
-        # Determine trade type
-        if seller == pool_address:
-            trade_type = 'buy'
-            user_address = buyer
-        elif buyer == pool_address:
-            trade_type = 'sell'
-            user_address = seller
-        else:
-            # Transfer between wallets (not a trade)
-            continue
-        
-        # Convert Wei to KAS (18 decimals) - safe fallback for None values
-        kas_value_wei = int(transfer.get('kas_value') or '0')
-        kas_amount = kas_value_wei / 1e18
-        
+    for trade in recent_trades:
         trades_data.append({
-            'trade_type': trade_type,
-            'token_amount': transfer['token_amount'],
-            'kas_amount': kas_amount,
-            'user_wallet_address': user_address,
-            'timestamp': transfer['timestamp']
+            'trade_type': trade.trade_type,
+            'token_amount': str(trade.token_amount),  # Keep as string to preserve precision
+            'kas_amount': float(trade.kas_amount),
+            'user_wallet_address': trade.user_wallet_address,
+            'timestamp': trade.timestamp.isoformat() if trade.timestamp else None,
+            'tx_hash': trade.tx_hash
         })
     
     return jsonify({
         'success': True,
         'trades': trades_data,
-        'source': 'graphql'  # Indicate data source for debugging
+        'source': 'database'  # Indicate data source for debugging
     })
 
 @app.route('/api/token/<contract_address>/airdrop/available', methods=['GET'])

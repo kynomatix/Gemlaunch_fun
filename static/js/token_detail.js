@@ -1310,6 +1310,17 @@
                 this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
             }
             
+            // ========== CAPTURE PRE-TRADE BASELINE ==========
+            // Capture state BEFORE trade for refresh comparison
+            this._preTradeSnapshot = await this._captureChartSnapshot(window.tokenContractAddress);
+            this._preTradeMarketCap = this.marketCap;  // Current market cap
+            this._preTradePrice = this.tokenPrice;      // Current price
+            console.log('[ExecuteTrade] Pre-trade baseline captured:', {
+                marketCap: this._preTradeMarketCap,
+                price: this._preTradePrice,
+                snapshot: this._preTradeSnapshot
+            });
+            
             // Execute via TransactionManager with AUTO-SLIPPAGE retry system
             try {
                 // Build base parameters without slippage (auto-slippage system handles this)
@@ -1723,12 +1734,6 @@
                 const walletAddress = trade.user_wallet_address || 'Unknown';
                 const timeStr = trade.timestamp ? new Date(trade.timestamp).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false}) : 'Unknown';
                 
-                // For sell trades, transaction.value is 0 because KAS is received FROM pool (internal transfer)
-                // Show "Sold for KAS" instead of misleading "0.00 KAS"
-                const kasDisplay = (tradeType === 'sell' && parseFloat(kasAmount) < 0.01) 
-                    ? 'Sold for KAS' 
-                    : `${kasAmount} KAS`;
-                
                 return `
                     <div class="trade-item" style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;">
                         <div style="display: flex; align-items: center; gap: 1rem;">
@@ -1740,7 +1745,7 @@
                                     ${tokenAmount} ${this.tokenSymbol}
                                 </span>
                                 <span style="color: #999; font-size: 0.75rem;">
-                                    ${kasDisplay}
+                                    ${kasAmount} KAS
                                 </span>
                             </div>
                         </div>
