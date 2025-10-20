@@ -6,7 +6,7 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from flask import current_app
-from models import Token
+from models import Token, db
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,8 @@ class MarketplaceService:
     @staticmethod
     def get_24h_metrics(token_address: str) -> Dict:
         """
-        Get 24h metrics (volume and price change) from GraphQL efficiently.
+        Get 24h metrics (volume and price change) from database.
+        Uses TradeEvent table which has complete historical data.
         
         Returns:
             dict: {
@@ -188,63 +189,57 @@ class MarketplaceService:
             }
         """
         try:
-            from services.blockscout_client import BlockscoutClient
-            from services.web3_service import get_web3_service
+            from models import Token, db, TradeEvent
             from datetime import timezone
             
-            client = BlockscoutClient()
-            web3_service = get_web3_service()
+            # Find token by contract address
+            token = Token.query.filter(
+                db.func.lower(Token.contract_address) == token_address.lower()
+            ).first()
             
-            # Get recent transfers (trades) from GraphQL
-            transfers = client.get_token_transfers(token_address, first=8)
-            
-            if not transfers:
+            if not token:
                 return {'volume_24h': 0, 'price_change_24h': 0}
             
-            # Calculate volume and price change from transfers within last 24 hours
+            # Get trades from last 24h for volume
             cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
             
-            total_volume = 0
-            prices_24h_ago = []
-            current_prices = []
+            recent_trades = TradeEvent.query.filter(
+                TradeEvent.token_id == token.id,
+                TradeEvent.timestamp >= cutoff_time
+            ).all()
             
-            for transfer in transfers:
-                # Parse timestamp
-                timestamp = datetime.fromisoformat(transfer['timestamp'].replace('Z', '+00:00'))
-                
-                # Calculate trade price (KAS per token)
-                kas_value = float(transfer.get('kas_value', 0)) / 1e18
-                token_amount = float(transfer.get('token_amount', 0)) / 1e18
-                
-                if token_amount > 0:
-                    price = kas_value / token_amount
-                    
-                    # Track recent prices for current price
-                    current_prices.append(price)
-                    
-                    # Track older prices for 24h comparison
-                    if timestamp < cutoff_time:
-                        prices_24h_ago.append(price)
-                
-                # Add to volume if within 24h
-                if timestamp >= cutoff_time:
-                    total_volume += kas_value
+            # Calculate volume
+            total_volume = sum(float(trade.kas_amount) for trade in recent_trades)
+            
+            # Get most recent trade for current price
+            latest_trade = TradeEvent.query.filter(
+                TradeEvent.token_id == token.id
+            ).order_by(TradeEvent.timestamp.desc()).first()
+            
+            if not latest_trade:
+                return {'volume_24h': round(total_volume, 2), 'price_change_24h': 0}
+            
+            # Calculate current price
+            current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount) * 1e18
+            
+            # Get oldest trade beyond 24h for comparison
+            old_trade = TradeEvent.query.filter(
+                TradeEvent.token_id == token.id,
+                TradeEvent.timestamp < cutoff_time
+            ).order_by(TradeEvent.timestamp.desc()).first()
             
             # Calculate price change
             price_change = 0
-            if current_prices:
-                current_price = current_prices[0]  # Most recent price
-                
-                if prices_24h_ago:
-                    # Compare to 24h ago price
-                    old_price = prices_24h_ago[-1]  # Oldest price beyond 24h
-                    if old_price > 0:
-                        price_change = ((current_price - old_price) / old_price) * 100
-                elif len(current_prices) > 1:
-                    # If no data beyond 24h, compare first to last trade
-                    old_price = current_prices[-1]
-                    if old_price > 0:
-                        price_change = ((current_price - old_price) / old_price) * 100
+            if old_trade:
+                old_price = float(old_trade.kas_amount) / float(old_trade.token_amount) * 1e18
+                if old_price > 0:
+                    price_change = ((current_price - old_price) / old_price) * 100
+            elif len(recent_trades) > 1:
+                # If no data beyond 24h, compare to oldest recent trade
+                oldest_recent = min(recent_trades, key=lambda t: t.timestamp)
+                old_price = float(oldest_recent.kas_amount) / float(oldest_recent.token_amount) * 1e18
+                if old_price > 0:
+                    price_change = ((current_price - old_price) / old_price) * 100
             
             return {
                 'volume_24h': round(total_volume, 2),
