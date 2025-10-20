@@ -527,7 +527,7 @@
             resizeObserver.observe(container);
         },
         
-        // ✅ SMOOTH CHART UPDATE: Update last candle without full rebuild
+        // ✅ SMOOTH CHART UPDATE: Update chart data without full rebuild
         updateChart: async function() {
             // If no chart or series exists, do full init
             if (!this.myChart || !this.currentSeries) {
@@ -550,30 +550,34 @@
                     return this.initChart();
                 }
                 
-                // ✅ SMOOTH UPDATE: Update only the LAST candle (most recent)
-                // Note: series.update() requires monotonically increasing timestamps
-                const lastCandle = chartResult.data[chartResult.data.length - 1];
+                // ✅ FIX: Use setData() to replace all candles
+                // This handles trades in same interval correctly:
+                // - Backend groups trades into intervals (e.g., all trades 11:07-11:59 → 11:00 candle)
+                // - setData() replaces all candles, so updating the 11:00 candle works correctly
+                // - Avoids creating duplicate candles for trades in same interval
                 
                 if (chartResult.format === 'candlestick') {
-                    this.currentSeries.update({
-                        time: lastCandle.time,
-                        open: lastCandle.open,
-                        high: lastCandle.high,
-                        low: lastCandle.low,
-                        close: lastCandle.close
-                    });
-                    console.log(`[UpdateChart] ✅ Smoothly updated last candlestick at ${lastCandle.time}`);
+                    const tvData = chartResult.data.map(candle => ({
+                        time: candle.time,
+                        open: candle.open,
+                        high: candle.high,
+                        low: candle.low,
+                        close: candle.close
+                    }));
+                    this.currentSeries.setData(tvData);
+                    console.log(`[UpdateChart] ✅ Refreshed ${tvData.length} candlesticks`);
                 } else {
                     // Area chart
-                    this.currentSeries.update({
-                        time: lastCandle.time,
-                        value: lastCandle.value
-                    });
-                    console.log(`[UpdateChart] ✅ Smoothly updated last area point at ${lastCandle.time}`);
+                    const tvData = chartResult.data.map(point => ({
+                        time: point.time,
+                        value: point.value
+                    }));
+                    this.currentSeries.setData(tvData);
+                    console.log(`[UpdateChart] ✅ Refreshed ${tvData.length} area points`);
                 }
                 
             } catch (error) {
-                console.error('[UpdateChart] Error during smooth update, falling back to full init:', error);
+                console.error('[UpdateChart] Error during update, falling back to full init:', error);
                 return this.initChart();
             }
         },
