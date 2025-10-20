@@ -475,6 +475,10 @@
                 
                 series.setData(tvData);
                 
+                // ✅ SMOOTH UPDATES: Store series reference for incremental updates
+                this.currentSeries = series;
+                this.currentSeriesType = 'candlestick';
+                
             } else {
                 // Area chart (fallback for low trade count)
                 series = this.myChart.addAreaSeries({
@@ -504,6 +508,10 @@
                 }));
                 
                 series.setData(tvData);
+                
+                // ✅ SMOOTH UPDATES: Store series reference for incremental updates
+                this.currentSeries = series;
+                this.currentSeriesType = 'area';
             }
             
             // Fit content to view
@@ -517,6 +525,57 @@
                 }
             });
             resizeObserver.observe(container);
+        },
+        
+        // ✅ SMOOTH CHART UPDATE: Update last candle without full rebuild
+        updateChart: async function() {
+            // If no chart or series exists, do full init
+            if (!this.myChart || !this.currentSeries) {
+                console.log('[UpdateChart] No existing chart, performing full init');
+                return this.initChart();
+            }
+            
+            try {
+                // Fetch latest chart data
+                const chartResult = await this.fetchChartData(this.currentChartType, this.currentInterval);
+                
+                if (chartResult.error || !chartResult.data || chartResult.data.length === 0) {
+                    console.log('[UpdateChart] No data available, skipping update');
+                    return;
+                }
+                
+                // Check if series type changed (candlestick ↔ area)
+                if (chartResult.format !== this.currentSeriesType) {
+                    console.log(`[UpdateChart] Series type changed (${this.currentSeriesType} → ${chartResult.format}), full rebuild needed`);
+                    return this.initChart();
+                }
+                
+                // ✅ SMOOTH UPDATE: Update only the LAST candle (most recent)
+                // Note: series.update() requires monotonically increasing timestamps
+                const lastCandle = chartResult.data[chartResult.data.length - 1];
+                
+                if (chartResult.format === 'candlestick') {
+                    this.currentSeries.update({
+                        time: lastCandle.time,
+                        open: lastCandle.open,
+                        high: lastCandle.high,
+                        low: lastCandle.low,
+                        close: lastCandle.close
+                    });
+                    console.log(`[UpdateChart] ✅ Smoothly updated last candlestick at ${lastCandle.time}`);
+                } else {
+                    // Area chart
+                    this.currentSeries.update({
+                        time: lastCandle.time,
+                        value: lastCandle.value
+                    });
+                    console.log(`[UpdateChart] ✅ Smoothly updated last area point at ${lastCandle.time}`);
+                }
+                
+            } catch (error) {
+                console.error('[UpdateChart] Error during smooth update, falling back to full init:', error);
+                return this.initChart();
+            }
         },
         
         // Trading functions
@@ -1371,8 +1430,9 @@
                                           latestCandle.volume !== snapshotBeforeTrade.lastVolume;
                         
                         if (hasNewData) {
-                            console.log(`[RefreshAfterTrade] NEW chart data detected, refreshing (attempt ${attempts})`);
-                            this.initChart();
+                            console.log(`[RefreshAfterTrade] NEW chart data detected, smooth update (attempt ${attempts})`);
+                            // ✅ SMOOTH UPDATE: Use updateChart() instead of initChart()
+                            this.updateChart();
                             this._isRefreshing = false;
                             return true; // Success
                         } else {
@@ -1384,8 +1444,9 @@
                     if (attempts < maxAttempts) {
                         setTimeout(pollChartData, pollInterval);
                     } else {
-                        console.warn('[RefreshAfterTrade] Max attempts reached, refreshing with current data');
-                        this.initChart();
+                        console.warn('[RefreshAfterTrade] Max attempts reached, smooth update with current data');
+                        // ✅ SMOOTH UPDATE: Use updateChart() instead of initChart()
+                        this.updateChart();
                         this._isRefreshing = false;
                     }
                 } catch (error) {
