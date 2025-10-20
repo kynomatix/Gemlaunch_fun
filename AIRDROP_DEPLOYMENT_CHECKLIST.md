@@ -1,33 +1,92 @@
-# Airdrop Batch Distribution - Deployment Checklist
+# Airdrop Batch Distribution - Implementation Status
 
-## ✅ Completed Implementation
+## ✅ COMPLETED (All Code Ready)
 
-1. **Smart Contracts**
-   - [x] Updated TokenFactory.sol (line 178): `airdropBeneficiary = msg.sender`
-   - [x] Created AirdropDistributor.sol with pre-validation
-   - [ ] Compiled contracts
+### 1. Smart Contracts
+- ✅ Updated `TokenFactory.sol` line 178: Changed `airdropBeneficiary` from platform treasury to `msg.sender` (creator wallet)
+  - **Why:** Sustainable economics - creators pay for their own airdrops instead of platform subsidizing
+- ✅ Created `AirdropDistributor.sol` with pre-validation
+  - **Features:** Batch transfer with upfront allowance/balance checks to prevent gas waste
+  - **Location:** `contracts/AirdropDistributor.sol`
+- ✅ Compiled successfully (`npx hardhat compile`)
 
-2. **Database Schema**
-   - [x] Added columns to Airdrop model:
-     - `distribution_type` (claim/push)
-     - `withdrawal_tx`, `approval_tx`, `distribution_tx`
-   - ⚠️ **Auto-migration**: New columns will be added automatically on app restart (Flask-SQLAlchemy `db.create_all()`)
+### 2. Database Schema
+- ✅ Added new columns to `Airdrop` model in `models.py`:
+  - `distribution_type` - "push" (batch) or "claim" (old system)
+  - `withdrawal_tx` - Hash of vesting withdrawal transaction
+  - `approval_tx` - Hash of token approval transaction  
+  - `distribution_tx` - Hash of batch distribution transaction
+  - `recipient_count` - Number of recipients
+- ✅ **Migration:** Auto-handled by Flask-SQLAlchemy `db.create_all()` on app restart
 
-3. **Backend Implementation**
-   - [x] Updated `/api/token/<address>/airdrop/create` to build transaction bundles
-   - [x] Added web3_service.py methods:
-     - `build_vesting_withdrawal_tx()`
-     - `build_token_approval_tx()`
-     - `build_batch_transfer_tx()`
-   - [x] Added validation for zero-address distributor
+### 3. Backend Implementation  
+- ✅ Rewrote `/api/token/<address>/airdrop/create` endpoint in `app.py`:
+  - Builds 3-transaction bundle (withdraw → approve → distribute)
+  - Selects recipients based on type:
+    - `active_chatters` - Users with min messages (TokenEngagement)
+    - `token_holders` - Holders with min balance (Holding)
+    - `top_contributors` - Top traders by volume (TokenEngagement)
+    - `early_supporters` - Earliest token buyers (Holding)
+  - Validates balance (creator wallet + unlocked vesting)
+  - Returns transaction bundle for frontend signing
+- ✅ Added web3_service.py methods:
+  - `build_vesting_withdrawal_tx()` - TX to withdraw unlocked tokens
+  - `build_token_approval_tx()` - TX to approve distributor
+  - `build_batch_transfer_tx()` - TX to distribute to recipients
+- ✅ Added zero-address validation (prevents TX if distributor not deployed)
 
-4. **Frontend Implementation**
-   - [x] Updated airdrop modal to sign 3 transactions sequentially
-   - [x] Added error handling and retry messages
+### 4. Frontend Implementation
+- ✅ Updated airdrop modal in `templates/app/token_detail.html`:
+  - Signs 3 transactions sequentially via MetaMask/wallet
+  - Shows progress ("Signing transaction 1/3...")
+  - Error handling with retry instructions
+  - Success message with TX hashes and recipient count
+
+### 5. Architecture Review
+- ✅ Reviewed by architect agent
+- ✅ Fixed all identified issues:
+  - Added zero-address guard
+  - Removed unimplemented `random_raffle` type
+  - Created deployment checklist
 
 ---
 
-## 🚨 DEPLOYMENT STEPS (Required Before Testing)
+## ⚠️ PENDING: Contract Deployment (BLOCKER)
+
+### What Needs to Happen
+Deploy `AirdropDistributor.sol` to Kasplex testnet and update the address in code.
+
+### Current Status
+- **Issue:** Kasplex testnet is down/very slow (transactions timing out after 10+ minutes)
+- **Attempts:** Multiple deployment attempts timed out
+- **Address:** Currently `0x0000000000000000000000000000000000000000` (placeholder)
+
+### When Testnet Is Back Up
+
+Run this single command:
+```bash
+npx hardhat run scripts/deploy_airdrop_distributor.js --network kasplex_testnet
+```
+
+Expected output:
+```
+✅ AirdropDistributor deployed: 0x[NEW_ADDRESS]
+```
+
+Then update `services/web3_service.py` line 33:
+```python
+# Change from:
+AIRDROP_DISTRIBUTOR_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+# To:
+AIRDROP_DISTRIBUTOR_ADDRESS = "0x[DEPLOYED_ADDRESS_FROM_ABOVE]"
+```
+
+**That's it!** Restart the app and airdrops will work.
+
+---
+
+## 🚨 BLOCKER SUMMARY
 
 ### Step 1: Deploy AirdropDistributor Contract
 

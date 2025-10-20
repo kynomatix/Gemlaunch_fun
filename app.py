@@ -1187,10 +1187,13 @@ def token_marketplace():
     # Add is_pro flag to each token for the template
     for token in tokens:
         token.is_pro = TokenService.is_pro_token(token)
+        # Set default values for lazy loading
+        token.volume_24h = 0
+        token.price_change_24h = 0
+        token.graduation_progress = 0
     
-    # Enrich tokens with real-time marketplace data (with validation and limits)
-    from services.marketplace_service import MarketplaceService
-    tokens = MarketplaceService.enrich_tokens_with_marketplace_data(tokens)
+    # Skip server-side enrichment - will be loaded client-side via lazy loading
+    # This dramatically improves page load time for marketplaces with many tokens
     
     return render_template('app/marketplace.html', tokens=tokens, user=user, now=datetime.now(timezone.utc))
 
@@ -2323,6 +2326,21 @@ def api_token_stats(address):
             else:
                 return f"{val:.2f}"
         
+        # Get 24h metrics from MarketplaceService (cached for 10s)
+        price_change_24h = 0
+        volume_24h = 0
+        volume_24h_formatted = '$0'
+        
+        try:
+            from services.marketplace_service import MarketplaceService
+            metrics = MarketplaceService.get_24h_metrics(token.contract_address)
+            price_change_24h = metrics['price_change_24h']
+            volume_24h = metrics['volume_24h']
+            volume_24h_formatted = format_usd(volume_24h)
+        except Exception as e:
+            logging.debug(f"Could not fetch 24h metrics for {token.contract_address}: {e}")
+        
+        # Return single response with all data
         return jsonify({
             'success': True,
             # Price data
@@ -2347,9 +2365,10 @@ def api_token_stats(address):
             'graduation_threshold_usd': graduation_threshold_usd,
             'graduation_threshold_formatted': format_usd(graduation_threshold_usd),
             
-            # Trading metrics (TODO: calculate from TradeEvent)
-            'price_change_24h': 0,
-            'volume_24h': 0,
+            # Trading metrics (enriched from MarketplaceService)
+            'price_change_24h': price_change_24h,
+            'volume_24h': volume_24h,
+            'volume_24h_formatted': volume_24h_formatted,
             
             # Status
             'is_graduated': token.is_graduated

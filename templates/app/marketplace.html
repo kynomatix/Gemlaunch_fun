@@ -1087,5 +1087,114 @@
             });
         }
     })();
+    
+    // Lazy Loading for Token Metrics
+    // Only load volume, 24h performance, graduation progress, holders for visible tokens
+    (function() {
+        const loadedTokens = new Set();
+        const loadingTokens = new Set();
+        
+        // Function to load metrics for a token card
+        async function loadTokenMetrics(tokenCard) {
+            const contractAddress = tokenCard.getAttribute('data-contract');
+            
+            if (!contractAddress || loadedTokens.has(contractAddress) || loadingTokens.has(contractAddress)) {
+                return;
+            }
+            
+            loadingTokens.add(contractAddress);
+            
+            try {
+                const response = await fetch(`/api/token/${contractAddress}/stats`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update volume
+                    const volumeElement = tokenCard.querySelector('.token-volume-24h');
+                    if (volumeElement && data.volume_24h !== undefined) {
+                        volumeElement.textContent = data.volume_24h_formatted || `$${data.volume_24h.toFixed(2)}`;
+                    }
+                    
+                    // Update 24h price change
+                    const priceChangeElement = tokenCard.querySelector('.token-price-change');
+                    if (priceChangeElement && data.price_change_24h !== undefined) {
+                        const change = data.price_change_24h;
+                        priceChangeElement.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
+                        priceChangeElement.style.color = change >= 0 ? '#00FF00' : '#FF4444';
+                    }
+                    
+                    // Update graduation progress
+                    const progressElement = tokenCard.querySelector('.token-grad-progress');
+                    if (progressElement && data.progress_to_graduation !== undefined) {
+                        progressElement.textContent = `${data.progress_to_graduation.toFixed(1)}%`;
+                    }
+                    
+                    // Update holders count
+                    const holdersElement = tokenCard.querySelector('.token-holders');
+                    if (holdersElement && data.holders !== undefined) {
+                        holdersElement.textContent = data.holders.toLocaleString();
+                    }
+                    
+                    // Update market cap if available
+                    const marketCapElement = tokenCard.querySelector('.token-market-cap');
+                    if (marketCapElement && data.market_cap_formatted) {
+                        marketCapElement.textContent = data.market_cap_formatted;
+                    }
+                    
+                    loadedTokens.add(contractAddress);
+                }
+            } catch (error) {
+                console.error(`Failed to load metrics for ${contractAddress}:`, error);
+            } finally {
+                loadingTokens.delete(contractAddress);
+            }
+        }
+        
+        // Set up Intersection Observer
+        const observerOptions = {
+            root: null, // viewport
+            rootMargin: '200px', // Load 200px before token becomes visible
+            threshold: 0.01 // Trigger when 1% of token is visible
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadTokenMetrics(entry.target);
+                    // Don't unobserve - keep observing in case token is filtered out and back in
+                }
+            });
+        }, observerOptions);
+        
+        // Observe all token cards
+        function observeTokenCards() {
+            document.querySelectorAll('.token-card').forEach(card => {
+                observer.observe(card);
+            });
+        }
+        
+        // Start observing on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', observeTokenCards);
+        } else {
+            observeTokenCards();
+        }
+        
+        // Re-observe if DOM changes (for filtering)
+        const mutationObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.classList && node.classList.contains('token-card')) {
+                        observer.observe(node);
+                    }
+                });
+            });
+        });
+        
+        const tokensGrid = document.querySelector('.tokens-grid');
+        if (tokensGrid) {
+            mutationObserver.observe(tokensGrid, { childList: true });
+        }
+    })();
 </script>
 {% endblock %}
