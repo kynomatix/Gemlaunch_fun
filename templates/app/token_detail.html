@@ -412,43 +412,18 @@
                             </div>
                             
                             <div class="form-group">
-                                <label class="airdrop-type-label">Select Airdrop Type</label>
-                                <div class="airdrop-radio-options">
-                                    <label class="airdrop-radio-option">
-                                        <input type="radio" name="airdropType" value="1" checked>
-                                        <div>
-                                            <strong class="airdrop-radio-title">🎲 Random Raffle</strong>
-                                            <div class="airdrop-radio-description">Random selection from eligible participants</div>
-                                        </div>
-                                    </label>
-                                    <label class="airdrop-radio-option">
-                                        <input type="radio" name="airdropType" value="2">
-                                        <div>
-                                            <strong class="airdrop-radio-title">🏆 Top Contributors</strong>
-                                            <div class="airdrop-radio-description">Based on leaderboard rankings</div>
-                                        </div>
-                                    </label>
-                                    <label class="airdrop-radio-option">
-                                        <input type="radio" name="airdropType" value="3">
-                                        <div>
-                                            <strong class="airdrop-radio-title">💬 Active Chatters</strong>
-                                            <div class="airdrop-radio-description">Last 24h activity in chat</div>
-                                        </div>
-                                    </label>
-                                    <label class="airdrop-radio-option">
-                                        <input type="radio" name="airdropType" value="4">
-                                        <div>
-                                            <strong class="airdrop-radio-title">💎 Token Holders</strong>
-                                            <div class="airdrop-radio-description">Users with minimum balance</div>
-                                        </div>
-                                    </label>
-                                    <label class="airdrop-radio-option">
-                                        <input type="radio" name="airdropType" value="5">
-                                        <div>
-                                            <strong class="airdrop-radio-title">🚀 Early Supporters</strong>
-                                            <div class="airdrop-radio-description">First 100 token holders</div>
-                                        </div>
-                                    </label>
+                                <label class="airdrop-input-label">Select Airdrop Type</label>
+                                <select id="airdropTypeSelect" class="airdrop-input-field" style="cursor: pointer;">
+                                    <option value="1">🎲 Random Raffle</option>
+                                    <option value="2">🏆 Top Contributors</option>
+                                    <option value="3">💬 Active Chatters</option>
+                                    <option value="4">💎 Token Holders</option>
+                                    <option value="5">🚀 Early Supporters</option>
+                                </select>
+                                <div id="airdropTypeDescription" style="margin-top: 0.75rem; padding: 0.75rem; 
+                                    background: rgba(32, 178, 170, 0.1); border-left: 3px solid #20B2AA; 
+                                    border-radius: 4px; color: #AAA; font-size: 0.9rem;">
+                                    Random selection from eligible participants
                                 </div>
                             </div>
                             
@@ -513,18 +488,26 @@
             // Store available amount for percentage calculations
             window.airdropAvailableAmount = airdropData ? airdropData.available_amount : 0;
             
-            // Add event listeners for airdrop type changes
-            const airdropTypeRadios = document.querySelectorAll('input[name="airdropType"]');
-            airdropTypeRadios.forEach(radio => {
-                radio.addEventListener('change', updateAirdropFields);
-            });
+            // Add event listener for airdrop type dropdown
+            const airdropTypeSelect = document.getElementById('airdropTypeSelect');
+            airdropTypeSelect.addEventListener('change', updateAirdropFields);
             
             // Initialize with default type (Random Raffle)
             updateAirdropFields();
         }
         
         function updateAirdropFields() {
-            const selectedType = document.querySelector('input[name="airdropType"]:checked').value;
+            const selectedType = document.getElementById('airdropTypeSelect').value;
+            
+            // Update description text
+            const descriptions = {
+                '1': 'Random selection from eligible participants',
+                '2': 'Based on leaderboard rankings and community points',
+                '3': 'Reward users who were active in chat in the last 24 hours',
+                '4': 'All users who hold a minimum balance of your token',
+                '5': 'Top 100 earliest token holders (first buyers)'
+            };
+            document.getElementById('airdropTypeDescription').textContent = descriptions[selectedType];
             
             // Hide all dynamic fields first
             document.getElementById('airdropField_winners').style.display = 'none';
@@ -578,7 +561,7 @@
         }
         
         function submitAirdrop() {
-            const selectedType = document.querySelector('input[name="airdropType"]:checked');
+            const selectedType = document.getElementById('airdropTypeSelect');
             const amount = document.getElementById('airdropAmount').value;
             
             // Validate amount (required for all types)
