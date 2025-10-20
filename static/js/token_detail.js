@@ -640,40 +640,10 @@
             this.setTradeMode(newMode);
         },
         
-        // Swap input direction - allows user to enter either KAS or tokens
+        // Swap input direction - disabled (bidirectional typing already works via lastEditedField)
         swapInputDirection: function() {
-            const kasLabel = document.getElementById('kasAmountLabel');
-            const tokenLabel = document.getElementById('tokenAmountLabel');
-            
-            // Toggle which field is treated as input
-            this.lastEditedField = this.lastEditedField === 'kas' ? 'token' : 'kas';
-            
-            // Update labels to reflect new direction
-            const mode = this.currentTradeMode;
-            if (mode === 'buy') {
-                if (this.lastEditedField === 'kas') {
-                    // KAS is input: user enters KAS, gets tokens
-                    kasLabel.textContent = 'You Pay (KAS)';
-                    tokenLabel.textContent = `You Receive (${this.tokenSymbol})`;
-                } else {
-                    // Token is input: user enters tokens, gets KAS cost
-                    kasLabel.textContent = 'KAS Cost';
-                    tokenLabel.textContent = `${this.tokenSymbol} You Want`;
-                }
-            } else { // sell
-                if (this.lastEditedField === 'token') {
-                    // Token is input: user enters tokens, gets KAS
-                    kasLabel.textContent = 'KAS You Receive';
-                    tokenLabel.textContent = `${this.tokenSymbol} You Sell`;
-                } else {
-                    // KAS is input: user enters KAS desired, gets tokens needed
-                    kasLabel.textContent = 'KAS You Want';
-                    tokenLabel.textContent = `${this.tokenSymbol} Required`;
-                }
-            }
-            
-            // Recalculate with the new input direction
-            this.updateTokenAmount();
+            // Do nothing - typing in either field already works automatically
+            return;
         },
         
         setQuickAmount: function(amount) {
