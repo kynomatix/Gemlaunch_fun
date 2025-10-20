@@ -647,73 +647,56 @@
             const kasLabel = document.getElementById('kasAmountLabel');
             const tokenLabel = document.getElementById('tokenAmountLabel');
             
-            console.log('🔄 [SWAP DEBUG] Before swap:', {
-                mode: this.currentTradeMode,
-                inputDirection: this.inputDirection,
-                lastEditedField: this.lastEditedField,
-                kasValue: kasInput.value,
-                tokenValue: tokenInput.value
-            });
-            
             // Toggle direction
             this.inputDirection = this.inputDirection === 'primary' ? 'secondary' : 'primary';
             
-            // DON'T swap values - keep the current quote intact
-            // Just update which field is now the input field
-            // Clear the field that will become the OUTPUT (will be recalculated)
+            this._updatingProgrammatically = true;
+            
+            // KEEP the value in the field that becomes the INPUT (user can edit it)
+            // CLEAR the field that becomes the OUTPUT (will be recalculated)
             const mode = this.currentTradeMode;
             if (mode === 'buy') {
                 if (this.inputDirection === 'primary') {
-                    // Switching to: Enter KAS → Get tokens
-                    // Keep KAS value, clear token (will be recalculated)
+                    // Switching back to: User enters KAS → Get tokens
+                    // KEEP kasInput (it's now the input, user can edit)
+                    // CLEAR tokenInput (it's now the output, will be recalculated)
+                    tokenInput.value = '';
                     kasLabel.textContent = 'You Pay (KAS)';
                     tokenLabel.textContent = `You Receive (${this.tokenSymbol})`;
-                    this.lastEditedField = 'kas'; // KAS field is now the input
-                    this._updatingProgrammatically = true;
-                    tokenInput.value = '';
-                    this._updatingProgrammatically = false;
+                    this.lastEditedField = 'kas';
                 } else {
-                    // Switching to: Enter tokens → Calculate KAS needed  
-                    // Keep token value, clear KAS (will be recalculated)
+                    // Switching to: User enters tokens → Get KAS cost  
+                    // KEEP tokenInput (it's now the input, user can edit - e.g., 53 tokens)
+                    // CLEAR kasInput (it's now the output, will be recalculated)
+                    kasInput.value = '';
                     kasLabel.textContent = `You Receive (${this.tokenSymbol})`;
                     tokenLabel.textContent = 'You Pay (KAS)';
-                    this.lastEditedField = 'token'; // Token field is now the input
-                    this._updatingProgrammatically = true;
-                    kasInput.value = '';
-                    this._updatingProgrammatically = false;
+                    this.lastEditedField = 'token';
                 }
             } else { // sell
                 if (this.inputDirection === 'primary') {
-                    // Standard sell: Enter tokens to sell → Get KAS received
-                    // Keep token value, clear KAS (will be recalculated)
+                    // Switching back to: User enters tokens → Get KAS received
+                    // KEEP tokenInput (it's now the input, user can edit)
+                    // CLEAR kasInput (it's now the output, will be recalculated)
+                    kasInput.value = '';
                     kasLabel.textContent = 'You Receive (KAS)';
                     tokenLabel.textContent = `You Sell (${this.tokenSymbol})`;
-                    this.lastEditedField = 'token'; // Token field is the input
-                    this._updatingProgrammatically = true;
-                    kasInput.value = '';
-                    this._updatingProgrammatically = false;
+                    this.lastEditedField = 'token';
                 } else {
-                    // Reversed sell: Enter KAS desired → Calculate tokens needed
-                    // Keep KAS value, clear tokens (will be recalculated)
+                    // Switching to: User enters KAS → Get tokens needed
+                    // KEEP kasInput (it's now the input, user can edit)
+                    // CLEAR tokenInput (it's now the output, will be recalculated)
+                    tokenInput.value = '';
                     kasLabel.textContent = 'KAS You Want';
                     tokenLabel.textContent = `${this.tokenSymbol} You Must Sell`;
-                    this.lastEditedField = 'kas'; // KAS field is now the input
-                    this._updatingProgrammatically = true;
-                    tokenInput.value = '';
-                    this._updatingProgrammatically = false;
+                    this.lastEditedField = 'kas';
                 }
             }
             
-            console.log('🔄 [SWAP DEBUG] After swap (before recalc):', {
-                mode: this.currentTradeMode,
-                inputDirection: this.inputDirection,
-                lastEditedField: this.lastEditedField,
-                kasValue: kasInput.value,
-                tokenValue: tokenInput.value
-            });
+            this._updatingProgrammatically = false;
             
-            // Recalculate quote based on the input field that still has a value
-            this.updateTokenAmount();
+            // Clear fee breakdown since quote is no longer valid
+            this.clearFeeBreakdown();
         },
         
         setQuickAmount: function(amount) {
@@ -994,14 +977,6 @@
         updateTokenAmount: function() {
             const action = this.currentTradeMode; // 'buy' or 'sell'
             
-            console.log('🔍 [QUOTE DEBUG] updateTokenAmount called', {
-                mode: action,
-                lastEditedField: this.lastEditedField,
-                inputDirection: this.inputDirection,
-                kasValue: document.getElementById('kasAmount').value,
-                tokenValue: document.getElementById('tokenAmount').value
-            });
-            
             // ⚠️ CRITICAL FIX: Cancel previous work FIRST, before any early returns
             // This ensures stale quotes don't update UI when user clears input
             if (this.quoteAbortController) {
@@ -1119,20 +1094,11 @@
                     
                     this.showQuoteLoading();
                     
-                    console.log('📤 [QUOTE DEBUG] Calling API with params:', {
-                        action,
-                        params,
-                        inputField,
-                        outputField
-                    });
-                    
                     const quote = await window.txManager.getQuote(
                         action,
                         params,  // Contains either kas_amount or token_amount
                         this.quoteAbortController?.signal
                     );
-                    
-                    console.log('📥 [QUOTE DEBUG] API response:', quote);
                     
                     if (quote.success) {
                         // Set flag to prevent programmatic updates from triggering listeners
