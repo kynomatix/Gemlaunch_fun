@@ -1456,9 +1456,10 @@ def token_polls(contract_address):
     user = get_current_user()
     
     if request.method == 'GET':
-        # Get active polls with creator profile
+        # Get active polls with creator profile and options (avoid N+1)
         polls = Poll.query.options(
-            joinedload(Poll.creator).joinedload(User.profile)
+            joinedload(Poll.creator).joinedload(User.profile),
+            selectinload(Poll.options)
         ).filter_by(token_id=token.id, is_active=True).all()
         
         poll_list = []
