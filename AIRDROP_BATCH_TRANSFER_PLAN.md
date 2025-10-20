@@ -528,11 +528,37 @@ TX: 0x... [View on Explorer]"
 - [ ] Save new TokenFactory address
 - [ ] Update `services/web3_service.py` with new factory address
 
-**1.2 Create AirdropDistributor.sol**
-- [ ] Write `contracts/AirdropDistributor.sol` with enhanced security (from Claude's audit)
-  - Pre-validate total allowance
-  - Individual recipient events for audit trail
-  - Optional `batchTransferEqual()` for gas optimization
+**1.2 Create AirdropDistributor.sol (Updated - From Claude Audit)**
+- [ ] Write `contracts/AirdropDistributor.sol` with pre-validation:
+  ```solidity
+  // CRITICAL: Pre-validate BEFORE loop to fail fast
+  function batchTransfer(...) external nonReentrant {
+      // 1. Calculate total first
+      uint256 total = 0;
+      for (uint256 i = 0; i < amounts.length; i++) {
+          require(amounts[i] > 0, "Invalid amount");
+          total += amounts[i];
+      }
+      
+      // 2. Pre-validate allowance (fails fast, not mid-loop)
+      require(
+          tokenContract.allowance(msg.sender, address(this)) >= total,
+          "Insufficient allowance"
+      );
+      
+      // 3. Pre-validate balance (fails fast, not mid-loop)
+      require(
+          tokenContract.balanceOf(msg.sender) >= total,
+          "Insufficient balance"
+      );
+      
+      // 4. Now execute transfers (all succeed or all revert)
+      for (uint256 i = 0; i < recipients.length; i++) {
+          require(recipients[i] != address(0), "Invalid recipient");
+          require(tokenContract.transferFrom(msg.sender, recipients[i], amounts[i]), "Transfer failed");
+      }
+  }
+  ```
 - [ ] Compile: `npx hardhat compile`
 - [ ] Create deployment script: `scripts/deploy_airdrop_distributor.js`
 - [ ] Deploy to testnet
@@ -542,6 +568,14 @@ TX: 0x... [View on Explorer]"
 ---
 
 ### Phase 2: Backend Implementation
+
+**2.0 Pre-Validation Endpoint (NEW - From Claude Audit)**
+- [ ] Create `/api/token/<address>/airdrop/check` endpoint
+  - Check unlocked vesting balance
+  - Check creator's token balance
+  - Return total available (unlocked + balance)
+  - Return `can_create: true/false`
+  - Show this BEFORE creator clicks "Create Airdrop" button
 
 **2.1 Recipient Fetching Service**
 - [ ] Create `/api/token/<address>/airdrop/recipients` endpoint
@@ -573,8 +607,8 @@ TX: 0x... [View on Explorer]"
   - Updates database record (status='distributed')
   - Logs transaction details
 
-**2.5 Database Model**
-- [ ] Create `Airdrop` model:
+**2.5 Database Model (Updated - From Claude Audit)**
+- [ ] Create `Airdrop` model with transaction tracking:
   ```python
   class Airdrop(db.Model):
       id = db.Column(db.Integer, primary_key=True)
@@ -583,7 +617,12 @@ TX: 0x... [View on Explorer]"
       recipient_type = db.Column(db.String(32))  # holders, chat, traders, custom
       recipients_count = db.Column(db.Integer)
       total_amount = db.Column(db.Numeric(30, 0))  # Tokens distributed
-      tx_hash = db.Column(db.String(128), index=True)
+      
+      # Track each transaction separately for retry logic
+      withdrawal_tx = db.Column(db.String(128), nullable=True)  # null if not needed
+      approval_tx = db.Column(db.String(128), nullable=True)
+      distribution_tx = db.Column(db.String(128), index=True, nullable=True)
+      
       status = db.Column(db.String(16))  # pending, distributed, failed
       created_at = db.Column(db.DateTime)
       distributed_at = db.Column(db.DateTime, nullable=True)
@@ -593,11 +632,13 @@ TX: 0x... [View on Explorer]"
 
 ### Phase 3: Frontend Implementation
 
-**3.1 Create Airdrop Button**
+**3.1 Create Airdrop Button (Updated - From Claude Audit)**
 - [ ] Add to `templates/app/token_detail.html` in vesting section
   - Show only if current user is token creator
-  - Show unlocked airdrop balance
-  - Button: "Create Airdrop"
+  - **OLD TOKEN HANDLING:** If token created before factory update, show message: "Contact support to distribute your airdrop"
+  - **NEW TOKEN HANDLING:** Show unlocked balance + wallet balance = total available
+  - Check `/api/token/<>/airdrop/check` before showing button
+  - Button: "Create Airdrop" (disabled if insufficient balance)
 
 **3.2 Airdrop Modal UI**
 - [ ] Create modal HTML structure:
@@ -609,14 +650,15 @@ TX: 0x... [View on Explorer]"
   - Gas estimate display
   - Create/Cancel buttons
 
-**3.3 Airdrop Manager JavaScript**
+**3.3 Airdrop Manager JavaScript (Updated - From Claude Audit)**
 - [ ] Create `static/js/airdrop_manager.js`:
   - Handle modal open/close
   - Fetch recipients preview on filter change
   - Calculate totals in real-time
   - Build transaction bundle via API
   - Integrate with WalletManager for signing
-  - Submit transactions sequentially (TX1 → TX2 → TX3)
+  - **RETRY LOGIC:** Submit TXs sequentially, track which succeeded
+  - If TX2 or TX3 fails, allow retry (skip completed TXs)
   - Handle success/error states
   - Update UI with confirmation
 
@@ -678,6 +720,46 @@ TX: 0x... [View on Explorer]"
 - ❌ Already deployed - can't modify existing tokens
 - ❌ 24KB size limit - adding batch logic might exceed limit
 - ✅ Helper contract approach is safer and non-invasive
+
+---
+
+## Claude's Practical Audit Feedback (2nd Review)
+
+### ✅ What's Good
+- Creator custody model ✅
+- Batch distribution ✅
+- Primary wallet distribution ✅ (fine for Kasplex)
+- Push-based (no claim complexity) ✅
+- Gas costs negligible at $0.05 KAS ✅
+
+### 🔧 Real Issues to Address
+
+**1. Transaction Sequencing & Retry**
+- Problem: If creator rejects TX2 (approval), can they retry?
+- Solution: Track each TX separately in database, rebuild only missing TXs
+- Implementation: `withdrawal_tx`, `approval_tx`, `distribution_tx` columns
+
+**2. Pre-Validation in UI**
+- Problem: Don't waste time signing if balance insufficient
+- Solution: Check unlocked + balance BEFORE showing "Create Airdrop" button
+- Implementation: `/api/token/<>/airdrop/check` endpoint
+
+**3. Smart Contract Pre-Validation**
+- Problem: Current code fails mid-loop (wastes gas on partial transfers)
+- Solution: Check allowance + balance BEFORE loop starts
+- Implementation: Calculate total first, validate, THEN transfer
+
+**4. Old Tokens (Pre-Factory Update)**
+- Problem: Existing tokens have platform as beneficiary
+- Solution: Just document it, show message in UI, don't migrate
+- Implementation: Check token.created_at, show "Contact support" for old tokens
+
+### ❌ What NOT to Worry About
+- Gas limits (Kasplex L2 has high limits)
+- Complex wallet resolution (primary wallet is fine)
+- Rate limiting (not needed at launch)
+- Minimum amounts (creator's problem)
+- CSV upload (overkill)
 
 ---
 
