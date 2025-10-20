@@ -3798,6 +3798,8 @@ def api_quote_buy():
         if not data:
             return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
         
+        logging.info(f"📥 [QUOTE-BUY DEBUG] Received request: {data}")
+        
         token_address = data.get('token_address', '').strip()
         kas_amount = data.get('kas_amount')
         token_amount = data.get('token_amount')
@@ -3970,6 +3972,8 @@ def api_quote_sell():
         data = request.get_json(silent=True)
         if not data:
             return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        logging.info(f"📥 [QUOTE-SELL DEBUG] Received request: {data}")
         
         token_address = data.get('token_address', '').strip()
         token_amount = data.get('token_amount')

@@ -647,6 +647,14 @@
             const kasLabel = document.getElementById('kasAmountLabel');
             const tokenLabel = document.getElementById('tokenAmountLabel');
             
+            console.log('🔄 [SWAP DEBUG] Before swap:', {
+                mode: this.currentTradeMode,
+                inputDirection: this.inputDirection,
+                lastEditedField: this.lastEditedField,
+                kasValue: kasInput.value,
+                tokenValue: tokenInput.value
+            });
+            
             // Toggle direction
             this.inputDirection = this.inputDirection === 'primary' ? 'secondary' : 'primary';
             
@@ -683,6 +691,14 @@
                     this.lastEditedField = 'kas'; // KAS field is now the input
                 }
             }
+            
+            console.log('🔄 [SWAP DEBUG] After swap:', {
+                mode: this.currentTradeMode,
+                inputDirection: this.inputDirection,
+                lastEditedField: this.lastEditedField,
+                kasValue: kasInput.value,
+                tokenValue: tokenInput.value
+            });
             
             // Recalculate quote
             this.updateTokenAmount();
@@ -966,6 +982,14 @@
         updateTokenAmount: function() {
             const action = this.currentTradeMode; // 'buy' or 'sell'
             
+            console.log('🔍 [QUOTE DEBUG] updateTokenAmount called', {
+                mode: action,
+                lastEditedField: this.lastEditedField,
+                inputDirection: this.inputDirection,
+                kasValue: document.getElementById('kasAmount').value,
+                tokenValue: document.getElementById('tokenAmount').value
+            });
+            
             // ⚠️ CRITICAL FIX: Cancel previous work FIRST, before any early returns
             // This ensures stale quotes don't update UI when user clears input
             if (this.quoteAbortController) {
@@ -1083,11 +1107,20 @@
                     
                     this.showQuoteLoading();
                     
+                    console.log('📤 [QUOTE DEBUG] Calling API with params:', {
+                        action,
+                        params,
+                        inputField,
+                        outputField
+                    });
+                    
                     const quote = await window.txManager.getQuote(
                         action,
                         params,  // Contains either kas_amount or token_amount
                         this.quoteAbortController?.signal
                     );
+                    
+                    console.log('📥 [QUOTE DEBUG] API response:', quote);
                     
                     if (quote.success) {
                         // Set flag to prevent programmatic updates from triggering listeners
