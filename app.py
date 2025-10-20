@@ -2136,7 +2136,9 @@ def api_token_stats(address):
         
         # Get real-time data from blockchain
         current_price_usd = 0
+        current_price_kas = 0
         current_market_cap_usd = 0
+        current_market_cap_kas = 0
         
         if not token.is_graduated and token.contract_address:
             try:
@@ -2156,20 +2158,25 @@ def api_token_stats(address):
                     
                     # Calculate price per token (in KAS first, then convert to USD)
                     if token_amount > 0:
-                        price_in_kas = kas_amount / token_amount
-                        current_price_usd = price_in_kas * kas_price_usd
+                        current_price_kas = kas_amount / token_amount
+                        current_price_usd = current_price_kas * kas_price_usd
                     
                     # Market cap = KAS reserve * KAS price (in USD)
+                    current_market_cap_kas = kas_amount
                     current_market_cap_usd = kas_amount * kas_price_usd
             except Exception as e:
                 logging.error(f"Error fetching real-time stats: {e}")
                 # ✅ FIX: Database stores USD values directly, NO multiplication needed
                 current_price_usd = float(token.current_price or 0)
+                current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
                 current_market_cap_usd = float(token.current_market_cap or 0)
+                current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
         else:
             # ✅ FIX: Graduated tokens - database values are already in USD
             current_price_usd = float(token.current_price or 0)
+            current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
             current_market_cap_usd = float(token.current_market_cap or 0)
+            current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
         
         # Format values for display
         def format_usd(val):
@@ -2186,15 +2193,51 @@ def api_token_stats(address):
             else:
                 return f"${val:.8f}"
         
+        # Calculate graduation progress
+        from config import GRADUATION_THRESHOLD_USD
+        graduation_threshold_usd = GRADUATION_THRESHOLD_USD
+        progress_to_graduation = min(100, (current_market_cap_usd / graduation_threshold_usd * 100)) if graduation_threshold_usd > 0 else 0
+        
+        # Format numbers
+        def format_number(val):
+            if val >= 1e9:
+                return f"{val/1e9:.2f}B"
+            elif val >= 1e6:
+                return f"{val/1e6:.2f}M"
+            elif val >= 1e3:
+                return f"{val/1e3:.2f}K"
+            else:
+                return f"{val:.2f}"
+        
         return jsonify({
             'success': True,
-            'market_cap': current_market_cap_usd,
-            'market_cap_formatted': format_usd(current_market_cap_usd),
+            # Price data
             'price': current_price_usd,
             'price_formatted': format_price(current_price_usd),
-            'price_change_24h': 0,  # TODO: Calculate from TradeEvent history
+            'price_kas': current_price_kas,
+            'price_kas_formatted': f"{current_price_kas:.6f} KAS",
+            
+            # Market cap data
+            'market_cap': current_market_cap_usd,
+            'market_cap_formatted': format_usd(current_market_cap_usd),
+            'market_cap_kas': current_market_cap_kas,
+            'market_cap_kas_formatted': f"{format_number(current_market_cap_kas)} KAS",
+            
+            # Supply and holders
+            'circulating_supply': token.circulating_supply or 0,
+            'circulating_supply_formatted': format_number(token.circulating_supply or 0),
             'holders': token.holder_count or 0,
-            'volume_24h': 0,  # TODO: Calculate from TradeEvent history
+            
+            # Graduation progress
+            'progress_to_graduation': round(progress_to_graduation, 1),
+            'graduation_threshold_usd': graduation_threshold_usd,
+            'graduation_threshold_formatted': format_usd(graduation_threshold_usd),
+            
+            # Trading metrics (TODO: calculate from TradeEvent)
+            'price_change_24h': 0,
+            'volume_24h': 0,
+            
+            # Status
             'is_graduated': token.is_graduated
         })
         

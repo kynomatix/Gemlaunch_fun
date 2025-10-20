@@ -1452,20 +1452,55 @@
                     // Check if values changed from PRE-TRADE baseline
                     if (newMarketCap && newPrice && 
                         (newMarketCap !== baselineMarketCap || newPrice !== baselinePrice)) {
-                        console.log('[PollTokenStats] Stats changed from baseline, updating DOM');
+                        console.log('[PollTokenStats] Stats changed from baseline, updating ALL fields');
                         console.log(`  Market Cap: ${baselineMarketCap} → ${newMarketCap}`);
                         console.log(`  Price: ${baselinePrice} → ${newPrice}`);
                         
-                        // Update DOM
-                        const marketCapEl = document.querySelector('.market-cap-value');
-                        const priceEl = document.querySelector('.token-price');
-                        if (marketCapEl) marketCapEl.textContent = newMarketCap;
-                        if (priceEl) priceEl.textContent = newPrice;
+                        // ========== UPDATE ALL STATS (same as refreshTokenStats) ==========
+                        // Update header stats
+                        const statItems = document.querySelectorAll('.token-stats-section .stat-item');
+                        statItems.forEach(item => {
+                            const label = item.querySelector('.stat-label');
+                            if (!label) return;
+                            
+                            const labelText = label.textContent.trim();
+                            const valueEl = item.querySelector('.stat-value');
+                            const subEl = item.querySelector('.stat-sub');
+                            
+                            if (labelText === 'PRICE') {
+                                if (valueEl) valueEl.textContent = data.price_kas_formatted;
+                                if (subEl) subEl.textContent = data.price_formatted;
+                            } else if (labelText === 'MARKET CAP') {
+                                if (valueEl) valueEl.textContent = data.market_cap_formatted;
+                                if (subEl) subEl.textContent = data.market_cap_kas_formatted;
+                            } else if (labelText === 'SUPPLY' || labelText === 'CIRCULATING') {
+                                if (valueEl) valueEl.textContent = data.circulating_supply_formatted;
+                            } else if (labelText === 'HOLDERS') {
+                                if (valueEl) valueEl.textContent = data.holders;
+                            }
+                        });
                         
-                        // ✅ FIX: Update cached values - API returns USD values directly
+                        // Update bonding curve progress
+                        const progressTextEls = document.querySelectorAll('.bonding-curve-frame span');
+                        progressTextEls.forEach(el => {
+                            if (el.textContent.includes('%')) {
+                                el.textContent = `${data.progress_to_graduation}%`;
+                            }
+                        });
+                        
+                        const progressBar = document.querySelector('.progress-fill');
+                        if (progressBar) {
+                            progressBar.style.width = `${data.progress_to_graduation}%`;
+                        }
+                        
+                        const marketCapValueEl = document.getElementById('marketCapValue');
+                        if (marketCapValueEl) {
+                            marketCapValueEl.textContent = data.market_cap_formatted;
+                        }
+                        
+                        // Update cached values
                         this.marketCap = data.market_cap;
-                        // Backend returns USD price, convert to KAS price for internal calculations
-                        this.tokenPrice = data.price / this.kasToUsd;
+                        this.tokenPrice = data.price_kas;
                         
                         return true; // Success
                     }
@@ -1510,26 +1545,63 @@
                     return;
                 }
                 
-                // Update market cap
-                const marketCapEl = document.querySelector('.market-cap-value');
-                if (marketCapEl && data.market_cap_formatted) {
-                    marketCapEl.textContent = data.market_cap_formatted;
-                    console.log('[RefreshTokenStats] Updated market cap:', data.market_cap_formatted);
+                // ========== UPDATE HEADER STATS ==========
+                // Find all stat items in token header
+                const statItems = document.querySelectorAll('.token-stats-section .stat-item');
+                
+                statItems.forEach(item => {
+                    const label = item.querySelector('.stat-label');
+                    if (!label) return;
+                    
+                    const labelText = label.textContent.trim();
+                    const valueEl = item.querySelector('.stat-value');
+                    const subEl = item.querySelector('.stat-sub');
+                    
+                    if (labelText === 'PRICE') {
+                        if (valueEl) valueEl.textContent = data.price_kas_formatted;
+                        if (subEl) subEl.textContent = data.price_formatted;
+                    } else if (labelText === 'MARKET CAP') {
+                        if (valueEl) valueEl.textContent = data.market_cap_formatted;
+                        if (subEl) subEl.textContent = data.market_cap_kas_formatted;
+                    } else if (labelText.includes('SUPPLY')) {  // ✅ FIX: Match 'SUPPLY', 'CIRCULATING', 'CIRCULATING SUPPLY'
+                        if (valueEl) valueEl.textContent = data.circulating_supply_formatted;
+                    } else if (labelText === 'HOLDERS') {
+                        if (valueEl) valueEl.textContent = data.holders;
+                    }
+                });
+                
+                // ========== UPDATE BONDING CURVE PROGRESS ==========
+                // Update progress percentage text
+                const progressTextEls = document.querySelectorAll('.bonding-curve-frame span');
+                progressTextEls.forEach(el => {
+                    if (el.textContent.includes('%')) {
+                        el.textContent = `${data.progress_to_graduation}%`;
+                    }
+                });
+                
+                // Update progress bar width
+                const progressBar = document.querySelector('.progress-fill');
+                if (progressBar) {
+                    progressBar.style.width = `${data.progress_to_graduation}%`;
                 }
                 
-                // Update token price
-                const priceEl = document.querySelector('.token-price');
-                if (priceEl && data.price_formatted) {
-                    priceEl.textContent = data.price_formatted;
-                    console.log('[RefreshTokenStats] Updated price:', data.price_formatted);
+                // Update market cap value in bonding curve section
+                const marketCapValueEl = document.getElementById('marketCapValue');
+                if (marketCapValueEl) {
+                    marketCapValueEl.textContent = data.market_cap_formatted;
                 }
                 
-                // ✅ FIX: Update cached values - API returns USD values directly
-                this.marketCap = data.market_cap;
+                // ========== UPDATE CACHED VALUES ==========
                 // Backend returns USD price, convert to KAS price for internal calculations
-                this.tokenPrice = data.price / this.kasToUsd;
+                this.marketCap = data.market_cap;
+                this.tokenPrice = data.price_kas;
                 
-                console.log('[RefreshTokenStats] ✅ Stats refreshed from JSON endpoint');
+                console.log('[RefreshTokenStats] ✅ All stats refreshed:', {
+                    price: data.price_formatted,
+                    marketCap: data.market_cap_formatted,
+                    progress: `${data.progress_to_graduation}%`,
+                    holders: data.holders
+                });
                 
             } catch (error) {
                 console.error('[RefreshTokenStats] Error refreshing token stats:', error);
