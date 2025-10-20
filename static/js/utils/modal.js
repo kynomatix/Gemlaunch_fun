@@ -92,11 +92,11 @@
                 <div id="customConfirmModal" class="modal" style="display: flex;">
                     <div class="modal-content" style="max-width: 450px;">
                         <div class="modal-header">
-                            <h3>${escapeHtml(title)}</h3>
+                            <h3>${title}</h3>
                             <button class="modal-close" onclick="ModalManager.closeModal('customConfirmModal')">&times;</button>
                         </div>
                         <div class="modal-body">
-                            <div style="color: #CCC; line-height: 1.5;">${escapeHtml(message)}</div>
+                            <div style="color: #CCC; line-height: 1.5;">${message}</div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
