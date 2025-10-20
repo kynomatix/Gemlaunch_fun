@@ -564,6 +564,9 @@
             // Fit content to view
             this.myChart.timeScale().fitContent();
             
+            // ✨ Add user trade markers and average entry line if wallet connected
+            await this.addUserTradeMarkers();
+            
             // Handle window resize
             const resizeObserver = new ResizeObserver(entries => {
                 if (this.myChart && entries.length > 0) {
@@ -572,6 +575,103 @@
                 }
             });
             resizeObserver.observe(container);
+        },
+        
+        // ✨ NEW: Fetch and display user's trade markers on chart
+        addUserTradeMarkers: async function() {
+            try {
+                // Check if wallet is connected
+                const wallet = window.walletManager?.getConnectedWallet();
+                if (!wallet || !wallet.address) {
+                    console.log('No wallet connected, skipping trade markers');
+                    return;
+                }
+                
+                // Check if chart series exists
+                if (!this.currentSeries || !this.myChart) {
+                    console.log('No chart series available');
+                    return;
+                }
+                
+                // Fetch user's trades for this token
+                const response = await fetch(
+                    `/api/token/${window.tokenContractAddress}/user-trades?wallet_address=${wallet.address}`
+                );
+                
+                if (!response.ok) {
+                    console.log('Failed to fetch user trades:', response.status);
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success || !result.trades || result.trades.length === 0) {
+                    console.log('No user trades found');
+                    return;
+                }
+                
+                console.log(`📍 Found ${result.trades.length} user trades`);
+                
+                // Convert trades to chart markers
+                const markers = result.trades.map(trade => {
+                    // Convert ISO timestamp to Unix timestamp (seconds)
+                    const timestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
+                    
+                    return {
+                        time: timestamp,
+                        position: trade.type === 'buy' ? 'belowBar' : 'aboveBar',
+                        color: trade.type === 'buy' ? '#20B2AA' : '#FF4444',  // Teal for buy, red for sell
+                        shape: 'circle',
+                        text: trade.type === 'buy' ? 'B' : 'S',
+                        size: 1
+                    };
+                });
+                
+                // Add markers to the series
+                this.currentSeries.setMarkers(markers);
+                console.log(`✅ Added ${markers.length} trade markers to chart`);
+                
+                // Add average entry price line if user has bought tokens
+                if (result.average_entry_price_usd > 0) {
+                    // Determine price based on current chart type
+                    let priceLineValue;
+                    if (this.currentChartType === 'marketcap') {
+                        // For market cap chart, we need to calculate what market cap would be at average entry price
+                        // This is complex, so we'll skip price line for market cap view
+                        console.log('Skipping price line for market cap view');
+                        return;
+                    } else {
+                        // For price chart, use average entry price in KAS
+                        priceLineValue = result.average_entry_price_kas;
+                    }
+                    
+                    // Remove existing price line if it exists
+                    if (this.userEntryPriceLine) {
+                        this.currentSeries.removePriceLine(this.userEntryPriceLine);
+                    }
+                    
+                    // Get current price to determine if in profit or loss
+                    const currentPriceKas = this.tokenPrice; // Current token price in KAS
+                    const inProfit = currentPriceKas > result.average_entry_price_kas;
+                    
+                    // Create horizontal line for average entry price
+                    this.userEntryPriceLine = this.currentSeries.createPriceLine({
+                        price: priceLineValue,
+                        color: inProfit ? '#22C55E' : '#EF4444',  // Green if profit, red if loss
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `Avg Entry: ${priceLineValue.toFixed(8)} KAS`,
+                        axisLabelColor: inProfit ? '#22C55E' : '#EF4444',
+                        axisLabelTextColor: '#FFFFFF'
+                    });
+                    
+                    console.log(`✅ Added average entry price line at ${priceLineValue.toFixed(8)} KAS (${inProfit ? 'profit' : 'loss'})`);
+                }
+                
+            } catch (error) {
+                console.error('Error adding user trade markers:', error);
+            }
         },
         
         // ✅ SMOOTH CHART UPDATE: Update chart data without full rebuild

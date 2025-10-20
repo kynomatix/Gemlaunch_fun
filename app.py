@@ -2378,6 +2378,121 @@ def api_token_stats(address):
         logging.error(f"Error fetching token stats for {address}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch stats'}), 500
 
+@app.route('/api/token/<address>/user-trades', methods=['GET'])
+def api_token_user_trades(address):
+    """
+    Get user's trade history for a specific token (for chart markers)
+    
+    Query Parameters:
+        wallet_address: User's wallet address
+    
+    Response:
+    {
+        "success": true,
+        "trades": [
+            {
+                "timestamp": "2025-10-20T10:30:00",
+                "type": "buy",
+                "price_usd": 0.00000234,
+                "price_kas": 0.000045,
+                "kas_amount": 100.0,
+                "token_amount": 1000000.0,
+                "tx_hash": "0x..."
+            }
+        ],
+        "average_entry_price_usd": 0.00000234,
+        "average_entry_price_kas": 0.000045,
+        "total_tokens_bought": 1000000.0,
+        "total_tokens_sold": 0.0,
+        "net_position": 1000000.0
+    }
+    """
+    try:
+        # Get wallet address from query parameter
+        wallet_address = request.args.get('wallet_address')
+        if not wallet_address:
+            return jsonify({'success': False, 'error': 'wallet_address parameter required'}), 400
+        
+        # Normalize addresses
+        address_normalized = address.strip().lower()
+        wallet_normalized = wallet_address.strip().lower()
+        
+        # Get token
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == address_normalized
+        ).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        from services.kas_oracle import oracle as kas_oracle
+        kas_price_usd = float(kas_oracle.get_kas_price())
+        
+        # Query all trades for this user and token, ordered by timestamp
+        trades = TradeEvent.query.filter(
+            TradeEvent.token_id == token.id,
+            db.func.lower(TradeEvent.user_wallet_address) == wallet_normalized
+        ).order_by(TradeEvent.timestamp.asc()).all()
+        
+        # Format trades for chart
+        formatted_trades = []
+        total_kas_spent = 0
+        total_tokens_bought = 0
+        total_tokens_sold = 0
+        
+        for trade in trades:
+            # Calculate price (price per token in KAS)
+            # Token amounts are stored in wei (10^18), need to normalize
+            kas_amount = float(trade.kas_amount)
+            token_amount_wei = float(trade.token_amount)
+            token_amount = token_amount_wei / 10**18  # Convert from wei to tokens
+            
+            if token_amount > 0:
+                price_kas = kas_amount / token_amount
+                price_usd = price_kas * kas_price_usd
+            else:
+                price_kas = 0
+                price_usd = 0
+            
+            # Track buy totals for average entry calculation
+            if trade.trade_type == 'buy':
+                total_kas_spent += kas_amount
+                total_tokens_bought += token_amount
+            else:
+                total_tokens_sold += token_amount
+            
+            formatted_trades.append({
+                'timestamp': trade.timestamp.isoformat() if trade.timestamp else None,
+                'type': trade.trade_type,
+                'price_usd': price_usd,
+                'price_kas': price_kas,
+                'kas_amount': kas_amount,
+                'token_amount': token_amount,  # Now in human-readable format
+                'tx_hash': trade.tx_hash
+            })
+        
+        # Calculate weighted average entry price (only from buys)
+        average_entry_price_kas = 0
+        average_entry_price_usd = 0
+        
+        if total_tokens_bought > 0:
+            average_entry_price_kas = total_kas_spent / total_tokens_bought
+            average_entry_price_usd = average_entry_price_kas * kas_price_usd
+        
+        return jsonify({
+            'success': True,
+            'trades': formatted_trades,
+            'average_entry_price_usd': average_entry_price_usd,
+            'average_entry_price_kas': average_entry_price_kas,
+            'total_tokens_bought': total_tokens_bought,
+            'total_tokens_sold': total_tokens_sold,
+            'net_position': total_tokens_bought - total_tokens_sold
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching user trades for {address}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch user trades'}), 500
+
 @app.route('/api/token/<address>/dex-pool', methods=['GET'])
 def api_token_dex_pool(address):
     """
