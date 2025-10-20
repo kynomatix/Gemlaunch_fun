@@ -78,9 +78,9 @@
                                 Unknown
                             {% endif %}
                         </div>
-                        <div style="color: #777; font-size: 0.75rem;">
+                        <div class="trade-timestamp" style="color: #777; font-size: 0.75rem;" data-timestamp="{{ trade.timestamp.isoformat() if trade.timestamp else '' }}">
                             {% if trade.timestamp %}
-                                {{ trade.timestamp.strftime('%H:%M:%S') }}
+                                {{ trade.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
                             {% else %}
                                 Unknown
                             {% endif %}

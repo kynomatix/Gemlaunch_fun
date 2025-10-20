@@ -95,6 +95,11 @@
                 this.refreshRecentTrades();
             }, 200);
             
+            // Convert UTC timestamps to user's local time
+            setTimeout(() => {
+                this.convertTimestampsToLocal();
+            }, 300);
+            
             // Initialize graduation status polling
             this.fetchGraduationStatus();
             
@@ -112,6 +117,46 @@
             window.addEventListener('beforeunload', () => {
                 if (this.graduationPollingInterval) {
                     clearInterval(this.graduationPollingInterval);
+                }
+            });
+        },
+        
+        // Convert UTC timestamps to user's local timezone
+        convertTimestampsToLocal: function() {
+            const timestampElements = document.querySelectorAll('.trade-timestamp[data-timestamp]');
+            
+            timestampElements.forEach(elem => {
+                const utcTimestamp = elem.getAttribute('data-timestamp');
+                if (!utcTimestamp) return;
+                
+                try {
+                    // Parse UTC timestamp
+                    const date = new Date(utcTimestamp);
+                    
+                    // Format in user's local timezone
+                    // Show date + time so users know if trade is from days ago
+                    const now = new Date();
+                    const isToday = date.toDateString() === now.toDateString();
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const isYesterday = date.toDateString() === yesterday.toDateString();
+                    
+                    let formattedDate;
+                    if (isToday) {
+                        // Today: just show time
+                        formattedDate = 'Today ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    } else if (isYesterday) {
+                        // Yesterday: show "Yesterday" + time
+                        formattedDate = 'Yesterday ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    } else {
+                        // Older: show full date + time
+                        formattedDate = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + 
+                                       date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    
+                    elem.textContent = formattedDate;
+                } catch (error) {
+                    console.error('Failed to parse timestamp:', utcTimestamp, error);
                 }
             });
         },
@@ -1774,7 +1819,7 @@
                 const tokenAmount = (parseFloat(trade.token_amount) / 1e18).toFixed(2);
                 const kasAmount = parseFloat(trade.kas_amount).toFixed(2);
                 const walletAddress = trade.user_wallet_address || 'Unknown';
-                const timeStr = trade.timestamp ? new Date(trade.timestamp).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false}) : 'Unknown';
+                const timestamp = trade.timestamp || '';
                 
                 return `
                     <div class="trade-item" style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;">
@@ -1795,8 +1840,8 @@
                             <div style="color: #BBB; font-size: 0.75rem; font-family: monospace;">
                                 ${walletAddress}
                             </div>
-                            <div style="color: #777; font-size: 0.75rem;">
-                                ${timeStr}
+                            <div class="trade-timestamp" style="color: #777; font-size: 0.75rem;" data-timestamp="${timestamp}">
+                                ${timestamp || 'Unknown'}
                             </div>
                         </div>
                     </div>
@@ -1804,6 +1849,9 @@
             }).join('');
             
             tradesListContainer.innerHTML = tradesHTML;
+            
+            // Convert timestamps to user's local timezone
+            this.convertTimestampsToLocal();
         },
         
         // SSE Transaction Monitoring
