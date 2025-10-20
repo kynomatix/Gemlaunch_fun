@@ -647,46 +647,41 @@
             const kasLabel = document.getElementById('kasAmountLabel');
             const tokenLabel = document.getElementById('tokenAmountLabel');
             
+            // Save current values
+            const tempKas = kasInput.value;
+            const tempToken = tokenInput.value;
+            
             // Toggle direction
             this.inputDirection = this.inputDirection === 'primary' ? 'secondary' : 'primary';
             
             this._updatingProgrammatically = true;
             
-            // KEEP the value in the field that becomes the INPUT (user can edit it)
-            // CLEAR the field that becomes the OUTPUT (will be recalculated)
+            // Swap the values between fields
+            kasInput.value = tempToken;
+            tokenInput.value = tempKas;
+            
+            // Update labels based on new direction
             const mode = this.currentTradeMode;
             if (mode === 'buy') {
                 if (this.inputDirection === 'primary') {
-                    // Switching back to: User enters KAS → Get tokens
-                    // KEEP kasInput (it's now the input, user can edit)
-                    // CLEAR tokenInput (it's now the output, will be recalculated)
-                    tokenInput.value = '';
+                    // Standard: User enters KAS → Get tokens
                     kasLabel.textContent = 'You Pay (KAS)';
                     tokenLabel.textContent = `You Receive (${this.tokenSymbol})`;
                     this.lastEditedField = 'kas';
                 } else {
-                    // Switching to: User enters tokens → Get KAS cost  
-                    // KEEP tokenInput (it's now the input, user can edit - e.g., 53 tokens)
-                    // CLEAR kasInput (it's now the output, will be recalculated)
-                    kasInput.value = '';
+                    // Reversed: User enters tokens → Get KAS cost
                     kasLabel.textContent = `You Receive (${this.tokenSymbol})`;
                     tokenLabel.textContent = 'You Pay (KAS)';
                     this.lastEditedField = 'token';
                 }
             } else { // sell
                 if (this.inputDirection === 'primary') {
-                    // Switching back to: User enters tokens → Get KAS received
-                    // KEEP tokenInput (it's now the input, user can edit)
-                    // CLEAR kasInput (it's now the output, will be recalculated)
-                    kasInput.value = '';
+                    // Standard: User enters tokens → Get KAS received
                     kasLabel.textContent = 'You Receive (KAS)';
                     tokenLabel.textContent = `You Sell (${this.tokenSymbol})`;
                     this.lastEditedField = 'token';
                 } else {
-                    // Switching to: User enters KAS → Get tokens needed
-                    // KEEP kasInput (it's now the input, user can edit)
-                    // CLEAR tokenInput (it's now the output, will be recalculated)
-                    tokenInput.value = '';
+                    // Reversed: User enters KAS desired → Get tokens needed
                     kasLabel.textContent = 'KAS You Want';
                     tokenLabel.textContent = `${this.tokenSymbol} You Must Sell`;
                     this.lastEditedField = 'kas';
@@ -695,8 +690,7 @@
             
             this._updatingProgrammatically = false;
             
-            // Clear fee breakdown since quote is no longer valid
-            this.clearFeeBreakdown();
+            // DON'T clear fee breakdown - the quote is still valid, just swapped
         },
         
         setQuickAmount: function(amount) {
