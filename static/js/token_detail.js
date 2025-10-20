@@ -15,6 +15,7 @@
         currentTradeMode: 'buy',
         inputDirection: 'primary', // 'primary' = standard (KAS for buy, tokens for sell), 'secondary' = reversed
         lastEditedField: 'kas', // Track which field user last edited for bidirectional input
+        _updatingProgrammatically: false, // Flag to prevent programmatic updates from triggering listeners
         tokenPrice: null,
         marketCap: null,
         kasToUsd: 0.15, // Will be updated from oracle
@@ -684,7 +685,13 @@
         },
         
         setQuickAmount: function(amount) {
+            // Set flag to prevent listener from triggering prematurely
+            this._updatingProgrammatically = true;
             document.getElementById('kasAmount').value = amount;
+            this._updatingProgrammatically = false;
+            
+            // Mark KAS as last edited field (user clicked KAS quick button)
+            this.lastEditedField = 'kas';
             this.updateTokenAmount();
         },
         
@@ -692,7 +699,14 @@
             // For sell mode: set token amount based on percentage of balance
             // Preserve decimals for accurate calculations
             const tokenAmount = (this.tokenBalance * percentage / 100).toFixed(6);
+            
+            // Set flag to prevent listener from triggering prematurely
+            this._updatingProgrammatically = true;
             document.getElementById('tokenAmount').value = tokenAmount;
+            this._updatingProgrammatically = false;
+            
+            // Mark token as last edited field (user clicked percentage button)
+            this.lastEditedField = 'token';
             this.updateTokenAmount();
         },
         
@@ -972,7 +986,9 @@
                     const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
                     
                     if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
+                        this._updatingProgrammatically = true;
                         document.getElementById('kasAmount').value = '';
+                        this._updatingProgrammatically = false;
                         this.clearFeeBreakdown();
                         return;
                     }
@@ -992,7 +1008,9 @@
                     const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
                     
                     if (kasAmount <= 0) {
+                        this._updatingProgrammatically = true;
                         document.getElementById('tokenAmount').value = '';
+                        this._updatingProgrammatically = false;
                         this.clearFeeBreakdown();
                         return;
                     }
@@ -1007,7 +1025,9 @@
                     const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
                     
                     if (kasAmount <= 0) {
+                        this._updatingProgrammatically = true;
                         document.getElementById('tokenAmount').value = '';
+                        this._updatingProgrammatically = false;
                         this.clearFeeBreakdown();
                         return;
                     }
@@ -1020,7 +1040,9 @@
                     const tokenAmountStr = document.getElementById('tokenAmount').value.trim();
                     
                     if (!tokenAmountStr || parseFloat(tokenAmountStr) <= 0) {
+                        this._updatingProgrammatically = true;
                         document.getElementById('kasAmount').value = '';
+                        this._updatingProgrammatically = false;
                         this.clearFeeBreakdown();
                         return;
                     }
@@ -1064,18 +1086,26 @@
                     );
                     
                     if (quote.success) {
-                        // Unified response format - update the output field
-                        if (outputField === 'tokenAmount') {
-                            // Output is tokens (API returns in ether units)
-                            const tokensOut = quote.tokens_out || quote.token_amount;
-                            // Display with appropriate decimals (use 6 decimal places for precision)
-                            document.getElementById('tokenAmount').value = 
-                                parseFloat(tokensOut.toFixed(6));
-                        } else {
-                            // Output is KAS (API returns in ether units)
-                            const kasOut = quote.kas_out || quote.kas_amount;
-                            document.getElementById('kasAmount').value = 
-                                kasOut.toFixed(6);
+                        // Set flag to prevent programmatic updates from triggering listeners
+                        this._updatingProgrammatically = true;
+                        
+                        try {
+                            // Unified response format - update the output field
+                            if (outputField === 'tokenAmount') {
+                                // Output is tokens (API returns in ether units)
+                                const tokensOut = quote.tokens_out || quote.token_amount;
+                                // Display with appropriate decimals (use 6 decimal places for precision)
+                                document.getElementById('tokenAmount').value = 
+                                    parseFloat(tokensOut.toFixed(6));
+                            } else {
+                                // Output is KAS (API returns in ether units)
+                                const kasOut = quote.kas_out || quote.kas_amount;
+                                document.getElementById('kasAmount').value = 
+                                    kasOut.toFixed(6);
+                            }
+                        } finally {
+                            // Always reset flag
+                            this._updatingProgrammatically = false;
                         }
                         
                         // Display fee breakdown
@@ -3404,6 +3434,9 @@
         if (kasAmountInput && !kasAmountInput.dataset.listenerAdded) {
             kasAmountInput.dataset.listenerAdded = 'true';
             kasAmountInput.addEventListener('input', () => {
+                // Ignore programmatic updates
+                if (TokenDetail._updatingProgrammatically) return;
+                
                 // Mark which field was last edited
                 TokenDetail.lastEditedField = 'kas';
                 TokenDetail.updateTokenAmount();
@@ -3413,6 +3446,9 @@
         if (tokenAmountInput && !tokenAmountInput.dataset.listenerAdded) {
             tokenAmountInput.dataset.listenerAdded = 'true';
             tokenAmountInput.addEventListener('input', () => {
+                // Ignore programmatic updates
+                if (TokenDetail._updatingProgrammatically) return;
+                
                 // Mark which field was last edited
                 TokenDetail.lastEditedField = 'token';
                 TokenDetail.updateTokenAmount();
