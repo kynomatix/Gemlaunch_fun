@@ -612,8 +612,20 @@
                 
                 console.log(`📍 Found ${result.trades.length} user trades`);
                 
-                // Convert trades to chart markers
-                const markers = result.trades.map((trade, index) => {
+                // Get the visible time range from the chart data
+                // This ensures markers only appear for trades within the visible chart window
+                let minChartTime = null;
+                let maxChartTime = null;
+                
+                if (this.chartData && this.chartData.length > 0) {
+                    const chartTimes = this.chartData.map(d => d.time);
+                    minChartTime = Math.min(...chartTimes);
+                    maxChartTime = Math.max(...chartTimes);
+                    console.log(`Chart visible range: ${minChartTime} to ${maxChartTime}`);
+                }
+                
+                // Convert trades to chart markers and filter to visible range
+                const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
                     const timestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
@@ -632,11 +644,19 @@
                     };
                 });
                 
-                // Debug: Log the time range of markers
+                // Filter markers to only include those within the visible chart range
+                const markers = minChartTime && maxChartTime
+                    ? allMarkers.filter(m => m.time >= minChartTime && m.time <= maxChartTime)
+                    : allMarkers;
+                
+                // Debug: Log the filtering results
+                if (allMarkers.length !== markers.length) {
+                    console.log(`Filtered ${allMarkers.length - markers.length} markers outside visible range (${allMarkers.length} → ${markers.length})`);
+                }
+                
                 if (markers.length > 0) {
                     const times = markers.map(m => m.time);
-                    console.log(`Marker timestamps: ${Math.min(...times)} to ${Math.max(...times)}`);
-                    console.log(`Unique timestamps: ${new Set(times).size} out of ${times.length}`);
+                    console.log(`Visible markers: ${Math.min(...times)} to ${Math.max(...times)} (${markers.length} total)`);
                 }
                 
                 // Add markers to the series
