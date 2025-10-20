@@ -1158,11 +1158,14 @@
         };
         
         const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    loadTokenMetrics(entry.target);
-                    // Don't unobserve - keep observing in case token is filtered out and back in
-                }
+            // Batch load all visible tokens at once instead of one-by-one
+            const visibleTokens = entries
+                .filter(entry => entry.isIntersecting)
+                .map(entry => entry.target);
+            
+            // Load all visible tokens in parallel
+            visibleTokens.forEach(tokenCard => {
+                loadTokenMetrics(tokenCard);
             });
         }, observerOptions);
         

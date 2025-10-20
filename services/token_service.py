@@ -73,8 +73,8 @@ class TokenService:
             
             # Set initial market data
             new_token.circulating_supply = 0
-            new_token.current_price = 0.001  # Starting price
-            new_token.current_market_cap = 1000  # Start at $1K market cap
+            new_token.current_price = 0  # Will be calculated from bonding curve
+            new_token.current_market_cap = 0  # Will be calculated from bonding curve
             new_token.deployment_status = 'pending'  # Initial status
             
             # Generate mock contract address (for UI demo purposes)
