@@ -591,6 +591,11 @@
                         this.currentSeries.removePriceLine(this.userEntryPriceLine);
                         this.userEntryPriceLine = null;
                     }
+                    // Remove current price line
+                    if (this.currentPriceLine) {
+                        this.currentSeries.removePriceLine(this.currentPriceLine);
+                        this.currentPriceLine = null;
+                    }
                     return;
                 }
                 
@@ -738,18 +743,22 @@
                 if (avgEntryPriceKas > 0) {
                     let priceLineValue, priceLineTitle;
                     
+                    // Format P&L percentage with sign
+                    const pnlSign = unrealizedPnlPct >= 0 ? '+' : '';
+                    const pnlLabel = `(${pnlSign}${unrealizedPnlPct.toFixed(2)}%)`;
+                    
                     if (this.currentChartType === 'marketcap') {
                         // For market cap chart, show break-even market cap in USD
                         priceLineValue = avgEntryMcKas;
                         const formattedMC = this.formatNumber(avgEntryMcKas, false); // Don't abbreviate for clarity
-                        priceLineTitle = `Avg Entry: $${formattedMC}`;
+                        priceLineTitle = `Avg Entry: $${formattedMC} ${pnlLabel}`;
                     } else {
                         // For price chart, convert avg entry price from KAS to USD
                         priceLineValue = avgEntryPriceKas * this.kasToUsd;
-                        priceLineTitle = `Avg Entry: $${priceLineValue.toFixed(8)}`;
+                        priceLineTitle = `Avg Entry: $${priceLineValue.toFixed(8)} ${pnlLabel}`;
                     }
                     
-                    // Remove existing price line if it exists
+                    // Remove existing entry price line if it exists
                     if (this.userEntryPriceLine) {
                         this.currentSeries.removePriceLine(this.userEntryPriceLine);
                     }
@@ -770,6 +779,36 @@
                     });
                     
                     console.log(`✅ Added FTX-style entry line: ${priceLineTitle}`);
+                }
+                
+                // Add current price line to chart (light grey reference line)
+                if (currentPriceKas > 0) {
+                    let currentPriceValue;
+                    
+                    if (this.currentChartType === 'marketcap') {
+                        // For market cap chart, calculate current market cap
+                        currentPriceValue = currentPriceKas * 1000000000 * this.kasToUsd; // 1B token supply
+                    } else {
+                        // For price chart, convert current price from KAS to USD
+                        currentPriceValue = currentPriceKas * this.kasToUsd;
+                    }
+                    
+                    // Remove existing current price line if it exists
+                    if (this.currentPriceLine) {
+                        this.currentSeries.removePriceLine(this.currentPriceLine);
+                    }
+                    
+                    // Create horizontal line for current price (light grey, subtle)
+                    this.currentPriceLine = this.currentSeries.createPriceLine({
+                        price: currentPriceValue,
+                        color: '#888888',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: 'Current',
+                        axisLabelColor: '#888888',
+                        axisLabelTextColor: '#FFFFFF'
+                    });
                 }
                 
                 // Display position metrics panel
@@ -851,10 +890,16 @@
                 panel.style.display = 'none';
             }
             
-            // Remove price line
+            // Remove average entry price line
             if (this.userEntryPriceLine && this.currentSeries) {
                 this.currentSeries.removePriceLine(this.userEntryPriceLine);
                 this.userEntryPriceLine = null;
+            }
+            
+            // Remove current price line
+            if (this.currentPriceLine && this.currentSeries) {
+                this.currentSeries.removePriceLine(this.currentPriceLine);
+                this.currentPriceLine = null;
             }
         },
         
