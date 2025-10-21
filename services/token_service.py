@@ -299,28 +299,29 @@ class TokenService:
         Args:
             token: The token to update
             new_price: New price per token
-            kas_reserve: Updated KAS reserve in bonding curve
+            kas_reserve: Updated KAS reserve in bonding curve (virtualKasReserve from on-chain)
             token_reserve: Updated token reserve in bonding curve
             
         Returns:
             bool: True if market data was updated successfully, False otherwise
         """
         try:
+            from services.kas_oracle import oracle
+            
             # Update price and reserves
             token.current_price = new_price
             token.kas_reserve = kas_reserve
             token.token_reserve = token_reserve
             
-            # Recalculate market cap
-            if token.circulating_supply:
-                token.current_market_cap = new_price * float(token.circulating_supply)
-            else:
-                token.current_market_cap = 0
+            # Calculate market cap from KAS reserves (the correct way for bonding curve tokens)
+            # Market cap = virtualKasReserve (already net of fees from on-chain)
+            # Store in KAS terms for accurate ATH tracking
+            token.current_market_cap = kas_reserve
             
-            # Update market cap ATH if current market cap is higher
-            if token.market_cap_ath is None or token.current_market_cap > token.market_cap_ath:
-                token.market_cap_ath = token.current_market_cap
-                logger.debug(f"New market cap ATH for {token.symbol}: {token.market_cap_ath}")
+            # Update market cap ATH if current market cap is higher (tracking in KAS terms)
+            if token.market_cap_ath is None or kas_reserve > token.market_cap_ath:
+                token.market_cap_ath = kas_reserve
+                logger.info(f"🏆 New market cap ATH for {token.symbol}: {kas_reserve:.2f} KAS")
             
             # Update timestamp
             token.updated_at = datetime.now(timezone.utc)
