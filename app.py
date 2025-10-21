@@ -1385,9 +1385,18 @@ def token_messages(contract_address):
         db.session.add(message)
         db.session.commit()
         
-        # Increment achievement counter
+        # Increment achievement counter (global tracking)
         user.total_messages_sent = (user.total_messages_sent or 0) + 1
         db.session.commit()
+        
+        # Track per-token engagement for PRO tokens
+        from services.token_service import TokenService
+        if TokenService.is_pro_token(token):
+            engagement = TokenEngagement.get_or_create(user.id, token.id)
+            engagement.messages_sent = (engagement.messages_sent or 0) + 1
+            engagement.community_points = (engagement.community_points or 0) + 1  # 1 point per message
+            engagement.last_activity_at = datetime.now(timezone.utc)
+            db.session.commit()
         
         # If this is a reply, load the reply_to information
         response_msg = {
