@@ -495,6 +495,42 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
         stats['sells'] = len([e for e in new_trade_events if e.trade_type == 'sell'])
         
         logger.debug(f"✅ Batch inserted {len(new_trade_events)} trade events ({stats['purchases']} buys, {stats['sells']} sells)")
+        
+        # Step 3.5: Track per-token engagement for PRO tokens
+        from services.token_service import TokenService
+        if TokenService.is_pro_token(token):
+            from models import User, TokenEngagement
+            
+            for trade_event, kas_amount in new_trade_events_with_amounts:
+                # Find user by wallet address
+                user = User.query.filter_by(wallet_address=trade_event.user_wallet_address.lower()).first()
+                if not user:
+                    continue
+                
+                # Get or create engagement record
+                engagement = TokenEngagement.get_or_create(user.id, token.id)
+                
+                # Update based on trade type
+                if trade_event.trade_type == 'buy':
+                    engagement.buy_count = (engagement.buy_count or 0) + 1
+                    engagement.trades_count = (engagement.trades_count or 0) + 1
+                    engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
+                    engagement.community_points = (engagement.community_points or 0) + 10  # 10 points per buy
+                    
+                    # Update first acquired timestamp if this is their first purchase
+                    if not engagement.first_acquired_at:
+                        engagement.first_acquired_at = trade_event.timestamp
+                
+                elif trade_event.trade_type == 'sell':
+                    engagement.sell_count = (engagement.sell_count or 0) + 1
+                    engagement.trades_count = (engagement.trades_count or 0) + 1
+                    engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
+                    engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per sell
+                
+                engagement.last_activity_at = trade_event.timestamp
+            
+            logger.debug(f"✅ Updated engagement for {len(new_trade_events)} trades in PRO token {token.symbol}")
+        
     except IntegrityError as e:
         logger.error(f"Unexpected IntegrityError in batch insert: {str(e)}")
         db.session.rollback()

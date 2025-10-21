@@ -3912,3 +3912,45 @@ function toggleVestingProgress(element) {
         progressContainer.style.display = 'none';
     }
 }
+
+// Load community leaderboard for PRO tokens
+async function loadCommunityLeaderboard(contractAddress) {
+    try {
+        const response = await fetch(`/api/token/${contractAddress}/leaderboard?limit=10`);
+        if (!response.ok) {
+            console.log('Leaderboard not available (Basic token or error)');
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.success && data.leaderboard) {
+            displayLeaderboard(data.leaderboard);
+        }
+    } catch (error) {
+        console.error('Failed to load leaderboard:', error);
+    }
+}
+
+// Display leaderboard in UI
+function displayLeaderboard(leaderboard) {
+    const container = document.getElementById('leaderboardContent');
+    if (!container) return;
+    
+    let html = '<div class="leaderboard-list">';
+    leaderboard.forEach(entry => {
+        html += `
+            <div class="leaderboard-entry">
+                <span class="rank">#${entry.rank}</span>
+                <span class="user">${entry.display_name}</span>
+                <span class="points">${entry.community_points} pts</span>
+                <span class="details">
+                    💬 ${entry.messages_sent} | 
+                    📊 ${entry.polls_voted} | 
+                    💎 ${entry.holding_days}d
+                </span>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}

@@ -162,6 +162,13 @@
                     minTokensToCreatePoll: {{ token.settings.min_tokens_to_create_poll if token.settings else 1000 }}
                 }
             });
+            
+            // Load community leaderboard for PRO tokens
+            {% if is_pro_token %}
+            if (typeof loadCommunityLeaderboard === 'function') {
+                loadCommunityLeaderboard('{{ token.contract_address }}');
+            }
+            {% endif %}
         }
         
         // Call immediately - will wait for TokenDetail if needed

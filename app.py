@@ -17,7 +17,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
 from apscheduler.schedulers.background import BackgroundScheduler
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent, TokenEngagement
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -1879,6 +1879,67 @@ def get_recent_trades(contract_address):
         'source': 'database'  # Indicate data source for debugging
     })
 
+@app.route('/api/token/<contract_address>/leaderboard', methods=['GET'])
+def get_token_leaderboard(contract_address):
+    """
+    Get community leaderboard for a PRO token
+    Returns top users by community points with engagement details
+    """
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Check if this is a PRO token
+    from services.token_service import TokenService
+    if not TokenService.is_pro_token(token):
+        return jsonify({'error': 'Leaderboard is only available for PRO tokens'}), 400
+    
+    # Get limit from query params (default 20)
+    limit = request.args.get('limit', 20, type=int)
+    limit = min(limit, 100)  # Cap at 100
+    
+    # Get top users by community points with joined user profiles
+    from sqlalchemy.orm import joinedload
+    top_engagements = TokenEngagement.query.options(
+        joinedload(TokenEngagement.user).joinedload(User.profile)
+    ).filter(
+        TokenEngagement.token_id == token.id,
+        TokenEngagement.community_points > 0
+    ).order_by(
+        TokenEngagement.community_points.desc()
+    ).limit(limit).all()
+    
+    leaderboard = []
+    for rank, engagement in enumerate(top_engagements, 1):
+        user = engagement.user
+        if not user:
+            continue
+        
+        # Get display name (prefer username, then display_name, then wallet)
+        display_name = user.wallet_address[-6:]
+        if hasattr(user, 'profile') and user.profile and user.profile.username:
+            display_name = user.profile.username
+        elif user.display_name:
+            display_name = user.display_name
+        
+        leaderboard.append({
+            'rank': rank,
+            'wallet_address': user.wallet_address,
+            'display_name': display_name,
+            'community_points': engagement.community_points or 0,
+            'messages_sent': engagement.messages_sent or 0,
+            'polls_created': engagement.polls_created or 0,
+            'polls_voted': engagement.polls_voted or 0,
+            'trades_count': engagement.trades_count or 0,
+            'holding_days': engagement.holding_days or 0,
+            'diamond_hands_score': engagement.diamond_hands_score or 0,
+            'reactions_received': engagement.reactions_received or 0
+        })
+    
+    return jsonify({
+        'success': True,
+        'leaderboard': leaderboard,
+        'total_users': len(leaderboard)
+    })
+
 @app.route('/api/token/<contract_address>/airdrop/available', methods=['GET'])
 @require_wallet_connection
 def get_airdrop_available(contract_address):
@@ -1973,6 +2034,29 @@ def get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters
         
         recipients = [h.user.wallet_address for h in holdings if h.user and h.user.wallet_address]
     
+    elif airdrop_type == 'top_by_points':
+        # Get users with highest community points (rewards most engaged)
+        min_points = parameters.get('min_points', 10)
+        limit = parameters.get('limit', 50)
+        engagements = TokenEngagement.query.filter(
+            TokenEngagement.token_id == token.id,
+            TokenEngagement.community_points >= min_points
+        ).order_by(TokenEngagement.community_points.desc()).limit(limit).all()
+        
+        recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
+    
+    elif airdrop_type == 'diamond_holders':
+        # Get users who've been holding for 90+ days (true believers)
+        min_holding_days = parameters.get('min_holding_days', 90)
+        limit = parameters.get('limit', 50)  # Cap at 50 to prevent huge recipient lists
+        engagements = TokenEngagement.query.filter(
+            TokenEngagement.token_id == token.id,
+            TokenEngagement.holding_days >= min_holding_days,
+            TokenEngagement.first_acquired_at.isnot(None)
+        ).order_by(TokenEngagement.holding_days.desc()).limit(limit).all()
+        
+        recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
+    
     else:
         raise ValueError(f"Unsupported airdrop type: {airdrop_type}")
     
@@ -2005,8 +2089,8 @@ def create_airdrop(contract_address):
     amount_per_recipient = int(data.get('amount_per_recipient', 0))
     parameters = data.get('parameters', {})
     
-    # Validate airdrop type (removed random_raffle - not implemented)
-    valid_types = ['active_chatters', 'token_holders', 'top_contributors', 'early_supporters']
+    # Validate airdrop type
+    valid_types = ['active_chatters', 'token_holders', 'top_contributors', 'early_supporters', 'top_by_points', 'diamond_holders']
     if airdrop_type not in valid_types:
         return jsonify({'error': f'Invalid airdrop type. Valid types: {", ".join(valid_types)}'}), 400
     
