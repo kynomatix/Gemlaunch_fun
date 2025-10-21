@@ -170,6 +170,7 @@ class Token(db.Model):
     
     # Market data
     current_market_cap = db.Column(db.Numeric(precision=20, scale=8), default=1000)  # Start at ~$1K
+    market_cap_ath = db.Column(db.Numeric(precision=20, scale=8), default=1000)  # All-time high market cap (in KAS)
     current_price = db.Column(db.Numeric(precision=20, scale=12), default=0.000001)
     circulating_supply = db.Column(db.Numeric(precision=30, scale=0), default=0)
     trading_volume_24h = db.Column(db.Numeric(precision=20, scale=8), default=0)
