@@ -7,12 +7,6 @@
             <div class="token-gate-container" id="tokenGateContainer">
                 <!-- Will be populated by JavaScript based on ownership -->
             </div>
-            <!-- Settings Button - For token owner only -->
-            {% if is_owner %}
-            <button class="chat-settings-btn" id="chatSettingsBtn" onclick="openChatSettings()" title="Chat Settings">
-                <i class="fas fa-cog"></i>
-            </button>
-            {% endif %}
         </div>
     </div>
     
@@ -178,6 +172,11 @@
             {% if user and token.creator and user.id == token.creator.id and is_pro_token %}
             <button class="action-btn airdrop-btn" onclick="createAirdrop()" title="Start airdrop/giveaway">
                 <i class="fas fa-gift"></i>
+            </button>
+            {% endif %}
+            {% if is_owner %}
+            <button class="action-btn settings-btn" onclick="openChatSettings()" title="Token Settings">
+                <i class="fas fa-cog"></i>
             </button>
             {% endif %}
         </div>
