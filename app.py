@@ -1348,6 +1348,7 @@ def token_messages(contract_address):
                 'id': msg.id,
                 'user': (msg.user.profile.username if msg.user.profile and msg.user.profile.username else msg.user.display_name) or msg.user.wallet_address[-6:],
                 'wallet': msg.user.wallet_address,
+                'is_twitter_verified': msg.user.is_twitter_verified,
                 'message': msg.content,
                 'message_type': msg.message_type,
                 'love_count': msg.love_count,
@@ -1362,6 +1363,7 @@ def token_messages(contract_address):
                 msg_dict['reply_to'] = {
                     'id': msg.reply_to.id,
                     'user': reply_user_name,
+                    'is_twitter_verified': msg.reply_to.user.is_twitter_verified,
                     'text': msg.reply_to.content[:100] + ('...' if len(msg.reply_to.content) > 100 else '')
                 }
             
@@ -1408,6 +1410,7 @@ def token_messages(contract_address):
             'id': message.id,
             'user': (user.profile.username if user.profile and user.profile.username else user.display_name) or user.wallet_address[-6:],
             'wallet': user.wallet_address,
+            'is_twitter_verified': user.is_twitter_verified,
             'message': message.content,
             'created_at': message.created_at.isoformat()
         }
@@ -1419,6 +1422,7 @@ def token_messages(contract_address):
                 response_msg['reply_to'] = {
                     'id': message.reply_to.id,
                     'user': reply_user_name,
+                    'is_twitter_verified': message.reply_to.user.is_twitter_verified,
                     'text': message.reply_to.content[:100] + ('...' if len(message.reply_to.content) > 100 else '')
                 }
         
@@ -1929,6 +1933,7 @@ def get_token_leaderboard(contract_address):
             'rank': rank,
             'wallet_address': user.wallet_address,
             'display_name': display_name,
+            'is_twitter_verified': user.is_twitter_verified,
             'community_points': engagement.community_points or 0,
             'messages_sent': engagement.messages_sent or 0,
             'polls_created': engagement.polls_created or 0,
@@ -2873,6 +2878,7 @@ def get_user_profile(user_id):
             'total_trading_volume': float(user.total_trading_volume or 0),
             'total_trades_count': user.total_trades_count or 0,
             'total_messages_sent': user.total_messages_sent or 0,
+            'is_twitter_verified': user.is_twitter_verified,
             'achievements': achievements,
             'profile': {
                 'bio': profile.bio if profile else None,

@@ -1,4 +1,5 @@
 {% extends "app/base_layout.html" %}
+{% from 'app/partials/_user_macros.html' import user_name_with_badge %}
 
 {% block title %}Leaderboard - Gemlaunch.fun{% endblock %}
 
@@ -89,12 +90,7 @@
                             {% endif %}
                         </div>
                         <div class="user-details">
-                            <span class="username">{{ ranked_user.display_name or 'Anonymous Trader' }}</span>
-                            {% if ranked_user.wallet_address and ranked_user.wallet_address|length >= 10 %}
-                                <span class="wallet-short">{{ ranked_user.wallet_address[:6] }}...{{ ranked_user.wallet_address[-4:] }}</span>
-                            {% else %}
-                                <span class="wallet-short">No wallet</span>
-                            {% endif %}
+                            <span class="username">{{ user_name_with_badge(ranked_user) }}</span>
                         </div>
                     </div>
                     
@@ -178,6 +174,11 @@ function displayUserProfile(profile) {
     const safeWalletAddress = escapeHtml(profile.wallet_address || '');
     const safeMemberSince = escapeHtml(profile.profile.member_since || profile.created_at || '');
     
+    // Build verified badge if user is Twitter verified
+    const verifiedBadgeHTML = profile.is_twitter_verified 
+        ? '<span class="verified-badge" style="margin-left: 0.25rem;"><i class="fas fa-check-circle"></i></span>'
+        : '';
+    
     // Build avatar HTML (avatar_url is already safe in img src)
     const avatarHTML = profile.profile.avatar_url 
         ? `<img src="${profile.profile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover;">`
@@ -252,7 +253,7 @@ function displayUserProfile(profile) {
                         border: 3px solid #20B2AA; background: rgba(32, 178, 170, 0.1); display: flex; align-items: center; justify-content: center;">
                 ${avatarHTML}
             </div>
-            <h2 style="color: #FFF; margin-bottom: 0.5rem; font-size: 1.5rem;">${safeDisplayName}</h2>
+            <h2 style="color: #FFF; margin-bottom: 0.5rem; font-size: 1.5rem;">${safeDisplayName}${verifiedBadgeHTML}</h2>
             <div style="color: #888; font-family: 'Courier New', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
                 ${walletDisplay}
             </div>

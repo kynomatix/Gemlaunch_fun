@@ -2080,3 +2080,58 @@ header nav > div:last-child {
         text-align: left;
     }
 }
+
+/* X (Twitter) Verification Styles */
+.btn-verify-x {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #1DA1F2, #0D8BD9);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-verify-x:hover {
+    background: linear-gradient(135deg, #0D8BD9, #0A6FB8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
+}
+
+.btn-disconnect-x {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-disconnect-x:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    color: #1DA1F2;
+    font-size: 16px;
+}
+
+.verified-badge i {
+    filter: drop-shadow(0 0 4px rgba(29, 161, 242, 0.6));
+}

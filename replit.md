@@ -29,6 +29,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **Wallet Connection System**: A modal-based system supporting Kastle, KasWare, and MetaMask using challenge-response authentication.
 - **Enhanced Marketplace Search**: Provides comprehensive search across token name, symbol, contract address, and creator information.
 - **Deployment Confirmation System**: A 6-layer security verification system for confirming token deployments, ensuring server-side blockchain verification and multi-layer defense against fake deployments.
+- **X/Twitter Verification System**: OAuth 2.0-based social verification system that authenticates user identities, prevents impersonation, and displays verified badges across the platform (profiles, chat messages, token pages, leaderboards). Enforces one-to-one mapping between X accounts and wallet addresses with CSRF/state validation.
 
 ### PRO Token Vesting System
 ✅ **STATUS: Fully implemented - Atomic on-chain deployment**

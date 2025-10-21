@@ -53,6 +53,11 @@ class User(db.Model):
         self.gem_points = (self.gem_points or 0) + points
         db.session.commit()
     
+    @property
+    def is_twitter_verified(self):
+        """Check if user has verified Twitter account"""
+        return bool(self.profile and self.profile.is_twitter_verified)
+    
     @staticmethod
     def resolve_wallet_to_user(wallet_address):
         """Resolve a wallet address to a User account

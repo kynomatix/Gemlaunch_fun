@@ -1,4 +1,5 @@
 <!-- Token Header Partial -->
+{% from 'app/partials/_user_macros.html' import user_name_with_badge %}
 <div class="token-header">
     <!-- Left Side - Token Info -->
     <div class="token-info-section">
@@ -25,16 +26,10 @@
                     <span class="token-symbol">${{ token.symbol }}</span>
                     <span class="dot">•</span>
                     <span>Created by 
-                        {% if token.creator.display_name %}
-                            <span class="creator-name">
-                                <i class="fas fa-user-check"></i>
-                                {{ token.creator.display_name }}
-                            </span>
-                        {% else %}
-                            <span class="creator-name">
-                                {{ token.creator.wallet_address[-6:] }}
-                            </span>
-                        {% endif %}
+                        <span class="creator-name">
+                            <i class="fas fa-user-check"></i>
+                            {{ user_name_with_badge(token.creator, show_wallet_short=True) }}
+                        </span>
                     </span>
                 </div>
                 <div class="contract-address" title="{% if token.contract_address %}Contract Address - Click to copy{% else %}Not deployed yet{% endif %}">

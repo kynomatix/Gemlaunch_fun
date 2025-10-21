@@ -1,0 +1,36 @@
+{# User Display Macros - Reusable components for displaying user names with verified badges #}
+
+{% macro user_name_with_badge(user, show_wallet_short=False) %}
+    {# 
+    Display user name with optional verified badge
+    
+    Args:
+        user: User object with profile relationship loaded
+        show_wallet_short: If True, show shortened wallet address when no display name
+    
+    Returns:
+        HTML string with user name and optional verified badge
+    #}
+    {% if user %}
+        {# Determine display name priority: username > display_name > wallet #}
+        {% set display_name = (user.profile.username if user.profile and user.profile.username else user.display_name) if user.profile or user.display_name else None %}
+        
+        {# Show display name or wallet based on availability #}
+        {% if display_name %}
+            <span class="user-display-name">{{ display_name }}</span>
+        {% elif show_wallet_short and user.wallet_address %}
+            <span class="user-wallet-short">{{ user.wallet_address[-6:] }}</span>
+        {% else %}
+            <span class="user-wallet-short">{{ user.wallet_address[:6] }}...{{ user.wallet_address[-4:] }}</span>
+        {% endif %}
+        
+        {# Add verified badge if user is Twitter verified #}
+        {% if user.is_twitter_verified %}
+            <span class="verified-badge" title="Verified X (Twitter) Account">
+                <i class="fas fa-check-circle"></i>
+            </span>
+        {% endif %}
+    {% else %}
+        <span class="user-display-name">Unknown User</span>
+    {% endif %}
+{% endmacro %}

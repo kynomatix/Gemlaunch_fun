@@ -233,7 +233,8 @@
                             false, 
                             msg.id, 
                             msg.wallet,
-                            msg.reply_to || null
+                            msg.reply_to || null,
+                            msg.is_twitter_verified || false
                         );
                     });
                     
@@ -2156,7 +2157,8 @@
                         false, 
                         data.message.id,
                         data.message.wallet,
-                        data.message.reply_to || null
+                        data.message.reply_to || null,
+                        data.message.is_twitter_verified || false
                     );
                     input.value = '';
                     
@@ -2176,12 +2178,17 @@
             }
         },
         
-        addMessageToChat: function(user, message, isSpotlight = false, msgId = null, wallet = null, replyTo = null) {
+        addMessageToChat: function(user, message, isSpotlight = false, msgId = null, wallet = null, replyTo = null, isTwitterVerified = false) {
             const messagesContainer = document.getElementById('chatMessages');
             const messageId = msgId || Date.now();
             
             const displayName = this.getUserDisplayName(user);
             const userClass = this.getUsernameClass(wallet || user);
+            
+            // Build verified badge HTML if user is Twitter verified
+            const verifiedBadgeHTML = isTwitterVerified 
+                ? '<span class="verified-badge"><i class="fas fa-check-circle"></i></span>' 
+                : '';
             
             // Store message data for future reply references
             this.chatState.messagesData[messageId] = {
@@ -2228,7 +2235,7 @@
             messageDiv.innerHTML = `
                 ${replyReferenceHTML}
                 <div class="message-content">
-                    <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${this.escapeHtml(displayName)}:</span>
+                    <span class="chat-user ${userClass} ${isSpotlight ? 'spotlight-user' : ''}">${this.escapeHtml(displayName)}${verifiedBadgeHTML}:</span>
                     <span class="chat-text">${this.escapeHtml(message)} ${isSpotlight ? '✨' : ''}</span>
                 </div>
                 <div class="message-actions">
