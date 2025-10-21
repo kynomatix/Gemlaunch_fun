@@ -127,6 +127,9 @@
         window.poolContractAddress = '{{ token.contract_address }}';  // Pool address (same as token in this architecture)
         window.tokenCreatorAddress = '{{ token.creator.wallet_address }}';
         window.isProToken = {{ 'true' if is_pro_token else 'false' }};
+        {% if user %}
+        window.currentUserWallet = '{{ user.wallet_address }}';
+        {% endif %}
         
         // Vesting data for modal
         {% if is_pro_token and token.reserved_percentage > 0 %}
@@ -167,6 +170,9 @@
             {% if is_pro_token %}
             if (typeof loadCommunityLeaderboard === 'function') {
                 loadCommunityLeaderboard('{{ token.contract_address }}');
+            }
+            if (typeof loadUserPoints === 'function') {
+                loadUserPoints('{{ token.contract_address }}');
             }
             {% endif %}
         }

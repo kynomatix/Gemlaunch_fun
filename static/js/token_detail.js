@@ -3777,6 +3777,34 @@
         }
     };
     
+    window.toggleTokenRewards = function() {
+        const content = document.getElementById('tokenRewardsContent');
+        const toggle = document.querySelector('.achievement-toggle i');
+        if (content && toggle) {
+            content.classList.toggle('collapsed');
+            toggle.style.transform = content.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+    };
+    
+    window.toggleEarningMethod = function(header) {
+        const content = header.nextElementSibling;
+        const chevron = header.querySelector('i.fa-chevron-down');
+        
+        if (content && chevron) {
+            const isExpanded = content.style.display === 'block';
+            
+            if (isExpanded) {
+                content.style.display = 'none';
+                chevron.style.transform = 'rotate(0deg)';
+                header.classList.remove('active');
+            } else {
+                content.style.display = 'block';
+                chevron.style.transform = 'rotate(180deg)';
+                header.classList.add('active');
+            }
+        }
+    };
+    
 })(window, document);
 
 // Toggle vesting info modal
@@ -3943,21 +3971,78 @@ function displayLeaderboard(leaderboard) {
     const container = document.getElementById('leaderboardContent');
     if (!container) return;
     
+    // Handle empty leaderboard
+    if (!leaderboard || leaderboard.length === 0) {
+        container.innerHTML = `
+            <div class="leaderboard-empty" style="text-align: center; padding: 1.5rem; color: #888;">
+                <i class="fas fa-trophy" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.3;"></i>
+                <p style="margin: 0; font-size: 0.9rem;">No contributors yet. Be the first!</p>
+            </div>
+        `;
+        return;
+    }
+    
     let html = '<div class="leaderboard-list">';
     leaderboard.forEach(entry => {
+        // Get emoji for top 3
+        let rankDisplay;
+        if (entry.rank === 1) {
+            rankDisplay = '🥇';
+        } else if (entry.rank === 2) {
+            rankDisplay = '🥈';
+        } else if (entry.rank === 3) {
+            rankDisplay = '🥉';
+        } else {
+            rankDisplay = `#${entry.rank}`;
+        }
+        
+        // Add verified badge if user is Twitter verified
+        const verifiedBadge = entry.is_twitter_verified 
+            ? '<i class="fas fa-check-circle" style="color: #1DA1F2; margin-left: 0.25rem; font-size: 0.75rem;" title="X/Twitter Verified"></i>' 
+            : '';
+        
+        // Format display name with verified badge
+        const displayName = entry.display_name || 'Anonymous';
+        
         html += `
-            <div class="leaderboard-entry">
-                <span class="rank">#${entry.rank}</span>
-                <span class="user">${entry.display_name}</span>
-                <span class="points">${entry.community_points} pts</span>
-                <span class="details">
-                    💬 ${entry.messages_sent} | 
-                    📊 ${entry.polls_voted} | 
-                    💎 ${entry.holding_days}d
-                </span>
+            <div class="leaderboard-item ${entry.rank <= 3 ? 'top-' + entry.rank : ''}">
+                <span class="rank">${rankDisplay}</span>
+                <span class="user-name">${displayName}${verifiedBadge}</span>
+                <span class="score">${entry.community_points || 0} pts</span>
             </div>
         `;
     });
     html += '</div>';
     container.innerHTML = html;
+}
+
+// Load user's current points for a token
+async function loadUserPoints(contractAddress) {
+    try {
+        const response = await fetch(`/api/token/${contractAddress}/leaderboard?limit=100`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.success && data.leaderboard) {
+            // Find current user in leaderboard
+            const userWallet = window.currentUserWallet; // Assuming this is set globally
+            if (userWallet) {
+                const userEntry = data.leaderboard.find(entry => 
+                    entry.wallet_address.toLowerCase() === userWallet.toLowerCase()
+                );
+                
+                if (userEntry && userEntry.community_points > 0) {
+                    // Display user points
+                    const pointsDisplay = document.getElementById('userPointsDisplay');
+                    const pointsValue = document.getElementById('userPointsValue');
+                    if (pointsDisplay && pointsValue) {
+                        pointsValue.textContent = userEntry.community_points;
+                        pointsDisplay.style.display = 'inline-block';
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load user points:', error);
+    }
 }

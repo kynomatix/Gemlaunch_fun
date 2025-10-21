@@ -1848,6 +1848,60 @@ select.airdrop-input-field option {
     font-size: 0.85rem;
 }
 
+/* Earning Methods - Collapsible Boxes */
+.earning-methods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.earning-method-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.earning-method-box:hover {
+    border-color: rgba(32, 178, 170, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.earning-method-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.earning-method-header:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.earning-method-header.active i {
+    transform: rotate(180deg);
+}
+
+.method-icon {
+    font-size: 1.2rem;
+}
+
+.earning-method-content {
+    padding: 0 1rem 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.earning-method-content.show {
+    display: block !important;
+}
+
+.user-points-badge {
+    white-space: nowrap;
+}
+
 /* Spotlight Feature Styles */
 #spotlightMessages {
     background: linear-gradient(135deg, rgba(148, 0, 211, 0.1), rgba(75, 0, 130, 0.05));
