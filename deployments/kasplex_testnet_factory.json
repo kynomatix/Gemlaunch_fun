@@ -1,8 +1,10 @@
 {
   "network": "kasplex_testnet",
   "chainId": 167012,
-  "tokenFactory": "0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D",
-  "vestingDeployer": "0x07edeC513453f193673639Fd60eC35Bc27f1A5E2",
+  "version": "v2_creator_controlled_airdrops",
+  "tokenFactory": "0xe569912f4d6239CfB9006863D26F6c200F653729",
+  "vestingDeployer": "0x32C091934eCA57EdC0C76d50C40B41B049c3ED79",
+  "airdropDistributor": "0x86b83FE03cDa7456980364c929BB17CFA67E8495",
   "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
   "wallets": {
     "primary": {
@@ -40,8 +42,15 @@
     "communityRewardsWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
     "vestingDeployer": "0x07edeC513453f193673639Fd60eC35Bc27f1A5E2"
   },
-  "deploymentTx": "0xb36359fbfe8882ee3075e51b211bb9367d3803974c31361bd94dbb57d19d1f49",
-  "vestingDeployerTx": "0x44c666eb56ee3866fc7fe2bdbcbf237a5f1e9ef7a4f24ffdb987e19d277d4620",
-  "timestamp": "2025-10-16T05:50:08.981Z",
-  "blockNumber": 8202438
+  "deploymentTx": "0x1b6ff4b5739ff960900ae11436621402145c42907a6348073ff04007f5d3bbf1",
+  "airdropDistributorTx": "0x0a6629b334f918d510b0ccf0402ee42ab60b296a3b8d8c0929f6c93e51c79cb1",
+  "timestamp": "2025-10-21T14:40:00.000Z",
+  "blockNumber": 8666817,
+  "previousVersion": {
+    "tokenFactory": "0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D",
+    "vestingDeployer": "0x07edeC513453f193673639Fd60eC35Bc27f1A5E2",
+    "airdropBeneficiary": "platform_airdropTreasury",
+    "deploymentDate": "2025-10-16T05:50:08.981Z",
+    "note": "Deprecated - used platform wallet for airdrop beneficiary"
+  }
 }

@@ -84,14 +84,16 @@
 **Goal:** Get audit-approved contracts live on Kasplex testnet  
 **Dependencies:** ⬅️ Phase 0 complete
 
-- [x] **1.1** Deploy in Correct Order ✅ **COMPLETE**
-  - [x] Deploy TokenFactory.sol first: ✅ **DEPLOYED (CONTROLLED ADDRESSES)**
-    - **Contract Address**: `0x348640F6e87a0226e8E4CdB5e068282B5D0b2F60`
-    - **Deployment Tx**: `0x7528b202ce5c0484cb30d9db231a470078a6e6f10e945ae407068e5b60874943`
-    - **Deployment Script**: `scripts/deploy_factory.js`
-    - **Deployment Info**: `deployments/kasplex_testnet_factory.json`
-    - **Block**: 7767989 | **Cost**: ~24.39 KAS
-    - **Wallet Control**: Primary (0xe281...5619) + Secondary (0x5f83...914E) - ALL CONTROLLED
+- [x] **1.1** Deploy in Correct Order ✅ **COMPLETE - V2 (October 2025)**
+  - [x] Deploy TokenFactory.sol V2: ✅ **DEPLOYED (CREATOR-CONTROLLED AIRDROPS)**
+    - **Contract Address**: `0xe569912f4d6239CfB9006863D26F6c200F653729` ⭐ **CURRENT VERSION**
+    - **VestingDeployer V2**: `0x32C091934eCA57EdC0C76d50C40B41B049c3ED79`
+    - **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`
+    - **Deployment Tx**: `0x1b6ff4b5739ff960900ae11436621402145c42907a6348073ff04007f5d3bbf1`
+    - **Deployment Script**: Python web3.py (Hardhat incompatible with Kasplex RPC)
+    - **Block**: 8666817 | **Gas Used**: 6,640,597
+    - **Key Change**: `airdropBeneficiary = msg.sender` (creator controls airdrops, not platform)
+    - **Previous V1**: `0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D` (deprecated - platform-managed airdrops)
   - [x] BondingCurvePool.sol: ✅ Template deployed (created via factory on token creation)
   - [x] Deploy GraduationController.sol: ✅ **DEPLOYED**
     - **Contract Address**: `0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e`

@@ -32,15 +32,17 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **X/Twitter Verification System**: OAuth 2.0-based social verification system that authenticates user identities, prevents impersonation, and displays verified badges across the platform (profiles, chat messages, token pages, leaderboards). Enforces one-to-one mapping between X accounts and wallet addresses with CSRF/state validation.
 
 ### PRO Token Vesting System
-✅ **STATUS: Fully implemented - Atomic on-chain deployment**
-- **Design:** Automatic beneficiary system with zero configuration complexity
-  - Airdrop vesting → Platform's airdropTreasury wallet (5% daily unlock via AirdropVesting)
+✅ **STATUS: Fully implemented - Atomic on-chain deployment (V2 - October 2025)**
+- **Design:** Creator custody model - creators control all allocations
+  - Airdrop vesting → Creator's wallet (5% daily unlock via AirdropVesting) ⭐ CHANGED
   - Marketing vesting → Creator's wallet (12-month linear via LinearVesting)
   - Team vesting → Creator's wallet (6mo cliff + 18mo vest via CliffVesting)
-- **Smart Contracts:**
-  - TokenFactory (0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D) - deploys pool + vesting atomically
-  - VestingDeployer (0x07edeC513453f193673639Fd60eC35Bc27f1A5E2) - helper contract for vesting deployment
+- **Smart Contracts (V2):**
+  - TokenFactory V2 (0xe569912f4d6239CfB9006863D26F6c200F653729) - deploys pool + vesting atomically
+  - VestingDeployer V2 (0x32C091934eCA57EdC0C76d50C40B41B049c3ED79) - helper contract for vesting deployment
+  - AirdropDistributor (0x86b83FE03cDa7456980364c929BB17CFA67E8495) - batch airdrop helper
   - Atomic deployment: user pays once, all contracts deployed in single transaction
+  - Previous V1: 0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D (deprecated - platform-managed airdrops)
 - **Architecture:** Event-based vesting address extraction
   - TokenFactory emits VestingDeployed event with all three vesting contract addresses
   - Backend extracts addresses from event logs and saves to database
