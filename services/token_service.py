@@ -364,6 +364,7 @@ class TokenService:
     def calculate_24h_price_change(token: Token) -> float:
         """
         Calculate the 24-hour price change percentage for a token.
+        Uses the same logic as MarketplaceService for consistency.
         
         Args:
             token: The token to calculate price change for
@@ -373,44 +374,46 @@ class TokenService:
                    Returns 0.0 if insufficient data
         """
         try:
-            # Get current price
-            current_price = float(token.current_price) if token.current_price else 0
+            # Get most recent trade for current price
+            latest_trade = TradeEvent.query.filter(
+                TradeEvent.token_id == token.id
+            ).order_by(TradeEvent.timestamp.desc()).first()
             
-            if current_price == 0:
+            if not latest_trade:
                 return 0.0
+            
+            # Calculate current price (normalized by 1e18 for proper decimal places)
+            current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount) * 1e18
             
             # Find price 24 hours ago
             twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
             
-            # Get the first trade event after 24 hours ago (closest to 24h mark)
-            # Order by timestamp ascending to get the oldest trade within the 24h window
+            # Get oldest trade beyond 24h for comparison
             old_trade = TradeEvent.query.filter(
                 TradeEvent.token_id == token.id,
-                TradeEvent.timestamp >= twenty_four_hours_ago
-            ).order_by(TradeEvent.timestamp.asc()).first()
+                TradeEvent.timestamp < twenty_four_hours_ago
+            ).order_by(TradeEvent.timestamp.desc()).first()
             
-            # If no trade found in the last 24h, try to get the most recent trade before 24h ago
-            if not old_trade:
-                old_trade = TradeEvent.query.filter(
+            # Calculate price change
+            price_change = 0
+            if old_trade:
+                old_price = float(old_trade.kas_amount) / float(old_trade.token_amount) * 1e18
+                if old_price > 0:
+                    price_change = ((current_price - old_price) / old_price) * 100
+            else:
+                # If no data beyond 24h, compare to oldest trade we have
+                recent_trades = TradeEvent.query.filter(
                     TradeEvent.token_id == token.id,
-                    TradeEvent.timestamp < twenty_four_hours_ago
-                ).order_by(TradeEvent.timestamp.desc()).first()
+                    TradeEvent.timestamp >= twenty_four_hours_ago
+                ).order_by(TradeEvent.timestamp.asc()).all()
+                
+                if len(recent_trades) > 1:
+                    oldest_recent = recent_trades[0]
+                    old_price = float(oldest_recent.kas_amount) / float(oldest_recent.token_amount) * 1e18
+                    if old_price > 0:
+                        price_change = ((current_price - old_price) / old_price) * 100
             
-            # If still no trade found, return 0 (no historical data)
-            if not old_trade:
-                return 0.0
-            
-            # Calculate price from the old trade (KAS per token)
-            # price = kas_amount / token_amount
-            old_price = float(old_trade.kas_amount) / float(old_trade.token_amount) if old_trade.token_amount else 0
-            
-            if old_price == 0:
-                return 0.0
-            
-            # Calculate percentage change
-            price_change_pct = ((current_price - old_price) / old_price) * 100
-            
-            return round(price_change_pct, 2)
+            return round(price_change, 1)
             
         except Exception as e:
             logger.error(f"Error calculating 24h price change for token {token.id}: {str(e)}")
