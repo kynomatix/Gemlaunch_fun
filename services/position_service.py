@@ -141,9 +141,9 @@ class PositionService:
             
             last_event_id = event.id
         
-        # Calculate average entry market cap (avg_entry * circulating_supply)
-        circulating_supply = Decimal(str(token.circulating_supply or 0))
-        avg_entry_mc_kas = avg_entry * circulating_supply if avg_entry > 0 else Decimal('0')
+        # Average entry "market cap" is just the total cost basis (total KAS invested)
+        # This represents the user's total investment at their average entry point
+        avg_entry_mc_kas = cost_basis
         
         result = {
             'qty_remaining': position_qty,
@@ -266,11 +266,8 @@ class PositionService:
                 'last_trade_event_id': position.last_trade_event_id
             }
             
-            # Recalculate avg_entry_mc_kas
-            if not hasattr(token, 'id'):
-                token = Token.query.get(token_id)
-            circulating_supply = Decimal(str(token.circulating_supply or 0))
-            metrics['avg_entry_mc_kas'] = metrics['avg_entry_price_kas'] * circulating_supply
+            # avg_entry_mc_kas is just the cost basis (total KAS invested)
+            metrics['avg_entry_mc_kas'] = metrics['cost_basis_kas']
         
         # Calculate unrealized P&L if current price provided
         if current_price_kas is not None and metrics['qty_remaining'] > 0:
