@@ -37,7 +37,20 @@ async function main() {
 
   // Deploy AirdropDistributor (no constructor parameters)
   const AirdropDistributor = await hre.ethers.getContractFactory("AirdropDistributor");
-  const distributor = await AirdropDistributor.deploy();
+  
+  // Get current gas price and add buffer
+  const feeData = await hre.ethers.provider.getFeeData();
+  const gasPrice = feeData.gasPrice ? feeData.gasPrice * 120n / 100n : undefined; // 20% buffer
+  console.log(`Gas price: ${gasPrice ? hre.ethers.formatUnits(gasPrice, "gwei") : "auto"} gwei`);
+  
+  const distributor = await AirdropDistributor.deploy({
+    gasPrice: gasPrice,
+    gasLimit: 3000000
+  });
+  
+  console.log(`Transaction sent: ${distributor.deploymentTransaction()?.hash}`);
+  console.log(`Waiting for confirmation (this may take several minutes on testnet)...`);
+  
   await distributor.waitForDeployment();
 
   const distributorAddress = await distributor.getAddress();
