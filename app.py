@@ -1717,6 +1717,10 @@ def token_spotlight_post(contract_address):
     try:
         from datetime import datetime, timedelta, timezone
         
+        # Debug: Check session
+        logging.debug(f"🔍 Spotlight POST - Session data: {dict(session)}")
+        logging.debug(f"🔍 Spotlight POST - Headers: {dict(request.headers)}")
+        
         # Normalize address to lowercase for case-insensitive lookup
         token = Token.query.filter(
             db.func.lower(Token.contract_address) == contract_address.lower()
@@ -1725,7 +1729,7 @@ def token_spotlight_post(contract_address):
         # Get authenticated user from session
         user = get_current_user()
         if not user:
-            logging.error("❌ Spotlight: User not found in session")
+            logging.error(f"❌ Spotlight: User not found in session. Session: {dict(session)}")
             return jsonify({'error': 'Wallet connection required'}), 401
         
         # Parse request
