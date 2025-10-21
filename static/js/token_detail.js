@@ -643,6 +643,9 @@
                 
                 console.log(`📍 Found ${result.trades.length} user trades`);
                 
+                // Get candle interval in seconds for rounding timestamps
+                const intervalSeconds = this.getIntervalInSeconds(this.currentInterval);
+                
                 // Get the visible time range from the chart data
                 // This ensures markers only appear for trades within the visible chart window
                 let minChartTime = null;
@@ -655,18 +658,24 @@
                     console.log(`Chart visible range: ${minChartTime} to ${maxChartTime}`);
                 }
                 
-                // Convert trades to chart markers using exact timestamps
+                // Convert trades to chart markers, rounding to candle opening times
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
-                    const timestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
+                    const exactTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
-                    // Debug: Log trades to verify timestamps
+                    // Round timestamp DOWN to candle opening time based on selected interval
+                    // This ensures markers appear on the correct candle regardless of timeframe
+                    const candleTimestamp = Math.floor(exactTimestamp / intervalSeconds) * intervalSeconds;
+                    
+                    // Debug: Log trades to verify timestamp rounding
                     if (index < 10) {
-                        console.log(`Trade ${index}: ${trade.type} at ${trade.timestamp} → Unix: ${timestamp}`);
+                        const exactDate = new Date(exactTimestamp * 1000).toISOString();
+                        const candleDate = new Date(candleTimestamp * 1000).toISOString();
+                        console.log(`Trade ${index}: ${trade.type} at ${exactDate} → Candle: ${candleDate}`);
                     }
                     
                     return {
-                        time: timestamp,
+                        time: candleTimestamp,
                         position: trade.type === 'buy' ? 'belowBar' : 'aboveBar',
                         color: trade.type === 'buy' ? '#20B2AA' : '#FF4444',  // Teal for buy, red for sell
                         shape: 'circle',
