@@ -92,12 +92,15 @@ class PositionService:
         
         for event in trade_events:
             kas_amount = Decimal(str(event.kas_amount))
-            token_amount = Decimal(str(event.token_amount))
+            token_amount_wei = Decimal(str(event.token_amount))
             
             # Skip events with zero or negative token amounts (invalid/stale events)
-            if token_amount <= 0:
-                logging.warning(f"Skipping TradeEvent {event.id} with invalid token_amount: {token_amount}")
+            if token_amount_wei <= 0:
+                logging.warning(f"Skipping TradeEvent {event.id} with invalid token_amount: {token_amount_wei}")
                 continue
+            
+            # Convert token amount from WEI to human-readable (divide by 10^18)
+            token_amount = token_amount_wei / Decimal('1000000000000000000')
             
             # Price per token for this trade (in KAS)
             price_kas = kas_amount / token_amount if token_amount > 0 else Decimal('0')
