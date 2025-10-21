@@ -1597,6 +1597,16 @@ def vote_on_poll(contract_address, poll_id):
     
     db.session.commit()
     
+    # Track per-token engagement for PRO tokens
+    token = poll.token
+    from services.token_service import TokenService
+    if TokenService.is_pro_token(token):
+        engagement = TokenEngagement.get_or_create(user.id, token.id)
+        engagement.polls_voted = (engagement.polls_voted or 0) + 1
+        engagement.community_points = (engagement.community_points or 0) + 2  # 2 points per vote
+        engagement.last_activity_at = datetime.now(timezone.utc)
+        db.session.commit()
+    
     return jsonify({'success': True, 'new_vote_count': option.vote_count})
 
 @app.route('/api/token/<contract_address>/holdings', methods=['GET'])
