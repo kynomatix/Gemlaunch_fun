@@ -2541,3 +2541,90 @@ select.airdrop-input-field option {
 .vesting-info-btn i {
     font-size: 1rem;
 }
+
+/* ✨ FTX-Style Position Tracking Panel */
+.position-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-top: 1rem;
+    backdrop-filter: blur(10px);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.position-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.position-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #20B2AA;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.position-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.position-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.metric-value {
+    font-size: 1rem;
+    color: #FFF;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.metric-sublabel {
+    font-size: 0.75rem;
+    color: #AAA;
+    font-weight: 400;
+    margin-left: 0.25rem;
+}
+
+.position-pnl .metric-value {
+    font-size: 1.1rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .position-metrics {
+        grid-template-columns: 1fr;
+    }
+    
+    .position-panel {
+        padding: 1rem;
+    }
+}

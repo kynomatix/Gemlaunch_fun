@@ -679,37 +679,76 @@
                 this.currentSeries.setMarkers(markers);
                 console.log(`✅ Added ${markers.length} trade markers to chart`);
                 
-                // Add average entry price line if user has bought tokens
-                if (result.average_entry_price_usd > 0) {
-                    // Determine price based on current chart type
+                // ✨ FTX-STYLE POSITION TRACKING: Fetch weighted average entry price
+                await this.fetchAndDisplayPosition(wallet.address);
+                
+            } catch (error) {
+                console.error('Error adding user trade markers:', error);
+            }
+        },
+        
+        // ✨ FTX-STYLE POSITION TRACKING: Fetch and display weighted average entry price
+        fetchAndDisplayPosition: async function(walletAddress) {
+            try {
+                // Guard: ensure wallet address is provided
+                if (!walletAddress) {
+                    console.log('No wallet address provided, skipping position fetch');
+                    this.hidePositionPanel();
+                    return;
+                }
+                
+                // Fetch position metrics from backend
+                const response = await fetch(
+                    `/api/position/${window.tokenContractAddress}`,
+                    {
+                        headers: {
+                            'X-Wallet-Address': walletAddress
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    console.log('Failed to fetch position:', response.status);
+                    return;
+                }
+                
+                const position = await response.json();
+                
+                if (!position.success) {
+                    console.log('Position API returned error');
+                    return;
+                }
+                
+                // If user has no position, hide the position panel
+                if (parseFloat(position.position_qty) <= 0) {
+                    console.log('No position found');
+                    this.hidePositionPanel();
+                    return;
+                }
+                
+                console.log('📊 Position data:', position);
+                
+                // Calculate values for display
+                const avgEntryPriceKas = parseFloat(position.avg_entry_price_kas);
+                const avgEntryMcKas = parseFloat(position.avg_entry_mc_kas);
+                const currentPriceKas = parseFloat(position.current_price_kas);
+                const unrealizedPnlKas = parseFloat(position.unrealized_pnl_kas);
+                const unrealizedPnlPct = parseFloat(position.unrealized_pnl_pct);
+                const positionQty = parseFloat(position.position_qty);
+                
+                // Add average entry price line to chart
+                if (avgEntryPriceKas > 0) {
                     let priceLineValue, priceLineTitle;
+                    
                     if (this.currentChartType === 'marketcap') {
-                        // For market cap chart, calculate market cap at average entry price
-                        // Derive circulating supply: supply = marketCap / (tokenPrice * kasToUsd)
-                        const avgEntryPriceUsd = result.average_entry_price_usd;
-                        
-                        // Calculate circulating supply from current market data
-                        let circulatingSupply;
-                        if (this.marketCap > 0 && this.tokenPrice > 0 && this.kasToUsd > 0) {
-                            const currentPriceUsd = this.tokenPrice * this.kasToUsd;
-                            circulatingSupply = this.marketCap / currentPriceUsd;
-                        }
-                        
-                        // Only show line if we have valid supply data
-                        if (!circulatingSupply || circulatingSupply <= 0) {
-                            console.log('Cannot calculate average entry MC: insufficient market data');
-                            return;
-                        }
-                        
-                        priceLineValue = avgEntryPriceUsd * circulatingSupply;
-                        // Format using existing formatter for consistency
-                        const formattedMC = this.formatNumber(priceLineValue, true);
-                        priceLineTitle = `Avg Entry MC: $${formattedMC}`;
-                        console.log(`Calculated avg entry market cap: $${formattedMC} (supply: ${circulatingSupply.toFixed(0)})`);
+                        // For market cap chart, show avg entry market cap
+                        priceLineValue = avgEntryMcKas;
+                        const formattedMC = this.formatNumber(avgEntryMcKas, true);
+                        priceLineTitle = `Avg Entry: $${formattedMC}`;
                     } else {
-                        // For price chart, use average entry price in KAS
-                        priceLineValue = result.average_entry_price_kas;
-                        priceLineTitle = `Avg Entry: ${priceLineValue.toFixed(8)} KAS`;
+                        // For price chart, show avg entry price in KAS
+                        priceLineValue = avgEntryPriceKas;
+                        priceLineTitle = `Avg Entry: ${avgEntryPriceKas.toFixed(8)} KAS`;
                     }
                     
                     // Remove existing price line if it exists
@@ -717,27 +756,107 @@
                         this.currentSeries.removePriceLine(this.userEntryPriceLine);
                     }
                     
-                    // Get current price to determine if in profit or loss
-                    const currentPriceKas = this.tokenPrice; // Current token price in KAS
-                    const inProfit = currentPriceKas > result.average_entry_price_kas;
+                    // Determine color based on P&L
+                    const lineColor = unrealizedPnlKas >= 0 ? '#20B2AA' : '#FF4444'; // Teal for profit, red for loss
                     
-                    // Create horizontal line for average entry price (always teal)
+                    // Create horizontal line for average entry price
                     this.userEntryPriceLine = this.currentSeries.createPriceLine({
                         price: priceLineValue,
-                        color: '#20B2AA',  // Teal for consistency
+                        color: lineColor,
                         lineWidth: 2,
                         lineStyle: LightweightCharts.LineStyle.Dashed,
                         axisLabelVisible: true,
                         title: priceLineTitle,
-                        axisLabelColor: '#20B2AA',
+                        axisLabelColor: lineColor,
                         axisLabelTextColor: '#FFFFFF'
                     });
                     
-                    console.log(`✅ Added average entry price line: ${priceLineTitle} (${inProfit ? 'profit' : 'loss'})`);
+                    console.log(`✅ Added FTX-style entry line: ${priceLineTitle}`);
                 }
                 
+                // Display position metrics panel
+                this.displayPositionPanel({
+                    positionQty: positionQty,
+                    avgEntryPriceKas: avgEntryPriceKas,
+                    currentPriceKas: currentPriceKas,
+                    unrealizedPnlKas: unrealizedPnlKas,
+                    unrealizedPnlPct: unrealizedPnlPct
+                });
+                
             } catch (error) {
-                console.error('Error adding user trade markers:', error);
+                console.error('Error fetching position:', error);
+            }
+        },
+        
+        // Display position metrics panel
+        displayPositionPanel: function(metrics) {
+            let panel = document.getElementById('position-metrics-panel');
+            
+            // Create panel if it doesn't exist
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'position-metrics-panel';
+                panel.className = 'position-panel';
+                
+                // Insert panel below chart controls
+                const chartContainer = document.querySelector('.chart-card');
+                if (chartContainer) {
+                    chartContainer.appendChild(panel);
+                }
+            }
+            
+            // Format P&L color
+            const pnlColor = metrics.unrealizedPnlKas >= 0 ? '#20B2AA' : '#FF4444';
+            const pnlSign = metrics.unrealizedPnlKas >= 0 ? '+' : '';
+            
+            // Convert to USD for display
+            const avgEntryUsd = metrics.avgEntryPriceKas * this.kasToUsd;
+            const currentPriceUsd = metrics.currentPriceKas * this.kasToUsd;
+            const unrealizedPnlUsd = metrics.unrealizedPnlKas * this.kasToUsd;
+            
+            // Update panel content
+            panel.innerHTML = `
+                <div class="position-header">
+                    <h4>📊 Your Position</h4>
+                </div>
+                <div class="position-metrics">
+                    <div class="position-metric">
+                        <span class="metric-label">Position Size:</span>
+                        <span class="metric-value">${this.formatNumber(metrics.positionQty, false)} ${this.tokenSymbol}</span>
+                    </div>
+                    <div class="position-metric">
+                        <span class="metric-label">Avg Entry:</span>
+                        <span class="metric-value">$${avgEntryUsd.toFixed(8)} <span class="metric-sublabel">(${metrics.avgEntryPriceKas.toFixed(8)} KAS)</span></span>
+                    </div>
+                    <div class="position-metric">
+                        <span class="metric-label">Current Price:</span>
+                        <span class="metric-value">$${currentPriceUsd.toFixed(8)} <span class="metric-sublabel">(${metrics.currentPriceKas.toFixed(8)} KAS)</span></span>
+                    </div>
+                    <div class="position-metric position-pnl">
+                        <span class="metric-label">Unrealized P&L:</span>
+                        <span class="metric-value" style="color: ${pnlColor}">
+                            ${pnlSign}$${unrealizedPnlUsd.toFixed(4)} (${pnlSign}${Math.abs(unrealizedPnlKas).toFixed(4)} KAS)
+                            <span class="metric-sublabel" style="color: ${pnlColor}">${pnlSign}${metrics.unrealizedPnlPct.toFixed(2)}%</span>
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            panel.style.display = 'block';
+            console.log('✅ Position panel displayed');
+        },
+        
+        // Hide position panel
+        hidePositionPanel: function() {
+            const panel = document.getElementById('position-metrics-panel');
+            if (panel) {
+                panel.style.display = 'none';
+            }
+            
+            // Remove price line
+            if (this.userEntryPriceLine && this.currentSeries) {
+                this.currentSeries.removePriceLine(this.userEntryPriceLine);
+                this.userEntryPriceLine = null;
             }
         },
         
@@ -789,6 +908,9 @@
                     this.currentSeries.setData(tvData);
                     console.log(`[UpdateChart] ✅ Refreshed ${tvData.length} area points`);
                 }
+                
+                // ✨ Refresh position line and panel after chart update
+                await this.addUserTradeMarkers();
                 
             } catch (error) {
                 console.error('[UpdateChart] Error during update, falling back to full init:', error);
