@@ -55,16 +55,16 @@
     <!-- Token Rewards Section - PRO TOKENS ONLY (Collapsible) - At Bottom -->
     {% if is_pro_token %}
     <div class="achievement-guide">
-        <div class="achievement-header">
+        <div class="achievement-header" onclick="toggleTokenRewards()" style="cursor: pointer;">
             <div class="achievement-header-left">
                 <h4><i class="fas fa-crown"></i> {{ token.symbol }} Rewards</h4>
                 <span id="userPointsDisplay" class="user-points-badge">
                     <i class="fas fa-star"></i> <span id="userPointsValue">0</span> pts
                 </span>
             </div>
-            <button class="achievement-toggle" onclick="toggleTokenRewards()">
+            <div class="achievement-toggle">
                 <i class="fas fa-chevron-down"></i>
-            </button>
+            </div>
         </div>
         <div class="achievement-content collapsed" id="tokenRewardsContent">
             <!-- How to Earn Subsection -->
@@ -151,11 +151,11 @@
     <!-- Gamified Leaderboard - At Bottom -->
     {% if is_pro_token %}
     <div class="chat-leaderboard">
-        <div class="token-leaderboard-header">
+        <div class="token-leaderboard-header" onclick="toggleLeaderboard()" style="cursor: pointer;">
             <h4><i class="fas fa-trophy"></i> Top Contributors</h4>
-            <button class="leaderboard-toggle" onclick="toggleLeaderboard()">
+            <div class="leaderboard-toggle">
                 <i class="fas fa-chevron-down"></i>
-            </button>
+            </div>
         </div>
         <div class="leaderboard-content collapsed" id="leaderboardContent">
             <!-- Loading state -->

@@ -1946,7 +1946,7 @@ def get_token_leaderboard(contract_address):
         if hasattr(user, 'profile') and user.profile:
             # First priority: Twitter handle (verified social account)
             if user.profile.twitter_handle:
-                display_name = f"@{user.profile.twitter_handle}"
+                display_name = user.profile.twitter_handle
             # Second priority: Custom username
             elif user.profile.username:
                 display_name = user.profile.username
