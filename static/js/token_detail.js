@@ -672,20 +672,43 @@
                     console.log(`Chart visible range: ${minChartTime} to ${maxChartTime}`);
                 }
                 
-                // Convert trades to chart markers using exact timestamps
-                // TradingView will automatically place them on the correct candle
+                // Build a sorted list of candle times from chart data for marker placement
+                const candleTimes = this.chartData ? this.chartData.map(d => d.time).sort((a, b) => a - b) : [];
+                
+                // Convert trades to chart markers, snapping to nearest candle time
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
                     const tradeTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
+                    // Find the candle that contains this trade by finding the largest candle time <= trade time
+                    let candleTime = tradeTimestamp;
+                    if (candleTimes.length > 0) {
+                        // Binary search to find the candle that contains this trade
+                        let left = 0;
+                        let right = candleTimes.length - 1;
+                        let result = candleTimes[0];
+                        
+                        while (left <= right) {
+                            const mid = Math.floor((left + right) / 2);
+                            if (candleTimes[mid] <= tradeTimestamp) {
+                                result = candleTimes[mid];
+                                left = mid + 1;
+                            } else {
+                                right = mid - 1;
+                            }
+                        }
+                        candleTime = result;
+                    }
+                    
                     // Debug: Log first few trades
                     if (index < 10) {
                         const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
-                        console.log(`Trade ${index}: ${trade.type} at ${tradeDate}`);
+                        const candleDate = new Date(candleTime * 1000).toISOString();
+                        console.log(`Trade ${index}: ${trade.type} at ${tradeDate} → Candle: ${candleDate}`);
                     }
                     
                     return {
-                        time: tradeTimestamp,  // Use exact timestamp, not rounded
+                        time: candleTime,  // Use candle time from chart data
                         position: trade.type === 'buy' ? 'belowBar' : 'aboveBar',
                         color: trade.type === 'buy' ? '#20B2AA' : '#FF4444',  // Teal for buy, red for sell
                         shape: 'circle',
