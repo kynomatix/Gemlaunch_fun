@@ -488,6 +488,11 @@
                     topColor: 'rgba(32, 178, 170, 0.4)',
                     bottomColor: 'rgba(32, 178, 170, 0.0)',
                     lineWidth: 2,
+                    priceLineVisible: true,
+                    priceLineColor: '#999999',
+                    priceLineWidth: 1,
+                    priceLineStyle: 0,
+                    lastValueVisible: true,
                 });
                 areaSeries.setData([{
                     time: Math.floor(Date.now() / 1000),
@@ -509,6 +514,11 @@
                     wickUpColor: '#20B2AA',       // Teal wick for bullish
                     wickDownColor: '#FFFFFF',     // White wick for bearish
                     borderVisible: true,          // Show borders for better visibility
+                    priceLineVisible: true,       // Show current price line
+                    priceLineColor: '#999999',    // Light grey color
+                    priceLineWidth: 1,
+                    priceLineStyle: 0,            // Solid line
+                    lastValueVisible: true,       // Show price label
                     priceFormat: {
                         type: 'custom',
                         formatter: (price) => {
@@ -546,6 +556,11 @@
                     topColor: 'rgba(32, 178, 170, 0.4)',
                     bottomColor: 'rgba(32, 178, 170, 0.0)',
                     lineWidth: 2,
+                    priceLineVisible: true,       // Show current price line
+                    priceLineColor: '#999999',    // Light grey color
+                    priceLineWidth: 1,
+                    priceLineStyle: 0,            // Solid line
+                    lastValueVisible: true,       // Show price label
                     priceFormat: {
                         type: 'custom',
                         formatter: (price) => {
