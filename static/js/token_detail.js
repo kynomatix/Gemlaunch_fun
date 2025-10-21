@@ -672,8 +672,14 @@
                     console.log(`Chart visible range: ${minChartTime} to ${maxChartTime}`);
                 }
                 
-                // Build a sorted list of candle times from chart data for marker placement
-                const candleTimes = this.chartData ? this.chartData.map(d => d.time).sort((a, b) => a - b) : [];
+                // Build a sorted list of candle times (epoch seconds) from chart data
+                // ⚠️ CRITICAL FIX: chartData.time can be EITHER ISO strings OR epoch numbers depending on TradingView format
+                const candleTimes = this.chartData ? this.chartData.map(d => {
+                    // Convert to epoch seconds if it's a string, otherwise use as-is
+                    return typeof d.time === 'string' 
+                        ? Math.floor(new Date(d.time).getTime() / 1000)
+                        : d.time;
+                }).sort((a, b) => a - b) : [];
                 
                 // Convert trades to chart markers, snapping to nearest candle time
                 const allMarkers = result.trades.map((trade, index) => {
@@ -708,7 +714,7 @@
                     }
                     
                     return {
-                        time: candleTime,  // Use candle time from chart data
+                        time: candleTime,  // Use candle time from chart data (epoch seconds)
                         position: trade.type === 'buy' ? 'belowBar' : 'aboveBar',
                         color: trade.type === 'buy' ? '#20B2AA' : '#FF4444',  // Teal for buy, red for sell
                         shape: 'circle',
