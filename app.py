@@ -1941,15 +1941,15 @@ def get_token_leaderboard(contract_address):
         if not user:
             continue
         
-        # Get display name (prefer Twitter handle, then username, then display_name, then wallet)
+        # Get display name (prefer username, then display_name, then twitter_handle, then wallet)
         display_name = user.wallet_address[-6:]
         if hasattr(user, 'profile') and user.profile:
-            # First priority: Twitter handle (verified social account)
-            if user.profile.twitter_handle:
-                display_name = user.profile.twitter_handle
-            # Second priority: Custom username
-            elif user.profile.username:
+            # First priority: Custom username (profile name)
+            if user.profile.username:
                 display_name = user.profile.username
+            # Second priority: Twitter handle
+            elif user.profile.twitter_handle:
+                display_name = user.profile.twitter_handle
         # Third priority: Display name (from User model)
         if display_name == user.wallet_address[-6:] and user.display_name:
             display_name = user.display_name
