@@ -180,6 +180,18 @@
             return parseFloat(num).toLocaleString();
         },
         
+        // Convert interval string to seconds
+        getIntervalInSeconds: function(interval) {
+            const intervalMap = {
+                '5m': 300,      // 5 minutes
+                '15m': 900,     // 15 minutes
+                '1h': 3600,     // 1 hour
+                '4h': 14400,    // 4 hours
+                '1d': 86400     // 1 day
+            };
+            return intervalMap[interval] || 3600; // Default to 1 hour
+        },
+        
         // Save chat state periodically
         saveChatState: function() {
             localStorage.setItem(`loves_${this.tokenSymbol}`, JSON.stringify(this.chatState.messageLoves));
@@ -643,13 +655,13 @@
                     console.log(`Chart visible range: ${minChartTime} to ${maxChartTime}`);
                 }
                 
-                // Convert trades to chart markers and filter to visible range
+                // Convert trades to chart markers using exact timestamps
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
                     const timestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
-                    // Debug: Log first few trades to verify timestamps
-                    if (index < 5) {
+                    // Debug: Log trades to verify timestamps
+                    if (index < 10) {
                         console.log(`Trade ${index}: ${trade.type} at ${trade.timestamp} → Unix: ${timestamp}`);
                     }
                     
