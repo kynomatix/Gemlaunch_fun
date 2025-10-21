@@ -534,9 +534,10 @@
                 
                 series.setData(tvData);
                 
-                // ✅ SMOOTH UPDATES: Store series reference for incremental updates
+                // ✅ SMOOTH UPDATES: Store series reference and data for incremental updates
                 this.currentSeries = series;
                 this.currentSeriesType = 'candlestick';
+                this.chartData = chartResult.data;  // Store for marker filtering
                 
             } else {
                 // Area chart (fallback for low trade count)
@@ -567,9 +568,10 @@
                 
                 series.setData(tvData);
                 
-                // ✅ SMOOTH UPDATES: Store series reference for incremental updates
+                // ✅ SMOOTH UPDATES: Store series reference and data for incremental updates
                 this.currentSeries = series;
                 this.currentSeriesType = 'area';
+                this.chartData = chartResult.data;  // Store for marker filtering
             }
             
             // Fit content to view
@@ -962,6 +964,7 @@
                         close: candle.close
                     }));
                     this.currentSeries.setData(tvData);
+                    this.chartData = chartResult.data;  // Store for marker filtering
                     console.log(`[UpdateChart] ✅ Refreshed ${tvData.length} candlesticks`);
                 } else {
                     // Area chart
@@ -970,6 +973,7 @@
                         value: point.value
                     }));
                     this.currentSeries.setData(tvData);
+                    this.chartData = chartResult.data;  // Store for marker filtering
                     console.log(`[UpdateChart] ✅ Refreshed ${tvData.length} area points`);
                 }
                 
