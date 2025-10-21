@@ -102,8 +102,25 @@
                 </div>
                 
                 <div class="field-group">
-                    <label>Twitter</label>
-                    <div class="field-value">{{ (user_profile.twitter_handle if user_profile else None) or 'Not set' }}</div>
+                    <label>X (Twitter)</label>
+                    <div class="field-value">
+                        {% if user_profile and user_profile.is_twitter_verified %}
+                            @{{ user_profile.twitter_handle }}
+                            <span class="verified-badge" title="Verified via X OAuth">
+                                <i class="fas fa-check-circle"></i>
+                            </span>
+                            <button class="btn-disconnect-x" onclick="disconnectX()" style="margin-left: 10px; font-size: 12px; padding: 4px 8px;">
+                                <i class="fas fa-times"></i> Disconnect
+                            </button>
+                        {% else %}
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span>{{ (user_profile.twitter_handle if user_profile else None) or 'Not verified' }}</span>
+                                <a href="{{ url_for('auth_x.connect') }}" class="btn-verify-x">
+                                    <i class="fab fa-x-twitter"></i> Verify X Account
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
                 
                 <div class="field-group">
@@ -833,6 +850,61 @@
     .profile-grid, .referrals-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* X (Twitter) Verification Styles */
+.btn-verify-x {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #1DA1F2, #0D8BD9);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-verify-x:hover {
+    background: linear-gradient(135deg, #0D8BD9, #0A6FB8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
+}
+
+.btn-disconnect-x {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-disconnect-x:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.verified-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    color: #1DA1F2;
+    font-size: 16px;
+}
+
+.verified-badge i {
+    filter: drop-shadow(0 0 4px rgba(29, 161, 242, 0.6));
 }
 
 <style>
@@ -2404,6 +2476,35 @@ async function unlinkWallet(walletAddress) {
     } catch (error) {
         console.error('Error unlinking wallet:', error);
         ProfileNotification.showAlert('Error', 'Failed to unlink wallet', 'error');
+    }
+}
+
+async function disconnectX() {
+    if (!confirm('Are you sure you want to disconnect your X (Twitter) account?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/auth/twitter/disconnect', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            ProfileNotification.showAlert('Success', data.message || 'X account disconnected successfully! Refreshing page...', 'success', () => {
+                location.reload();
+            });
+        } else {
+            ProfileNotification.showAlert('Error', data.error || 'Failed to disconnect X account', 'error');
+        }
+    } catch (error) {
+        console.error('Error disconnecting X account:', error);
+        ProfileNotification.showAlert('Error', 'Failed to disconnect X account', 'error');
     }
 }
 </script>
