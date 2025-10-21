@@ -739,6 +739,104 @@ class TokenEngagement(db.Model):
         self.last_activity_at = datetime.now(timezone.utc)
         db.session.commit()
     
+    def merge_engagement(self, other_engagement):
+        """Merge another engagement record into this one
+        
+        Used when consolidating multiple wallets into a single profile.
+        Merges all metrics and keeps the earliest first_acquired_at.
+        
+        Args:
+            other_engagement: TokenEngagement record to merge into this one
+        """
+        # Merge all engagement metrics
+        self.community_points = (self.community_points or 0) + (other_engagement.community_points or 0)
+        self.messages_sent = (self.messages_sent or 0) + (other_engagement.messages_sent or 0)
+        self.trades_count = (self.trades_count or 0) + (other_engagement.trades_count or 0)
+        self.total_traded_volume = (self.total_traded_volume or 0) + (other_engagement.total_traded_volume or 0)
+        self.polls_created = (self.polls_created or 0) + (other_engagement.polls_created or 0)
+        self.polls_voted = (self.polls_voted or 0) + (other_engagement.polls_voted or 0)
+        self.spotlight_messages = (self.spotlight_messages or 0) + (other_engagement.spotlight_messages or 0)
+        self.reactions_received = (self.reactions_received or 0) + (other_engagement.reactions_received or 0)
+        
+        # Merge trading breakdown
+        self.buy_count = (self.buy_count or 0) + (other_engagement.buy_count or 0)
+        self.sell_count = (self.sell_count or 0) + (other_engagement.sell_count or 0)
+        
+        # Merge holding info (keep earliest first_acquired_at)
+        self.current_balance = (self.current_balance or 0) + (other_engagement.current_balance or 0)
+        if other_engagement.first_acquired_at:
+            if not self.first_acquired_at or other_engagement.first_acquired_at < self.first_acquired_at:
+                self.first_acquired_at = other_engagement.first_acquired_at
+        
+        # Recalculate holding days based on earliest first_acquired_at
+        if self.first_acquired_at:
+            holding_delta = datetime.now(timezone.utc) - self.first_acquired_at
+            self.holding_days = holding_delta.days
+        else:
+            self.holding_days = max(self.holding_days or 0, other_engagement.holding_days or 0)
+        
+        # Recalculate diamond hands score
+        total_trades = self.buy_count + self.sell_count
+        if total_trades > 0:
+            self.diamond_hands_score = int((self.buy_count / total_trades) * 100)
+        
+        # Merge milestone tracking (keep any awarded milestones)
+        self.milestone_30d_awarded = self.milestone_30d_awarded or other_engagement.milestone_30d_awarded
+        self.milestone_60d_awarded = self.milestone_60d_awarded or other_engagement.milestone_60d_awarded
+        self.milestone_90d_awarded = self.milestone_90d_awarded or other_engagement.milestone_90d_awarded
+        self.milestone_180d_awarded = self.milestone_180d_awarded or other_engagement.milestone_180d_awarded
+        self.milestone_365d_awarded = self.milestone_365d_awarded or other_engagement.milestone_365d_awarded
+        
+        # Update last_activity_at to the most recent
+        if other_engagement.last_activity_at:
+            if not self.last_activity_at or other_engagement.last_activity_at > self.last_activity_at:
+                self.last_activity_at = other_engagement.last_activity_at
+    
+    @classmethod
+    def consolidate_for_linked_wallet(cls, old_user_id, new_user_id):
+        """Consolidate all engagement records when linking wallets
+        
+        When a secondary wallet is linked to a primary account, this method
+        merges all TokenEngagement records from the old user to the new user.
+        
+        Args:
+            old_user_id: User ID of the secondary wallet being linked
+            new_user_id: User ID of the primary account
+            
+        Returns:
+            Number of engagement records consolidated
+        """
+        import logging
+        
+        # Find all engagement records for the old user
+        old_engagements = cls.query.filter_by(user_id=old_user_id).all()
+        
+        consolidated_count = 0
+        for old_engagement in old_engagements:
+            # Check if primary user already has an engagement for this token
+            existing_engagement = cls.query.filter_by(
+                user_id=new_user_id,
+                token_id=old_engagement.token_id
+            ).first()
+            
+            if existing_engagement:
+                # Merge the old engagement into the existing one
+                existing_engagement.merge_engagement(old_engagement)
+                db.session.delete(old_engagement)
+                logging.info(f"Merged engagement for token {old_engagement.token_id}: user {old_user_id} -> {new_user_id}")
+            else:
+                # No existing engagement, just update the user_id
+                old_engagement.user_id = new_user_id
+                logging.info(f"Transferred engagement for token {old_engagement.token_id}: user {old_user_id} -> {new_user_id}")
+            
+            consolidated_count += 1
+        
+        if consolidated_count > 0:
+            db.session.commit()
+            logging.info(f"Consolidated {consolidated_count} engagement records from user {old_user_id} to {new_user_id}")
+        
+        return consolidated_count
+    
     @classmethod
     def get_or_create(cls, user_id, token_id):
         """Get existing engagement or create new one"""

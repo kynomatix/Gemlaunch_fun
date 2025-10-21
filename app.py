@@ -707,6 +707,17 @@ def verify_wallet_link():
         db.session.add(linked_wallet)
         db.session.commit()
         
+        # Consolidate TokenEngagement records from secondary wallet to primary account
+        # Check if the secondary wallet has an existing User account
+        secondary_user = User.query.filter_by(wallet_address=wallet_address_lower).first()
+        if secondary_user and secondary_user.id != user.id:
+            # Consolidate all engagement records from secondary user to primary user
+            consolidated_count = TokenEngagement.consolidate_for_linked_wallet(
+                old_user_id=secondary_user.id,
+                new_user_id=user.id
+            )
+            logging.info(f"Wallet link consolidated {consolidated_count} engagement records from secondary user {secondary_user.id} to primary user {user.id}")
+        
         logging.info(f"Wallet successfully linked: user {user.id}, wallet {wallet_address_lower}")
         
         return jsonify({
@@ -1399,11 +1410,13 @@ def token_messages(contract_address):
         # Track per-token engagement for PRO tokens
         from services.token_service import TokenService
         if TokenService.is_pro_token(token):
-            engagement = TokenEngagement.get_or_create(user.id, token.id)
-            engagement.messages_sent = (engagement.messages_sent or 0) + 1
-            engagement.community_points = (engagement.community_points or 0) + 1  # 1 point per message
-            engagement.last_activity_at = datetime.now(timezone.utc)
-            db.session.commit()
+            # Creator exclusion: don't award points to token creators on their own tokens
+            if user.id != token.creator_id:
+                engagement = TokenEngagement.get_or_create(user.id, token.id)
+                engagement.messages_sent = (engagement.messages_sent or 0) + 1
+                engagement.community_points = (engagement.community_points or 0) + 1  # 1 point per message
+                engagement.last_activity_at = datetime.now(timezone.utc)
+                db.session.commit()
         
         # If this is a reply, load the reply_to information
         response_msg = {
@@ -1551,11 +1564,13 @@ def token_polls(contract_address):
             # Track per-token engagement for PRO tokens
             from services.token_service import TokenService
             if TokenService.is_pro_token(token):
-                engagement = TokenEngagement.get_or_create(user.id, token.id)
-                engagement.polls_created = (engagement.polls_created or 0) + 1
-                engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per poll
-                engagement.last_activity_at = datetime.now(timezone.utc)
-                db.session.commit()
+                # Creator exclusion: don't award points to token creators on their own tokens
+                if user.id != token.creator_id:
+                    engagement = TokenEngagement.get_or_create(user.id, token.id)
+                    engagement.polls_created = (engagement.polls_created or 0) + 1
+                    engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per poll
+                    engagement.last_activity_at = datetime.now(timezone.utc)
+                    db.session.commit()
             
             # Get creator display name safely
             creator_name = user.display_name or user.wallet_address[-6:]
@@ -1619,11 +1634,13 @@ def vote_on_poll(contract_address, poll_id):
     token = poll.token
     from services.token_service import TokenService
     if TokenService.is_pro_token(token):
-        engagement = TokenEngagement.get_or_create(user.id, token.id)
-        engagement.polls_voted = (engagement.polls_voted or 0) + 1
-        engagement.community_points = (engagement.community_points or 0) + 2  # 2 points per vote
-        engagement.last_activity_at = datetime.now(timezone.utc)
-        db.session.commit()
+        # Creator exclusion: don't award points to token creators on their own tokens
+        if user.id != token.creator_id:
+            engagement = TokenEngagement.get_or_create(user.id, token.id)
+            engagement.polls_voted = (engagement.polls_voted or 0) + 1
+            engagement.community_points = (engagement.community_points or 0) + 2  # 2 points per vote
+            engagement.last_activity_at = datetime.now(timezone.utc)
+            db.session.commit()
     
     return jsonify({'success': True, 'new_vote_count': option.vote_count})
 
@@ -1795,11 +1812,13 @@ def react_to_message(contract_address, message_id):
         token = message.token
         from services.token_service import TokenService
         if TokenService.is_pro_token(token):
-            engagement = TokenEngagement.get_or_create(message.user_id, token.id)
-            engagement.reactions_received = (engagement.reactions_received or 0) + 1
-            engagement.community_points = (engagement.community_points or 0) + 1  # 1 point per reaction
-            engagement.last_activity_at = datetime.now(timezone.utc)
-            db.session.commit()
+            # Creator exclusion: don't award points to token creators on their own tokens
+            if message.user_id != token.creator_id:
+                engagement = TokenEngagement.get_or_create(message.user_id, token.id)
+                engagement.reactions_received = (engagement.reactions_received or 0) + 1
+                engagement.community_points = (engagement.community_points or 0) + 1  # 1 point per reaction
+                engagement.last_activity_at = datetime.now(timezone.utc)
+                db.session.commit()
         
         return jsonify({'success': True, 'added': True, 'new_count': message.love_count})
 
@@ -1922,11 +1941,17 @@ def get_token_leaderboard(contract_address):
         if not user:
             continue
         
-        # Get display name (prefer username, then display_name, then wallet)
+        # Get display name (prefer Twitter handle, then username, then display_name, then wallet)
         display_name = user.wallet_address[-6:]
-        if hasattr(user, 'profile') and user.profile and user.profile.username:
-            display_name = user.profile.username
-        elif user.display_name:
+        if hasattr(user, 'profile') and user.profile:
+            # First priority: Twitter handle (verified social account)
+            if user.profile.twitter_handle:
+                display_name = f"@{user.profile.twitter_handle}"
+            # Second priority: Custom username
+            elif user.profile.username:
+                display_name = user.profile.username
+        # Third priority: Display name (from User model)
+        if display_name == user.wallet_address[-6:] and user.display_name:
             display_name = user.display_name
         
         leaderboard.append({
