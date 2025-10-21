@@ -108,6 +108,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Configure session cookies for CORS
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
 # Custom Jinja2 filter for formatting large numbers
 @app.template_filter('format_number')
 def format_number_filter(num, include_decimals=False):
@@ -391,6 +397,7 @@ def verify_signature():
         user = User.get_or_create_by_wallet(wallet_address, wallet_type)
         
         # Store verified wallet in session
+        session.permanent = True  # Make session persist across browser restarts
         session['wallet_address'] = wallet_address.lower()
         session['user_id'] = user.id
         session['wallet_verified'] = True
