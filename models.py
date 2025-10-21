@@ -696,11 +696,25 @@ class TokenEngagement(db.Model):
     polls_created = db.Column(db.Integer, default=0)
     polls_voted = db.Column(db.Integer, default=0)
     spotlight_messages = db.Column(db.Integer, default=0)
+    reactions_received = db.Column(db.Integer, default=0)
+    
+    # Trading breakdown (for diamond hands scoring)
+    buy_count = db.Column(db.Integer, default=0)
+    sell_count = db.Column(db.Integer, default=0)
     
     # Holding info
     current_balance = db.Column(db.Numeric(precision=30, scale=0), default=0)
     first_acquired_at = db.Column(db.DateTime)
+    holding_days = db.Column(db.Integer, default=0)  # Auto-calculated
+    diamond_hands_score = db.Column(db.Integer, default=0)  # 0-100 based on buy/sell ratio
     last_activity_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Milestone tracking (one-time bonuses)
+    milestone_30d_awarded = db.Column(db.Boolean, default=False)
+    milestone_60d_awarded = db.Column(db.Boolean, default=False)
+    milestone_90d_awarded = db.Column(db.Boolean, default=False)
+    milestone_180d_awarded = db.Column(db.Boolean, default=False)
+    milestone_365d_awarded = db.Column(db.Boolean, default=False)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
