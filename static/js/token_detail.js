@@ -314,11 +314,11 @@
                         });
                         
                         // Show the container after adding all messages
-                        spotlightContainer.style.display = 'block';
+                        spotlightContainer.classList.remove('hidden');
                         console.log('✨ Spotlight container shown with messages');
                     } else if (spotlightContainer) {
                         // Hide container if no spotlights
-                        spotlightContainer.style.display = 'none';
+                        spotlightContainer.classList.add('hidden');
                         console.log('✨ No spotlight messages - container hidden');
                     }
                     
@@ -3358,7 +3358,7 @@
                         const listContainer = document.getElementById('spotlightMessagesList');
                         const spotlightContainer = document.getElementById('spotlightMessages');
                         if (listContainer && spotlightContainer && listContainer.children.length === 0) {
-                            spotlightContainer.style.display = 'none';
+                            spotlightContainer.classList.add('hidden');
                         }
                     }, 500);
                 }
@@ -3372,7 +3372,7 @@
             // Show the container when adding a new spotlight
             const spotlightContainer = document.getElementById('spotlightMessages');
             if (spotlightContainer) {
-                spotlightContainer.style.display = 'block';
+                spotlightContainer.classList.remove('hidden');
             }
             
             // Add the message
