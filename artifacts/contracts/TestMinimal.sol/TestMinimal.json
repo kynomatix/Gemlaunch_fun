@@ -1,0 +1,24 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "TestMinimal",
+  "sourceName": "contracts/TestMinimal.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "value",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60808060405234601957602a6000556078908161001f8239f35b600080fdfe6080806040526004361015601257600080fd5b600090813560e01c633fa4f24514602857600080fd5b34603e5781600319360112603e57602091548152f35b5080fdfea26469706673582212205b1a4461fd6ce29f2342e7586af8c98b9183756d20ce0016e0c44982e5a6fe0b64736f6c63430008140033",
+  "deployedBytecode": "0x6080806040526004361015601257600080fd5b600090813560e01c633fa4f24514602857600080fd5b34603e5781600319360112603e57602091548152f35b5080fdfea26469706673582212205b1a4461fd6ce29f2342e7586af8c98b9183756d20ce0016e0c44982e5a6fe0b64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
