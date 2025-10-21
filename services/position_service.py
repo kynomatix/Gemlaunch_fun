@@ -116,6 +116,21 @@ class PositionService:
                 
                 logging.debug(f"BUY: +{token_amount} @ {price_kas:.12f} KAS | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
             
+            elif event.trade_type == 'airdrop':
+                # AIRDROP: Add to position with $0 cost basis (reduces average entry price)
+                # This shows the value of community engagement - free tokens lower your avg cost
+                position_qty += token_amount
+                # Do NOT add to cost_basis (kas_amount is already 0 for airdrops)
+                
+                # Recalculate weighted average entry price (will decrease due to $0 cost tokens)
+                if position_qty > 0 and cost_basis > 0:
+                    avg_entry = cost_basis / position_qty
+                elif position_qty > 0 and cost_basis == 0:
+                    # All tokens from airdrops - $0 average
+                    avg_entry = Decimal('0')
+                
+                logging.debug(f"AIRDROP: +{token_amount} @ $0 | Position: {position_qty}, Avg Entry: {avg_entry:.12f} (reduced by airdrop)")
+            
             elif event.trade_type == 'sell':
                 # SELL: Reduce position with REBASING cost basis (FTX-style de-risking)
                 sell_qty = min(token_amount, position_qty)  # Can't sell more than we have
