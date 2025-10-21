@@ -1297,13 +1297,21 @@ def token_detail(contract_address):
             app.logger.debug(f"Could not fetch real-time data for {token.symbol}: {e}")
             # Keep existing database values as fallback
     
+    # Calculate 24h price change percentage
+    price_change_24h = TokenService.calculate_24h_price_change(token)
+    
+    # Get market cap ATH (in KAS)
+    market_cap_ath = float(token.market_cap_ath) if token.market_cap_ath else float(token.current_market_cap)
+    
     return render_template('app/token_detail.html', 
                          token=token, 
                          user=user,
                          is_owner=is_owner,
                          is_pro_token=is_pro_token,
                          kas_price=kas_price,
-                         graduation_threshold_usd=graduation_threshold_usd)
+                         graduation_threshold_usd=graduation_threshold_usd,
+                         price_change_24h=price_change_24h,
+                         market_cap_ath=market_cap_ath)
 
 # Fallback route for legacy numeric IDs (backwards compatibility)
 @app.route('/app/token/<int:token_id>')
