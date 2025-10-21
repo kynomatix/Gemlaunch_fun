@@ -141,8 +141,8 @@ class PositionService:
             
             last_event_id = event.id
         
-        # Average entry "market cap" is just the total cost basis (total KAS invested)
-        # This represents the user's total investment at their average entry point
+        # avg_entry_mc_kas will be calculated in get_position_metrics() based on current market cap
+        # For now, set it to cost_basis as a fallback
         avg_entry_mc_kas = cost_basis
         
         result = {
@@ -230,7 +230,7 @@ class PositionService:
         return position
     
     @staticmethod
-    def get_position_metrics(user, token, current_price_kas=None):
+    def get_position_metrics(user, token, current_price_kas=None, current_market_cap_kas=None):
         """
         Get position metrics with unrealized P&L calculation
         
@@ -238,6 +238,7 @@ class PositionService:
             user: User object or user_id
             token: Token object or token_id
             current_price_kas: Optional current price in KAS (for P&L calculation)
+            current_market_cap_kas: Optional current market cap in KAS (for break-even MC calculation)
         
         Returns:
             dict with full position metrics including unrealized P&L
@@ -256,6 +257,7 @@ class PositionService:
             metrics = PositionService.compute_position(user, token)
             if not metrics:
                 return None
+            # Don't return early - allow break-even MC calculation below
         else:
             # Use cached values
             metrics = {
@@ -265,9 +267,24 @@ class PositionService:
                 'realized_pnl_kas': position.realized_pnl_kas,
                 'last_trade_event_id': position.last_trade_event_id
             }
-            
-            # avg_entry_mc_kas is just the cost basis (total KAS invested)
+        
+        # Calculate break-even market cap if current market cap is provided
+        if current_market_cap_kas and current_price_kas and metrics['avg_entry_price_kas'] > 0:
+            # Break-even MC = (avg_entry_price / current_price) × current_market_cap
+            ratio = metrics['avg_entry_price_kas'] / current_price_kas
+            metrics['avg_entry_mc_kas'] = ratio * current_market_cap_kas
+            logging.info(
+                f"Break-even MC calculation: ({metrics['avg_entry_price_kas']} / {current_price_kas}) "
+                f"× {current_market_cap_kas} = {ratio} × {current_market_cap_kas} = {metrics['avg_entry_mc_kas']}"
+            )
+        else:
             metrics['avg_entry_mc_kas'] = metrics['cost_basis_kas']
+            logging.warning(
+                f"Using cost_basis as avg_entry_mc_kas fallback: "
+                f"current_market_cap_kas={current_market_cap_kas}, "
+                f"current_price_kas={current_price_kas}, "
+                f"avg_entry_price_kas={metrics['avg_entry_price_kas']}"
+            )
         
         # Calculate unrealized P&L if current price provided
         if current_price_kas is not None and metrics['qty_remaining'] > 0:

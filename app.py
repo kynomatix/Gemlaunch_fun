@@ -1724,21 +1724,38 @@ def get_position_metrics_api(contract_address):
     web3_service = get_web3_service()
     
     try:
-        # Get current reserves to calculate price
+        # Get current reserves to calculate price and market cap
         virtual_kas_reserve = web3_service.get_virtual_kas_reserve(token.contract_address)
         virtual_token_reserve = web3_service.get_virtual_token_reserve(token.contract_address)
+        
+        # Convert from wei to KAS
+        current_market_cap_kas = Decimal(str(virtual_kas_reserve)) / Decimal('1000000000000000000')
         
         if virtual_token_reserve > 0:
             current_price_kas = Decimal(str(virtual_kas_reserve)) / Decimal(str(virtual_token_reserve))
         else:
             current_price_kas = Decimal('0')
+        
+        logging.info(
+            f"📊 Position API - current_market_cap_kas={current_market_cap_kas}, "
+            f"current_price_kas={current_price_kas}, "
+            f"virtual_kas_reserve={virtual_kas_reserve}, "
+            f"virtual_token_reserve={virtual_token_reserve}"
+        )
     except Exception as e:
         logging.error(f"Failed to get current price for {contract_address}: {e}")
         current_price_kas = Decimal('0')
+        current_market_cap_kas = Decimal('0')
     
     # Compute position metrics with P&L
     from services.position_service import PositionService
-    metrics = PositionService.get_position_metrics(user, token, current_price_kas)
+    metrics = PositionService.get_position_metrics(user, token, current_price_kas, current_market_cap_kas)
+    
+    if metrics:
+        logging.info(
+            f"📊 Position metrics returned: avg_entry_mc_kas={metrics.get('avg_entry_mc_kas')}, "
+            f"avg_entry_price_kas={metrics.get('avg_entry_price_kas')}"
+        )
     
     if not metrics:
         return jsonify({'error': 'Failed to compute position'}), 500
