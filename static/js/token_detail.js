@@ -3949,11 +3949,28 @@ function toggleVestingProgress(element) {
 }
 
 // Load community leaderboard for PRO tokens
-async function loadCommunityLeaderboard(contractAddress) {
+window.loadCommunityLeaderboard = async function(contractAddress) {
+    const container = document.getElementById('leaderboardContent');
+    if (!container) return;
+    
+    // Show loading state
+    container.innerHTML = `
+        <div class="leaderboard-loading" style="text-align: center; padding: 1.5rem; color: #888;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+            <p style="margin: 0; font-size: 0.9rem;">Loading contributors...</p>
+        </div>
+    `;
+    
     try {
         const response = await fetch(`/api/token/${contractAddress}/leaderboard?limit=10`);
         if (!response.ok) {
             console.log('Leaderboard not available (Basic token or error)');
+            container.innerHTML = `
+                <div class="leaderboard-empty" style="text-align: center; padding: 1.5rem; color: #888;">
+                    <i class="fas fa-trophy" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.3;"></i>
+                    <p style="margin: 0; font-size: 0.9rem;">No contributors yet. Be the first!</p>
+                </div>
+            `;
             return;
         }
         
@@ -3963,11 +3980,17 @@ async function loadCommunityLeaderboard(contractAddress) {
         }
     } catch (error) {
         console.error('Failed to load leaderboard:', error);
+        container.innerHTML = `
+            <div class="leaderboard-error" style="text-align: center; padding: 1.5rem; color: #888;">
+                <i class="fas fa-exclamation-circle" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #ff6b6b;"></i>
+                <p style="margin: 0; font-size: 0.9rem;">Failed to load leaderboard</p>
+            </div>
+        `;
     }
-}
+};
 
 // Display leaderboard in UI
-function displayLeaderboard(leaderboard) {
+window.displayLeaderboard = function(leaderboard) {
     const container = document.getElementById('leaderboardContent');
     if (!container) return;
     
@@ -4017,7 +4040,7 @@ function displayLeaderboard(leaderboard) {
 }
 
 // Load user's current points for a token
-async function loadUserPoints(contractAddress) {
+window.loadUserPoints = async function(contractAddress) {
     try {
         const response = await fetch(`/api/token/${contractAddress}/leaderboard?limit=100`);
         if (!response.ok) return;
@@ -4045,4 +4068,4 @@ async function loadUserPoints(contractAddress) {
     } catch (error) {
         console.error('Failed to load user points:', error);
     }
-}
+};

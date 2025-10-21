@@ -56,10 +56,10 @@
     {% if is_pro_token %}
     <div class="achievement-guide">
         <div class="achievement-header">
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
-                <h4 style="margin: 0;"><i class="fas fa-crown"></i> {{ token.symbol }} Rewards</h4>
-                <span id="userPointsDisplay" class="user-points-badge" style="display: none; font-size: 0.85rem; background: rgba(32, 178, 170, 0.2); border: 1px solid rgba(32, 178, 170, 0.4); padding: 0.25rem 0.75rem; border-radius: 20px; color: #20B2AA; font-weight: 600;">
-                    <i class="fas fa-star" style="font-size: 0.7rem;"></i> <span id="userPointsValue">0</span> pts
+            <div class="achievement-header-left">
+                <h4><i class="fas fa-crown"></i> {{ token.symbol }} Rewards</h4>
+                <span id="userPointsDisplay" class="user-points-badge">
+                    <i class="fas fa-star"></i> <span id="userPointsValue">0</span> pts
                 </span>
             </div>
             <button class="achievement-toggle" onclick="toggleTokenRewards()">
@@ -68,9 +68,9 @@
         </div>
         <div class="achievement-content collapsed" id="tokenRewardsContent">
             <!-- How to Earn Subsection -->
-            <div style="margin-bottom: 1rem;">
-                <h5 style="font-size: 0.95rem; color: #DDD; margin-bottom: 0.75rem; font-weight: 600;">
-                    <i class="fas fa-lightbulb" style="color: #FFD700; font-size: 0.85rem;"></i> How to Earn
+            <div class="how-to-earn-section">
+                <h5 class="how-to-earn-title">
+                    <i class="fas fa-lightbulb"></i> How to Earn
                 </h5>
                 
                 <!-- Collapsible Earning Methods -->
@@ -78,14 +78,14 @@
                     <!-- Active Chatter -->
                     <div class="earning-method-box">
                         <div class="earning-method-header" onclick="toggleEarningMethod(this)">
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="earning-method-header-content">
                                 <span class="method-icon">💬</span>
-                                <strong style="color: #FFF;">Active Chatter</strong>
+                                <strong class="earning-method-title">Active Chatter</strong>
                             </div>
-                            <i class="fas fa-chevron-down" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                            <i class="fas fa-chevron-down earning-method-chevron"></i>
                         </div>
-                        <div class="earning-method-content" style="display: none;">
-                            <p style="margin: 0; color: #AAA; font-size: 0.9rem; line-height: 1.5;">
+                        <div class="earning-method-content">
+                            <p class="earning-method-description">
                                 Participate actively in the {{ token.symbol }} community chat. Send meaningful messages, engage in discussions, and contribute to conversations. Quality messages earn more points than spam.
                             </p>
                         </div>
@@ -94,14 +94,14 @@
                     <!-- Poll Participant -->
                     <div class="earning-method-box">
                         <div class="earning-method-header" onclick="toggleEarningMethod(this)">
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="earning-method-header-content">
                                 <span class="method-icon">📊</span>
-                                <strong style="color: #FFF;">Poll Participant</strong>
+                                <strong class="earning-method-title">Poll Participant</strong>
                             </div>
-                            <i class="fas fa-chevron-down" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                            <i class="fas fa-chevron-down earning-method-chevron"></i>
                         </div>
-                        <div class="earning-method-content" style="display: none;">
-                            <p style="margin: 0; color: #AAA; font-size: 0.9rem; line-height: 1.5;">
+                        <div class="earning-method-content">
+                            <p class="earning-method-description">
                                 Vote in {{ token.symbol }} community polls to shape the project's direction. Each vote costs tokens (which are burned) and earns you participation points. Your voice matters in governance decisions.
                             </p>
                         </div>
@@ -110,14 +110,14 @@
                     <!-- Engagement Leader -->
                     <div class="earning-method-box">
                         <div class="earning-method-header" onclick="toggleEarningMethod(this)">
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="earning-method-header-content">
                                 <span class="method-icon">❤️</span>
-                                <strong style="color: #FFF;">Engagement Leader</strong>
+                                <strong class="earning-method-title">Engagement Leader</strong>
                             </div>
-                            <i class="fas fa-chevron-down" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                            <i class="fas fa-chevron-down earning-method-chevron"></i>
                         </div>
-                        <div class="earning-method-content" style="display: none;">
-                            <p style="margin: 0; color: #AAA; font-size: 0.9rem; line-height: 1.5;">
+                        <div class="earning-method-content">
+                            <p class="earning-method-description">
                                 Create content that resonates with the community. When other members react to and reply to your messages, you earn engagement points. The more interaction your messages receive, the higher your score.
                             </p>
                         </div>
@@ -126,21 +126,21 @@
                     <!-- Diamond Holder -->
                     <div class="earning-method-box">
                         <div class="earning-method-header" onclick="toggleEarningMethod(this)">
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="earning-method-header-content">
                                 <span class="method-icon">💎</span>
-                                <strong style="color: #FFF;">Diamond Holder</strong>
+                                <strong class="earning-method-title">Diamond Holder</strong>
                             </div>
-                            <i class="fas fa-chevron-down" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                            <i class="fas fa-chevron-down earning-method-chevron"></i>
                         </div>
-                        <div class="earning-method-content" style="display: none;">
-                            <p style="margin: 0; color: #AAA; font-size: 0.9rem; line-height: 1.5;">
+                        <div class="earning-method-content">
+                            <p class="earning-method-description">
                                 Buy and hold {{ token.symbol }} tokens for the long term. The longer you hold your tokens without selling, the more holding points you accumulate. True believers are rewarded for their commitment.
                             </p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="accolade-note" style="margin-top: 1rem;">
+                <div class="accolade-note">
                     <p><strong>Note:</strong> Treasury rewards are distributed by the token creator. Focus on active participation and holding to maximize your chances.</p>
                 </div>
             </div>

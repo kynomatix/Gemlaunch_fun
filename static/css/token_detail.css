@@ -1756,6 +1756,13 @@ select.airdrop-input-field option {
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.08));
 }
 
+.achievement-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
 .achievement-header h4 {
     margin: 0;
     color: #FFD700;
@@ -1889,7 +1896,23 @@ select.airdrop-input-field option {
     font-size: 1.2rem;
 }
 
+.earning-method-header-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.earning-method-title {
+    color: #FFF;
+}
+
+.earning-method-chevron {
+    transition: transform 0.2s;
+    font-size: 0.8rem;
+}
+
 .earning-method-content {
+    display: none;
     padding: 0 1rem 0.75rem 1rem;
     transition: all 0.3s ease;
 }
@@ -1898,8 +1921,43 @@ select.airdrop-input-field option {
     display: block !important;
 }
 
+.earning-method-description {
+    margin: 0;
+    color: #AAA;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.how-to-earn-section {
+    margin-bottom: 1rem;
+}
+
+.how-to-earn-title {
+    font-size: 0.95rem;
+    color: #DDD;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.how-to-earn-title i {
+    color: #FFD700;
+    font-size: 0.85rem;
+}
+
 .user-points-badge {
+    display: none;
     white-space: nowrap;
+    font-size: 0.85rem;
+    background: rgba(32, 178, 170, 0.2);
+    border: 1px solid rgba(32, 178, 170, 0.4);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    color: #20B2AA;
+    font-weight: 600;
+}
+
+.user-points-badge i {
+    font-size: 0.7rem;
 }
 
 /* Spotlight Feature Styles */
