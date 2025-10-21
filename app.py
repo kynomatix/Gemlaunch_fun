@@ -1781,6 +1781,17 @@ def react_to_message(contract_address, message_id):
         db.session.add(reaction)
         message.love_count += 1
         db.session.commit()
+        
+        # Track per-token engagement for PRO tokens (award to message author)
+        token = message.token
+        from services.token_service import TokenService
+        if TokenService.is_pro_token(token):
+            engagement = TokenEngagement.get_or_create(message.user_id, token.id)
+            engagement.reactions_received = (engagement.reactions_received or 0) + 1
+            engagement.community_points = (engagement.community_points or 0) + 1  # 1 point per reaction
+            engagement.last_activity_at = datetime.now(timezone.utc)
+            db.session.commit()
+        
         return jsonify({'success': True, 'added': True, 'new_count': message.love_count})
 
 @app.route('/api/token/<contract_address>/settings/update', methods=['POST'])
