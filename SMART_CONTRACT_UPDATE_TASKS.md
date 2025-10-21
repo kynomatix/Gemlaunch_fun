@@ -12,10 +12,33 @@ This document tracks the deployment of updated smart contracts to Kasplex testne
 
 ## Background
 
+### Why This Change?
+
+**Reference:** See `AIRDROP_BATCH_TRANSFER_PLAN.md` for complete rationale
+
+**Creator Custody Model Benefits:**
+- ✅ **Creator owns and controls their airdrop tokens** - No trust needed in platform
+- ✅ **Creator pays gas for distributions** - Sustainable model for platform (no subsidy needed)
+- ✅ **No custody risk** - Tokens never in platform's possession
+- ✅ **Platform provides convenient UI** - "Create Airdrop" button is path of least resistance
+- ✅ **Kasplex limited tooling** - Manual distribution via block explorer is expensive/annoying
+
+**Reality Check:**
+While creators technically CAN withdraw tokens manually via Kasplex block explorer and distribute themselves, the platform UI provides:
+- Batch distribution (vs 20+ individual transfers)
+- Lower gas costs (atomic batch vs multiple transactions)  
+- Preset recipient filters (holders, chat participants, top traders)
+- User-friendly interface (vs raw contract calls)
+
+This makes the platform's "Create Airdrop" feature the natural choice for distributions.
+
+---
+
 ### Current On-Chain State
 - **TokenFactory Address:** `0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D`
 - **Deployed:** October 16, 2025
 - **Airdrop Beneficiary Logic:** Platform's `airdropTreasury` wallet (`0x5f837F62744D4d80Fc79C3A5346B4A228956914E`)
+- **Existing PRO Tokens:** 3 tokens (JAK, RX, DUMP) using platform-managed airdrops
 
 ### Desired Changes
 The source code was updated on October 20, 2025 to change airdrop beneficiary from platform-managed to creator-managed:
@@ -205,28 +228,170 @@ python3 scripts/deploy_token_factory_v2.py
 
 ## Known Issues & Workarounds
 
-### Kasplex RPC Compatibility
-**Issue:** Kasplex testnet RPC rejects `"pending"` parameter in various eth_* calls
+### Issue Report: Kasplex RPC Compatibility Problems
 
-**Affected Tools:**
-- Hardhat deployment scripts
-- ethers.js v6 provider initialization
-- Any tool using `eth_getTransactionCount(..., "pending")`
+**Discovered:** October 21, 2025 during AirdropDistributor deployment
 
-**Workaround:**
-Use Python web3.py for all contract deployments:
-```python
-w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-nonce = w3.eth.get_transaction_count(account.address, 'latest')  # Use 'latest', not 'pending'
+#### Problem 1: RPC Rejects "pending" Parameter
+
+**Symptom:** Hardhat and ethers.js deployments hang indefinitely with no error
+
+**Root Cause:** Kasplex testnet RPC returns error for `"pending"` parameter:
+```json
+{
+  "code": -32600,
+  "message": "invalid request"
+}
 ```
 
-### Slow Block Times
-**Issue:** Kasplex testnet can have 2+ minute block times
+**Affected RPC Calls:**
+- `eth_getTransactionCount(address, "pending")` - Used by ethers.js to get nonce
+- `eth_getBlockByNumber("latest", false)` - Also causes issues
+- Any call with `"pending"` block parameter
+
+**Affected Tools:**
+- ❌ Hardhat deployment scripts (`npx hardhat run scripts/deploy_*.js`)
+- ❌ ethers.js v6 provider initialization (tries to auto-detect network)
+- ❌ Any deployment workflow using standard Ethereum tooling
+
+**Example Error:**
+```
+Error: could not coalesce error 
+(error={ "code": -32600, "message": "invalid request" }, 
+payload={ "id": 2, "jsonrpc": "2.0", "method": "eth_getTransactionCount", 
+"params": [ "0xe281e4776fb5de20817d0bbc72b0c4b955565619", "pending" ] }, 
+code=UNKNOWN_ERROR, version=6.15.0)
+```
+
+**Workaround - Use Python web3.py:**
+```python
+from web3 import Web3
+from web3.middleware import ExtraDataToPOAMiddleware
+
+w3 = Web3(Web3.HTTPProvider('https://rpc.kasplextest.xyz'))
+w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+
+# Use 'latest' instead of 'pending'
+nonce = w3.eth.get_transaction_count(account.address, 'latest')  # ✅ Works
+```
+
+**Why Python Works:**
+- web3.py doesn't default to `"pending"` parameter
+- Can explicitly specify `"latest"` for block parameter
+- POA middleware handles Kasplex's consensus quirks
+
+---
+
+#### Problem 2: Extremely Slow Block Times
+
+**Symptom:** Transactions remain pending for 2+ minutes
+
+**Impact on Deployment:**
+- Standard 60s timeouts fail
+- Cannot verify deployment success quickly
+- Difficult to debug issues (transaction vs network problem?)
+
+**Example:**
+```
+AirdropDistributor Deployment:
+- TX Sent: October 21, 2025
+- TX Hash: 0x5e574c3a104c01b11baff71239beb1d74d809a01ba5c21340a8d734203f6ac76
+- Status: Still pending after 2+ minutes
+- Explorer: Shows "pending" status
+```
 
 **Workaround:**
-- Use longer timeouts (300s+) for transaction receipts
-- Poll manually with 10-15s intervals
-- Check explorer for confirmation status
+```python
+# Use very long timeout (5+ minutes)
+receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+
+# Or poll manually with status checks
+for i in range(30):  # 5 minutes = 30 × 10s
+    sleep(10)
+    try:
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+        if receipt:
+            print(f"Confirmed in block {receipt['blockNumber']}")
+            break
+    except:
+        print(f"Still pending... ({i+1}/30)")
+```
+
+---
+
+#### Problem 3: TestMinimal Deploys, AirdropDistributor Hangs
+
+**Observation:** Small contracts deploy fine, larger contracts hang
+
+**Test Results:**
+- ✅ `TestMinimal.sol` (few functions) - Deploys successfully in ~30s
+- ❌ `AirdropDistributor.sol` (ReentrancyGuard + loops) - Hangs indefinitely
+
+**Hypothesis:**
+- Larger bytecode may require more gas
+- Default gas estimation hitting issues
+- RPC may be throttling complex deployments
+
+**Attempted Solutions:**
+1. ❌ Hardhat with increased gas limit - Still hangs
+2. ❌ ethers.js with manual gas - RPC compatibility error
+3. ⏳ Python web3.py with high gas limit - Transaction sent but pending
+
+**Current Status:**
+Transaction successfully submitted via Python, waiting for testnet to mine block.
+
+---
+
+### Deployment Strategy Going Forward
+
+**For All Future Contract Deployments:**
+
+1. **Use Python web3.py exclusively** - No Hardhat/ethers.js for Kasplex
+2. **Set long timeouts** - Minimum 300s (5 minutes)
+3. **Manual monitoring** - Check explorer for confirmation
+4. **Test small contracts first** - Verify network health before large deployments
+
+**Template for Kasplex Deployments:**
+```python
+import json, os, time
+from web3 import Web3
+from web3.middleware import ExtraDataToPOAMiddleware
+from eth_account import Account
+
+def deploy_contract(artifact_path, constructor_args=[]):
+    # Connect
+    w3 = Web3(Web3.HTTPProvider('https://rpc.kasplextest.xyz'))
+    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+    
+    account = Account.from_key(os.environ['DEPLOYER_PRIVATE_KEY'])
+    
+    # Load artifact
+    with open(artifact_path) as f:
+        artifact = json.load(f)
+    
+    # Build transaction
+    Contract = w3.eth.contract(abi=artifact['abi'], bytecode=artifact['bytecode'])
+    tx_data = Contract.constructor(*constructor_args).build_transaction({
+        'from': account.address,
+        'nonce': w3.eth.get_transaction_count(account.address, 'latest'),
+        'gas': 5000000,  # High gas limit
+        'gasPrice': w3.eth.gas_price,
+        'chainId': 167012
+    })
+    
+    # Sign and send
+    signed = account.sign_transaction(tx_data)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    print(f"TX: {tx_hash.hex()}")
+    print(f"Explorer: https://explorer.testnet.kasplextest.xyz/tx/{tx_hash.hex()}")
+    
+    # Wait with long timeout
+    print("Waiting for confirmation (5 min timeout)...")
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+    
+    print(f"✅ Deployed: {receipt['contractAddress']}")
+    return receipt['contractAddress']
+```
 
 ---
 
