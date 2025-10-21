@@ -1055,6 +1055,8 @@ class TradeEvent(db.Model):
         # Time-series queries for price charts and bonding curve calculations
         # DESC order on timestamp for efficient latest-first queries
         db.Index('idx_trade_event_token_time', 'token_id', 'timestamp', postgresql_using='btree', postgresql_ops={'timestamp': 'DESC'}),
+        # Position tracking queries (user + token filtering)
+        db.Index('idx_trade_event_user_token', 'token_id', 'user_wallet_address', 'timestamp', 'id'),
     )
     
     def __repr__(self):
@@ -1122,6 +1124,43 @@ class PendingTransaction(db.Model):
     
     def __repr__(self):
         return f'<PendingTransaction {self.tx_hash[:10]}... ({self.status})>'
+
+class Position(db.Model):
+    """Cache user position metrics for average-cost tracking (FTX-style rebasing)"""
+    __tablename__ = 'position'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # User + Token composite key (unique together)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False, index=True)
+    
+    # Position metrics (average-cost method)
+    qty_remaining = db.Column(db.Numeric(precision=30, scale=0), nullable=False, default=0)
+    cost_basis_kas = db.Column(db.Numeric(precision=20, scale=8), nullable=False, default=0)
+    avg_entry_price_kas = db.Column(db.Numeric(precision=20, scale=12), nullable=False, default=0)
+    
+    # Optional: Track realized PnL for history
+    realized_pnl_kas = db.Column(db.Numeric(precision=20, scale=8), default=0)
+    
+    # Tracking metadata
+    last_trade_event_id = db.Column(db.Integer, nullable=True)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = db.relationship('User', backref='positions')
+    token = db.relationship('Token', backref='positions')
+    
+    # Database indexes
+    __table_args__ = (
+        # Unique constraint: one position per user+token
+        db.UniqueConstraint('user_id', 'token_id', name='uix_position_user_token'),
+        # Index for fast lookups
+        db.Index('idx_position_user_token', 'user_id', 'token_id'),
+    )
+    
+    def __repr__(self):
+        return f'<Position user={self.user_id} token={self.token_id} qty={self.qty_remaining} entry={self.avg_entry_price_kas}>'
 
 class PlatformSettings(db.Model):
     """Platform-wide configuration settings"""

@@ -17,7 +17,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
 from apscheduler.schedulers.background import BackgroundScheduler
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent, TokenEngagement
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent, TokenEngagement, Position
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -1670,6 +1670,91 @@ def get_token_holdings(contract_address):
     
     return jsonify(holding_info)
 
+@app.route('/api/position/<contract_address>', methods=['GET'])
+@csrf.exempt
+@cache.cached(timeout=5, key_prefix=lambda: f"position_{request.view_args['contract_address']}_{request.headers.get('X-Wallet-Address', 'none').lower()}")
+def get_position_metrics_api(contract_address):
+    """Get user's position metrics with FTX-style average-cost tracking
+    
+    Returns weighted average entry price, position size, and unrealized P&L
+    
+    Headers:
+        X-Wallet-Address: User's wallet address (required)
+    
+    Response:
+        {
+            "success": true,
+            "position_qty": "507.754",
+            "avg_entry_price_kas": "0.922735281234",
+            "avg_entry_mc_kas": "167.771",
+            "unrealized_pnl_kas": "6.484",
+            "unrealized_pnl_pct": "3.87",
+            "realized_pnl_kas": "0.000",
+            "current_price_kas": "0.964379900147"
+        }
+    """
+    wallet_address = request.headers.get('X-Wallet-Address')
+    
+    if not wallet_address:
+        return jsonify({'error': 'Wallet address required'}), 400
+    
+    # Get token (case-insensitive lookup)
+    token = Token.query.filter(
+        db.func.lower(Token.contract_address) == contract_address.lower()
+    ).first_or_404()
+    
+    # Resolve wallet to user (handles linked wallets)
+    user = User.resolve_wallet_to_user(wallet_address)
+    if not user:
+        # No trades yet - return zero position
+        return jsonify({
+            'success': True,
+            'position_qty': '0',
+            'avg_entry_price_kas': '0',
+            'avg_entry_mc_kas': '0',
+            'unrealized_pnl_kas': '0',
+            'unrealized_pnl_pct': '0',
+            'realized_pnl_kas': '0',
+            'current_price_kas': '0'
+        })
+    
+    # Get current price from blockchain (real-time)
+    from services.web3_service import get_web3_service
+    from decimal import Decimal
+    web3_service = get_web3_service()
+    
+    try:
+        # Get current reserves to calculate price
+        virtual_kas_reserve = web3_service.get_virtual_kas_reserve(token.contract_address)
+        virtual_token_reserve = web3_service.get_virtual_token_reserve(token.contract_address)
+        
+        if virtual_token_reserve > 0:
+            current_price_kas = Decimal(str(virtual_kas_reserve)) / Decimal(str(virtual_token_reserve))
+        else:
+            current_price_kas = Decimal('0')
+    except Exception as e:
+        logging.error(f"Failed to get current price for {contract_address}: {e}")
+        current_price_kas = Decimal('0')
+    
+    # Compute position metrics with P&L
+    from services.position_service import PositionService
+    metrics = PositionService.get_position_metrics(user, token, current_price_kas)
+    
+    if not metrics:
+        return jsonify({'error': 'Failed to compute position'}), 500
+    
+    # Format response (convert Decimals to strings for JSON)
+    return jsonify({
+        'success': True,
+        'position_qty': str(metrics['qty_remaining']),
+        'avg_entry_price_kas': str(metrics['avg_entry_price_kas']),
+        'avg_entry_mc_kas': str(metrics['avg_entry_mc_kas']),
+        'unrealized_pnl_kas': str(metrics['unrealized_pnl_kas']),
+        'unrealized_pnl_pct': str(metrics['unrealized_pnl_pct']),
+        'realized_pnl_kas': str(metrics.get('realized_pnl_kas', Decimal('0'))),
+        'current_price_kas': str(current_price_kas)
+    })
+
 @app.route('/api/token/<contract_address>/spotlight', methods=['GET'])
 def token_spotlight_get(contract_address):
     """Get spotlight messages - no auth required"""
@@ -1711,6 +1796,7 @@ def token_spotlight_get(contract_address):
         return jsonify({'error': 'Failed to get spotlights'}), 500
 
 @app.route('/api/token/<contract_address>/spotlight', methods=['POST'])
+@csrf.exempt
 @require_wallet_connection
 def token_spotlight_post(contract_address):
     """Create spotlight message - TOKEN GATED, requires session auth!"""

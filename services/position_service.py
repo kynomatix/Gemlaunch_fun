@@ -1,0 +1,284 @@
+"""
+Position tracking service with FTX-style average-cost rebasing
+
+This service calculates weighted average entry prices and tracks position size
+across multiple buys and sells, supporting linked-wallet aggregation.
+"""
+
+import logging
+from decimal import Decimal
+from datetime import datetime, timezone
+from models import db, Position, TradeEvent, User, Token, LinkedWallet
+
+class PositionService:
+    """Service for computing and caching user position metrics"""
+    
+    @staticmethod
+    def compute_position(user, token):
+        """
+        Compute position metrics for a user+token using average-cost method
+        
+        Algorithm:
+        - For BUY: cost_basis += qty * price_kas; position_qty += qty; avg_entry = cost_basis / position_qty
+        - For SELL: cost_basis -= avg_entry * sell_qty; position_qty -= sell_qty
+        - When position_qty hits zero, reset cost_basis and avg_entry to zero
+        
+        Args:
+            user: User object or user_id
+            token: Token object or token_id
+            
+        Returns:
+            dict with position metrics:
+            {
+                'qty_remaining': Decimal,
+                'cost_basis_kas': Decimal,
+                'avg_entry_price_kas': Decimal,
+                'avg_entry_mc_kas': Decimal,  # avg_entry * circulating_supply
+                'realized_pnl_kas': Decimal,
+                'last_trade_event_id': int or None
+            }
+        """
+        # Normalize inputs to IDs
+        user_id = user.id if hasattr(user, 'id') else user
+        token_id = token.id if hasattr(token, 'id') else token
+        
+        # Get User and Token objects if needed
+        if not hasattr(user, 'id'):
+            user = User.query.get(user_id)
+        if not hasattr(token, 'id'):
+            token = Token.query.get(token_id)
+        
+        if not user or not token:
+            logging.error(f"Invalid user_id={user_id} or token_id={token_id}")
+            return None
+        
+        # Get all wallet addresses for this user (primary + linked)
+        wallet_addresses = PositionService._get_user_wallets(user)
+        
+        if not wallet_addresses:
+            logging.warning(f"No wallet addresses found for user {user_id}")
+            return {
+                'qty_remaining': Decimal('0'),
+                'cost_basis_kas': Decimal('0'),
+                'avg_entry_price_kas': Decimal('0'),
+                'avg_entry_mc_kas': Decimal('0'),
+                'realized_pnl_kas': Decimal('0'),
+                'last_trade_event_id': None
+            }
+        
+        # Get all trade events for user's wallets on this token (time-ordered)
+        trade_events = TradeEvent.query.filter(
+            TradeEvent.token_id == token_id,
+            TradeEvent.user_wallet_address.in_(wallet_addresses)
+        ).order_by(TradeEvent.timestamp.asc(), TradeEvent.id.asc()).all()
+        
+        if not trade_events:
+            logging.debug(f"No trades found for user {user_id} on token {token_id}")
+            return {
+                'qty_remaining': Decimal('0'),
+                'cost_basis_kas': Decimal('0'),
+                'avg_entry_price_kas': Decimal('0'),
+                'avg_entry_mc_kas': Decimal('0'),
+                'realized_pnl_kas': Decimal('0'),
+                'last_trade_event_id': None
+            }
+        
+        # Apply average-cost algorithm
+        position_qty = Decimal('0')
+        cost_basis = Decimal('0')
+        avg_entry = Decimal('0')
+        realized_pnl = Decimal('0')
+        last_event_id = None
+        
+        for event in trade_events:
+            kas_amount = Decimal(str(event.kas_amount))
+            token_amount = Decimal(str(event.token_amount))
+            
+            # Skip events with zero or negative token amounts (invalid/stale events)
+            if token_amount <= 0:
+                logging.warning(f"Skipping TradeEvent {event.id} with invalid token_amount: {token_amount}")
+                continue
+            
+            # Price per token for this trade (in KAS)
+            price_kas = kas_amount / token_amount if token_amount > 0 else Decimal('0')
+            
+            if event.trade_type == 'buy':
+                # BUY: Add to position with weighted average
+                cost_basis += kas_amount  # Total KAS spent
+                position_qty += token_amount
+                
+                # Recalculate weighted average entry price
+                if position_qty > 0:
+                    avg_entry = cost_basis / position_qty
+                
+                logging.debug(f"BUY: +{token_amount} @ {price_kas:.12f} KAS | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
+            
+            elif event.trade_type == 'sell':
+                # SELL: Reduce position, adjust cost basis proportionally
+                sell_qty = min(token_amount, position_qty)  # Can't sell more than we have
+                
+                if position_qty > 0 and avg_entry > 0:
+                    # Realized P&L: (sell_price - avg_entry) * qty_sold
+                    pnl_this_sale = (price_kas - avg_entry) * sell_qty
+                    realized_pnl += pnl_this_sale
+                    
+                    # Reduce cost basis proportionally
+                    cost_basis -= avg_entry * sell_qty
+                    position_qty -= sell_qty
+                    
+                    # If position goes to zero, reset everything
+                    if position_qty <= 0:
+                        position_qty = Decimal('0')
+                        cost_basis = Decimal('0')
+                        avg_entry = Decimal('0')
+                    
+                    logging.debug(f"SELL: -{sell_qty} @ {price_kas:.12f} KAS (P&L: {pnl_this_sale:+.8f}) | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
+                else:
+                    logging.warning(f"SELL without position: {event.id} - Skipping")
+            
+            last_event_id = event.id
+        
+        # Calculate average entry market cap (avg_entry * circulating_supply)
+        circulating_supply = Decimal(str(token.circulating_supply or 0))
+        avg_entry_mc_kas = avg_entry * circulating_supply if avg_entry > 0 else Decimal('0')
+        
+        result = {
+            'qty_remaining': position_qty,
+            'cost_basis_kas': cost_basis,
+            'avg_entry_price_kas': avg_entry,
+            'avg_entry_mc_kas': avg_entry_mc_kas,
+            'realized_pnl_kas': realized_pnl,
+            'last_trade_event_id': last_event_id
+        }
+        
+        logging.info(f"Position computed for user {user_id} on token {token_id}: {result}")
+        return result
+    
+    @staticmethod
+    def _get_user_wallets(user):
+        """Get all wallet addresses for a user (primary + verified linked wallets)"""
+        wallet_addresses = [user.wallet_address.lower()]
+        
+        # Add verified linked wallets
+        linked_wallets = LinkedWallet.query.filter_by(
+            user_id=user.id,
+            status='verified'
+        ).all()
+        
+        for linked in linked_wallets:
+            wallet_addresses.append(linked.wallet_address.lower())
+        
+        logging.debug(f"User {user.id} has {len(wallet_addresses)} wallet(s): {wallet_addresses}")
+        return wallet_addresses
+    
+    @staticmethod
+    def upsert_position(user, token, metrics=None):
+        """
+        Update or insert position cache in database
+        
+        Args:
+            user: User object or user_id
+            token: Token object or token_id
+            metrics: Optional dict with computed metrics (if None, will compute)
+        
+        Returns:
+            Position object
+        """
+        # Normalize inputs
+        user_id = user.id if hasattr(user, 'id') else user
+        token_id = token.id if hasattr(token, 'id') else token
+        
+        # Compute metrics if not provided
+        if metrics is None:
+            metrics = PositionService.compute_position(user, token)
+            if not metrics:
+                return None
+        
+        # Find existing position or create new
+        position = Position.query.filter_by(
+            user_id=user_id,
+            token_id=token_id
+        ).first()
+        
+        if position:
+            # Update existing
+            position.qty_remaining = metrics['qty_remaining']
+            position.cost_basis_kas = metrics['cost_basis_kas']
+            position.avg_entry_price_kas = metrics['avg_entry_price_kas']
+            position.realized_pnl_kas = metrics['realized_pnl_kas']
+            position.last_trade_event_id = metrics['last_trade_event_id']
+            position.updated_at = datetime.now(timezone.utc)
+        else:
+            # Create new
+            position = Position(
+                user_id=user_id,
+                token_id=token_id,
+                qty_remaining=metrics['qty_remaining'],
+                cost_basis_kas=metrics['cost_basis_kas'],
+                avg_entry_price_kas=metrics['avg_entry_price_kas'],
+                realized_pnl_kas=metrics['realized_pnl_kas'],
+                last_trade_event_id=metrics['last_trade_event_id']
+            )
+            db.session.add(position)
+        
+        db.session.commit()
+        logging.info(f"Position upserted: user={user_id}, token={token_id}, qty={position.qty_remaining}")
+        
+        return position
+    
+    @staticmethod
+    def get_position_metrics(user, token, current_price_kas=None):
+        """
+        Get position metrics with unrealized P&L calculation
+        
+        Args:
+            user: User object or user_id
+            token: Token object or token_id
+            current_price_kas: Optional current price in KAS (for P&L calculation)
+        
+        Returns:
+            dict with full position metrics including unrealized P&L
+        """
+        # Try to get from cache first
+        user_id = user.id if hasattr(user, 'id') else user
+        token_id = token.id if hasattr(token, 'id') else token
+        
+        position = Position.query.filter_by(
+            user_id=user_id,
+            token_id=token_id
+        ).first()
+        
+        # If no cached position, compute fresh
+        if not position:
+            metrics = PositionService.compute_position(user, token)
+            if not metrics:
+                return None
+        else:
+            # Use cached values
+            metrics = {
+                'qty_remaining': position.qty_remaining,
+                'cost_basis_kas': position.cost_basis_kas,
+                'avg_entry_price_kas': position.avg_entry_price_kas,
+                'realized_pnl_kas': position.realized_pnl_kas,
+                'last_trade_event_id': position.last_trade_event_id
+            }
+            
+            # Recalculate avg_entry_mc_kas
+            if not hasattr(token, 'id'):
+                token = Token.query.get(token_id)
+            circulating_supply = Decimal(str(token.circulating_supply or 0))
+            metrics['avg_entry_mc_kas'] = metrics['avg_entry_price_kas'] * circulating_supply
+        
+        # Calculate unrealized P&L if current price provided
+        if current_price_kas is not None and metrics['qty_remaining'] > 0:
+            current_price = Decimal(str(current_price_kas))
+            unrealized_pnl_kas = (current_price - metrics['avg_entry_price_kas']) * metrics['qty_remaining']
+            unrealized_pnl_pct = ((current_price - metrics['avg_entry_price_kas']) / metrics['avg_entry_price_kas'] * 100) if metrics['avg_entry_price_kas'] > 0 else Decimal('0')
+            
+            metrics['unrealized_pnl_kas'] = unrealized_pnl_kas
+            metrics['unrealized_pnl_pct'] = unrealized_pnl_pct
+        else:
+            metrics['unrealized_pnl_kas'] = Decimal('0')
+            metrics['unrealized_pnl_pct'] = Decimal('0')
+        
+        return metrics
