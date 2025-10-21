@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 INDEXER_STATE_FILE = Path("config/indexer_state.json")
 BATCH_SIZE = 250  # Configurable batch size for event processing (100-500 recommended)
+AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # AirdropDistributor contract
 
 def get_web3_service():
     """Get or create Web3Service instance"""
@@ -236,6 +237,34 @@ def build_trade_event_from_sell(event, token, block, w3):
     return trade_event, kas_out
 
 
+def build_trade_event_from_airdrop(event, token, block, w3):
+    """Build TradeEvent object from Transfer event (airdrop from AirdropDistributor)"""
+    args = event['args']
+    tx_hash = event['transactionHash'].hex()
+    block_number = event['blockNumber']
+    
+    timestamp = datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
+    
+    recipient_address = args['to'].lower()
+    token_amount = Decimal(str(args['value']))
+    
+    trade_event = TradeEvent(
+        token_id=token.id,
+        user_wallet_address=recipient_address,
+        trade_type='airdrop',
+        kas_amount=0,  # Airdrops are $0 cost basis
+        token_amount=token_amount,
+        platform_fee=0,
+        creator_fee=0,
+        anti_bot_fee=0,
+        tx_hash=tx_hash,
+        block_number=block_number,
+        timestamp=timestamp
+    )
+    
+    return trade_event
+
+
 def process_tokens_sold_event(event, token, w3):
     """DEPRECATED: Legacy single-event processor (kept for compatibility)"""
     try:
@@ -409,7 +438,7 @@ def process_creator_fees_withdrawn_event(event, token, w3):
         raise
 
 
-def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_cache):
+def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_cache, airdrop_events=None):
     """
     Process trade events in batch for optimal performance
     
@@ -419,6 +448,7 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
         token: Token model instance
         w3: Web3 instance
         blocks_cache: Pre-fetched blocks dict {block_number: block_data}
+        airdrop_events: List of Transfer events from AirdropDistributor (optional)
     
     Returns:
         dict: Statistics about processed events
@@ -429,6 +459,7 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
     stats = {
         'purchases': 0,
         'sells': 0,
+        'airdrops': 0,
         'duplicates': 0,
         'errors': 0,
         'batch_duration': 0
@@ -469,6 +500,23 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
             stats['errors'] += 1
             continue
     
+    # Process airdrops (if provided)
+    if airdrop_events:
+        for event in airdrop_events:
+            try:
+                block_number = event['blockNumber']
+                block = blocks_cache.get(block_number)
+                if not block:
+                    logger.warning(f"Block {block_number} not in cache, fetching...")
+                    block = w3.eth.get_block(block_number)
+                
+                trade_event = build_trade_event_from_airdrop(event, token, block, w3)
+                trade_events.append((trade_event, 0))  # $0 cost for airdrops
+            except Exception as e:
+                logger.error(f"Error building airdrop event: {str(e)}")
+                stats['errors'] += 1
+                continue
+    
     if not trade_events:
         return stats
     
@@ -493,8 +541,9 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
         
         stats['purchases'] = len([e for e in new_trade_events if e.trade_type == 'buy'])
         stats['sells'] = len([e for e in new_trade_events if e.trade_type == 'sell'])
+        stats['airdrops'] = len([e for e in new_trade_events if e.trade_type == 'airdrop'])
         
-        logger.debug(f"✅ Batch inserted {len(new_trade_events)} trade events ({stats['purchases']} buys, {stats['sells']} sells)")
+        logger.debug(f"✅ Batch inserted {len(new_trade_events)} trade events ({stats['purchases']} buys, {stats['sells']} sells, {stats['airdrops']} airdrops)")
         
         # Step 3.5: Track per-token engagement for PRO tokens
         from services.token_service import TokenService
@@ -526,6 +575,12 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
                     engagement.trades_count = (engagement.trades_count or 0) + 1
                     engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
                     engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per sell
+                
+                elif trade_event.trade_type == 'airdrop':
+                    # Airdrops: Update first acquired timestamp but don't add to trade count
+                    # Airdrops are rewards for engagement, not trades
+                    if not engagement.first_acquired_at:
+                        engagement.first_acquired_at = trade_event.timestamp
                 
                 engagement.last_activity_at = trade_event.timestamp
             
@@ -590,6 +645,7 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         # Fetch all events for the block range
         purchase_events = []
         sell_events = []
+        airdrop_events = []
         
         try:
             purchase_filter = pool_contract.events.TokensPurchased.create_filter(
@@ -611,11 +667,25 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         except Exception as e:
             logger.error(f"Error fetching TokensSold events: {str(e)}")
         
+        # Fetch Transfer events from AirdropDistributor (airdrops)
+        try:
+            # BondingCurvePool is an ERC20 token - use Transfer event with from filter
+            airdrop_filter = pool_contract.events.Transfer.create_filter(
+                from_block=from_block,
+                to_block=to_block,
+                argument_filters={'from': w3.to_checksum_address(AIRDROP_DISTRIBUTOR_ADDRESS)}
+            )
+            airdrop_events = airdrop_filter.get_all_entries()
+            if airdrop_events:
+                logger.debug(f"Found {len(airdrop_events)} airdrop events for {token.symbol}")
+        except Exception as e:
+            logger.error(f"Error fetching Transfer (airdrop) events: {str(e)}")
+        
         # Process trade events in optimized batches
-        if purchase_events or sell_events:
+        if purchase_events or sell_events or airdrop_events:
             # Pre-fetch all blocks needed for this batch
             block_numbers = set()
-            for event in purchase_events + sell_events:
+            for event in purchase_events + sell_events + airdrop_events:
                 block_numbers.add(event['blockNumber'])
             
             blocks_cache = bulk_fetch_blocks(w3, block_numbers)
@@ -626,12 +696,14 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
                 sell_events, 
                 token, 
                 w3, 
-                blocks_cache
+                blocks_cache,
+                airdrop_events
             )
             
             # Merge batch stats into overall stats
             stats['purchases'] = batch_stats['purchases']
             stats['sells'] = batch_stats['sells']
+            stats['airdrops'] = batch_stats.get('airdrops', 0)
             stats['duplicates'] = batch_stats.get('duplicates', 0)
             stats['errors'] += batch_stats.get('errors', 0)
         
