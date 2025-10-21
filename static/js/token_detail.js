@@ -2397,11 +2397,11 @@
                     console.log(`💬 Message saved to database: "${message}"`);
                 } else {
                     const error = await response.json();
-                    this.showNotification('❌ Error', error.error || 'Failed to send message', 'error');
+                    this.showNotification('Error', error.error || 'Failed to send message', 'error');
                 }
             } catch (error) {
                 console.error('Failed to send message:', error);
-                this.showNotification('❌ Error', 'Failed to send message. Please try again.', 'error');
+                this.showNotification('Error', 'Failed to send message. Please try again.', 'error');
             }
         },
         
@@ -2576,11 +2576,11 @@
                     console.log(`❤️ ${isLoved ? 'Unloved' : 'Loved'} message ${messageId}`);
                 } else {
                     console.error('Failed to toggle love:', await response.text());
-                    this.showNotification('❌ Error', 'Failed to react to message', 'error');
+                    this.showNotification('Error', 'Failed to react to message', 'error');
                 }
             } catch (error) {
                 console.error('Error toggling love:', error);
-                this.showNotification('❌ Error', 'Failed to react to message', 'error');
+                this.showNotification('Error', 'Failed to react to message', 'error');
             }
         },
         
@@ -2718,11 +2718,11 @@
                     console.log(`🗑️ Deleted message ${messageId}`);
                 } else {
                     const error = await response.json();
-                    this.showNotification('❌ Delete Failed', error.error || 'Failed to delete message', 'error');
+                    this.showNotification('Delete Failed', error.error || 'Failed to delete message', 'error');
                 }
             } catch (error) {
                 console.error('Error deleting message:', error);
-                this.showNotification('❌ Error', 'Failed to delete message. Please try again.', 'error');
+                this.showNotification('Error', 'Failed to delete message. Please try again.', 'error');
             }
         },
         
@@ -2730,7 +2730,7 @@
             console.log('🔒 Toggle token gate');
             
             if (!window.tokenContractAddress) {
-                this.showNotification('❌ Error', 'Unable to update settings. Token address not found.', 'error');
+                this.showNotification('Error', 'Unable to update settings. Token address not found.', 'error');
                 return;
             }
             
@@ -2768,19 +2768,19 @@
                     }
                     
                     this.showNotification(
-                        '✅ Settings Updated',
+                        'Settings Updated',
                         `Holders-only chat is now ${newState ? 'enabled' : 'disabled'}.`,
                         'success'
                     );
                 } else {
                     const error = await response.json();
                     toggleCheckbox.checked = !newState;
-                    this.showNotification('❌ Error', error.error || 'Failed to update settings', 'error');
+                    this.showNotification('Error', error.error || 'Failed to update settings', 'error');
                 }
             } catch (error) {
                 console.error('Failed to update token gate:', error);
                 toggleCheckbox.checked = !newState;
-                this.showNotification('❌ Error', 'Failed to update token gate settings', 'error');
+                this.showNotification('Error', 'Failed to update token gate settings', 'error');
             }
         },
         
@@ -2933,7 +2933,7 @@
             const pollThreshold = document.getElementById('minTokensToCreatePoll').value;
             
             if (!window.tokenContractAddress) {
-                this.showNotification('❌ Error', 'Unable to save settings. Token address not found.', 'error');
+                this.showNotification('Error', 'Unable to save settings. Token address not found.', 'error');
                 return;
             }
             
@@ -2974,11 +2974,11 @@
                     this.showNotification('Settings Saved', 'Chat settings have been updated successfully.', 'success');
                 } else {
                     const error = await response.json();
-                    this.showNotification('❌ Error', error.error || 'Failed to save settings', 'error');
+                    this.showNotification('Error', error.error || 'Failed to save settings', 'error');
                 }
             } catch (error) {
                 console.error('Failed to save chat settings:', error);
-                this.showNotification('❌ Error', 'Failed to save settings. Please try again.', 'error');
+                this.showNotification('Error', 'Failed to save settings. Please try again.', 'error');
             }
         },
         
@@ -3411,7 +3411,7 @@
                 }
             } catch (error) {
                 console.error('Failed to verify token holdings:', error);
-                this.showNotification('❌ Error', 'Failed to verify token holdings', 'error');
+                this.showNotification('Error', 'Failed to verify token holdings', 'error');
                 return;
             }
             
@@ -3533,11 +3533,11 @@
                     // Success notification removed per user request
                 } else {
                     const error = await response.json();
-                    this.showNotification('❌ Error', error.error || 'Failed to create spotlight', 'error');
+                    this.showNotification('Error', error.error || 'Failed to create spotlight', 'error');
                 }
             } catch (error) {
                 console.error('Failed to create spotlight:', error);
-                this.showNotification('❌ Error', 'Failed to create spotlight message', 'error');
+                this.showNotification('Error', 'Failed to create spotlight message', 'error');
             }
         },
         
