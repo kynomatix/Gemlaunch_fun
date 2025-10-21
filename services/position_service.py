@@ -270,20 +270,26 @@ class PositionService:
         
         # Calculate break-even market cap if current market cap is provided
         if current_market_cap_kas and current_price_kas and metrics['avg_entry_price_kas'] > 0:
-            # Break-even MC = (avg_entry_price / current_price) × current_market_cap
+            # Break-even MC in KAS = (avg_entry_price / current_price) × current_market_cap
             ratio = metrics['avg_entry_price_kas'] / current_price_kas
-            metrics['avg_entry_mc_kas'] = ratio * current_market_cap_kas
+            breakeven_mc_kas = ratio * current_market_cap_kas
+            
+            # Convert to USD for chart display (chart shows MC in $)
+            from services.kas_oracle import oracle
+            kas_price_usd = oracle.get_kas_price()
+            metrics['avg_entry_mc_kas'] = breakeven_mc_kas * Decimal(str(kas_price_usd))
+            
             logging.info(
-                f"Break-even MC calculation: ({metrics['avg_entry_price_kas']} / {current_price_kas}) "
-                f"× {current_market_cap_kas} = {ratio} × {current_market_cap_kas} = {metrics['avg_entry_mc_kas']}"
+                f"Break-even MC: {breakeven_mc_kas:.2f} KAS × ${kas_price_usd:.4f} = ${metrics['avg_entry_mc_kas']:.2f} USD"
             )
         else:
-            metrics['avg_entry_mc_kas'] = metrics['cost_basis_kas']
+            # Fallback: convert cost basis to USD
+            from services.kas_oracle import oracle
+            kas_price_usd = oracle.get_kas_price()
+            metrics['avg_entry_mc_kas'] = metrics['cost_basis_kas'] * Decimal(str(kas_price_usd))
             logging.warning(
                 f"Using cost_basis as avg_entry_mc_kas fallback: "
-                f"current_market_cap_kas={current_market_cap_kas}, "
-                f"current_price_kas={current_price_kas}, "
-                f"avg_entry_price_kas={metrics['avg_entry_price_kas']}"
+                f"{metrics['cost_basis_kas']} KAS × ${kas_price_usd} = ${metrics['avg_entry_mc_kas']:.2f} USD"
             )
         
         # Calculate unrealized P&L if current price provided
