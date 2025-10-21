@@ -741,10 +741,10 @@
                     let priceLineValue, priceLineTitle;
                     
                     if (this.currentChartType === 'marketcap') {
-                        // For market cap chart, show avg entry market cap
+                        // For market cap chart, show total KAS invested (cost basis)
                         priceLineValue = avgEntryMcKas;
-                        const formattedMC = this.formatNumber(avgEntryMcKas, true);
-                        priceLineTitle = `Avg Entry: $${formattedMC}`;
+                        const formattedMC = this.formatNumber(avgEntryMcKas, false); // Don't abbreviate for clarity
+                        priceLineTitle = `Avg Entry: ${formattedMC} KAS`;
                     } else {
                         // For price chart, show avg entry price in KAS
                         priceLineValue = avgEntryPriceKas;
