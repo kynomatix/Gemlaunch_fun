@@ -152,6 +152,11 @@ cache = Cache(app, config={
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Initialize X (Twitter) OAuth
+from auth_x import auth_x_bp, init_oauth
+app.register_blueprint(auth_x_bp)
+twitter_oauth = init_oauth(app)
+
 # Initialize rate limiter for auth endpoints
 limiter = Limiter(
     app=app,

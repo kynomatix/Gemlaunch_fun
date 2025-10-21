@@ -449,12 +449,14 @@ class UserProfile(db.Model):
     username = db.Column(db.String(64), unique=True, nullable=True)  # Optional custom username
     
     # Social handles (verified)
-    twitter_handle = db.Column(db.String(64))
+    twitter_handle = db.Column(db.String(64))  # X/Twitter username (without @)
+    twitter_user_id = db.Column(db.String(50))  # X/Twitter permanent user ID
     telegram_handle = db.Column(db.String(64))
     discord_handle = db.Column(db.String(64))
     
     # Verification status
     is_twitter_verified = db.Column(db.Boolean, default=False)
+    twitter_verified_at = db.Column(db.DateTime)  # When X verification was completed
     is_telegram_verified = db.Column(db.Boolean, default=False)
     
     # Account type and status  
