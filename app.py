@@ -1539,6 +1539,15 @@ def token_polls(contract_address):
             
             db.session.commit()
             
+            # Track per-token engagement for PRO tokens
+            from services.token_service import TokenService
+            if TokenService.is_pro_token(token):
+                engagement = TokenEngagement.get_or_create(user.id, token.id)
+                engagement.polls_created = (engagement.polls_created or 0) + 1
+                engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per poll
+                engagement.last_activity_at = datetime.now(timezone.utc)
+                db.session.commit()
+            
             # Get creator display name safely
             creator_name = user.display_name or user.wallet_address[-6:]
             try:
