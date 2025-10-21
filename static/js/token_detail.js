@@ -504,9 +504,8 @@
                                 // Market Cap in USD
                                 return '$' + self.formatNumber(price, true);
                             } else {
-                                // Price in USD (KAS/USD conversion)
-                                const priceInUsd = price * self.kasToUsd;
-                                return '$' + priceInUsd.toFixed(8);
+                                // Price already in USD (server converts KAS to USD)
+                                return '$' + price.toFixed(8);
                             }
                         },
                     },
@@ -541,9 +540,8 @@
                                 // Market Cap in USD
                                 return '$' + self.formatNumber(price, true);
                             } else {
-                                // Price in USD (KAS/USD conversion)
-                                const priceInUsd = price * self.kasToUsd;
-                                return '$' + priceInUsd.toFixed(8);
+                                // Price already in USD (server converts KAS to USD)
+                                return '$' + price.toFixed(8);
                             }
                         },
                     },
@@ -746,9 +744,9 @@
                         const formattedMC = this.formatNumber(avgEntryMcKas, false); // Don't abbreviate for clarity
                         priceLineTitle = `Avg Entry: $${formattedMC}`;
                     } else {
-                        // For price chart, show avg entry price in KAS
-                        priceLineValue = avgEntryPriceKas;
-                        priceLineTitle = `Avg Entry: ${avgEntryPriceKas.toFixed(8)} KAS`;
+                        // For price chart, convert avg entry price from KAS to USD
+                        priceLineValue = avgEntryPriceKas * this.kasToUsd;
+                        priceLineTitle = `Avg Entry: $${priceLineValue.toFixed(8)}`;
                     }
                     
                     // Remove existing price line if it exists
