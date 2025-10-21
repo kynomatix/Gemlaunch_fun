@@ -117,7 +117,7 @@ class PositionService:
                 logging.debug(f"BUY: +{token_amount} @ {price_kas:.12f} KAS | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
             
             elif event.trade_type == 'sell':
-                # SELL: Reduce position, adjust cost basis proportionally
+                # SELL: Reduce position with REBASING cost basis (FTX-style de-risking)
                 sell_qty = min(token_amount, position_qty)  # Can't sell more than we have
                 
                 if position_qty > 0 and avg_entry > 0:
@@ -125,17 +125,21 @@ class PositionService:
                     pnl_this_sale = (price_kas - avg_entry) * sell_qty
                     realized_pnl += pnl_this_sale
                     
-                    # Reduce cost basis proportionally
-                    cost_basis -= avg_entry * sell_qty
+                    # REBASING: Subtract actual sale proceeds from cost basis
+                    # This "de-risks" your position by reflecting profits taken
+                    cost_basis -= kas_amount  # Use actual proceeds, not original cost
                     position_qty -= sell_qty
                     
-                    # If position goes to zero, reset everything
-                    if position_qty <= 0:
+                    # Recalculate avg entry based on reduced cost basis
+                    if position_qty > 0:
+                        avg_entry = cost_basis / position_qty
+                    else:
+                        # Position fully closed, reset everything
                         position_qty = Decimal('0')
                         cost_basis = Decimal('0')
                         avg_entry = Decimal('0')
                     
-                    logging.debug(f"SELL: -{sell_qty} @ {price_kas:.12f} KAS (P&L: {pnl_this_sale:+.8f}) | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
+                    logging.debug(f"SELL: -{sell_qty} @ {price_kas:.12f} KAS (P&L: {pnl_this_sale:+.8f}) | Position: {position_qty}, Rebased Avg Entry: {avg_entry:.12f}")
                 else:
                     logging.warning(f"SELL without position: {event.id} - Skipping")
             
