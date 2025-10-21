@@ -81,11 +81,21 @@
             <div class="stat-label">PRICE</div>
             <div class="stat-value">{{ "%.6f"|format(token.current_price) }} KAS</div>
             <div class="stat-sub">${{ "%.6f"|format(token.current_price|float * kas_price) }}</div>
+            {% if price_change_24h is defined and price_change_24h != 0 %}
+            <div class="stat-sub" style="color: {% if price_change_24h > 0 %}#00FF88{% else %}#FF4444{% endif %}; font-size: 0.75rem; margin-top: 0.25rem;">
+                {% if price_change_24h > 0 %}↗{% else %}↘{% endif %} {{ "%.2f"|format(price_change_24h|abs) }}% (24h)
+            </div>
+            {% endif %}
         </div>
         <div class="stat-item">
             <div class="stat-label">MARKET CAP</div>
             <div class="stat-value">${{ ((token.current_market_cap|float or 0) * kas_price)|format_number(True) }}</div>
             <div class="stat-sub">{{ (token.current_market_cap|float or 0)|format_number }} KAS</div>
+            {% if market_cap_ath is defined and market_cap_ath > 0 %}
+            <div class="stat-sub" style="color: #FFA500; font-size: 0.75rem; margin-top: 0.25rem;">
+                ATH: ${{ (market_cap_ath * kas_price)|format_number(True) }}
+            </div>
+            {% endif %}
         </div>
         <div class="stat-item">
             {% if is_pro_token and token.reserved_percentage > 0 %}
