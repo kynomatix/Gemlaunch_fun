@@ -1,5 +1,10 @@
 /* Token Detail Page Styles */
 
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
 /* Spotlight Animation for Teal/Blue Pinned Messages */
 @keyframes pulseGlow {
     0% {

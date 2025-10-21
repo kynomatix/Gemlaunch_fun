@@ -31,7 +31,7 @@
     
     
     <!-- Token gate status -->
-    <div class="token-gate-status" id="tokenGateStatus" style="display: none;">
+    <div class="token-gate-status hidden" id="tokenGateStatus">
         <div class="gate-info">
             <i class="fas fa-shield-alt"></i>
             <span>Only ${{ token.symbol }} holders can chat</span>
@@ -41,7 +41,7 @@
 
     
     <!-- Spotlight Messages (Pinned for 1 hour) - ONLY VISIBLE WHEN THERE ARE MESSAGES -->
-    <div id="spotlightMessages" class="spotlight-pinned-container" style="display: none; margin-bottom: 1rem;">
+    <div id="spotlightMessages" class="spotlight-pinned-container hidden">
         <div id="spotlightMessagesList">
             <!-- Dynamically populated spotlight messages -->
         </div>
