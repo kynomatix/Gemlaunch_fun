@@ -3,6 +3,12 @@
     <div class="chat-header">
         <h3>Live Chat</h3>
         <div class="chat-controls">
+            <!-- PRO Token Points Display -->
+            {% if is_pro_token %}
+            <span id="userPointsDisplay" class="user-points-badge">
+                <i class="fas fa-star"></i> <span id="userPointsValue">0</span> pts
+            </span>
+            {% endif %}
             <!-- Holders Only Toggle/Badge -->
             <div class="token-gate-container" id="tokenGateContainer">
                 <!-- Will be populated by JavaScript based on ownership -->
@@ -52,9 +58,6 @@
         <div class="achievement-header" onclick="toggleTokenRewards()" style="cursor: pointer;">
             <div class="achievement-header-left">
                 <h4><i class="fas fa-crown"></i> {{ token.symbol }} Rewards</h4>
-                <span id="userPointsDisplay" class="user-points-badge">
-                    <i class="fas fa-star"></i> <span id="userPointsValue">0</span> pts
-                </span>
             </div>
             <div class="achievement-toggle">
                 <i class="fas fa-chevron-down"></i>

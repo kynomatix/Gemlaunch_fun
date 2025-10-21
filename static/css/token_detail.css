@@ -1950,7 +1950,9 @@ select.airdrop-input-field option {
 }
 
 .user-points-badge {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     white-space: nowrap;
     font-size: 0.85rem;
     background: rgba(0, 217, 255, 0.2);
