@@ -2644,8 +2644,9 @@ def api_token_stats(address):
                 return f"${val:.8f}"
         
         # Calculate graduation progress
-        # Testnet: $200, Mainnet: $70,000
-        graduation_threshold_usd = 200
+        # Get threshold from platform settings (dynamic)
+        from models import PlatformSettings
+        graduation_threshold_usd = float(PlatformSettings.get_settings().graduation_threshold_usd)
         progress_to_graduation = min(100, (current_market_cap_usd / graduation_threshold_usd * 100)) if graduation_threshold_usd > 0 else 0
         
         # Format numbers
