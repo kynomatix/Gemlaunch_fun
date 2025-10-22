@@ -25,6 +25,7 @@ from services.web3_service import get_web3_service
 from services.tx_monitor import get_tx_monitor
 # Import index_all_events inside function to avoid circular import
 from services.blockscout_client import get_blockscout_client
+from services.graduation_completion_service import start_graduation_completion_service, stop_graduation_completion_service
 from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 from web3 import Web3
 
@@ -232,11 +233,16 @@ scheduler.add_job(
 # Start scheduler
 scheduler.start()
 
+# Start graduation completion service (monitors for graduations to complete)
+graduation_service = start_graduation_completion_service(app)
+
 # Ensure graceful shutdown
 atexit.register(lambda: scheduler.shutdown())
+atexit.register(lambda: stop_graduation_completion_service())
 
 logging.info("Transaction monitor scheduler started - checking every 10 seconds")
 logging.info("Event indexer scheduler started - checking every 30 seconds (active tokens only)")
+logging.info("Graduation completion service started - monitoring for pending graduations")
 
 def get_current_user():
     """Get current user from session - only if wallet is verified"""
