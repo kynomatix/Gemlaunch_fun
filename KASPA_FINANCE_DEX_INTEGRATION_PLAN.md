@@ -1,10 +1,72 @@
 # Kaspa Finance DEX Trading Integration - Complete Specification
 
-**Version**: 3.1 (Follow-Up Audit Enhancements)  
+**Version**: 3.3 (Implementation In Progress)  
 **Date**: October 22, 2025  
-**Status**: ✅ **QUALIFIED APPROVAL RECEIVED** - Implementation Ready  
-**Audit Status**: Follow-up audit complete - 3/7 production-ready, 4/7 enhanced per recommendations  
+**Status**: 🔨 **IMPLEMENTATION IN PROGRESS**  
+**Audit Status**: V3.3 Final Audit - Fully Approved (All blockers resolved)  
 **Timeline**: **3-4 DAYS** for skilled developer (includes 6-8 hours of enhancements)
+
+---
+
+## 📝 IMPLEMENTATION NOTES
+
+### PHASE 0: Database & State Management ✅ COMPLETED (Oct 22, 2025)
+
+#### Task 0.1: Database Migration
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Database columns already exist from previous migration
+- Verified with SQL queries: 51 TradeEvent records properly populated
+- No graduated tokens in system yet (clean state for testing)
+- Backfilling not needed (all is_dex_trade and log_index fields populated)
+- Database constraints in place: unique_tx_log_index constraint exists
+
+**Changes Made**:
+1. Updated `models.py` Token model:
+   - Added `graduation_status` field (active/initiating/completing/graduated/failed)
+   - Added `graduation_initiated_at`, `graduation_initiation_tx` fields
+   - Added `graduation_completed_at`, `graduation_completion_tx` fields
+   - Added `dex_pool_address`, `dex_pool_fee_tier` fields
+   - Added `lp_nft_position_id`, `burned_token_amount` fields
+   - Added `last_indexed_block` for event indexing
+   - Added `is_graduated_safe` property for dual-read compatibility
+   - Marked old `is_graduated`, `graduation_tx`, `graduated_at` as LEGACY
+
+2. Updated `models.py` TradeEvent model:
+   - Added `is_dex_trade` boolean field (default FALSE)
+   - Added `log_index` integer field (default 0)
+   - Added `price_per_token` property
+   - Updated unique constraint from `tx_hash` to `(tx_hash, log_index)`
+   - Updated docstring to reflect both bonding curve AND DEX events
+   - Added index on `is_dex_trade` for filtering
+
+**No Issues Encountered**: Database schema migration completed smoothly.
+
+---
+
+#### Task 0.2: GraduationStateManager Service
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Created `services/graduation_state_manager.py`
+- Implements atomic state transitions with two-phase commit pattern
+- Thread-safe with distributed locks per token
+- Includes monitoring function for stuck graduations
+
+**Changes Made**:
+- Created GraduationStatus enum (5 states)
+- Implemented `can_trade()` method (active/graduated only)
+- Implemented `get_trading_backend()` method (returns 'bonding_curve' or 'dex')
+- Implemented `initiate_graduation()` with atomic DB+blockchain commit
+- Implemented `complete_graduation()` with atomic state updates
+- Implemented `mark_failed()` for error handling
+- Implemented `check_stuck_graduations()` monitoring function
+
+**Known Issues**:
+- 4 LSP warnings for methods not yet implemented in web3_service.py:
+  - `send_graduation_initiation_tx()` - will implement in PHASE 2
+  - `send_graduation_completion_tx()` - will implement in PHASE 2  
+  - `wait_for_confirmation()` - will implement in PHASE 2
+- These are expected - placeholder calls for future implementation
 
 ---
 

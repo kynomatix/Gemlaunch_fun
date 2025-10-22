@@ -178,9 +178,25 @@ class Token(db.Model):
     # Bonding curve state
     kas_reserve = db.Column(db.Numeric(precision=20, scale=8), default=0)
     token_reserve = db.Column(db.Numeric(precision=30, scale=0))
-    is_graduated = db.Column(db.Boolean, default=False)
-    graduation_tx = db.Column(db.String(128))
-    graduated_at = db.Column(db.DateTime)
+    is_graduated = db.Column(db.Boolean, default=False)  # LEGACY - kept for backward compatibility
+    graduation_tx = db.Column(db.String(128))  # LEGACY
+    graduated_at = db.Column(db.DateTime)  # LEGACY
+    
+    # Graduation state management (NEW - DEX Integration)
+    graduation_status = db.Column(db.String(20), default='active')  # active, initiating, completing, graduated, failed
+    graduation_initiated_at = db.Column(db.DateTime, nullable=True)
+    graduation_initiation_tx = db.Column(db.String(128), nullable=True)
+    graduation_completed_at = db.Column(db.DateTime, nullable=True)
+    graduation_completion_tx = db.Column(db.String(128), nullable=True)
+    
+    # DEX pool information (populated after graduation)
+    dex_pool_address = db.Column(db.String(128), nullable=True)
+    dex_pool_fee_tier = db.Column(db.Integer, nullable=True)  # 500, 2500, 3000, 10000 (0.05%, 0.25%, 0.30%, 1.00%)
+    lp_nft_position_id = db.Column(db.Integer, nullable=True)  # Uniswap V3 NFT position ID
+    burned_token_amount = db.Column(db.Numeric(precision=30, scale=0), nullable=True)  # Unsold tokens burned at graduation
+    
+    # Event indexing
+    last_indexed_block = db.Column(db.Integer, nullable=True)  # Last block indexed for trade events
     
     # Additional blockchain fields for Phase 2 integration
     creator_fees_accumulated = db.Column(db.Numeric(precision=20, scale=8), default=0)
@@ -218,6 +234,18 @@ class Token(db.Model):
         # Blockchain traceability and fraud detection
         db.Index('idx_token_deployment_tx', 'deployment_tx', postgresql_using='btree'),
     )
+    
+    @property
+    def is_graduated_safe(self):
+        """
+        Dual-read property for backward compatibility during transition
+        Checks BOTH old and new graduation status fields
+        """
+        if self.graduation_status == 'graduated':
+            return True
+        if self.is_graduated:
+            return True
+        return False
     
     @property
     def graduation_threshold(self):
@@ -1023,7 +1051,7 @@ class TransferRequest(db.Model):
         return f'<TransferRequest {self.wallet_address[:10]}... ({self.status})>'
 
 class TradeEvent(db.Model):
-    """Blockchain trade events from BondingCurvePool smart contract"""
+    """Blockchain trade events from BondingCurvePool AND Kaspa Finance DEX"""
     id = db.Column(db.Integer, primary_key=True)
     
     # Trade details
@@ -1041,9 +1069,13 @@ class TradeEvent(db.Model):
     anti_bot_fee = db.Column(db.Numeric(precision=20, scale=8), default=0)
     
     # Blockchain info
-    tx_hash = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    tx_hash = db.Column(db.String(128), nullable=False, index=True)  # No longer unique - same tx can have multiple events
     block_number = db.Column(db.Integer, nullable=False, index=True)
     timestamp = db.Column(db.DateTime, nullable=False)
+    log_index = db.Column(db.Integer, nullable=False, default=0)  # Event log index within transaction
+    
+    # Trade source (bonding curve vs DEX)
+    is_dex_trade = db.Column(db.Boolean, default=False, nullable=False)
     
     # Indexing metadata
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1051,13 +1083,24 @@ class TradeEvent(db.Model):
     # Relationships
     token = db.relationship('Token', backref='trade_events')
     
+    @property
+    def price_per_token(self):
+        """Calculate price per token from trade amounts"""
+        if self.token_amount and self.token_amount > 0:
+            return float(self.kas_amount) / float(self.token_amount)
+        return 0
+    
     # Database indexes for performance (DeFi best practices)
     __table_args__ = (
+        # Unique constraint on tx_hash + log_index (allows multiple events per tx)
+        db.UniqueConstraint('tx_hash', 'log_index', name='unique_tx_log_index'),
         # Time-series queries for price charts and bonding curve calculations
         # DESC order on timestamp for efficient latest-first queries
         db.Index('idx_trade_event_token_time', 'token_id', 'timestamp', postgresql_using='btree', postgresql_ops={'timestamp': 'DESC'}),
         # Position tracking queries (user + token filtering)
         db.Index('idx_trade_event_user_token', 'token_id', 'user_wallet_address', 'timestamp', 'id'),
+        # Filter DEX vs bonding curve trades
+        db.Index('idx_trade_event_dex_flag', 'is_dex_trade', 'token_id'),
     )
     
     def __repr__(self):
