@@ -1675,7 +1675,7 @@
                                 {% for activity in activities %}
                                 {% if activity.activity_type not in ['trade_buy', 'trade_sell'] %}
                                 {% set is_accolade = activity.activity_type == 'achievement_earned' %}
-                                {% set is_token_launch = activity.activity_type == 'token_created' %}
+                                {% set is_token_launch = activity.activity_type in ['token_created', 'token_launch'] %}
                                 {% set is_expandable = is_accolade or is_token_launch %}
                                 <div class="activity-item {% if is_expandable %}expandable{% endif %}" data-type="{{ activity.activity_type }}" {% if is_expandable %}onclick="toggleActivityItem(this)"{% endif %}>
                                     <div class="activity-summary">
