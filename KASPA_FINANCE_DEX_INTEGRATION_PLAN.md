@@ -201,6 +201,53 @@
 
 ---
 
+### PHASE 3: Event Indexer Enhancement ✅ COMPLETED (Oct 22, 2025)
+
+#### Task 3.5.1-3.5.4: Create Side Effect Services
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Created modular services for side effect processing:
+  - `engagement_calculator.py` - Updates TokenEngagement records with community points
+  - `user_stats_updater.py` - Updates User.total_trades_count and total_trading_volume
+  - `holding_updater.py` - Updates Position model for FTX-style cost basis tracking
+  - `activity_logger.py` - Creates Activity feed entries for trades
+
+**Changes Made**:
+- Extracted inline engagement logic from event_indexer.py into reusable services
+- Added batch processing methods for optimal performance
+- Support for both bonding curve and DEX trade types (buy, sell, dex_buy, dex_sell, airdrop)
+- Engagement: 10 points per buy, 5 points per sell
+- Cost basis tracking: Average-cost method with realized PnL calculation
+
+**No Issues Encountered**: Services are modular, reusable, and follow existing patterns.
+
+---
+
+#### Task 3.1-3.2: DEX Swap Event Processing
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Added `build_trade_event_from_dex_swap()` - Builds TradeEvent from Uniswap V3 Swap event
+- Added `process_dex_swap_events_batch()` - Batch processes Swap events with side effects
+- Added `process_dex_pool_events()` - Main function to process DEX pool events
+- Integrated DEX processing into `index_all_events()` main loop
+
+**Critical Implementation Details**:
+- **Wallet Attribution**: Uses `tx.from` for trader wallet (not event.args.sender!)
+- **Trade Direction**: Determined from amount1 sign (negative = buy, positive = sell)
+- **Token Ordering**: Assumes token1 = custom token, token0 = WKAS (address ordering)
+- **Side Effects**: Calls all 4 modular services (engagement, stats, holdings, activities)
+- **Graduation Status Routing**: Bonding curve events for non-graduated, DEX events for completed
+
+**Changes Made**:
+- Extended event_indexer.py with DEX swap processing functions
+- Added `get_uniswap_v3_pool_contract()` method to Web3Service
+- Imported side effect services into event_indexer
+- Updated main indexing loop to route by graduation_status
+
+**No Issues Encountered**: DEX processing follows same batch pattern as bonding curve processing.
+
+---
+
 ## 📋 Executive Summary
 
 Enable continuous trading of graduated tokens on gemlaunch.fun by routing trades through Kaspa Finance DEX. Users experience seamless trading before and after graduation without leaving the platform.

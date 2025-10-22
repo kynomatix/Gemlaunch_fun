@@ -1,16 +1,109 @@
 """
 Engagement Calculator Service
 Calculates holding milestones and awards community points for PRO tokens
+Real-time trade engagement tracking + daily milestone awards
 """
 
 import logging
 from datetime import datetime, timezone
 from app import db
-from models import Token, TokenEngagement
+from models import User, Token, TokenEngagement
 from services.token_service import TokenService
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+def update_engagement_from_trade(trade_event, kas_amount, token=None):
+    """
+    Update token engagement metrics from a trade event (real-time)
+    
+    Args:
+        trade_event: TradeEvent instance
+        kas_amount: Decimal amount of KAS traded
+        token: Token instance (optional, will query if not provided)
+    
+    Returns:
+        TokenEngagement instance if updated, None if not applicable
+    """
+    try:
+        # Get token if not provided
+        if not token:
+            token = Token.query.get(trade_event.token_id)
+            if not token:
+                logger.warning(f"Token not found for engagement update: {trade_event.token_id}")
+                return None
+        
+        # Only track engagement for PRO tokens
+        if not TokenService.is_pro_token(token):
+            return None
+        
+        # Find user by wallet address
+        user = User.query.filter_by(wallet_address=trade_event.user_wallet_address.lower()).first()
+        if not user:
+            logger.debug(f"User not found for wallet {trade_event.user_wallet_address}, skipping engagement")
+            return None
+        
+        # Get or create engagement record
+        engagement = TokenEngagement.get_or_create(user.id, token.id)
+        
+        # Update engagement based on trade type
+        if trade_event.trade_type in ('buy', 'dex_buy'):
+            engagement.buy_count = (engagement.buy_count or 0) + 1
+            engagement.trades_count = (engagement.trades_count or 0) + 1
+            engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
+            engagement.community_points = (engagement.community_points or 0) + 10  # 10 points per buy
+            
+            # Update first acquired timestamp if this is their first purchase
+            if not engagement.first_acquired_at:
+                engagement.first_acquired_at = trade_event.timestamp
+        
+        elif trade_event.trade_type in ('sell', 'dex_sell'):
+            engagement.sell_count = (engagement.sell_count or 0) + 1
+            engagement.trades_count = (engagement.trades_count or 0) + 1
+            engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
+            engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per sell
+        
+        elif trade_event.trade_type == 'airdrop':
+            # Airdrops: Update first acquired timestamp but don't add to trade count
+            # Airdrops are rewards for engagement, not trades
+            if not engagement.first_acquired_at:
+                engagement.first_acquired_at = trade_event.timestamp
+        
+        # Update last activity timestamp for all trade types
+        engagement.last_activity_at = trade_event.timestamp
+        
+        logger.debug(f"✅ Updated engagement for {user.wallet_address[:10]}... on {token.symbol} ({trade_event.trade_type})")
+        
+        return engagement
+        
+    except Exception as e:
+        logger.error(f"Error updating engagement from trade: {str(e)}")
+        return None
+
+
+def update_engagement_batch(trade_events_with_amounts, token):
+    """
+    Update engagement for multiple trade events in batch
+    
+    Args:
+        trade_events_with_amounts: List of (TradeEvent, kas_amount) tuples
+        token: Token instance
+    
+    Returns:
+        int: Number of engagement records updated
+    """
+    if not TokenService.is_pro_token(token):
+        return 0
+    
+    updated_count = 0
+    for trade_event, kas_amount in trade_events_with_amounts:
+        result = update_engagement_from_trade(trade_event, kas_amount, token=token)
+        if result:
+            updated_count += 1
+    
+    logger.debug(f"✅ Updated {updated_count} engagement records for {token.symbol}")
+    return updated_count
 
 
 def calculate_diamond_hands_score(buy_count, sell_count):

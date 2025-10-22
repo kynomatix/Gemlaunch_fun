@@ -15,6 +15,10 @@ from web3.exceptions import BlockNotFound
 from app import db
 from models import Token, TradeEvent, AntiBotFeeTracker
 from services.web3_service import Web3Service
+from services.engagement_calculator import update_engagement_batch
+from services.user_stats_updater import update_user_stats_batch
+from services.holding_updater import update_holdings_batch
+from services.activity_logger import create_activities_batch
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -759,6 +763,262 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         return {'success': False, 'error': str(e)}
 
 
+def build_trade_event_from_dex_swap(event, token, block, w3, trader_address):
+    """
+    Build TradeEvent object from Uniswap V3 Swap event (no DB insert)
+    
+    Args:
+        event: Swap event from Uniswap V3 pool
+        token: Token model instance
+        block: Block data
+        w3: Web3 instance
+        trader_address: Wallet address of trader (from tx.from)
+    
+    Returns:
+        tuple: (TradeEvent, kas_amount)
+    """
+    args = event['args']
+    tx_hash = event['transactionHash'].hex()
+    block_number = event['blockNumber']
+    
+    timestamp = datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
+    
+    # Determine trade direction from amount0/amount1
+    # Token is token1 (token address), WKAS is token0 (lower address)
+    # If amount1 < 0 (tokens out), user is buying
+    # If amount1 > 0 (tokens in), user is selling
+    amount1 = args['amount1']  # Token amount in wei (negative = out, positive = in)
+    amount0 = args['amount0']  # WKAS amount in wei (negative = out, positive = in)
+    
+    # CRITICAL: Normalize token amounts from wei to human-readable units
+    # Gemlaunch tokens use 18 decimals (standard ERC20)
+    token_decimals = Decimal(10 ** 18)
+    
+    if amount1 < 0:  # Tokens out = Buy
+        trade_type = 'dex_buy'
+        token_amount = Decimal(str(abs(amount1))) / token_decimals  # Normalize from wei
+        kas_amount = Decimal(str(w3.from_wei(abs(amount0), 'ether')))  # WKAS in (also wei)
+    else:  # Tokens in = Sell
+        trade_type = 'dex_sell'
+        token_amount = Decimal(str(abs(amount1))) / token_decimals  # Normalize from wei
+        kas_amount = Decimal(str(w3.from_wei(abs(amount0), 'ether')))  # WKAS out (also wei)
+    
+    trade_event = TradeEvent(
+        token_id=token.id,
+        user_wallet_address=trader_address.lower(),
+        trade_type=trade_type,
+        kas_amount=kas_amount,
+        token_amount=token_amount,
+        platform_fee=0,  # No platform fees on DEX
+        creator_fee=0,   # No creator fees on DEX (LP fees go to LPs)
+        anti_bot_fee=0,
+        tx_hash=tx_hash,
+        block_number=block_number,
+        timestamp=timestamp
+    )
+    
+    return trade_event, kas_amount
+
+
+def process_dex_swap_events_batch(swap_events, token, w3, blocks_cache):
+    """
+    Process DEX Swap events in batch for optimal performance
+    
+    Args:
+        swap_events: List of Swap events from Uniswap V3 pool
+        token: Token model instance
+        w3: Web3 instance
+        blocks_cache: Pre-fetched blocks dict {block_number: block_data}
+    
+    Returns:
+        dict: Statistics about processed events
+    """
+    import time
+    batch_start = time.time()
+    
+    stats = {
+        'dex_buys': 0,
+        'dex_sells': 0,
+        'duplicates': 0,
+        'errors': 0,
+        'batch_duration': 0
+    }
+    
+    if not swap_events:
+        return stats
+    
+    # Step 1: Build all trade event objects (with wallet attribution from tx.from)
+    trade_events = []
+    
+    for event in swap_events:
+        try:
+            block_number = event['blockNumber']
+            block = blocks_cache.get(block_number)
+            if not block:
+                logger.warning(f"Block {block_number} not in cache, fetching...")
+                block = w3.eth.get_block(block_number)
+            
+            # CRITICAL: Get trader address from tx.from (not event.args.sender!)
+            # This is the actual wallet that initiated the swap
+            tx_hash = event['transactionHash'].hex()
+            tx = w3.eth.get_transaction(tx_hash)
+            trader_address = tx['from']
+            
+            trade_event, kas_amount = build_trade_event_from_dex_swap(
+                event, token, block, w3, trader_address
+            )
+            trade_events.append((trade_event, kas_amount))
+        except Exception as e:
+            logger.error(f"Error building DEX swap event: {str(e)}")
+            stats['errors'] += 1
+            continue
+    
+    if not trade_events:
+        return stats
+    
+    # Step 2: Pre-filter duplicates
+    tx_hashes = [te[0].tx_hash for te in trade_events]
+    existing_hashes = filter_existing_tx_hashes(tx_hashes)
+    
+    # Filter to only new events
+    new_trade_events_with_amounts = [(te, amt) for te, amt in trade_events if te.tx_hash not in existing_hashes]
+    stats['duplicates'] = len(existing_hashes)
+    
+    if not new_trade_events_with_amounts:
+        logger.debug(f"All {len(trade_events)} DEX swap events were duplicates, skipping insert")
+        return stats
+    
+    # Extract trade events for insertion
+    new_trade_events = [te for te, amt in new_trade_events_with_amounts]
+    
+    # Step 3: Bulk insert trade events
+    try:
+        db.session.bulk_save_objects(new_trade_events)
+        
+        stats['dex_buys'] = len([e for e in new_trade_events if e.trade_type == 'dex_buy'])
+        stats['dex_sells'] = len([e for e in new_trade_events if e.trade_type == 'dex_sell'])
+        
+        logger.debug(f"✅ Batch inserted {len(new_trade_events)} DEX swap events ({stats['dex_buys']} buys, {stats['dex_sells']} sells)")
+        
+        # Step 4: Call side effect services
+        # Engagement calculator
+        update_engagement_batch(new_trade_events_with_amounts, token)
+        
+        # User stats updater
+        update_user_stats_batch(new_trade_events_with_amounts)
+        
+        # Holding updater
+        update_holdings_batch(new_trade_events)
+        
+        # Activity logger
+        create_activities_batch(new_trade_events, token)
+        
+    except IntegrityError as e:
+        logger.error(f"Unexpected IntegrityError in DEX batch insert: {str(e)}")
+        db.session.rollback()
+        stats['errors'] += 1
+        return stats
+    
+    # Step 5: Update token metrics using ONLY new events
+    new_trade_count = len(new_trade_events)
+    new_trading_volume = sum(amt for te, amt in new_trade_events_with_amounts)
+    
+    token.trade_count = (token.trade_count or 0) + new_trade_count
+    token.trading_volume_24h = (token.trading_volume_24h or 0) + new_trading_volume
+    
+    # Step 6: Calculate holder count (single query per token)
+    holder_counts = calculate_holder_counts_batch([token.id])
+    if token.id in holder_counts:
+        token.holder_count = holder_counts[token.id]
+    
+    stats['batch_duration'] = time.time() - batch_start
+    logger.debug(f"📊 DEX batch metrics: {len(new_trade_events)} events in {stats['batch_duration']:.2f}s ({len(new_trade_events)/stats['batch_duration']:.1f} events/sec)")
+    
+    return stats
+
+
+def process_dex_pool_events(pool_address, from_block, to_block):
+    """
+    Process all Uniswap V3 pool Swap events for a graduated token
+    
+    Args:
+        pool_address: Address of the Uniswap V3 pool (from token.dex_pool_address)
+        from_block: Starting block number
+        to_block: Ending block number
+    
+    Returns:
+        dict: Processing results with success status and stats
+    """
+    try:
+        web3_service = get_web3_service()
+        w3 = web3_service.w3
+        
+        # Look up token by dex_pool_address
+        from sqlalchemy import func
+        token = Token.query.filter(
+            func.lower(Token.dex_pool_address) == pool_address.lower()
+        ).first()
+        
+        if not token:
+            logger.warning(f"Token not found for DEX pool address: {pool_address}")
+            return {'success': False, 'error': 'Token not found'}
+        
+        # Load Uniswap V3 Pool contract
+        pool_contract = web3_service.get_uniswap_v3_pool_contract(pool_address)
+        
+        stats = {
+            'token_symbol': token.symbol,
+            'dex_buys': 0,
+            'dex_sells': 0,
+            'duplicates': 0,
+            'errors': 0
+        }
+        
+        # Fetch Swap events
+        swap_events = []
+        try:
+            swap_filter = pool_contract.events.Swap.create_filter(
+                from_block=from_block,
+                to_block=to_block
+            )
+            swap_events = swap_filter.get_all_entries()
+            logger.debug(f"Found {len(swap_events)} DEX swap events for {token.symbol}")
+        except Exception as e:
+            logger.error(f"Error fetching Swap events: {str(e)}")
+        
+        # Process swap events in optimized batch
+        if swap_events:
+            # Pre-fetch all blocks needed for this batch
+            block_numbers = set()
+            for event in swap_events:
+                block_numbers.add(event['blockNumber'])
+            
+            blocks_cache = bulk_fetch_blocks(w3, block_numbers)
+            
+            # Process in batch
+            batch_stats = process_dex_swap_events_batch(
+                swap_events,
+                token,
+                w3,
+                blocks_cache
+            )
+            
+            # Merge batch stats into overall stats
+            stats['dex_buys'] = batch_stats['dex_buys']
+            stats['dex_sells'] = batch_stats['dex_sells']
+            stats['duplicates'] = batch_stats.get('duplicates', 0)
+            stats['errors'] += batch_stats.get('errors', 0)
+        
+        db.session.commit()
+        
+        return {'success': True, 'stats': stats}
+        
+    except Exception as e:
+        logger.error(f"Error processing DEX pool events for {pool_address}: {str(e)}")
+        db.session.rollback()
+        return {'success': False, 'error': str(e)}
+
+
 def process_token_created_events(from_block, to_block):
     """Process TokenCreated events from TokenFactory to update real contract addresses"""
     try:
@@ -1173,25 +1433,47 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
         
         for token in deployed_tokens:
             try:
-                # Use liquidity_pool_address (BondingCurvePool) which emits trade events
-                pool_address = token.liquidity_pool_address or token.contract_address
-                result = process_bonding_pool_events(
-                    pool_address,
-                    from_block,
-                    to_block
-                )
-                
-                if result.get('success'):
-                    stats = result.get('stats', {})
-                    summary['trades'] += stats.get('purchases', 0) + stats.get('sells', 0)
-                    summary['graduations'] += stats.get('graduations', 0)
-                    summary['errors'] += stats.get('errors', 0)
-                    summary['tokens_processed'] += 1
+                # STEP 2A: Process bonding curve events (pre-graduation or non-graduated)
+                if token.graduation_status in (None, 'not_started', 'initiating'):
+                    # Use liquidity_pool_address (BondingCurvePool) which emits trade events
+                    pool_address = token.liquidity_pool_address or token.contract_address
+                    result = process_bonding_pool_events(
+                        pool_address,
+                        from_block,
+                        to_block
+                    )
                     
-                    logger.debug(f"Token {token.symbol}: {stats.get('purchases', 0)} buys, {stats.get('sells', 0)} sells")
-                else:
-                    logger.error(f"Failed to process token {token.symbol}: {result.get('error')}")
-                    summary['errors'] += 1
+                    if result.get('success'):
+                        stats = result.get('stats', {})
+                        summary['trades'] += stats.get('purchases', 0) + stats.get('sells', 0)
+                        summary['graduations'] += stats.get('graduations', 0)
+                        summary['errors'] += stats.get('errors', 0)
+                        summary['tokens_processed'] += 1
+                        
+                        logger.debug(f"Token {token.symbol}: {stats.get('purchases', 0)} buys, {stats.get('sells', 0)} sells")
+                    else:
+                        logger.error(f"Failed to process bonding curve events for {token.symbol}: {result.get('error')}")
+                        summary['errors'] += 1
+                
+                # STEP 2B: Process DEX events (graduated tokens only)
+                elif token.graduation_status == 'completed' and token.dex_pool_address:
+                    # Token has graduated and has a DEX pool - process DEX Swap events
+                    result = process_dex_pool_events(
+                        token.dex_pool_address,
+                        from_block,
+                        to_block
+                    )
+                    
+                    if result.get('success'):
+                        stats = result.get('stats', {})
+                        summary['trades'] += stats.get('dex_buys', 0) + stats.get('dex_sells', 0)
+                        summary['errors'] += stats.get('errors', 0)
+                        summary['tokens_processed'] += 1
+                        
+                        logger.debug(f"DEX Token {token.symbol}: {stats.get('dex_buys', 0)} DEX buys, {stats.get('dex_sells', 0)} DEX sells")
+                    else:
+                        logger.error(f"Failed to process DEX events for {token.symbol}: {result.get('error')}")
+                        summary['errors'] += 1
                     
             except Exception as e:
                 logger.error(f"Error processing token {token.symbol}: {str(e)}")

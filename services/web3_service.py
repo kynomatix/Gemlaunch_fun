@@ -334,6 +334,28 @@ class Web3Service:
             logging.error(f"Failed to get cliff vesting contract at {vesting_address}: {str(e)}")
             raise
     
+    def get_uniswap_v3_pool_contract(self, pool_address):
+        """
+        Get Uniswap V3 Pool contract instance for a specific DEX pool
+        
+        Args:
+            pool_address: Address of the Uniswap V3 pool
+        
+        Returns:
+            Contract: Web3 contract instance for the pool
+        """
+        try:
+            # Load Uniswap V3 Pool ABI (standard interface)
+            pool_abi = self._load_interface_abi('IUniswapV3Pool')
+            
+            return self.w3.eth.contract(
+                address=Web3.to_checksum_address(pool_address),
+                abi=pool_abi
+            )
+        except Exception as e:
+            logging.error(f"Failed to get Uniswap V3 pool contract at {pool_address}: {str(e)}")
+            raise
+    
     # =========================
     # PRO Token Vesting Status Methods
     # =========================
