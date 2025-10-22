@@ -6579,6 +6579,18 @@ def confirm_token_deployment(token_id):
         
         db.session.commit()
         
+        # Log activity for token launch
+        activity = Activity()
+        activity.user_id = creator.id
+        activity.activity_type = 'token_launch'
+        activity.title = 'Token launch'
+        activity.description = f'Launched {token.name} ({token.symbol})'
+        activity.token_id = token.id
+        activity.points_earned = 100
+        activity.is_public = True
+        db.session.add(activity)
+        db.session.commit()
+        
         logging.info(f"✅ Token {token_id} ({token.symbol}) deployment confirmed by creator {caller_address} - Contract: {contract_address}, TX: {tx_hash}, Circulating Supply: {circulating_supply_tokens:,} tokens")
         
         return jsonify({
