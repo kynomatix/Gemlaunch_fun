@@ -315,7 +315,8 @@ class TransactionManager {
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
         let receivedTerminalStatus = false;
         
-        eventSource.onmessage = (event) => {
+        // Listen for 'status' events (default event type from backend)
+        eventSource.addEventListener('status', (event) => {
             const data = JSON.parse(event.data);
             
             if (data.status === 'confirmed') {
@@ -328,15 +329,17 @@ class TransactionManager {
                 callbacks.onError(data.error);
                 eventSource.close();
                 this.activeTransactions.delete(txHash);
-            } else if (data.status === 'complete') {
-                // Server signaling clean shutdown - mark as received
-                receivedTerminalStatus = true;
-                eventSource.close();
-                this.activeTransactions.delete(txHash);
             } else {
                 callbacks.onUpdate(data);
             }
-        };
+        });
+        
+        // Listen for 'complete' event (clean shutdown signal from backend)
+        eventSource.addEventListener('complete', (event) => {
+            receivedTerminalStatus = true;
+            eventSource.close();
+            this.activeTransactions.delete(txHash);
+        });
         
         eventSource.onerror = () => {
             // Only treat as error if we haven't received a terminal status
