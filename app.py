@@ -582,6 +582,9 @@ def stream_tx_status(tx_hash):
                                 logging.warning(f"Failed to immediately index tx {tx_hash[:10]}...: {index_result.get('error')}")
                         except Exception as e:
                             logging.error(f"Error immediately indexing tx {tx_hash}: {str(e)}")
+                    
+                    # Send final completion event before closing stream
+                    yield f"event: complete\ndata: {json.dumps({'status': 'complete'})}\n\n"
                     break
                 
                 time.sleep(2)  # Check every 2 seconds

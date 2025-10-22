@@ -313,16 +313,23 @@ class TransactionManager {
      */
     async monitorTransaction(txHash, callbacks) {
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
+        let receivedTerminalStatus = false;
         
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
             
             if (data.status === 'confirmed') {
+                receivedTerminalStatus = true;
                 callbacks.onConfirm(data);
                 eventSource.close();
                 this.activeTransactions.delete(txHash);
             } else if (data.status === 'failed') {
+                receivedTerminalStatus = true;
                 callbacks.onError(data.error);
+                eventSource.close();
+                this.activeTransactions.delete(txHash);
+            } else if (data.status === 'complete') {
+                // Server signaling clean shutdown - ignore
                 eventSource.close();
                 this.activeTransactions.delete(txHash);
             } else {
@@ -331,7 +338,10 @@ class TransactionManager {
         };
         
         eventSource.onerror = () => {
-            callbacks.onError('Connection lost');
+            // Only treat as error if we haven't received a terminal status
+            if (!receivedTerminalStatus) {
+                callbacks.onError('Connection lost');
+            }
             eventSource.close();
             this.activeTransactions.delete(txHash);
         };
