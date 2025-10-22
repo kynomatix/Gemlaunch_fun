@@ -1264,6 +1264,9 @@ def token_marketplace():
 @app.route('/app/token/<contract_address>')
 def token_detail(contract_address):
     """Individual token detail page"""
+    # Normalize address to lowercase for database lookup (Ethereum addresses are case-insensitive)
+    contract_address = contract_address.lower()
+    
     token = Token.query.options(
         joinedload(Token.creator),
         joinedload(Token.settings)  # Load token settings
