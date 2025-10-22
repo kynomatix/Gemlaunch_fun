@@ -553,38 +553,44 @@ def stream_tx_status(tx_hash):
         }
     };
     """
+    from services.tx_monitor import get_tx_monitor
+    
     def generate():
         try:
-            with app.app_context():
-                tx_monitor = get_tx_monitor()
-                max_checks = 300  # 5 minutes (2s interval * 300 = 600s)
+            tx_monitor = get_tx_monitor()
+            max_checks = 300  # 5 minutes (2s interval * 300 = 600s)
+            
+            # Send initial ping to establish connection
+            yield f": keepalive\n\n"
+            
+            for _ in range(max_checks):
+                status = tx_monitor.get_transaction_status(tx_hash)
                 
-                for _ in range(max_checks):
-                    status = tx_monitor.get_transaction_status(tx_hash)
-                    
-                    # Send update to client with 'status' event type to match client listener
-                    yield f"event: status\ndata: {json.dumps(status)}\n\n"
-                    
-                    # Stop if terminal state reached
-                    if status.get('status') in ['confirmed', 'failed']:
-                        # Immediately index this transaction so it appears in recent trades
-                        if status.get('status') == 'confirmed':
-                            try:
-                                from services.event_indexer import index_transaction_immediately
-                                index_result = index_transaction_immediately(tx_hash)
-                                if index_result.get('success'):
-                                    logging.info(f"✅ Immediately indexed confirmed tx: {tx_hash[:10]}...")
-                                else:
-                                    logging.warning(f"Failed to immediately index tx {tx_hash[:10]}...: {index_result.get('error')}")
-                            except Exception as e:
-                                logging.error(f"Error immediately indexing tx {tx_hash}: {str(e)}")
-                        break
-                    
-                    time.sleep(2)  # Check every 2 seconds
+                # Send update to client with 'status' event type to match client listener
+                yield f"event: status\ndata: {json.dumps(status)}\n\n"
+                
+                # Stop if terminal state reached
+                if status.get('status') in ['confirmed', 'failed']:
+                    # Immediately index this transaction so it appears in recent trades
+                    if status.get('status') == 'confirmed':
+                        try:
+                            from services.event_indexer import index_transaction_immediately
+                            index_result = index_transaction_immediately(tx_hash)
+                            if index_result.get('success'):
+                                logging.info(f"✅ Immediately indexed confirmed tx: {tx_hash[:10]}...")
+                            else:
+                                logging.warning(f"Failed to immediately index tx {tx_hash[:10]}...: {index_result.get('error')}")
+                        except Exception as e:
+                            logging.error(f"Error immediately indexing tx {tx_hash}: {str(e)}")
+                    break
+                
+                time.sleep(2)  # Check every 2 seconds
             
         except Exception as e:
             logging.error(f"SSE stream error for {tx_hash}: {str(e)}")
-            error_data = {'success': False, 'error': str(e)}
+            import traceback
+            traceback.print_exc()
+            error_data = {'success': False, 'error': str(e), 'status': 'failed'}
             yield f"event: status\ndata: {json.dumps(error_data)}\n\n"
     
     return Response(
@@ -592,7 +598,8 @@ def stream_tx_status(tx_hash):
         mimetype='text/event-stream',
         headers={
             'Cache-Control': 'no-cache',
-            'X-Accel-Buffering': 'no'  # Disable nginx buffering
+            'X-Accel-Buffering': 'no',  # Disable nginx buffering
+            'Connection': 'keep-alive'
         }
     )
 
