@@ -6549,25 +6549,10 @@ def confirm_token_deployment(token_id):
                 'error': f'Contract address already exists for token ID {existing.id} ({existing.name})'
             }), 400
         
-        # Fetch totalSupply from blockchain
-        try:
-            import json
-            with open('artifacts/contracts/BondingCurvePool.sol/BondingCurvePool.json') as f:
-                pool_abi = json.load(f)['abi']
-            
-            pool_contract = web3_service.w3.eth.contract(
-                address=Web3.to_checksum_address(contract_address),
-                abi=pool_abi
-            )
-            
-            total_supply_wei = pool_contract.functions.totalSupply().call()
-            circulating_supply_tokens = total_supply_wei // (10 ** 18)  # Convert from wei to tokens
-            
-            logging.info(f"✅ Fetched totalSupply from blockchain for token {token_id} ({token.symbol}): {circulating_supply_tokens:,} tokens (from {total_supply_wei} wei)")
-        except Exception as e:
-            logging.error(f"❌ Failed to fetch totalSupply from blockchain for token {token_id}: {e}", exc_info=True)
-            circulating_supply_tokens = token.total_supply  # Fallback to database value
-            logging.warning(f"Using fallback totalSupply from database: {circulating_supply_tokens:,} tokens")
+        # For bonding curve tokens, use total_supply from database since blockchain totalSupply() 
+        # starts at 0 and only increases as tokens are bought
+        circulating_supply_tokens = token.total_supply
+        logging.info(f"✅ Setting circulating_supply for token {token_id} ({token.symbol}) to total_supply: {circulating_supply_tokens:,} tokens")
         
         # Update token record with verified data
         token.contract_address = contract_address
