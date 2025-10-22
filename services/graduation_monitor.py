@@ -44,6 +44,16 @@ def check_token_graduation(token):
                 'market_cap_usd': float(token.current_market_cap) if token.current_market_cap else 0
             }
         
+        # Skip if already in graduation process
+        if token.graduation_status in ['initiating', 'completing']:
+            logging.debug(f"Token {token.symbol} already graduating (status: {token.graduation_status})")
+            return {
+                'status': 'in_progress',
+                'token_id': token.id,
+                'token_symbol': token.symbol,
+                'graduation_status': token.graduation_status
+            }
+        
         # Get web3 service
         web3_service = get_web3_service()
         
@@ -67,25 +77,33 @@ def check_token_graduation(token):
         if market_cap_usd >= graduation_threshold_usd:
             logging.info(f"🎓 Token {token.symbol} ready for graduation! Market cap: ${market_cap_usd:,.2f}")
             
-            # Trigger graduation via oracle
-            tx_hash = web3_service.initiate_graduation_oracle(token.contract_address)
+            # Use GraduationStateManager to properly handle graduation flow
+            from services.graduation_state_manager import GraduationStateManager
             
-            # Update token model
-            token.is_graduated = True
-            token.graduated_at = datetime.now(timezone.utc)
-            token.graduation_tx = tx_hash
-            token.current_market_cap = market_cap_usd
-            db.session.commit()
+            # Get oracle wallet from web3_service
+            oracle_wallet = web3_service.oracle_account
             
-            logging.info(f"✅ Token {token.symbol} graduated successfully! TX: {tx_hash}")
+            # Initiate graduation - this will set status to 'initiating' and send tx
+            result = GraduationStateManager.initiate_graduation(token, oracle_wallet)
             
-            return {
-                'status': 'graduated',
-                'token_id': token.id,
-                'token_symbol': token.symbol,
-                'market_cap_usd': market_cap_usd,
-                'tx_hash': tx_hash
-            }
+            if result.get('success'):
+                logging.info(f"✅ Token {token.symbol} graduation initiated! TX: {result.get('tx_hash')}")
+                
+                return {
+                    'status': 'graduation_initiated',
+                    'token_id': token.id,
+                    'token_symbol': token.symbol,
+                    'market_cap_usd': market_cap_usd,
+                    'graduation_status': token.graduation_status
+                }
+            else:
+                logging.error(f"❌ Failed to initiate graduation for {token.symbol}")
+                return {
+                    'status': 'error',
+                    'token_id': token.id,
+                    'token_symbol': token.symbol,
+                    'error': 'Graduation initiation failed'
+                }
         else:
             # Not ready yet
             progress_pct = (market_cap_usd / graduation_threshold_usd) * 100
