@@ -95,14 +95,12 @@ class GraduationStateManager:
                 from services.web3_service import get_web3_service
                 web3_service = get_web3_service()
                 
-                tx_hash = web3_service.send_graduation_initiation_tx(
-                    token=token,
-                    oracle_wallet=oracle_wallet,
-                    timeout=30  # 30 second timeout
+                tx_hash = web3_service.initiate_graduation_oracle(
+                    token_address=token.contract_address
                 )
                 
                 # 3. Wait for blockchain confirmation
-                receipt = web3_service.wait_for_confirmation(tx_hash, timeout=60)
+                receipt = web3_service.wait_for_transaction_receipt(tx_hash, timeout=60)
                 
                 if not receipt or receipt['status'] != 1:
                     raise Exception(f"Initiation transaction failed: {tx_hash}")
@@ -169,14 +167,12 @@ class GraduationStateManager:
                 from services.web3_service import get_web3_service
                 web3_service = get_web3_service()
                 
-                tx_hash = web3_service.send_graduation_completion_tx(
-                    token=token,
-                    oracle_wallet=oracle_wallet,
-                    timeout=30
+                tx_hash = web3_service.complete_graduation_oracle(
+                    token_address=token.contract_address
                 )
                 
                 # 3. Wait for confirmation
-                receipt = web3_service.wait_for_confirmation(tx_hash, timeout=120)  # 2 min
+                receipt = web3_service.wait_for_transaction_receipt(tx_hash, timeout=120)  # 2 min
                 
                 if not receipt or receipt['status'] != 1:
                     raise Exception(f"Completion transaction failed: {tx_hash}")
