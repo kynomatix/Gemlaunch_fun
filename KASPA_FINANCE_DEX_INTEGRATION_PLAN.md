@@ -122,9 +122,11 @@ def get_dex_buy_quote(self, token_address, kas_amount_wei, fee_tier=FEE_TIER_005
     Returns:
         dict: {
             'tokens_out': int,
+            'min_tokens_out': int (with slippage applied),
             'price_impact': float,
             'gas_estimate': int,
-            'fee_tier': int
+            'fee_tier': int,
+            'slippage_bps': int
         }
     """
     quoter = self.contracts['QuoterV2']
@@ -141,11 +143,22 @@ def get_dex_buy_quote(self, token_address, kas_amount_wei, fee_tier=FEE_TIER_005
     tokens_out = result[0]
     gas_estimate = result[3]
     
+    # Calculate optimal slippage (same logic as bonding curve)
+    # For DEX: base 0.5% slippage, increase for larger trades
+    slippage_bps = 50  # 0.5% base
+    if kas_amount_wei > self.w3.to_wei(10, 'ether'):  # >10 KAS
+        slippage_bps = 100  # 1.0%
+    
+    # Apply slippage protection
+    min_tokens_out = tokens_out * (10000 - slippage_bps) // 10000
+    
     return {
         'tokens_out': tokens_out,
+        'min_tokens_out': min_tokens_out,
         'price_impact': 0,  # TODO: Calculate from sqrtPriceX96
         'gas_estimate': gas_estimate,
-        'fee_tier': fee_tier
+        'fee_tier': fee_tier,
+        'slippage_bps': slippage_bps
     }
 
 def get_dex_sell_quote(self, token_address, token_amount, fee_tier=FEE_TIER_005):
@@ -443,6 +456,32 @@ async function executeSell() {
 - [ ] Error handling covers DEX-specific failures
 - [ ] Documentation updated in `replit.md`
 - [ ] Graduation fee tier verified (0.05% vs 0.25%)
+
+---
+
+## 💡 Important Clarifications
+
+### Slippage Handling
+**Q**: Does Kaspa Finance have auto-slippage like our bonding curve?  
+**A**: No, but we calculate optimal slippage on our backend and apply it via `amountOutMinimum` parameter:
+```python
+# Backend calculates slippage based on pool depth, volatility, trade size
+optimal_slippage_bps = calculate_slippage(pool_state, trade_size)
+min_tokens_out = quote_amount * (10000 - optimal_slippage_bps) // 10000
+
+# Apply to DEX trade
+swap_params = {'amountOutMinimum': min_tokens_out}
+```
+**Result**: Users get same slippage protection, backend handles calculation instead of smart contract.
+
+### Liquidity Provision
+**Q**: Do users need KAS to add liquidity after graduation?  
+**A**: No! The platform provides ALL initial liquidity during graduation:
+- **KAS**: Full virtualKasReserve from bonding curve (~$75,000)
+- **Tokens**: 25% of total supply
+- **LP NFT**: Owned by GraduationController (platform controlled)
+
+**Users only trade** - they never need to add liquidity. The graduation process creates a fully balanced pool automatically.
 
 ---
 
