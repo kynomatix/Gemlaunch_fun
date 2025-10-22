@@ -1,0 +1,71 @@
+## IMPLEMENTATION INSTRUCTIONS
+
+**Context**: Implement Kaspa Finance DEX integration per the complete specification in `KASPA_FINANCE_DEX_INTEGRATION_PLAN.md`.
+
+**Mode**: Build mode (Plan mode already completed and approved).
+
+**Critical Requirements**:
+
+1. **Follow the plan document STRICTLY**:
+   - Work through PHASES 0-6 sequentially (Phase 0 MUST be completed first)
+   - Focus ONLY on "PART 2: IMPLEMENTATION GUIDE" sections
+   - Ignore "APPENDIX" sections (historical context only)
+   - After completing each phase, add implementation notes to the plan document
+
+2. **Task Management**:
+   - Create a todo list from the plan document BEFORE starting
+   - Mark tasks as `in_progress` when starting, `completed` after architect review
+   - Update the plan document with any discoveries (edge cases, bugs, deviations)
+   - Add a "## IMPLEMENTATION NOTES" section to track decisions
+
+3. **Architect Reviews** (MANDATORY):
+   - Call `architect` tool after each PHASE completion
+   - Include git diff in the review
+   - Mark task as `completed` ONLY after architect approval
+   - Fix any issues architect identifies before proceeding
+
+4. **Context Anchors** (For memory optimization recovery):
+   - Before starting work, read the current phase from the plan document
+   - After every 30 minutes, re-read the current phase section
+   - Always check the todo list to see where you are
+   - If uncertain about next step, re-read PART 2 from the beginning
+
+5. **Progress Documentation**:
+   - Add inline comments to the plan document as you work:
+     ```markdown
+     #### Task 1.1: DEX Contract Loading
+     **Status**: ✅ COMPLETED (Oct 22, 2025 14:30)
+     **Implementation Notes**: 
+     - Added IQuoterV2.json and ISwapRouter.json ABIs to artifacts/
+     - Modified web3_service.py lines 45-67
+     - No issues encountered
+     ```
+
+6. **Regression Prevention**:
+   - NEVER modify bonding curve trading code (confirmed zero-touch requirement)
+   - Test bonding curve quotes after each phase to ensure no regression
+   - If you modify shared code, add tests to verify both paths work
+
+7. **Recovery Protocol** (If you lose context mid-session):
+   - Read the plan document's "## IMPLEMENTATION NOTES" section
+   - Check the todo list to see current status
+   - Re-read the current PHASE from PART 2
+   - Review recent git commits to understand what was completed
+   - Continue from the last incomplete task
+
+8. **Completion Criteria**:
+   - All tasks in PART 2 (PHASES 0-6) marked completed
+   - Architect has reviewed all changes
+   - All tests in PART 3 pass
+   - Plan document updated with final implementation notes
+   - Call me for final review before marking project complete
+
+**Estimated Duration**: 3-4 days (24-32 working hours)
+
+**Special Notes**:
+- This implementation affects ONLY post-graduation features
+- Bonding curve code must remain untouched (zero regressions allowed)
+- Database migration is CRITICAL - use the 5-phase safe migration plan
+- Wallet attribution uses `tx.from` not event args (see plan for details)
+
+BEGIN WORK NOW. Start by reading PHASE 0 from the plan document.
