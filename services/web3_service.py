@@ -203,6 +203,24 @@ class Web3Service:
             logging.error(f"Failed to load ABI for {contract_name}: {str(e)}")
             raise
     
+    def _load_interface_abi(self, interface_name):
+        """Load interface ABI (stored directly in artifacts/contracts/)"""
+        try:
+            # Interface ABIs are stored directly in contracts folder
+            abi_path = ARTIFACTS_DIR / f"{interface_name}.json"
+            
+            if not abi_path.exists():
+                raise FileNotFoundError(f"Interface ABI not found: {abi_path}")
+            
+            with open(abi_path, 'r') as f:
+                abi_json = json.load(f)
+            
+            return abi_json['abi'] if 'abi' in abi_json else abi_json
+            
+        except Exception as e:
+            logging.error(f"Failed to load interface ABI for {interface_name}: {str(e)}")
+            raise
+    
     def _load_contracts(self):
         """Load all deployed contracts"""
         try:
@@ -242,6 +260,29 @@ class Web3Service:
             )
             contracts['AirdropDistributorABI'] = airdrop_distributor_abi
             logging.info(f"Loaded AirdropDistributor at {AIRDROP_DISTRIBUTOR_ADDRESS}")
+            
+            # Load Kaspa Finance DEX Contracts (for post-graduation trading)
+            quoter_v2_abi = self._load_interface_abi('IQuoterV2')
+            contracts['QuoterV2'] = self.w3.eth.contract(
+                address=Web3.to_checksum_address(KASPA_FINANCE_QUOTER_V2),
+                abi=quoter_v2_abi
+            )
+            logging.info(f"Loaded QuoterV2 at {KASPA_FINANCE_QUOTER_V2}")
+            
+            swap_router_abi = self._load_interface_abi('ISwapRouter')
+            contracts['SwapRouter'] = self.w3.eth.contract(
+                address=Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
+                abi=swap_router_abi
+            )
+            logging.info(f"Loaded SwapRouter at {KASPA_FINANCE_SWAP_ROUTER}")
+            
+            wkas_abi = self._load_interface_abi('IWKAS')
+            contracts['WKAS'] = self.w3.eth.contract(
+                address=Web3.to_checksum_address(KASPA_FINANCE_WKAS),
+                abi=wkas_abi
+            )
+            contracts['WKASABI'] = wkas_abi  # Store ABI for ERC20 interactions
+            logging.info(f"Loaded WKAS at {KASPA_FINANCE_WKAS}")
             
             return contracts
             
@@ -1414,6 +1455,284 @@ class Web3Service:
         except Exception as e:
             logging.error(f"Failed to build sellTokens tx: {str(e)}")
             raise
+    
+    # =========================
+    # DEX Trading Methods (Post-Graduation)
+    # =========================
+    
+    def get_dex_buy_quote(self, token_address, kas_amount, fee_tier=FEE_TIER_030):
+        """
+        Get quote for buying tokens via Kaspa Finance DEX
+        
+        Args:
+            token_address (str): Token contract address
+            kas_amount (int): KAS amount to spend (in wei)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: {
+                'tokens_out': int (wei),
+                'price_impact_percent': float,
+                'execution_price': float (KAS per token)
+            }
+        """
+        try:
+            logging.info(f"Getting DEX buy quote: {kas_amount} wei KAS for token {token_address}")
+            
+            quoter = self.contracts['QuoterV2']
+            
+            # QuoterV2.quoteExactInputSingle params
+            # (tokenIn, tokenOut, amountIn, fee, sqrtPriceLimitX96)
+            params = (
+                Web3.to_checksum_address(KASPA_FINANCE_WKAS),  # WKAS (input)
+                Web3.to_checksum_address(token_address),        # Token (output)
+                kas_amount,                                     # Amount in
+                fee_tier,                                       # Fee tier
+                0                                               # No price limit
+            )
+            
+            # Call quoter (view function, no gas)
+            result = quoter.functions.quoteExactInputSingle(params).call()
+            tokens_out = result[0]  # amountOut
+            
+            # Calculate price impact (approximate)
+            if tokens_out > 0:
+                execution_price = kas_amount / tokens_out
+                price_impact_percent = 0.0  # TODO: Calculate from pool reserves if needed
+            else:
+                execution_price = 0
+                price_impact_percent = 0
+            
+            logging.info(f"DEX buy quote: {kas_amount} KAS → {tokens_out} tokens (price: {execution_price} KAS/token)")
+            
+            return {
+                'tokens_out': tokens_out,
+                'price_impact_percent': price_impact_percent,
+                'execution_price': execution_price
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to get DEX buy quote: {str(e)}")
+            raise
+    
+    def get_dex_sell_quote(self, token_address, token_amount, fee_tier=FEE_TIER_030):
+        """
+        Get quote for selling tokens via Kaspa Finance DEX
+        
+        Args:
+            token_address (str): Token contract address
+            token_amount (int): Token amount to sell (in wei)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: {
+                'kas_out': int (wei),
+                'price_impact_percent': float,
+                'execution_price': float (KAS per token)
+            }
+        """
+        try:
+            logging.info(f"Getting DEX sell quote: {token_amount} wei tokens for token {token_address}")
+            
+            quoter = self.contracts['QuoterV2']
+            
+            # QuoterV2.quoteExactInputSingle params
+            # (tokenIn, tokenOut, amountIn, fee, sqrtPriceLimitX96)
+            params = (
+                Web3.to_checksum_address(token_address),        # Token (input)
+                Web3.to_checksum_address(KASPA_FINANCE_WKAS),   # WKAS (output)
+                token_amount,                                   # Amount in
+                fee_tier,                                       # Fee tier
+                0                                               # No price limit
+            )
+            
+            # Call quoter (view function, no gas)
+            result = quoter.functions.quoteExactInputSingle(params).call()
+            wkas_out = result[0]  # amountOut (WKAS, equivalent to KAS)
+            
+            # Calculate price impact
+            if token_amount > 0:
+                execution_price = wkas_out / token_amount
+                price_impact_percent = 0.0  # TODO: Calculate from pool reserves if needed
+            else:
+                execution_price = 0
+                price_impact_percent = 0
+            
+            logging.info(f"DEX sell quote: {token_amount} tokens → {wkas_out} WKAS (price: {execution_price} KAS/token)")
+            
+            return {
+                'kas_out': wkas_out,  # WKAS out (will need unwrap)
+                'price_impact_percent': price_impact_percent,
+                'execution_price': execution_price
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to get DEX sell quote: {str(e)}")
+            raise
+    
+    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_030):
+        """
+        Build transaction for buying tokens via Kaspa Finance DEX
+        
+        Args:
+            user_address (str): User's wallet address
+            token_address (str): Token contract address
+            kas_amount (int): KAS amount to spend (in wei)
+            min_tokens_out (int): Minimum tokens to receive (slippage protection)
+            deadline (int): Transaction deadline (unix timestamp)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building DEX buy tx for user {user_address} - Token: {token_address}, KAS: {kas_amount}")
+            
+            swap_router = self.contracts['SwapRouter']
+            
+            # SwapRouter.exactInputSingle params
+            params = {
+                'tokenIn': Web3.to_checksum_address(KASPA_FINANCE_WKAS),
+                'tokenOut': Web3.to_checksum_address(token_address),
+                'fee': fee_tier,
+                'recipient': Web3.to_checksum_address(user_address),
+                'deadline': deadline,
+                'amountIn': kas_amount,
+                'amountOutMinimum': min_tokens_out,
+                'sqrtPriceLimitX96': 0
+            }
+            
+            # Build transaction
+            tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': kas_amount,  # Send KAS (will be wrapped to WKAS automatically)
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"DEX buy tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build DEX buy tx: {str(e)}")
+            raise
+    
+    def build_dex_sell_tx(self, user_address, token_address, token_amount, min_kas_out, deadline, fee_tier=FEE_TIER_030):
+        """
+        Build transaction for selling tokens via Kaspa Finance DEX
+        
+        NOTE: User must approve token spending before calling this
+        
+        Args:
+            user_address (str): User's wallet address
+            token_address (str): Token contract address
+            token_amount (int): Token amount to sell (in wei)
+            min_kas_out (int): Minimum WKAS to receive (slippage protection)
+            deadline (int): Transaction deadline (unix timestamp)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building DEX sell tx for user {user_address} - Token: {token_address}, Amount: {token_amount}")
+            
+            swap_router = self.contracts['SwapRouter']
+            
+            # SwapRouter.exactInputSingle params
+            params = {
+                'tokenIn': Web3.to_checksum_address(token_address),
+                'tokenOut': Web3.to_checksum_address(KASPA_FINANCE_WKAS),
+                'fee': fee_tier,
+                'recipient': Web3.to_checksum_address(user_address),
+                'deadline': deadline,
+                'amountIn': token_amount,
+                'amountOutMinimum': min_kas_out,
+                'sqrtPriceLimitX96': 0
+            }
+            
+            # Build transaction (no value, tokens are transferred via approval)
+            tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"DEX sell tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build DEX sell tx: {str(e)}")
+            raise
+    
+    def build_wkas_unwrap_tx(self, user_address, wkas_amount):
+        """
+        Build transaction for unwrapping WKAS → KAS
+        
+        Args:
+            user_address (str): User's wallet address
+            wkas_amount (int): WKAS amount to unwrap (in wei)
+        
+        Returns:
+            dict: Unsigned transaction dict {from, to, data, value, gas}
+        """
+        try:
+            logging.info(f"Building WKAS unwrap tx for user {user_address} - Amount: {wkas_amount}")
+            
+            wkas_contract = self.contracts['WKAS']
+            
+            # WKAS.withdraw(amount) - unwraps to native KAS
+            tx_data = wkas_contract.functions.withdraw(wkas_amount).build_transaction({
+                'from': Web3.to_checksum_address(user_address),
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
+            
+            # Estimate gas (unwrap is cheap, ~30k gas)
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"WKAS unwrap tx built - Gas: {gas_estimate['gas']}")
+            return tx_data
+            
+        except Exception as e:
+            logging.error(f"Failed to build WKAS unwrap tx: {str(e)}")
+            raise
+    
+    # =========================
+    # Creator Fee Methods (Bonding Curve)
+    # =========================
     
     def get_creator_claimable(self, pool_address):
         """

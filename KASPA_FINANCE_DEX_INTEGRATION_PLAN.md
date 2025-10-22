@@ -70,6 +70,91 @@
 
 ---
 
+### PHASE 1: Backend Infrastructure ✅ COMPLETED (Oct 22, 2025)
+
+#### Task 1.1: Add DEX Contract ABIs
+**Status**: ✅ ALREADY COMPLETE  
+**Implementation Notes**:
+- ABIs already exist in artifacts/contracts/:
+  - IQuoterV2.json
+  - ISwapRouter.json
+  - IWKAS.json
+- No action needed
+
+---
+
+#### Task 1.2: Load DEX Contracts in web3_service.py
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Created `_load_interface_abi()` helper method for loading interface ABIs (stored differently than contract ABIs)
+- Updated `_load_contracts()` to load QuoterV2, SwapRouter, and WKAS contracts
+- Contracts initialized with checksummed addresses from constants
+
+**Changes Made**:
+- Added `_load_interface_abi(interface_name)` method in web3_service.py
+- Loaded QuoterV2 at 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
+- Loaded SwapRouter at 0xDf88D478aF51C0AB616aFBfDD933c874e142858c
+- Loaded WKAS at 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+
+**No Issues Encountered**: Contract loading successful.
+
+---
+
+#### Task 1.3: Implement DEX Quote Methods
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Implemented `get_dex_buy_quote(token_address, kas_amount, fee_tier)`
+- Implemented `get_dex_sell_quote(token_address, token_amount, fee_tier)`
+- Uses QuoterV2.quoteExactInputSingle for both buy and sell quotes
+- Returns tokens_out, kas_out, price_impact_percent, and execution_price
+
+**Changes Made**:
+- Buy quote: WKAS → Token using QuoterV2.quoteExactInputSingle
+- Sell quote: Token → WKAS using QuoterV2.quoteExactInputSingle
+- Default fee tier: 0.30% (FEE_TIER_030 = 3000)
+- Price impact calculation placeholder (TODO: Calculate from pool reserves if needed)
+
+**Known Limitations**:
+- Price impact currently set to 0.0 (placeholder)
+- Can be enhanced later with actual pool reserve queries
+
+---
+
+#### Task 1.4: Implement DEX Transaction Building Methods
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Implemented `build_dex_buy_tx(user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier)`
+- Implemented `build_dex_sell_tx(user_address, token_address, token_amount, min_kas_out, deadline, fee_tier)`
+- Uses SwapRouter.exactInputSingle for both buy and sell
+- Includes gas estimation and automatic nonce management
+
+**Changes Made**:
+- Buy tx: Sends KAS as value, will be wrapped to WKAS automatically by SwapRouter
+- Sell tx: Requires prior token approval, no value sent
+- Both include slippage protection via amountOutMinimum
+- Deadline parameter for transaction expiry protection
+- Gas estimation integrated
+
+**No Issues Encountered**: Transaction building logic follows Uniswap V3 pattern.
+
+---
+
+#### Task 1.5: Implement WKAS Unwrap Helper
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Implemented `build_wkas_unwrap_tx(user_address, wkas_amount)`
+- Uses WKAS.withdraw(amount) to unwrap WKAS → KAS
+- Required after DEX sells (which return WKAS, not KAS)
+
+**Changes Made**:
+- Simple unwrap transaction using WKAS.withdraw()
+- Gas estimation included (~30k gas expected)
+- Returns native KAS to user
+
+**No Issues Encountered**: Standard WETH-style unwrap pattern.
+
+---
+
 ## 📋 Executive Summary
 
 Enable continuous trading of graduated tokens on gemlaunch.fun by routing trades through Kaspa Finance DEX. Users experience seamless trading before and after graduation without leaving the platform.
