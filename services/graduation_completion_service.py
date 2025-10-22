@@ -153,7 +153,9 @@ class GraduationCompletionService:
             token.graduation_completed_at = datetime.now(timezone.utc)
             token.graduation_completion_tx = tx_hash.hex()
             token.dex_pool_address = pool_data.get('pool_address')
-            token.dex_position_id = pool_data.get('position_id')
+            token.lp_nft_position_id = pool_data.get('position_id')  # FIXED: Use correct column name
+            token.dex_pool_fee_tier = pool_data.get('fee_tier')
+            token.is_graduated = True  # Set legacy field for backward compatibility
             
             db.session.commit()
             
