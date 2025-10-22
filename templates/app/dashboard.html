@@ -1492,12 +1492,7 @@
                                                     {% for item in sorted_achievements %}
                                                     <div class="accolade-item {{ 'completed' if item.is_completed else 'locked' }}" data-progress="{{ item.progress_pct }}">
                                                         <div class="accolade-icon {{ 'icon-glow' if item.is_completed else '' }}">
-                                                            <i class="fas {{ item.icon }}"></i>
-                                                            {% if item.is_completed %}
-                                                            <div class="completion-checkmark">
-                                                                <i class="fas fa-check"></i>
-                                                            </div>
-                                                            {% endif %}
+                                                            {% include 'icons/achievement_icon.html' %}
                                                         </div>
                                                         
                                                         <div class="accolade-details">
@@ -2556,51 +2551,44 @@
             box-shadow: 0 6px 20px rgba(32, 178, 170, 0.2);
         }
         
-        .completion-checkmark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(32, 178, 170, 0.5);
-            z-index: 3;
+        /* Custom SVG Achievement Icons */
+        .achievement-svg {
+            width: 100%;
+            height: 100%;
+            color: rgba(32, 178, 170, 0.6);
+            transition: all 0.3s ease;
         }
         
-        .completion-checkmark i {
-            color: #000;
-            font-size: 0.75rem;
-            font-weight: 900;
+        .accolade-item.completed .achievement-svg {
+            color: rgba(255, 255, 255, 0.95);
+        }
+        
+        .accolade-item.locked .achievement-svg {
+            color: rgba(32, 178, 170, 0.4);
+            opacity: 0.6;
         }
 
         .accolade-icon {
             position: relative;
-            width: 45px;  /* Fix: Reduced from 65px */
-            height: 45px;  /* Fix: Reduced from 65px */
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             background: rgba(32, 178, 170, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             color: rgba(32, 178, 170, 0.6);
-            font-size: 1.2rem;  /* Fix: Reduced from 1.8rem */
+            padding: 8px;
             flex-shrink: 0;
             transition: all 0.3s ease;
         }
         
         .accolade-item.locked .accolade-icon {
             background: rgba(32, 178, 170, 0.08);
-            color: rgba(32, 178, 170, 0.4);
         }
 
         .accolade-item.completed .accolade-icon {
-            background: linear-gradient(135deg, #20B2AA, #00CED1);
-            color: #FFFFFF;
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.3), rgba(0, 206, 209, 0.2));
             box-shadow: 0 4px 15px rgba(32, 178, 170, 0.4);
         }
         
