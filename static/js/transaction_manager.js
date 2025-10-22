@@ -329,7 +329,8 @@ class TransactionManager {
                 eventSource.close();
                 this.activeTransactions.delete(txHash);
             } else if (data.status === 'complete') {
-                // Server signaling clean shutdown - ignore
+                // Server signaling clean shutdown - mark as received
+                receivedTerminalStatus = true;
                 eventSource.close();
                 this.activeTransactions.delete(txHash);
             } else {
