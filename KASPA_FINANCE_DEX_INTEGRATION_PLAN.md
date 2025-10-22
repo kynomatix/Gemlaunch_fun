@@ -775,29 +775,339 @@ def index_token_trades(token):
         index_bonding_curve_trades(token)
 
 def index_dex_swaps(token):
-    """Index Kaspa Finance SwapRouter swaps for graduated token"""
+    """
+    Index Kaspa Finance SwapRouter Swap events for graduated tokens
+    Creates TradeEvent records compatible with bonding curve events
+    """
     web3_service = get_web3_service()
-    router = web3_service.contracts['SwapRouter']
     
     # Get last indexed block
     last_block = token.last_indexed_block or token.deployment_block_number
     
-    # Listen for Swap events involving this token
-    # Uniswap V3 Swap event signature
-    swap_topic = web3_service.w3.keccak(text="Swap(address,address,int256,int256,uint160,uint128,int24)").hex()
+    # Load Uniswap V3 Pool contract
+    pool_contract = web3_service.w3.eth.contract(
+        address=token.dex_pool_address,
+        abi=web3_service._load_contract_abi_json('IUniswapV3Pool')
+    )
     
-    logs = web3_service.w3.eth.get_logs({
-        'address': token.dex_pool_address,
-        'fromBlock': last_block + 1,
-        'toBlock': 'latest',
-        'topics': [swap_topic]
-    })
+    swap_filter = pool_contract.events.Swap.create_filter(
+        fromBlock=last_block + 1,
+        toBlock='latest'
+    )
     
-    for log in logs:
-        # Parse swap event
-        # Determine if buy or sell based on token ordering
-        # Create TradeEvent record
-        pass  # TODO: Implement parsing
+    swap_events = swap_filter.get_all_entries()
+    
+    for event in swap_events:
+        process_dex_swap_event(token, event)
+    
+    # Update last indexed block
+    if swap_events:
+        token.last_indexed_block = swap_events[-1]['blockNumber']
+        db.session.commit()
+
+def process_dex_swap_event(token, event):
+    """
+    Convert Uniswap V3 Swap event to TradeEvent record and trigger all downstream updates
+    
+    CRITICAL: This must produce identical effects as bonding curve trades for:
+    - TokenEngagement (trades_count, community_points, diamond_hands_score)
+    - User stats (total_trades_count, total_trading_volume)
+    - Holding (balance, cost basis)
+    - Activity feed
+    - Achievement progress
+    """
+    args = event['args']
+    
+    # Determine token0 vs token1 ordering (Uniswap V3: lower address = token0)
+    token_address_lower = token.contract_address.lower()
+    wkas_address_lower = KASPA_FINANCE_WKAS.lower()
+    
+    if token_address_lower < wkas_address_lower:
+        token_amount_delta = args['amount0']
+        kas_amount_delta = args['amount1']
+    else:
+        kas_amount_delta = args['amount0']
+        token_amount_delta = args['amount1']
+    
+    # Determine trade type (negative token delta = selling)
+    is_buy = token_amount_delta > 0
+    trade_type = 'buy' if is_buy else 'sell'
+    token_amount = abs(token_amount_delta)
+    kas_amount = abs(kas_amount_delta)
+    price_per_token = kas_amount / token_amount if token_amount > 0 else 0
+    user_address = args['recipient'].lower()
+    
+    # Prevent duplicates
+    existing = TradeEvent.query.filter_by(
+        tx_hash=event['transactionHash'].hex(),
+        log_index=event['logIndex']
+    ).first()
+    if existing:
+        return
+    
+    # Create TradeEvent (same schema as bonding curve)
+    trade_event = TradeEvent(
+        token_id=token.id,
+        user_address=user_address,
+        trade_type=trade_type,
+        kas_amount=kas_amount,
+        token_amount=token_amount,
+        price_per_token=price_per_token,
+        tx_hash=event['transactionHash'].hex(),
+        block_number=event['blockNumber'],
+        log_index=event['logIndex'],
+        event_timestamp=datetime.now(timezone.utc),
+        is_dex_trade=True  # Flag to distinguish DEX from bonding curve
+    )
+    db.session.add(trade_event)
+    
+    # CRITICAL: Trigger ALL downstream updates (must match bonding curve behavior)
+    from services.engagement_calculator import update_engagement_from_trade
+    from services.user_stats_updater import update_user_stats_from_trade
+    from services.holding_updater import update_holding_from_trade
+    from services.activity_logger import create_activity_from_trade
+    
+    update_engagement_from_trade(token, user_address, trade_event)
+    update_user_stats_from_trade(user_address, trade_event)
+    update_holding_from_trade(user_address, token, trade_event)
+    create_activity_from_trade(user_address, token, trade_event)
+    
+    db.session.commit()
+```
+
+---
+
+### **PHASE 3.5: Data Integration Layer** 🆕 **CRITICAL**
+
+**Purpose**: Ensure DEX trades produce **identical downstream effects** as bonding curve trades across all platform systems (engagement, stats, achievements, leaderboards, portfolio, activity).
+
+#### Task 3.5.1: TokenEngagement Updates
+**File**: `services/engagement_calculator.py` (NEW)
+
+```python
+"""
+TokenEngagement calculation service
+Unified logic for bonding curve AND DEX trades
+"""
+
+import logging
+from datetime import datetime, timezone
+from models import db, User, TokenEngagement
+
+def update_engagement_from_trade(token, user_address, trade_event):
+    """
+    Update TokenEngagement metrics from any trade (bonding curve OR DEX)
+    
+    Updates:
+    - trades_count
+    - buy_count / sell_count
+    - total_traded_volume
+    - diamond_hands_score
+    - community_points
+    - holding_days tracking
+    """
+    # Resolve wallet to user (handles LinkedWallet merges)
+    user = User.resolve_wallet_to_user(user_address)
+    if not user:
+        logging.warning(f"User not found for wallet {user_address}")
+        return
+    
+    # Get or create TokenEngagement record
+    engagement = TokenEngagement.query.filter_by(
+        user_id=user.id,
+        token_id=token.id
+    ).first()
+    
+    if not engagement:
+        engagement = TokenEngagement(
+            user_id=user.id,
+            token_id=token.id,
+            first_acquired_at=datetime.now(timezone.utc) if trade_event.trade_type == 'buy' else None
+        )
+        db.session.add(engagement)
+    
+    # Update trade counts
+    engagement.trades_count = (engagement.trades_count or 0) + 1
+    engagement.total_traded_volume = (engagement.total_traded_volume or 0) + trade_event.kas_amount
+    
+    if trade_event.trade_type == 'buy':
+        engagement.buy_count = (engagement.buy_count or 0) + 1
+        if not engagement.first_acquired_at:
+            engagement.first_acquired_at = datetime.now(timezone.utc)
+    else:
+        engagement.sell_count = (engagement.sell_count or 0) + 1
+    
+    # Recalculate diamond hands score (0-100 based on buy/sell ratio)
+    total_trades = engagement.buy_count + engagement.sell_count
+    if total_trades > 0:
+        engagement.diamond_hands_score = int((engagement.buy_count / total_trades) * 100)
+    
+    # Update last activity
+    engagement.last_activity_at = datetime.now(timezone.utc)
+    
+    # Award community points
+    points_earned = 10  # Base
+    if trade_event.kas_amount > 10:
+        points_earned = 25  # Large trade bonus
+    engagement.add_community_points(points_earned, activity_type='trade')
+    
+    # Update holding days (if user still holds)
+    if engagement.first_acquired_at and engagement.current_balance > 0:
+        holding_delta = datetime.now(timezone.utc) - engagement.first_acquired_at
+        engagement.holding_days = holding_delta.days
+```
+
+#### Task 3.5.2: User Stats Updates
+**File**: `services/user_stats_updater.py` (NEW)
+
+```python
+"""
+User stats aggregation service
+Unified logic for bonding curve AND DEX trades
+"""
+
+import logging
+from models import User
+
+def update_user_stats_from_trade(user_address, trade_event):
+    """
+    Update User model aggregated stats from trade
+    
+    Updates:
+    - total_trades_count
+    - total_trading_volume
+    
+    Then triggers achievement evaluation
+    """
+    user = User.resolve_wallet_to_user(user_address)
+    if not user:
+        return
+    
+    # Update counters
+    user.total_trades_count = (user.total_trades_count or 0) + 1
+    user.total_trading_volume = (user.total_trading_volume or 0) + trade_event.kas_amount
+    
+    # Trigger achievement check
+    from services.achievement_service import evaluate_user_achievements
+    try:
+        evaluate_user_achievements(user.id)
+    except Exception as e:
+        logging.error(f"Achievement evaluation failed for user {user.id}: {e}")
+```
+
+#### Task 3.5.3: Portfolio/Holding Updates
+**File**: `services/holding_updater.py` (NEW)
+
+```python
+"""
+Portfolio holding tracker
+FTX-style weighted average cost basis
+"""
+
+from datetime import datetime, timezone
+from models import db, User, Holding
+
+def update_holding_from_trade(user_address, token, trade_event):
+    """
+    Update Holding model for portfolio tracking
+    
+    Maintains:
+    - token_amount (current balance)
+    - average_price (weighted average cost basis)
+    - total_invested (cumulative KAS invested)
+    """
+    user = User.resolve_wallet_to_user(user_address)
+    if not user:
+        return
+    
+    # Get or create holding
+    holding = Holding.query.filter_by(
+        user_id=user.id,
+        token_id=token.id
+    ).first()
+    
+    if not holding:
+        holding = Holding(
+            user_id=user.id,
+            token_id=token.id,
+            first_purchase=datetime.now(timezone.utc)
+        )
+        db.session.add(holding)
+    
+    # Use existing update_holding method
+    # Buys: positive amount, Sells: negative amount
+    trade_amount = trade_event.token_amount if trade_event.trade_type == 'buy' else -trade_event.token_amount
+    
+    holding.update_holding(
+        trade_amount=trade_amount,
+        trade_price=trade_event.price_per_token,
+        kas_amount=trade_event.kas_amount
+    )
+```
+
+#### Task 3.5.4: Activity Feed Integration
+**File**: `services/activity_logger.py` (NEW)
+
+```python
+"""
+Activity feed logger
+Creates public activity entries for trades
+"""
+
+from models import db, User, Activity
+
+def create_activity_from_trade(user_address, token, trade_event):
+    """
+    Create Activity feed entry for trade
+    
+    Visible in:
+    - User profile activity feed
+    - Token activity feed
+    - Platform public feed
+    """
+    user = User.resolve_wallet_to_user(user_address)
+    if not user:
+        return
+    
+    # Build description
+    if trade_event.trade_type == 'buy':
+        title = f'Bought {token.symbol}'
+        description = f'Purchased {trade_event.token_amount:,.0f} {token.symbol} for {trade_event.kas_amount:.2f} KAS'
+    else:
+        title = f'Sold {token.symbol}'
+        description = f'Sold {trade_event.token_amount:,.0f} {token.symbol} for {trade_event.kas_amount:.2f} KAS'
+    
+    # Add DEX indicator if applicable
+    if trade_event.is_dex_trade:
+        description += ' (Kaspa Finance DEX)'
+    
+    activity = Activity(
+        user_id=user.id,
+        activity_type=f'trade_{trade_event.trade_type}',
+        title=title,
+        description=description,
+        token_id=token.id,
+        points_earned=10,
+        is_public=True
+    )
+    
+    db.session.add(activity)
+```
+
+#### Task 3.5.5: Schema Updates
+**File**: `models.py`
+
+Add to `TradeEvent` model:
+```python
+class TradeEvent(db.Model):
+    # ... existing fields ...
+    
+    is_dex_trade = db.Column(db.Boolean, default=False)  # NEW: Distinguish DEX from bonding curve
+```
+
+**Migration**:
+```sql
+ALTER TABLE trade_event ADD COLUMN is_dex_trade BOOLEAN DEFAULT FALSE;
 ```
 
 ---
