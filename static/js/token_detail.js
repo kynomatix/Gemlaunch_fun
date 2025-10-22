@@ -859,7 +859,7 @@
                         lineWidth: 1,
                         lineStyle: LightweightCharts.LineStyle.Dashed,
                         axisLabelVisible: true,
-                        title: 'Current',
+                        title: '',
                         axisLabelColor: '#888888',
                         axisLabelTextColor: '#FFFFFF'
                     });
