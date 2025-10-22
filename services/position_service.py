@@ -135,19 +135,34 @@ class PositionService:
                 # SELL: Reduce position with REBASING cost basis (FTX-style de-risking)
                 sell_qty = min(token_amount, position_qty)  # Can't sell more than we have
                 
-                if position_qty > 0 and avg_entry > 0:
-                    # Realized P&L: (sell_price - avg_entry) * qty_sold
-                    pnl_this_sale = (price_kas - avg_entry) * sell_qty
+                if position_qty > 0:
+                    # Realized P&L calculation
+                    if avg_entry > 0:
+                        # Normal case: (sell_price - avg_entry) * qty_sold
+                        pnl_this_sale = (price_kas - avg_entry) * sell_qty
+                    else:
+                        # Airdrop-only case (avg_entry = 0): entire sale proceeds are profit
+                        pnl_this_sale = price_kas * sell_qty
+                    
                     realized_pnl += pnl_this_sale
                     
                     # REBASING: Subtract actual sale proceeds from cost basis
                     # This "de-risks" your position by reflecting profits taken
                     cost_basis -= kas_amount  # Use actual proceeds, not original cost
+                    
+                    # Handle negative cost basis edge case (can happen when selling airdrops)
+                    # Negative cost basis means you've taken out more than you put in (pure profit)
+                    if cost_basis < 0:
+                        cost_basis = Decimal('0')
+                    
                     position_qty -= sell_qty
                     
                     # Recalculate avg entry based on reduced cost basis
-                    if position_qty > 0:
+                    if position_qty > 0 and cost_basis > 0:
                         avg_entry = cost_basis / position_qty
+                    elif position_qty > 0:
+                        # Position remains but cost_basis is 0 (all remaining tokens are from airdrops)
+                        avg_entry = Decimal('0')
                     else:
                         # Position fully closed, reset everything
                         position_qty = Decimal('0')

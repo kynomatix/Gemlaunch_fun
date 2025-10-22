@@ -2760,11 +2760,15 @@ def api_token_user_trades(address):
                 price_kas = 0
                 price_usd = 0
             
-            # Track buy totals for average entry calculation
+            # Track buy/airdrop totals for average entry calculation
             if trade.trade_type == 'buy':
                 total_kas_spent += kas_amount
                 total_tokens_bought += token_amount
-            else:
+            elif trade.trade_type == 'airdrop':
+                # Airdrops add to position at $0 cost (reduces average entry)
+                total_tokens_bought += token_amount
+                # Do NOT add to total_kas_spent (airdrops are free)
+            elif trade.trade_type == 'sell':
                 total_tokens_sold += token_amount
             
             formatted_trades.append({

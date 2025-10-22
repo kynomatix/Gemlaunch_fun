@@ -713,12 +713,32 @@
                         console.log(`Trade ${index}: ${trade.type} at ${tradeDate} → Candle: ${candleDate}`);
                     }
                     
+                    // Determine marker style based on trade type
+                    let position, color, text, shape;
+                    
+                    if (trade.type === 'buy') {
+                        position = 'belowBar';
+                        color = '#20B2AA';  // Teal
+                        text = 'B';
+                        shape = 'circle';
+                    } else if (trade.type === 'sell') {
+                        position = 'aboveBar';
+                        color = '#FF4444';  // Red
+                        text = 'S';
+                        shape = 'circle';
+                    } else if (trade.type === 'airdrop') {
+                        position = 'belowBar';
+                        color = '#FFD700';  // Gold - signifies reward/gift
+                        text = 'A';  // Airdrop
+                        shape = 'arrowUp';  // Different shape for visual distinction
+                    }
+                    
                     return {
-                        time: candleTime,  // Use candle time from chart data (epoch seconds)
-                        position: trade.type === 'buy' ? 'belowBar' : 'aboveBar',
-                        color: trade.type === 'buy' ? '#20B2AA' : '#FF4444',  // Teal for buy, red for sell
-                        shape: 'circle',
-                        text: trade.type === 'buy' ? 'B' : 'S',
+                        time: candleTime,
+                        position: position,
+                        color: color,
+                        shape: shape,
+                        text: text,
                         size: 1
                     };
                 });
