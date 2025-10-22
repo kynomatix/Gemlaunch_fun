@@ -210,6 +210,16 @@ def run_event_indexer_with_context():
             logging.error(f"Error in event indexer: {str(e)}")
             db.session.rollback()
 
+# Wrapper function to run graduation monitor in app context
+def run_graduation_monitor_with_context():
+    with app.app_context():
+        try:
+            from services.graduation_monitor import check_all_graduations
+            check_all_graduations()
+        except Exception as e:
+            logging.error(f"Error in graduation monitor: {str(e)}")
+            db.session.rollback()
+
 # Add monitoring job - runs every 10 seconds
 scheduler.add_job(
     func=check_pending_with_context,
@@ -230,6 +240,16 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# Add graduation monitor job - runs every 60 seconds
+scheduler.add_job(
+    func=run_graduation_monitor_with_context,
+    trigger='interval',
+    seconds=60,
+    id='graduation_monitor',
+    name='Monitor token graduations',
+    replace_existing=True
+)
+
 # Start scheduler
 scheduler.start()
 
@@ -242,6 +262,7 @@ atexit.register(lambda: stop_graduation_completion_service())
 
 logging.info("Transaction monitor scheduler started - checking every 10 seconds")
 logging.info("Event indexer scheduler started - checking every 30 seconds (active tokens only)")
+logging.info("Graduation monitor scheduler started - checking every 60 seconds")
 logging.info("Graduation completion service started - monitoring for pending graduations")
 
 def get_current_user():
@@ -4742,6 +4763,14 @@ def api_trade_buy():
         if token.deployment_status != 'deployed':
             return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
         
+        # Block trading during graduation process
+        if token.graduation_status in ['initiating', 'completing']:
+            return jsonify({
+                'success': False, 
+                'error': 'Trading temporarily paused during graduation to DEX',
+                'graduation_status': token.graduation_status
+            }), 400
+        
         web3_service = get_web3_service()
         kas_amount_wei = Web3.to_wei(kas_amount, 'ether')
         
@@ -4862,6 +4891,14 @@ def api_trade_sell():
         
         if token.deployment_status != 'deployed':
             return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+        
+        # Block trading during graduation process
+        if token.graduation_status in ['initiating', 'completing']:
+            return jsonify({
+                'success': False, 
+                'error': 'Trading temporarily paused during graduation to DEX',
+                'graduation_status': token.graduation_status
+            }), 400
         
         web3_service = get_web3_service()
         
