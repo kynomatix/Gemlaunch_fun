@@ -278,7 +278,14 @@
 - Enhanced trade button with data attributes for endpoint routing
 - Added pool address explorer link for transparency
 
-**No Issues Encountered**: Template changes render correctly with clean logs.
+**Critical Bug Fixed**:
+- **Issue**: Template checked `'completed'` but backend uses `'graduated'` as graduation status
+- **Impact**: DEX UI would never activate for graduated tokens, users would see bonding curve UI instead
+- **Fix**: Changed all occurrences to `'graduated'`, added support for `'completing'` state
+- **Trade Button**: Disabled during `'initiating'` and `'completing'` states with visual feedback
+- **Architect Review**: PASS - Status handling now aligns with backend state machine
+
+**No Other Issues Encountered**: Template renders correctly for all graduation states.
 
 ---
 
