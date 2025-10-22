@@ -1,5 +1,36 @@
 <!-- Trade Panel Partial -->
 <div class="trade-panel">
+    <!-- Graduation Status Badge (shows trading venue) -->
+    {% if token.graduation_status == 'graduated' %}
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
+        <i class="fas fa-graduation-cap" style="margin-right: 0.5rem;"></i>
+        <strong>Trading on Kaspa Finance DEX</strong>
+        <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
+            Liquidity Pool: {{ token.dex_pool_address[:8] }}...{{ token.dex_pool_address[-6:] }}
+        </div>
+    </div>
+    {% elif token.graduation_status in ('initiating', 'completing') %}
+    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
+        <i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
+        <strong>Graduation In Progress</strong>
+        <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
+            {% if token.graduation_status == 'initiating' %}
+            Initiating pool creation...
+            {% else %}
+            Finalizing graduation...
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
+        <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>
+        <strong>Trading on Bonding Curve</strong>
+        <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
+            Price increases with each purchase
+        </div>
+    </div>
+    {% endif %}
+    
     <div class="trade-tabs">
         <button class="trade-tab buy active" onclick="setTradeMode('buy')">Buy</button>
         <button class="trade-tab sell" onclick="setTradeMode('sell')">Sell</button>
@@ -25,7 +56,7 @@
             <span id="tokenBalanceDisplay" style="font-size: 0.75rem; color: #888; display: block; margin-top: 0.25rem;">Balance: -- {{ token.symbol }}</span>
         </div>
         
-        <!-- Fee Breakdown Section (Phase 3.3 Step 2 - Spec Compliant) -->
+        <!-- Fee Breakdown Section - Different for Bonding Curve vs DEX -->
         <div id="feeBreakdown" class="fee-breakdown" style="display: none;">
             <div class="fee-header">Fee Breakdown</div>
             
@@ -35,11 +66,21 @@
                 <span id="priceImpactDisplay">0%</span>
             </div>
             <div class="fee-item">
-                <span>Auto Slippage:</span>
-                <span id="autoSlippageDisplay">0.50%</span>
+                <span>{% if token.graduation_status == 'graduated' %}Slippage Tolerance{% else %}Auto Slippage{% endif %}:</span>
+                <span id="autoSlippageDisplay">{% if token.graduation_status == 'graduated' %}0.50%{% else %}0.50%{% endif %}</span>
             </div>
             
-            <!-- Collapsible Platform Fee Breakdown -->
+            {% if token.graduation_status == 'graduated' %}
+            <!-- DEX Trading Fees (Uniswap V3 LP Fees Only) -->
+            <div class="fee-item">
+                <span>LP Swap Fee (0.3%):</span>
+                <span id="lpFeeDisplay">0 KAS</span>
+            </div>
+            <div class="fee-note" style="font-size: 0.75rem; color: #888; margin-top: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 5px;">
+                <i class="fas fa-info-circle"></i> DEX fees go to liquidity providers, not the platform
+            </div>
+            {% else %}
+            <!-- Bonding Curve Trading Fees (Platform + Creator + Anti-Bot) -->
             <div class="platform-fee-toggle" onclick="togglePlatformFees()">
                 <span><i class="fas fa-chevron-right" id="platformFeeChevron"></i> Platform Fee Breakdown</span>
                 <span id="totalPlatformFee">0 KAS</span>
@@ -58,13 +99,87 @@
                     <span id="antiBotFeeDisplay">0 KAS</span>
                 </div>
             </div>
+            {% endif %}
         </div>
         
         <!-- Trade Status -->
         <div id="tradeStatus" style="display: none;"></div>
         
-        <button type="button" class="trade-button buy" id="tradeButton" onclick="executeTrade()">
-            <i class="fas fa-rocket"></i> Buy ${{ token.symbol }}
+        <!-- Trade Button - Data attributes for DEX vs Bonding Curve routing -->
+        <button type="button" 
+                class="trade-button buy" 
+                id="tradeButton" 
+                {% if token.graduation_status in ('initiating', 'completing') %}
+                disabled
+                style="opacity: 0.5; cursor: not-allowed;"
+                title="Trading is temporarily paused during graduation"
+                {% else %}
+                onclick="executeTrade()"
+                {% endif %}
+                data-graduation-status="{{ token.graduation_status or 'active' }}"
+                data-dex-pool-address="{{ token.dex_pool_address or '' }}"
+                data-bonding-pool-address="{{ token.liquidity_pool_address or token.contract_address }}">
+            <i class="fas fa-{% if token.graduation_status in ('initiating', 'completing') %}pause-circle{% else %}rocket{% endif %}"></i> 
+            {% if token.graduation_status in ('initiating', 'completing') %}
+            Trading Paused
+            {% else %}
+            Buy ${{ token.symbol }}
+            {% endif %}
         </button>
+        
+        {% if token.graduation_status == 'graduated' %}
+        <!-- DEX Pool Reserves Display -->
+        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(102, 126, 234, 0.1); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
+            <div style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem; text-align: center;">
+                <i class="fas fa-water"></i> Uniswap V3 Pool Liquidity
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.25rem;">KAS Reserve</div>
+                    <div style="font-size: 1rem; font-weight: bold;" id="dexKasReserve">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+                <div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.25rem;">{{ token.symbol }} Reserve</div>
+                    <div style="font-size: 1rem; font-weight: bold;" id="dexTokenReserve">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.25rem;">Current DEX Price</div>
+                <div style="font-size: 0.9rem; font-weight: bold; color: #4facfe;" id="dexCurrentPrice">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DEX Trading Info Panel -->
+        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 10px; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="color: #888;">DEX Pool Address:</span>
+                <a href="https://explorer.testnet.kasplextest.xyz/address/{{ token.dex_pool_address }}" 
+                   target="_blank" 
+                   style="color: #4facfe; text-decoration: none;">
+                    {{ token.dex_pool_address[:8] }}...{{ token.dex_pool_address[-6:] }}
+                    <i class="fas fa-external-link-alt" style="font-size: 0.7rem; margin-left: 0.25rem;"></i>
+                </a>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #888;">Trading Fee:</span>
+                <span>0.3% (goes to LPs)</span>
+            </div>
+        </div>
+        {% elif token.graduation_status in ('initiating', 'completing') %}
+        <!-- Graduation In Progress Info -->
+        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(245, 87, 108, 0.1); border-radius: 10px; font-size: 0.85rem; text-align: center;">
+            <i class="fas fa-exclamation-triangle" style="color: #f5576c; margin-right: 0.5rem;"></i>
+            <strong>Trading Temporarily Paused</strong>
+            <div style="margin-top: 0.5rem; color: #888;">
+                This token is currently graduating to Kaspa Finance DEX. Trading will resume once graduation completes.
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>

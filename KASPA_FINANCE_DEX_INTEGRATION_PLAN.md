@@ -244,7 +244,41 @@
 - Imported side effect services into event_indexer
 - Updated main indexing loop to route by graduation_status
 
-**No Issues Encountered**: DEX processing follows same batch pattern as bonding curve processing.
+**Critical Bug Fixed**:
+- **Issue**: DEX swap events stored token_amount in raw wei units (not normalized by decimals)
+- **Impact**: Token quantities were ~1e18 too large, corrupting holdings, stats, engagement, and analytics
+- **Fix**: Normalized token amounts by dividing by 10**18 in build_trade_event_from_dex_swap()
+- **Architect Review**: PASS - Fix verified to resolve data corruption issue
+
+**No Other Issues Encountered**: DEX processing follows same batch pattern as bonding curve processing.
+
+---
+
+### PHASE 4: Frontend Integration ✅ COMPLETED (Oct 22, 2025)
+
+#### Task 4.1-4.4: DEX Trading Interface
+**Status**: ✅ COMPLETED  
+**Implementation Notes**:
+- Modified `templates/app/partials/token_trading.html` with graduation status detection
+- Added three graduation status badges: DEX (completed), Initiating (in progress), Bonding Curve (not started)
+- Conditional fee breakdown: LP fees (0.3%) for DEX, platform/creator/anti-bot fees for bonding curve
+- DEX pool reserves display with loading spinners for JavaScript population
+- Trade button enhanced with data attributes for routing (graduation_status, dex_pool_address, bonding_pool_address)
+
+**UI Features Added**:
+- **Status Badges**: Visual indicators showing trading venue (DEX vs Bonding Curve)
+- **DEX Reserves Panel**: Shows KAS Reserve, Token Reserve, and Current DEX Price
+- **Pool Info Panel**: DEX pool address with explorer link, trading fee (0.3% to LPs)
+- **Graduation Warning**: Trading paused message during graduation transition
+- **Fee Transparency**: Different fee structures clearly labeled (LP fees vs platform fees)
+
+**Changes Made**:
+- Added graduation status conditional logic to template
+- Created reserves display with spinner placeholders (populated by JavaScript in PHASE 5)
+- Enhanced trade button with data attributes for endpoint routing
+- Added pool address explorer link for transparency
+
+**No Issues Encountered**: Template changes render correctly with clean logs.
 
 ---
 
