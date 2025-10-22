@@ -6739,41 +6739,75 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
         buckets[bucket_key].append(point)
     
-    # Build OHLC candles with proper open/close tracking
+    # If no trades, return empty list
+    if not buckets:
+        return []
+    
+    # Calculate the full range of candles from first trade to current time
+    # Ensure start_time and end_time are timezone-aware
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+    if end_time.tzinfo is None:
+        end_time = end_time.replace(tzinfo=timezone.utc)
+    
+    # Floor start_time to interval boundary
+    start_unix = int(start_time.timestamp())
+    start_bucket = (start_unix // interval_seconds) * interval_seconds
+    
+    # Floor end_time to interval boundary
+    end_unix = int(end_time.timestamp())
+    end_bucket = (end_unix // interval_seconds) * interval_seconds
+    
+    # Build OHLC candles with proper open/close tracking and gap filling
     candles = []
     previous_close = None
     
-    for bucket_timestamp, bucket_trades in sorted(buckets.items()):
-        if not bucket_trades:
-            continue
+    # Iterate through ALL time buckets in the range (including empty ones)
+    current_bucket = start_bucket
+    while current_bucket <= end_bucket:
+        bucket_trades = buckets.get(current_bucket, [])
         
-        # Get values based on chart type (price or market cap)
-        if chart_type == 'price':
-            values = [t['price'] for t in bucket_trades]
-        else:  # marketcap
-            values = [t['market_cap'] for t in bucket_trades]
-        
-        # OHLC calculation with proper open tracking
-        # Open: use previous candle's close, or first trade if no previous
-        if previous_close is not None:
-            open_value = previous_close
+        if bucket_trades:
+            # This bucket has trades - calculate OHLC normally
+            # Get values based on chart type (price or market cap)
+            if chart_type == 'price':
+                values = [t['price'] for t in bucket_trades]
+            else:  # marketcap
+                values = [t['market_cap'] for t in bucket_trades]
+            
+            # OHLC calculation with proper open tracking
+            # Open: use previous candle's close, or first trade if no previous
+            if previous_close is not None:
+                open_value = previous_close
+            else:
+                open_value = values[0]
+            
+            # Close: always the last value in this bucket
+            close_value = values[-1]
+            
+            # High: max of all values AND the open (to ensure wick shows properly)
+            high_value = max(max(values), open_value)
+            
+            # Low: min of all values AND the open (to ensure wick shows properly)
+            low_value = min(min(values), open_value)
+            
+            # Sum volume in bucket
+            total_volume = sum(t['volume'] for t in bucket_trades)
         else:
-            open_value = values[0]
-        
-        # Close: always the last value in this bucket
-        close_value = values[-1]
-        
-        # High: max of all values AND the open (to ensure wick shows properly)
-        high_value = max(max(values), open_value)
-        
-        # Low: min of all values AND the open (to ensure wick shows properly)
-        low_value = min(min(values), open_value)
-        
-        # Sum volume in bucket
-        total_volume = sum(t['volume'] for t in bucket_trades)
+            # Empty bucket - fill with flat candle (previous close)
+            if previous_close is not None:
+                open_value = previous_close
+                high_value = previous_close
+                low_value = previous_close
+                close_value = previous_close
+                total_volume = 0
+            else:
+                # Skip empty buckets before first trade
+                current_bucket += interval_seconds
+                continue
         
         candles.append({
-            'time': bucket_timestamp,  # Unix timestamp (seconds)
+            'time': current_bucket,  # Unix timestamp (seconds)
             'open': open_value,
             'high': high_value,
             'low': low_value,
@@ -6783,6 +6817,9 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         
         # Update previous close for next candle
         previous_close = close_value
+        
+        # Move to next bucket
+        current_bucket += interval_seconds
     
     return candles
 
