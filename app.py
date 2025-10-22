@@ -556,45 +556,47 @@ def stream_tx_status(tx_hash):
     from services.tx_monitor import get_tx_monitor
     
     def generate():
-        try:
-            tx_monitor = get_tx_monitor()
-            max_checks = 300  # 5 minutes (2s interval * 300 = 600s)
-            
-            # Send initial ping to establish connection
-            yield f": keepalive\n\n"
-            
-            for _ in range(max_checks):
-                status = tx_monitor.get_transaction_status(tx_hash)
+        # Push Flask app context for database access in generator
+        with app.app_context():
+            try:
+                tx_monitor = get_tx_monitor()
+                max_checks = 300  # 5 minutes (2s interval * 300 = 600s)
                 
-                # Send update to client with 'status' event type to match client listener
-                yield f"event: status\ndata: {json.dumps(status)}\n\n"
+                # Send initial ping to establish connection
+                yield f": keepalive\n\n"
                 
-                # Stop if terminal state reached
-                if status.get('status') in ['confirmed', 'failed']:
-                    # Immediately index this transaction so it appears in recent trades
-                    if status.get('status') == 'confirmed':
-                        try:
-                            from services.event_indexer import index_transaction_immediately
-                            index_result = index_transaction_immediately(tx_hash)
-                            if index_result.get('success'):
-                                logging.info(f"✅ Immediately indexed confirmed tx: {tx_hash[:10]}...")
-                            else:
-                                logging.warning(f"Failed to immediately index tx {tx_hash[:10]}...: {index_result.get('error')}")
-                        except Exception as e:
-                            logging.error(f"Error immediately indexing tx {tx_hash}: {str(e)}")
+                for _ in range(max_checks):
+                    status = tx_monitor.get_transaction_status(tx_hash)
                     
-                    # Send final completion event before closing stream
-                    yield f"event: complete\ndata: {json.dumps({'status': 'complete'})}\n\n"
-                    break
+                    # Send update to client with 'status' event type to match client listener
+                    yield f"event: status\ndata: {json.dumps(status)}\n\n"
+                    
+                    # Stop if terminal state reached
+                    if status.get('status') in ['confirmed', 'failed']:
+                        # Immediately index this transaction so it appears in recent trades
+                        if status.get('status') == 'confirmed':
+                            try:
+                                from services.event_indexer import index_transaction_immediately
+                                index_result = index_transaction_immediately(tx_hash)
+                                if index_result.get('success'):
+                                    logging.info(f"✅ Immediately indexed confirmed tx: {tx_hash[:10]}...")
+                                else:
+                                    logging.warning(f"Failed to immediately index tx {tx_hash[:10]}...: {index_result.get('error')}")
+                            except Exception as e:
+                                logging.error(f"Error immediately indexing tx {tx_hash}: {str(e)}")
+                        
+                        # Send final completion event before closing stream
+                        yield f"event: complete\ndata: {json.dumps({'status': 'complete'})}\n\n"
+                        break
+                    
+                    time.sleep(2)  # Check every 2 seconds
                 
-                time.sleep(2)  # Check every 2 seconds
-            
-        except Exception as e:
-            logging.error(f"SSE stream error for {tx_hash}: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            error_data = {'success': False, 'error': str(e), 'status': 'failed'}
-            yield f"event: status\ndata: {json.dumps(error_data)}\n\n"
+            except Exception as e:
+                logging.error(f"SSE stream error for {tx_hash}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                error_data = {'success': False, 'error': str(e), 'status': 'failed'}
+                yield f"event: status\ndata: {json.dumps(error_data)}\n\n"
     
     return Response(
         generate(),
