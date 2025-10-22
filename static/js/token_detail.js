@@ -660,57 +660,16 @@
                 
                 console.log(`📍 Found ${result.trades.length} user trades`);
                 
-                // Get the visible time range from the chart data
-                // This ensures markers only appear for trades within the visible chart window
-                let minChartTime = null;
-                let maxChartTime = null;
-                
-                if (this.chartData && this.chartData.length > 0) {
-                    const chartTimes = this.chartData.map(d => d.time);
-                    minChartTime = Math.min(...chartTimes);
-                    maxChartTime = Math.max(...chartTimes);
-                    console.log(`Chart visible range: ${minChartTime} to ${maxChartTime}`);
-                }
-                
-                // Build a sorted list of candle times (epoch seconds) from chart data
-                // ⚠️ CRITICAL FIX: chartData.time can be EITHER ISO strings OR epoch numbers depending on TradingView format
-                const candleTimes = this.chartData ? this.chartData.map(d => {
-                    // Convert to epoch seconds if it's a string, otherwise use as-is
-                    return typeof d.time === 'string' 
-                        ? Math.floor(new Date(d.time).getTime() / 1000)
-                        : d.time;
-                }).sort((a, b) => a - b) : [];
-                
-                // Convert trades to chart markers, snapping to nearest candle time
+                // Convert trades to chart markers using EXACT timestamps (no snapping)
+                // TradingView will automatically place them on the correct bars regardless of timeframe
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
                     const tradeTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
-                    // Find the candle that contains this trade by finding the largest candle time <= trade time
-                    let candleTime = tradeTimestamp;
-                    if (candleTimes.length > 0) {
-                        // Binary search to find the candle that contains this trade
-                        let left = 0;
-                        let right = candleTimes.length - 1;
-                        let result = candleTimes[0];
-                        
-                        while (left <= right) {
-                            const mid = Math.floor((left + right) / 2);
-                            if (candleTimes[mid] <= tradeTimestamp) {
-                                result = candleTimes[mid];
-                                left = mid + 1;
-                            } else {
-                                right = mid - 1;
-                            }
-                        }
-                        candleTime = result;
-                    }
-                    
                     // Debug: Log first few trades
-                    if (index < 10) {
+                    if (index < 5) {
                         const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
-                        const candleDate = new Date(candleTime * 1000).toISOString();
-                        console.log(`Trade ${index}: ${trade.type} at ${tradeDate} → Candle: ${candleDate}`);
+                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} (${tradeTimestamp})`);
                     }
                     
                     // Determine marker style based on trade type
@@ -734,7 +693,7 @@
                     }
                     
                     return {
-                        time: candleTime,
+                        time: tradeTimestamp,  // Use EXACT trade time - TradingView handles placement automatically
                         position: position,
                         color: color,
                         shape: shape,
@@ -743,24 +702,9 @@
                     };
                 });
                 
-                // Filter markers to only include those within the visible chart range
-                const markers = minChartTime && maxChartTime
-                    ? allMarkers.filter(m => m.time >= minChartTime && m.time <= maxChartTime)
-                    : allMarkers;
-                
-                // Debug: Log the filtering results
-                if (allMarkers.length !== markers.length) {
-                    console.log(`Filtered ${allMarkers.length - markers.length} markers outside visible range (${allMarkers.length} → ${markers.length})`);
-                }
-                
-                if (markers.length > 0) {
-                    const times = markers.map(m => m.time);
-                    console.log(`Visible markers: ${Math.min(...times)} to ${Math.max(...times)} (${markers.length} total)`);
-                }
-                
-                // Add markers to the series
-                this.currentSeries.setMarkers(markers);
-                console.log(`✅ Added ${markers.length} trade markers to chart`);
+                // Add markers to the series (no filtering - TradingView shows/hides based on visible range)
+                this.currentSeries.setMarkers(allMarkers);
+                console.log(`✅ Added ${allMarkers.length} trade markers with exact timestamps`);
                 
                 // ✨ FTX-STYLE POSITION TRACKING: Fetch weighted average entry price
                 await this.fetchAndDisplayPosition(wallet.address);
