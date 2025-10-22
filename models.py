@@ -188,25 +188,6 @@ class Token(db.Model):
     nft_position_id = db.Column(db.Integer, nullable=True)
     liquidity_pool_address = db.Column(db.String(128), nullable=True)
     
-    # === GRADUATION LIFECYCLE (Kaspa Finance DEX Integration) ===
-    graduation_status = db.Column(db.String(20), default='active', nullable=False, index=True)
-    graduation_initiated_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    graduation_completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    graduation_initiation_tx = db.Column(db.String(128), nullable=True)
-    graduation_completion_tx = db.Column(db.String(128), nullable=True)
-    
-    # === DEX POOL METADATA ===
-    dex_pool_address = db.Column(db.String(128), nullable=True)
-    dex_pool_fee_tier = db.Column(db.Integer, nullable=True)
-    lp_nft_position_id = db.Column(db.BigInteger, nullable=True)
-    lp_liquidity_kas = db.Column(db.Numeric(precision=36, scale=18), nullable=True)
-    lp_liquidity_tokens = db.Column(db.Numeric(precision=36, scale=18), nullable=True)
-    
-    # === POST-GRADUATION TRACKING ===
-    burned_token_amount = db.Column(db.Numeric(precision=36, scale=18), nullable=True)
-    lp_fees_collected_kas = db.Column(db.Numeric(precision=36, scale=18), default=0)
-    last_lp_fee_collection = db.Column(db.DateTime(timezone=True), nullable=True)
-    
     # IPFS storage
     ipfs_image_hash = db.Column(db.String(128))
     ipfs_metadata_hash = db.Column(db.String(128))
@@ -1060,8 +1041,7 @@ class TradeEvent(db.Model):
     anti_bot_fee = db.Column(db.Numeric(precision=20, scale=8), default=0)
     
     # Blockchain info
-    tx_hash = db.Column(db.String(128), nullable=False, index=True)
-    log_index = db.Column(db.Integer, nullable=False, default=0)
+    tx_hash = db.Column(db.String(128), unique=True, nullable=False, index=True)
     block_number = db.Column(db.Integer, nullable=False, index=True)
     timestamp = db.Column(db.DateTime, nullable=False)
     
@@ -1073,8 +1053,6 @@ class TradeEvent(db.Model):
     
     # Database indexes for performance (DeFi best practices)
     __table_args__ = (
-        # Idempotency - prevent duplicate event processing
-        db.UniqueConstraint('tx_hash', 'log_index', name='unique_tx_log_index'),
         # Time-series queries for price charts and bonding curve calculations
         # DESC order on timestamp for efficient latest-first queries
         db.Index('idx_trade_event_token_time', 'token_id', 'timestamp', postgresql_using='btree', postgresql_ops={'timestamp': 'DESC'}),

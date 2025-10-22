@@ -203,19 +203,6 @@ class Web3Service:
             logging.error(f"Failed to load ABI for {contract_name}: {str(e)}")
             raise
     
-    def _load_contract_abi_json(self, contract_name):
-        """Load ABI from JSON file (for interface contracts like DEX contracts)"""
-        try:
-            abi_path = ARTIFACTS_DIR / f"{contract_name}.json"
-            if not abi_path.exists():
-                raise FileNotFoundError(f"ABI not found: {abi_path}")
-            with open(abi_path, 'r') as f:
-                contract_json = json.load(f)
-            return contract_json['abi']
-        except Exception as e:
-            logging.error(f"Failed to load ABI for {contract_name}: {str(e)}")
-            raise
-    
     def _load_contracts(self):
         """Load all deployed contracts"""
         try:
@@ -255,34 +242,6 @@ class Web3Service:
             )
             contracts['AirdropDistributorABI'] = airdrop_distributor_abi
             logging.info(f"Loaded AirdropDistributor at {AIRDROP_DISTRIBUTOR_ADDRESS}")
-            
-            # Load Kaspa Finance DEX contracts (Task 1: DEX Integration)
-            try:
-                quoter_abi = self._load_contract_abi_json('IQuoterV2')
-                contracts['QuoterV2'] = self.w3.eth.contract(
-                    address=Web3.to_checksum_address(KASPA_FINANCE_QUOTER_V2),
-                    abi=quoter_abi
-                )
-                logging.info(f"Loaded QuoterV2 at {KASPA_FINANCE_QUOTER_V2}")
-                
-                router_abi = self._load_contract_abi_json('ISwapRouter')
-                contracts['SwapRouter'] = self.w3.eth.contract(
-                    address=Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
-                    abi=router_abi
-                )
-                logging.info(f"Loaded SwapRouter at {KASPA_FINANCE_SWAP_ROUTER}")
-                
-                wkas_abi = self._load_contract_abi_json('IWKAS')
-                contracts['WKAS'] = self.w3.eth.contract(
-                    address=Web3.to_checksum_address(KASPA_FINANCE_WKAS),
-                    abi=wkas_abi
-                )
-                logging.info(f"Loaded WKAS at {KASPA_FINANCE_WKAS}")
-                
-                logging.info("✅ Kaspa Finance DEX contracts loaded successfully")
-            except Exception as e:
-                logging.warning(f"⚠️ Failed to load DEX contracts: {e}")
-                logging.warning("DEX features will be unavailable, but bonding curve trading will continue to work")
             
             return contracts
             
