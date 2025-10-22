@@ -354,7 +354,7 @@
                                 <input type="checkbox" id="tokenGateToggle" class="toggle-switch" ${isHoldersOnly ? 'checked' : ''} onchange="TokenDetail.toggleTokenGate()">
                                 <label for="tokenGateToggle" class="toggle-label">
                                     <i class="fas fa-crown"></i>
-                                    <span class="toggle-text">Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + '+)' : ''}</span>
+                                    <span class="toggle-text">Holders Only</span>
                                 </label>
                             </div>
                         `;
@@ -364,7 +364,7 @@
                                 <input type="checkbox" id="tokenGateToggle" class="toggle-switch" ${isHoldersOnly ? 'checked' : ''} onchange="TokenDetail.toggleTokenGate()">
                                 <label for="tokenGateToggle" class="toggle-label">
                                     <i class="fas fa-lock"></i>
-                                    <span class="toggle-text">Holders Only${minTokens > 0 ? ' (' + minTokens.toLocaleString() + '+)' : ''}</span>
+                                    <span class="toggle-text">Holders Only</span>
                                 </label>
                             </div>
                         `;
