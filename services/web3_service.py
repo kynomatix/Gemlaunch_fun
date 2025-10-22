@@ -204,10 +204,10 @@ class Web3Service:
             raise
     
     def _load_interface_abi(self, interface_name):
-        """Load interface ABI (stored directly in artifacts/contracts/)"""
+        """Load interface ABI (stored in artifacts/contracts/interfaces/)"""
         try:
-            # Interface ABIs are stored directly in contracts folder
-            abi_path = ARTIFACTS_DIR / f"{interface_name}.json"
+            # Interface ABIs are stored in interfaces subfolder
+            abi_path = ARTIFACTS_DIR / "interfaces" / f"{interface_name}.sol" / f"{interface_name}.json"
             
             if not abi_path.exists():
                 raise FileNotFoundError(f"Interface ABI not found: {abi_path}")
@@ -285,13 +285,10 @@ class Web3Service:
                 logging.warning("ISwapRouter interface not found - post-graduation swap features disabled")
                 contracts['SwapRouter'] = None
             
-            # Load IWKAS from GraduationController artifacts
+            # Load IWKAS from interfaces directory
             try:
-                # IWKAS is defined in GraduationController.sol
-                abi_path = ARTIFACTS_DIR / "GraduationController.sol" / "IWKAS.json"
-                with open(abi_path, 'r') as f:
-                    wkas_json = json.load(f)
-                wkas_abi = wkas_json['abi'] if 'abi' in wkas_json else wkas_json
+                # IWKAS is defined in contracts/interfaces/IWKAS.sol
+                wkas_abi = self._load_interface_abi('IWKAS')
             except Exception as e:
                 logging.error(f"Failed to load IWKAS: {e}")
                 raise
@@ -1768,6 +1765,130 @@ class Web3Service:
             
         except Exception as e:
             logging.error(f"Failed to build WKAS unwrap tx: {str(e)}")
+            raise
+    
+    def get_dex_quote(self, side, token_address, amount_in, fee_tier=FEE_TIER_030):
+        """
+        Unified DEX quote method (wraps buy/sell quotes)
+        
+        Args:
+            side (str): 'buy' or 'sell'
+            token_address (str): Token contract address
+            amount_in (int): Amount in wei (KAS for buy, tokens for sell)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: {
+                'amount_out': int (wei),
+                'execution_price': float (KAS per token),
+                'price_impact_pct': float,
+                'gas_estimate': int,
+                'fee_tier': int
+            }
+        """
+        try:
+            logging.info(f"Getting DEX {side} quote: {amount_in} wei for token {token_address}")
+            
+            if side == 'buy':
+                quote = self.get_dex_buy_quote(token_address, amount_in, fee_tier)
+                return {
+                    'amount_out': quote['tokens_out'],
+                    'execution_price': quote['execution_price'],
+                    'price_impact_pct': quote['price_impact_percent'],
+                    'gas_estimate': 150000,  # Approximate gas for DEX swap
+                    'fee_tier': fee_tier
+                }
+            elif side == 'sell':
+                quote = self.get_dex_sell_quote(token_address, amount_in, fee_tier)
+                return {
+                    'amount_out': quote['kas_out'],
+                    'execution_price': quote['execution_price'],
+                    'price_impact_pct': quote['price_impact_percent'],
+                    'gas_estimate': 150000,
+                    'fee_tier': fee_tier
+                }
+            else:
+                raise ValueError(f"Invalid side: {side}. Must be 'buy' or 'sell'")
+                
+        except Exception as e:
+            logging.error(f"Failed to get DEX quote: {str(e)}")
+            raise
+    
+    def get_wkas_balance(self, address):
+        """
+        Get WKAS balance for an address
+        
+        Args:
+            address (str): Wallet address
+        
+        Returns:
+            int: WKAS balance in wei
+        """
+        try:
+            logging.debug(f"Getting WKAS balance for {address}")
+            
+            wkas_contract = self.contracts['WKAS']
+            balance = wkas_contract.functions.balanceOf(
+                Web3.to_checksum_address(address)
+            ).call()
+            
+            logging.debug(f"WKAS balance: {balance} wei ({self.w3.from_wei(balance, 'ether')} WKAS)")
+            return balance
+            
+        except Exception as e:
+            logging.error(f"Failed to get WKAS balance for {address}: {str(e)}")
+            raise
+    
+    def get_dex_pool_reserves(self, pool_address):
+        """
+        Get DEX pool reserves (token0 and token1 reserves)
+        
+        Note: This requires the Uniswap V3 Pool contract interface
+        Returns slot0 data for price calculation
+        
+        Args:
+            pool_address (str): Uniswap V3 pool address
+        
+        Returns:
+            dict: {
+                'reserve_token': int (token reserve in wei),
+                'reserve_wkas': int (WKAS reserve in wei),
+                'price': float (current price from slot0)
+            }
+        """
+        try:
+            logging.info(f"Getting DEX pool reserves for {pool_address}")
+            
+            # Load Uniswap V3 Pool interface
+            pool_contract = self.get_uniswap_v3_pool_contract(pool_address)
+            
+            # Get slot0 for current price
+            slot0 = pool_contract.functions.slot0().call()
+            sqrtPriceX96 = slot0[0]
+            
+            # Calculate price from sqrtPriceX96
+            # price = (sqrtPriceX96 / 2^96)^2
+            price = (sqrtPriceX96 / (2**96)) ** 2
+            
+            # Get liquidity
+            liquidity = pool_contract.functions.liquidity().call()
+            
+            # Note: Uniswap V3 doesn't have simple reserve0/reserve1 like V2
+            # Reserves are distributed across ticks based on positions
+            # For now, return price and liquidity
+            
+            logging.info(f"Pool price: {price}, liquidity: {liquidity}")
+            
+            return {
+                'reserve_token': 0,  # V3 doesn't have simple reserves
+                'reserve_wkas': 0,
+                'price': price,
+                'liquidity': liquidity,
+                'sqrtPriceX96': sqrtPriceX96
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to get DEX pool reserves for {pool_address}: {str(e)}")
             raise
     
     # =========================

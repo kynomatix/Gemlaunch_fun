@@ -751,6 +751,117 @@
       "artifacts": [
         "TestMinimal"
       ]
+    },
+    "/home/runner/workspace/contracts/interfaces/IQuoterV2.sol": {
+      "lastModificationDate": 1761115526602,
+      "contentHash": "15e1f47a3801150cd541ac4acf97aed5",
+      "sourceName": "contracts/interfaces/IQuoterV2.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IQuoterV2"
+      ]
+    },
+    "/home/runner/workspace/contracts/interfaces/ISwapRouter.sol": {
+      "lastModificationDate": 1761115529151,
+      "contentHash": "294281533e8834d00f3567896b5cbed9",
+      "sourceName": "contracts/interfaces/ISwapRouter.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ISwapRouter"
+      ]
+    },
+    "/home/runner/workspace/contracts/interfaces/IWKAS.sol": {
+      "lastModificationDate": 1761116222223,
+      "contentHash": "226485768e7c58d48e06213df6783603",
+      "sourceName": "contracts/interfaces/IWKAS.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IWKAS"
+      ]
     }
   }
 }

@@ -2673,8 +2673,23 @@ def api_token_stats(address):
         except Exception as e:
             logging.debug(f"Could not fetch 24h metrics for {token.contract_address}: {e}")
         
+        # Get DEX pool data for graduated tokens
+        dex_pool_data = None
+        if token.is_graduated and token.liquidity_pool_address:
+            try:
+                reserves = web3_service.get_dex_pool_reserves(token.liquidity_pool_address)
+                dex_pool_data = {
+                    'pool_address': token.liquidity_pool_address,
+                    'price': reserves.get('price', 0),
+                    'liquidity': reserves.get('liquidity', 0),
+                    'sqrtPriceX96': str(reserves.get('sqrtPriceX96', 0)),
+                    'fee_tier': token.dex_pool_fee_tier or 3000
+                }
+            except Exception as e:
+                logging.debug(f"Could not fetch DEX pool reserves for {token.contract_address}: {e}")
+        
         # Return single response with all data
-        return jsonify({
+        response_data = {
             'success': True,
             # Price data
             'price': current_price_usd,
@@ -2705,7 +2720,13 @@ def api_token_stats(address):
             
             # Status
             'is_graduated': token.is_graduated
-        })
+        }
+        
+        # Add DEX pool data if available
+        if dex_pool_data:
+            response_data['dex'] = dex_pool_data
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logging.error(f"❌ Error fetching token stats for {address}: {str(e)}", exc_info=True)
@@ -5046,6 +5067,350 @@ def api_estimate_gas(action):
     except Exception as e:
         logging.error(f"Error in estimate-gas: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to estimate gas'}), 500
+
+@app.route('/api/dex/quote', methods=['POST'])
+@csrf.exempt
+def api_dex_quote():
+    """
+    Get DEX quote for graduated tokens
+    
+    Request:
+    {
+        "token_address": "0x...",
+        "side": "buy" | "sell",
+        "amount_in": "10.5" (KAS for buy, token amount for sell),
+        "slippage_bps": 50 (optional, default 50 = 0.5%),
+        "fee_tier": 3000 (optional, default 0.3%)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "amount_out": "1234.56",
+        "execution_price": "0.045",
+        "price_impact_pct": 0.5,
+        "gas_estimate": "150000",
+        "fee_tier": 3000
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        # Validate required fields
+        token_address = data.get('token_address', '').strip()
+        side = data.get('side', '').strip().lower()
+        amount_in = data.get('amount_in')
+        
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        if side not in ['buy', 'sell']:
+            return jsonify({'success': False, 'error': 'side must be "buy" or "sell"'}), 400
+        if amount_in is None:
+            return jsonify({'success': False, 'error': 'amount_in is required'}), 400
+        
+        # Normalize address
+        try:
+            token_address = Web3.to_checksum_address(token_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid token address format'}), 400
+        
+        # Get token from database
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Validate token is graduated
+        if not token.is_graduated:
+            return jsonify({'success': False, 'error': 'Token has not graduated yet. Use /api/trade/quote-buy or /api/trade/quote-sell for bonding curve trading.'}), 400
+        
+        # Parse optional parameters
+        slippage_bps = data.get('slippage_bps', 50)
+        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
+        
+        # Validate slippage
+        if not isinstance(slippage_bps, (int, float)) or slippage_bps < 0 or slippage_bps > 10000:
+            return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 10000 (0% to 100%)'}), 422
+        
+        # Convert amount_in to wei
+        try:
+            if side == 'buy':
+                amount_in_wei = Web3.to_wei(float(amount_in), 'ether')
+            else:
+                amount_in_wei = int(float(amount_in))
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid amount_in format'}), 400
+        
+        # Get quote from web3_service
+        web3_service = get_web3_service()
+        quote = web3_service.get_dex_quote(side, token_address, amount_in_wei, fee_tier)
+        
+        # Format response
+        if side == 'buy':
+            amount_out_formatted = str(Web3.from_wei(quote['amount_out'], 'ether'))
+        else:
+            amount_out_formatted = str(Web3.from_wei(quote['amount_out'], 'ether'))
+        
+        return jsonify({
+            'success': True,
+            'amount_out': amount_out_formatted,
+            'execution_price': str(quote['execution_price']),
+            'price_impact_pct': quote['price_impact_pct'],
+            'gas_estimate': str(quote['gas_estimate']),
+            'fee_tier': fee_tier
+        })
+        
+    except ValueError as e:
+        logging.error(f"Validation error in DEX quote: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"Error getting DEX quote: {error_msg}")
+        
+        # Map specific errors to user-friendly messages
+        if 'pool does not exist' in error_msg.lower() or 'pool not found' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'DEX pool not found - graduation may have failed'}), 404
+        if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'RPC timeout - please try again'}), 503
+        
+        return jsonify({'success': False, 'error': f'Failed to get DEX quote: {error_msg}'}), 500
+
+@app.route('/api/dex/buy', methods=['POST'])
+@csrf.exempt
+def api_dex_buy():
+    """
+    Build DEX buy transaction for graduated tokens
+    
+    Request:
+    {
+        "token_address": "0x...",
+        "kas_amount": "10.5",
+        "min_tokens_out": "1000000",
+        "deadline": 1234567890 (unix timestamp),
+        "user_address": "0x..."
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tx_data": {
+            "to": "0x...",
+            "value": "0x...",
+            "data": "0x...",
+            "gas": "0x..."
+        },
+        "requires_approval": false
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        # Validate required fields
+        token_address = data.get('token_address', '').strip()
+        kas_amount = data.get('kas_amount')
+        min_tokens_out = data.get('min_tokens_out')
+        deadline = data.get('deadline')
+        user_address = data.get('user_address', '').strip()
+        
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        if kas_amount is None:
+            return jsonify({'success': False, 'error': 'kas_amount is required'}), 400
+        if min_tokens_out is None:
+            return jsonify({'success': False, 'error': 'min_tokens_out is required'}), 400
+        if deadline is None:
+            return jsonify({'success': False, 'error': 'deadline is required'}), 400
+        if not user_address:
+            return jsonify({'success': False, 'error': 'user_address is required'}), 400
+        
+        # Normalize addresses
+        try:
+            token_address = Web3.to_checksum_address(token_address)
+            user_address = Web3.to_checksum_address(user_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        # Get token from database
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Validate token is graduated
+        if not token.is_graduated:
+            return jsonify({'success': False, 'error': 'Token has not graduated yet. Use /api/trade/buy for bonding curve trading.'}), 400
+        
+        # Convert amounts to wei
+        try:
+            kas_amount_wei = Web3.to_wei(float(kas_amount), 'ether')
+            min_tokens_out_wei = int(float(min_tokens_out))
+            deadline_int = int(deadline)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid amount or deadline format'}), 400
+        
+        # Get fee tier from token
+        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
+        
+        # Build transaction
+        web3_service = get_web3_service()
+        tx_data = web3_service.build_dex_buy_tx(
+            token_address=token_address,
+            kas_amount_wei=kas_amount_wei,
+            min_tokens_out=min_tokens_out_wei,
+            user_address=user_address,
+            deadline=deadline_int,
+            fee_tier=fee_tier
+        )
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'requires_approval': False
+        })
+        
+    except ValueError as e:
+        logging.error(f"Validation error in DEX buy: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"Error building DEX buy tx: {error_msg}")
+        
+        # Map specific errors
+        if 'pool does not exist' in error_msg.lower() or 'pool not found' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'DEX pool not found - graduation may have failed'}), 404
+        if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'RPC timeout - please try again'}), 503
+        
+        return jsonify({'success': False, 'error': f'Failed to build DEX buy transaction: {error_msg}'}), 500
+
+@app.route('/api/dex/sell', methods=['POST'])
+@csrf.exempt
+def api_dex_sell():
+    """
+    Build DEX sell transaction for graduated tokens
+    
+    Request:
+    {
+        "token_address": "0x...",
+        "token_amount": "1000000",
+        "min_kas_out": "10.5",
+        "deadline": 1234567890 (unix timestamp),
+        "user_address": "0x...",
+        "unwrap_wkas": true (optional, default false)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tx_data": {
+            "to": "0x...",
+            "value": "0x0",
+            "data": "0x...",
+            "gas": "0x..."
+        },
+        "requires_approval": true,
+        "approval_address": "0x..." (SwapRouter address),
+        "unwrap_tx": {...} (optional, if unwrap_wkas is true)
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        # Validate required fields
+        token_address = data.get('token_address', '').strip()
+        token_amount = data.get('token_amount')
+        min_kas_out = data.get('min_kas_out')
+        deadline = data.get('deadline')
+        user_address = data.get('user_address', '').strip()
+        unwrap_wkas = data.get('unwrap_wkas', False)
+        
+        if not token_address:
+            return jsonify({'success': False, 'error': 'token_address is required'}), 400
+        if token_amount is None:
+            return jsonify({'success': False, 'error': 'token_amount is required'}), 400
+        if min_kas_out is None:
+            return jsonify({'success': False, 'error': 'min_kas_out is required'}), 400
+        if deadline is None:
+            return jsonify({'success': False, 'error': 'deadline is required'}), 400
+        if not user_address:
+            return jsonify({'success': False, 'error': 'user_address is required'}), 400
+        
+        # Normalize addresses
+        try:
+            token_address = Web3.to_checksum_address(token_address)
+            user_address = Web3.to_checksum_address(user_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        # Get token from database
+        token = Token.query.filter(db.func.lower(Token.contract_address) == token_address.lower()).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Validate token is graduated
+        if not token.is_graduated:
+            return jsonify({'success': False, 'error': 'Token has not graduated yet. Use /api/trade/sell for bonding curve trading.'}), 400
+        
+        # Convert amounts to wei
+        try:
+            token_amount_wei = int(float(token_amount))
+            min_kas_out_wei = Web3.to_wei(float(min_kas_out), 'ether')
+            deadline_int = int(deadline)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'Invalid amount or deadline format'}), 400
+        
+        # Get fee tier from token
+        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
+        
+        # Build transaction
+        web3_service = get_web3_service()
+        tx_data = web3_service.build_dex_sell_tx(
+            token_address=token_address,
+            token_amount=token_amount_wei,
+            min_kas_out_wei=min_kas_out_wei,
+            user_address=user_address,
+            deadline=deadline_int,
+            fee_tier=fee_tier
+        )
+        
+        response = {
+            'success': True,
+            'tx_data': tx_data,
+            'requires_approval': True,
+            'approval_address': web3_service.KASPA_FINANCE_SWAP_ROUTER
+        }
+        
+        # Optionally build WKAS unwrap transaction
+        if unwrap_wkas:
+            try:
+                # Get user's WKAS balance
+                wkas_balance = web3_service.get_wkas_balance(user_address)
+                if wkas_balance > 0:
+                    unwrap_tx = web3_service.build_wkas_unwrap_tx(user_address, wkas_balance)
+                    response['unwrap_tx'] = unwrap_tx
+            except Exception as e:
+                logging.warning(f"Failed to build WKAS unwrap tx: {str(e)}")
+        
+        return jsonify(response)
+        
+    except ValueError as e:
+        logging.error(f"Validation error in DEX sell: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"Error building DEX sell tx: {error_msg}")
+        
+        # Map specific errors
+        if 'pool does not exist' in error_msg.lower() or 'pool not found' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'DEX pool not found - graduation may have failed'}), 404
+        if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'RPC timeout - please try again'}), 503
+        
+        return jsonify({'success': False, 'error': f'Failed to build DEX sell transaction: {error_msg}'}), 500
 
 @app.route('/api/relay/transaction', methods=['POST'])
 @csrf.exempt
