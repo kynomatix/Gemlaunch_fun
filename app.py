@@ -6553,10 +6553,11 @@ def confirm_token_deployment(token_id):
             total_supply_wei = pool_contract.functions.totalSupply().call()
             circulating_supply_tokens = total_supply_wei // (10 ** 18)  # Convert from wei to tokens
             
-            logging.info(f"Fetched totalSupply from blockchain: {circulating_supply_tokens:,} tokens")
+            logging.info(f"✅ Fetched totalSupply from blockchain for token {token_id} ({token.symbol}): {circulating_supply_tokens:,} tokens (from {total_supply_wei} wei)")
         except Exception as e:
-            logging.error(f"Failed to fetch totalSupply from blockchain: {e}")
+            logging.error(f"❌ Failed to fetch totalSupply from blockchain for token {token_id}: {e}", exc_info=True)
             circulating_supply_tokens = token.total_supply  # Fallback to database value
+            logging.warning(f"Using fallback totalSupply from database: {circulating_supply_tokens:,} tokens")
         
         # Update token record with verified data
         token.contract_address = contract_address
@@ -6565,6 +6566,8 @@ def confirm_token_deployment(token_id):
         token.deployment_status = 'deployed'
         token.is_active = True
         token.circulating_supply = circulating_supply_tokens
+        
+        logging.info(f"📝 Updating token {token_id} ({token.symbol}) - Setting circulating_supply to {circulating_supply_tokens:,} tokens")
         
         # Save vesting addresses for PRO tokens
         if vesting_addresses and token.reserved_percentage > 0:
@@ -6575,7 +6578,7 @@ def confirm_token_deployment(token_id):
         
         db.session.commit()
         
-        logging.info(f"Token {token_id} deployment confirmed by creator {caller_address} - Contract: {contract_address}, TX: {tx_hash}")
+        logging.info(f"✅ Token {token_id} ({token.symbol}) deployment confirmed by creator {caller_address} - Contract: {contract_address}, TX: {tx_hash}, Circulating Supply: {circulating_supply_tokens:,} tokens")
         
         return jsonify({
             'success': True,
