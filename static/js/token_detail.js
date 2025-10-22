@@ -477,6 +477,36 @@
                     timeVisible: true,
                     secondsVisible: false,
                 },
+                localization: {
+                    // Automatically detect and use the user's browser timezone
+                    locale: navigator.language || 'en-US',
+                    timeFormatter: (timestamp) => {
+                        // Convert Unix timestamp to local time
+                        const date = new Date(timestamp * 1000);
+                        const now = new Date();
+                        const isToday = date.toDateString() === now.toDateString();
+                        
+                        // Format based on proximity to now
+                        if (isToday) {
+                            // Today: show time only (e.g., "2:30 PM")
+                            return date.toLocaleTimeString([], { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true 
+                            });
+                        } else {
+                            // Other days: show date + time (e.g., "Oct 16, 2:30 PM")
+                            return date.toLocaleDateString([], { 
+                                month: 'short', 
+                                day: 'numeric' 
+                            }) + ', ' + date.toLocaleTimeString([], { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true 
+                            });
+                        }
+                    }
+                },
             });
             
             // Handle error case
