@@ -38,8 +38,8 @@ Built with Flask, the backend features a minimal, route-based architecture with 
   - Marketing vesting → Creator's wallet (12-month linear via LinearVesting)
   - Team vesting → Creator's wallet (6mo cliff + 18mo vest via CliffVesting)
 - **Smart Contracts (V2):**
-  - TokenFactory V2 (0xe569912f4d6239CfB9006863D26F6c200F653729) - deploys pool + vesting atomically
-  - VestingDeployer V2 (0x32C091934eCA57EdC0C76d50C40B41B049c3ED79) - helper contract for vesting deployment
+  - TokenFactory V2 (0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc) - graduation fix deployed Oct 2025
+  - VestingDeployer V2 (0x319F9D08A9c1167770Fe037cb58e5097e287B9e7) - auto-deployed with TokenFactory
   - AirdropDistributor (0x86b83FE03cDa7456980364c929BB17CFA67E8495) - batch airdrop helper
   - Atomic deployment: user pays once, all contracts deployed in single transaction
   - Previous V1: 0x2DDb083fCd62D27E9eE1F557B53140bD61F3009D (deprecated - platform-managed airdrops)

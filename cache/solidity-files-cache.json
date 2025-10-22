@@ -312,8 +312,8 @@
       ]
     },
     "/home/runner/workspace/contracts/TokenFactory.sol": {
-      "lastModificationDate": 1760951750600,
-      "contentHash": "dc411ce59c841bbf5249b191b46b363b",
+      "lastModificationDate": 1761113961883,
+      "contentHash": "729378853b31f7caadb336645102d8c3",
       "sourceName": "contracts/TokenFactory.sol",
       "solcConfig": {
         "version": "0.8.20",

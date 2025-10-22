@@ -24,8 +24,8 @@ RPC_ENDPOINTS = [
 ]
 
 # Deployed Contract Addresses (Kasplex Testnet - October 2025)
-TOKEN_FACTORY_ADDRESS = "0xe569912f4d6239CfB9006863D26F6c200F653729"  # V2 - Creator-controlled airdrops
-VESTING_DEPLOYER_ADDRESS = "0x32C091934eCA57EdC0C76d50C40B41B049c3ED79"  # V2 - Deployed with TokenFactory V2
+TOKEN_FACTORY_ADDRESS = "0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc"  # V2 - Graduation fix deployed
+VESTING_DEPLOYER_ADDRESS = "0x319F9D08A9c1167770Fe037cb58e5097e287B9e7"  # V2 - Auto-deployed with TokenFactory
 GRADUATION_CONTROLLER_ADDRESS = "0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e"
 AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
 
@@ -262,21 +262,39 @@ class Web3Service:
             logging.info(f"Loaded AirdropDistributor at {AIRDROP_DISTRIBUTOR_ADDRESS}")
             
             # Load Kaspa Finance DEX Contracts (for post-graduation trading)
-            quoter_v2_abi = self._load_interface_abi('IQuoterV2')
-            contracts['QuoterV2'] = self.w3.eth.contract(
-                address=Web3.to_checksum_address(KASPA_FINANCE_QUOTER_V2),
-                abi=quoter_v2_abi
-            )
-            logging.info(f"Loaded QuoterV2 at {KASPA_FINANCE_QUOTER_V2}")
+            # NOTE: QuoterV2 and SwapRouter interfaces optional - not critical for core functionality
+            try:
+                quoter_v2_abi = self._load_interface_abi('IQuoterV2')
+                contracts['QuoterV2'] = self.w3.eth.contract(
+                    address=Web3.to_checksum_address(KASPA_FINANCE_QUOTER_V2),
+                    abi=quoter_v2_abi
+                )
+                logging.info(f"Loaded QuoterV2 at {KASPA_FINANCE_QUOTER_V2}")
+            except FileNotFoundError:
+                logging.warning("IQuoterV2 interface not found - post-graduation quote features disabled")
+                contracts['QuoterV2'] = None
             
-            swap_router_abi = self._load_interface_abi('ISwapRouter')
-            contracts['SwapRouter'] = self.w3.eth.contract(
-                address=Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
-                abi=swap_router_abi
-            )
-            logging.info(f"Loaded SwapRouter at {KASPA_FINANCE_SWAP_ROUTER}")
+            try:
+                swap_router_abi = self._load_interface_abi('ISwapRouter')
+                contracts['SwapRouter'] = self.w3.eth.contract(
+                    address=Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
+                    abi=swap_router_abi
+                )
+                logging.info(f"Loaded SwapRouter at {KASPA_FINANCE_SWAP_ROUTER}")
+            except FileNotFoundError:
+                logging.warning("ISwapRouter interface not found - post-graduation swap features disabled")
+                contracts['SwapRouter'] = None
             
-            wkas_abi = self._load_interface_abi('IWKAS')
+            # Load IWKAS from GraduationController artifacts
+            try:
+                # IWKAS is defined in GraduationController.sol
+                abi_path = ARTIFACTS_DIR / "GraduationController.sol" / "IWKAS.json"
+                with open(abi_path, 'r') as f:
+                    wkas_json = json.load(f)
+                wkas_abi = wkas_json['abi'] if 'abi' in wkas_json else wkas_json
+            except Exception as e:
+                logging.error(f"Failed to load IWKAS: {e}")
+                raise
             contracts['WKAS'] = self.w3.eth.contract(
                 address=Web3.to_checksum_address(KASPA_FINANCE_WKAS),
                 abi=wkas_abi
