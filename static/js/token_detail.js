@@ -3543,15 +3543,15 @@
                 if (data.success) {
                     if (data.is_graduated) {
                         this.updateGraduationProgress({
-                            marketCap: 70000,
-                            graduationThreshold: 70000,
+                            marketCap: data.current_market_cap,
+                            graduationThreshold: data.graduation_threshold || 200,
                             isGraduated: true,
                             dexPoolAddress: data.dex_pool?.pool_address
                         });
                     } else {
                         this.updateGraduationProgress({
                             marketCap: data.current_market_cap,
-                            graduationThreshold: data.graduation_threshold || 70000,
+                            graduationThreshold: data.graduation_threshold || 200,
                             isGraduated: false,
                             progressPercent: data.progress_percent
                         });
@@ -3563,6 +3563,7 @@
         },
         
         updateGraduationProgress: function(data) {
+            this.graduationThreshold = data.graduationThreshold;
             const progressPercent = data.progressPercent || (data.marketCap / data.graduationThreshold) * 100;
             const progressBar = document.querySelector('.progress-fill');
             
@@ -3605,11 +3606,13 @@
             const container = document.getElementById('graduationStatus');
             if (!container) return;
             
+            const thresholdFormatted = (this.graduationThreshold || 200).toLocaleString('en-US', {maximumFractionDigits: 0});
+            
             container.innerHTML = `
-                <div style="background: linear-gradient(135deg, #FFA500, #FF8C00); 
+                <div style="background: linear-gradient(135deg, #6366f1, #4f46e5); 
                             padding: 1rem; border-radius: 10px; text-align: center;">
                     <h3 style="margin: 0 0 0.5rem 0; color: #fff;">🚀 Graduating to DEX...</h3>
-                    <p style="margin: 0; color: #fff; font-size: 0.9rem;">Market cap reached $70,000! Liquidity pool deploying...</p>
+                    <p style="margin: 0; color: #fff; font-size: 0.9rem;">Market cap reached $${thresholdFormatted}! Liquidity pool deploying...</p>
                 </div>
             `;
         },
