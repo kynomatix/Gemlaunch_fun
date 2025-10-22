@@ -54,6 +54,16 @@ def check_token_graduation(token):
                 'graduation_status': token.graduation_status
             }
         
+        # Skip if graduation failed (legacy tokens with wrong oracle config)
+        if token.graduation_status == 'failed':
+            logging.debug(f"Token {token.symbol} has failed graduation status, skipping")
+            return {
+                'status': 'failed',
+                'token_id': token.id,
+                'token_symbol': token.symbol,
+                'graduation_status': 'failed'
+            }
+        
         # Get web3 service
         web3_service = get_web3_service()
         

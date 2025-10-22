@@ -6572,6 +6572,7 @@ def confirm_token_deployment(token_id):
         token.deployment_block_number = data.get('block_number')
         token.deployment_status = 'deployed'
         token.is_active = True
+        token.graduation_status = 'active'  # CRITICAL: Enable bonding curve trading and graduation eligibility
         token.circulating_supply = circulating_supply_tokens
         
         logging.info(f"📝 Updating token {token_id} ({token.symbol}) - Setting circulating_supply to {circulating_supply_tokens:,} tokens")
