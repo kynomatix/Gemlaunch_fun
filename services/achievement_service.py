@@ -10,6 +10,56 @@ except ImportError:
     CHAT_MESSAGES_AVAILABLE = False
 
 
+# KASPERS NFT Contract Address (Placeholder - will be updated when deployed on KRC721)
+KASPERS_NFT_CONTRACT = "0x0000000000000000000000000000000000000000"  # TODO: Update with actual KRC721 contract address
+
+
+def check_kaspers_nft_ownership(user):
+    """
+    Check if user holds KASPERS NFT (KRC721)
+    
+    Args:
+        user: User object
+        
+    Returns:
+        int: 1 if user holds at least one KASPERS NFT, 0 otherwise
+    """
+    try:
+        # Import web3 service for blockchain queries
+        from services.web3_service import get_web3_service
+        
+        # If placeholder address, return 0 for now
+        if KASPERS_NFT_CONTRACT == "0x0000000000000000000000000000000000000000":
+            return 0
+        
+        w3_service = get_web3_service()
+        
+        # ERC721 balanceOf ABI
+        erc721_abi = [{
+            "constant": True,
+            "inputs": [{"name": "owner", "type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"name": "balance", "type": "uint256"}],
+            "type": "function"
+        }]
+        
+        # Create contract instance
+        kaspers_contract = w3_service.w3.eth.contract(
+            address=w3_service.w3.to_checksum_address(KASPERS_NFT_CONTRACT),
+            abi=erc721_abi
+        )
+        
+        # Query balance
+        balance = kaspers_contract.functions.balanceOf(
+            w3_service.w3.to_checksum_address(user.wallet_address)
+        ).call()
+        
+        return 1 if balance > 0 else 0
+    except Exception as e:
+        print(f"Error checking KASPERS NFT ownership for user {user.id}: {e}")
+        return 0
+
+
 def calculate_user_progress(user, requirement_type):
     """
     Calculate user's current progress for a specific requirement type.
@@ -140,6 +190,10 @@ def calculate_user_progress(user, requirement_type):
             return float(vote_count)
         except:
             return 0.0
+    
+    elif requirement_type == 'holds_kaspers_nft':
+        # Check if user holds KASPERS NFT (KRC721)
+        return check_kaspers_nft_ownership(user)
     
     return 0
 

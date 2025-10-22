@@ -30,6 +30,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **Enhanced Marketplace Search**: Provides comprehensive search across token name, symbol, contract address, and creator information.
 - **Deployment Confirmation System**: A 6-layer security verification system for confirming token deployments, ensuring server-side blockchain verification and multi-layer defense against fake deployments.
 - **X/Twitter Verification System**: OAuth 2.0-based social verification system that authenticates user identities, prevents impersonation, and displays verified badges across the platform (profiles, chat messages, token pages, leaderboards). Enforces one-to-one mapping between X accounts and wallet addresses with CSRF/state validation.
+- **KASPERS NFT Holder Recognition**: Social accolade system recognizes KASPERS NFT holders (KRC721) with special achievement badge and 500 bonus GEM points. Uses ERC721 balanceOf queries to verify ownership on-chain.
 - **Graduation System**: Automated token lifecycle management transitioning tokens from bonding curve to DEX at $50 market cap threshold.
   - **Status Flow**: active → initiating → completing → graduated (5-state lifecycle per KASPA_FINANCE_DEX_INTEGRATION_PLAN.md)
   - **Critical Fix (Oct 22, 2025)**: Tokens now correctly initialize with `graduation_status = 'active'` on deployment (app.py line 6578)
