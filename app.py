@@ -590,6 +590,16 @@ def stream_tx_status(tx_hash):
                         break
                     
                     time.sleep(2)  # Check every 2 seconds
+                else:
+                    # Timeout reached without confirmation - send terminal event
+                    logging.warning(f"⏱️ Transaction monitoring timed out after {max_checks * 2}s for {tx_hash}")
+                    timeout_data = {
+                        'success': False,
+                        'status': 'timeout',
+                        'message': 'Transaction monitoring timed out. Please check the blockchain explorer to verify status.'
+                    }
+                    yield f"event: status\ndata: {json.dumps(timeout_data)}\n\n"
+                    yield f"event: complete\ndata: {json.dumps({'status': 'timeout'})}\n\n"
                 
             except Exception as e:
                 logging.error(f"SSE stream error for {tx_hash}: {str(e)}")
