@@ -7812,6 +7812,43 @@ def api_distribute_platform_fees():
         logging.error(f"Error in distribute-platform-fees: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to distribute platform fees'}), 500
 
+# Admin endpoint for testing graduation completion
+@app.route('/api/admin/trigger-graduation-completion/<token_symbol>', methods=['POST'])
+def trigger_graduation_completion(token_symbol):
+    """
+    Admin endpoint to manually trigger graduation completion for a specific token
+    Useful for testing and debugging graduation flow
+    """
+    try:
+        from services.graduation_completion_service import get_graduation_completion_service
+        
+        token = Token.query.filter_by(symbol=token_symbol).first()
+        if not token:
+            return jsonify({'success': False, 'error': f'Token {token_symbol} not found'}), 404
+        
+        logging.info(f"Manual graduation completion triggered for {token_symbol}")
+        
+        # Get the service and attempt completion
+        service = get_graduation_completion_service(app=app)
+        service._complete_single_graduation(token)
+        
+        # Refresh token from database
+        db.session.refresh(token)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Graduation completion attempted for {token_symbol}',
+            'status': token.graduation_status,
+            'is_graduated': token.is_graduated,
+            'pool_address': token.liquidity_pool_address
+        })
+        
+    except Exception as e:
+        logging.error(f"Error triggering graduation completion: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Initialize database when app starts
 init_database()
 
