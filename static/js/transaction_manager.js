@@ -551,6 +551,9 @@ class TransactionManager {
         
         const {onRetry, onStatusUpdate} = callbacks;
         
+        // ✅ FIX: Track if wallet popup was shown to prevent double-popup retries
+        let walletPopupShown = false;
+        
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const slippage_bps = slippageLadder[attempt];
             const slippage_percent = (slippage_bps / 100).toFixed(2);
@@ -620,6 +623,9 @@ class TransactionManager {
                     onStatusUpdate('Please sign the transaction in your wallet...');
                 }
                 
+                // ✅ FIX: Mark that we're about to show wallet popup
+                walletPopupShown = true;
+                
                 // PHASE 3: Sign and submit
                 const signResult = await this.signAndSubmitTransaction(buildResult.tx_data);
                 
@@ -637,6 +643,12 @@ class TransactionManager {
             } catch (error) {
                 console.error(`[AutoSlippage] Attempt ${attempt + 1} failed:`, error.message || error.toString());
                 console.error('Full error:', error.stack);
+                
+                // ✅ FIX: NEVER retry after wallet popup was shown to prevent double transactions
+                if (walletPopupShown) {
+                    console.warn('[AutoSlippage] Wallet popup was shown - cannot retry to avoid double transaction');
+                    throw new Error(`Transaction failed: ${error.message}`);
+                }
                 
                 // Check if this is a slippage error and we have retries left
                 if (this._isSlippageError(error) && attempt < maxAttempts - 1) {

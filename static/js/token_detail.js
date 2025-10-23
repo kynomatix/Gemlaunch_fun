@@ -1692,8 +1692,14 @@
                     deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
                 };
                 
-                // H-4 FIX: Get gas estimate for display
-                const gasEstimate = await this.estimateTradeGas(action, params);
+                // H-4 FIX: Get gas estimate for display (use correct parameter name)
+                // Copy params but rename user_address → from_address for gas estimation endpoint
+                const gasEstParams = {
+                    ...params,
+                    from_address: wallet.address  // ✅ FIX: Backend expects 'from_address', not 'user_address'
+                };
+                delete gasEstParams.user_address;  // Remove the incorrect field name
+                const gasEstimate = await this.estimateTradeGas(action, gasEstParams);
                 const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
                 const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
                 
