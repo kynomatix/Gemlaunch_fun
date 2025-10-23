@@ -32,11 +32,10 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **X/Twitter Verification System**: OAuth 2.0-based social verification system that authenticates user identities, prevents impersonation, and displays verified badges across the platform (profiles, chat messages, token pages, leaderboards). Enforces one-to-one mapping between X accounts and wallet addresses with CSRF/state validation.
 - **KASPERS NFT Holder Recognition**: Social accolade system recognizes KASPERS NFT holders (KRC721) with special achievement badge and 500 bonus GEM points. Uses ERC721 balanceOf queries to verify ownership on-chain.
 - **Graduation System**: Automated token lifecycle management transitioning tokens from bonding curve to DEX at $50 market cap threshold.
-  - **Status Flow**: active → initiating → completing → graduated (5-state lifecycle per KASPA_FINANCE_DEX_INTEGRATION_PLAN.md)
+  - **Status Flow**: active → initiating → completing → graduated (4-state lifecycle per KASPA_FINANCE_DEX_INTEGRATION_PLAN.md)
   - **Critical Fix (Oct 22, 2025)**: Tokens now correctly initialize with `graduation_status = 'active'` on deployment (app.py line 6578)
-  - **Monitor Service**: Background job checks eligible tokens every 60 seconds, properly skips 'failed' status tokens
+  - **Monitor Service**: Background job checks eligible tokens every 60 seconds for graduation eligibility
   - **Oracle Integration**: Uses web3_service.oracle_account for automated graduation transactions
-  - **Legacy Tokens - V1→V2 Migration Issue**: JAK (ID 56), RAGR (ID 63), and SPK (ID 68) marked as 'failed' due to being stuck in graduating state after GraduationController V2 upgrade. These tokens initiated graduation on V1 controller but completion became impossible after V2 redeployment. Pre-flight check (Oct 23, 2025) now detects BondingCurvePool graduating=True with GraduationController hasInitiated=False mismatch and marks such tokens as 'failed' automatically.
 
 ### PRO Token Vesting System
 ✅ **STATUS: Fully implemented - Atomic on-chain deployment (V2 - October 2025)**

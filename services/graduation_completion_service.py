@@ -102,48 +102,25 @@ class GraduationCompletionService:
         if not token.graduation_initiation_tx:
             logging.warning(f"Token {token.symbol} has no initiation tx recorded")
         
-        # 1.5. PRE-FLIGHT CHECK: Verify on-chain initiation status
+        # Verify on-chain initiation status before attempting completion
         try:
             graduation_controller = self.w3_service.contracts['GraduationController']
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
             
-            # Check BondingCurvePool state
-            pool = self.w3_service.get_bonding_pool_contract(checksum_address)
-            graduating = pool.functions.graduating().call()
-            liquid_transferred = pool.functions.liquidityTransferred().call()
-            
-            # Call getGraduationInfo() to check if contract knows about this graduation
+            # Check if contract knows about this graduation
             grad_info = graduation_controller.functions.getGraduationInfo(checksum_address).call()
             has_initiated = grad_info[0]  # First element is hasInitiated bool
             
             if not has_initiated:
                 logging.warning(f"⚠️ Token {token.symbol} has DB status 'initiating' but on-chain hasInitiated=False")
-                logging.warning(f"   GraduationController has no record of this graduation.")
-                
-                # CRITICAL CHECK: If BondingCurvePool is stuck in graduating state, this is a fatal condition
-                # ANY graduating=True state with hasInitiated=False means the token is stuck
-                if graduating:
-                    logging.error(f"❌ FATAL: {token.symbol} is stuck in graduating state on BondingCurvePool")
-                    logging.error(f"   BondingCurvePool: graduating={graduating}, liquidityTransferred={liquid_transferred}")
-                    logging.error(f"   GraduationController: hasInitiated={has_initiated}")
-                    logging.error(f"   This token cannot be traded (graduating=True blocks all trades)")
-                    logging.error(f"   This token cannot be completed (hasInitiated=False means no graduation record)")
-                    logging.error(f"   Likely cause: V1→V2 contract upgrade with stale initiation.")
-                    logging.error(f"   Marking as 'failed' - requires manual intervention.")
-                    
-                    # Mark as failed instead of active
-                    GraduationStateManager.mark_failed(token, "Stuck in graduating state after V2 upgrade - cannot complete")
-                    return
-                
-                # Normal case: Just reset to active for re-initiation
                 logging.warning(f"   Resetting status to 'active' to trigger re-initiation.")
                 GraduationStateManager.reset_to_active(token)
                 return
             
-            logging.info(f"✅ Pre-flight check passed: {token.symbol} is initiated on-chain")
+            logging.info(f"✅ On-chain check passed: {token.symbol} is initiated and ready to complete")
             
         except Exception as e:
-            logging.error(f"Pre-flight check failed: {str(e)}")
+            logging.error(f"On-chain verification failed: {str(e)}")
             # Continue anyway - the completion will fail if there's a real issue
         
         # 2. Call completeGraduation() on blockchain
@@ -185,15 +162,14 @@ class GraduationCompletionService:
             receipt = self.w3_service.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
             
             if not receipt or receipt['status'] != 1:
-                logging.error(f"Completion tx failed - marking graduation as failed")
-                GraduationStateManager.mark_failed(token, "Completion transaction failed")
+                logging.error(f"Completion tx failed - will retry on next cycle")
                 return
             
             logging.info(f"✅ Completion tx confirmed: {tx_hash.hex()}")
             
         except Exception as e:
             logging.error(f"Exception calling completeGraduation: {str(e)}")
-            GraduationStateManager.mark_failed(token, f"Blockchain error: {str(e)}")
+            logging.info(f"Will retry on next cycle")
             return
         
         # 3. Extract pool data from GraduationCompleted event
@@ -201,7 +177,7 @@ class GraduationCompletionService:
         
         if not pool_data:
             logging.error(f"Could not extract pool data from completion event")
-            GraduationStateManager.mark_failed(token, "Pool data extraction failed")
+            logging.info(f"Will retry on next cycle")
             return
         
         # 4. Update database with completion data
