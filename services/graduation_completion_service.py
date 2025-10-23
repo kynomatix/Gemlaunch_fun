@@ -102,22 +102,21 @@ class GraduationCompletionService:
         if not token.graduation_initiation_tx:
             logging.warning(f"Token {token.symbol} has no initiation tx recorded")
         
-        # Verify on-chain initiation status before attempting completion
+        # Verify on-chain graduation status before attempting completion
         try:
-            graduation_controller = self.w3_service.contracts['GraduationController']
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
             
-            # Check if contract knows about this graduation
-            grad_info = graduation_controller.functions.getGraduationInfo(checksum_address).call()
-            has_initiated = grad_info[0]  # First element is hasInitiated bool
+            # Check BondingCurvePool.graduating() to confirm token is in graduation state
+            pool = self.w3_service.get_bonding_pool_contract(checksum_address)
+            graduating = pool.functions.graduating().call()
             
-            if not has_initiated:
-                logging.warning(f"⚠️ Token {token.symbol} has DB status 'initiating' but on-chain hasInitiated=False")
+            if not graduating:
+                logging.warning(f"⚠️ Token {token.symbol} has DB status 'initiating' but on-chain graduating=False")
                 logging.warning(f"   Resetting status to 'active' to trigger re-initiation.")
                 GraduationStateManager.reset_to_active(token)
                 return
             
-            logging.info(f"✅ On-chain check passed: {token.symbol} is initiated and ready to complete")
+            logging.info(f"✅ On-chain check passed: {token.symbol} graduating={graduating}, ready to complete")
             
         except Exception as e:
             logging.error(f"On-chain verification failed: {str(e)}")
