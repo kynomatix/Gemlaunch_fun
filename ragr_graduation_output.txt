@@ -1,0 +1,161 @@
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion
+DEBUG:web3._utils.http_session_manager.HTTPSessionManager:Session cached: https://rpc.kasplextest.xyz, <requests.sessions.Session object at 0x7fc2743c1f90>
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): rpc.kasplextest.xyz:443
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 87
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion, Response: {'jsonrpc': '2.0', 'id': 0, 'result': 'Geth/v1.15.5-stable-3add0dd1/linux-amd64/go1.23.10'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 1, 'result': '0x28c64'}
+INFO:root:Connected to RPC: https://rpc.kasplextest.xyz - Chain ID: 167012
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 87
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion, Response: {'jsonrpc': '2.0', 'id': 2, 'result': 'Geth/v1.15.5-stable-3add0dd1/linux-amd64/go1.23.10'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getBalance
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 57
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance, Response: {'jsonrpc': '2.0', 'id': 3, 'result': '0x1b4bac46e8a4534800'}
+INFO:root:Deployer wallet 0xe281e4776FB5De20817D0bbC72B0C4b955565619 - Balance: 503.514901204 KAS
+INFO:root:Derived secondary wallet: 0x5f837F62744D4d80Fc79C3A5346B4A228956914E
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getBalance
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 57
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance, Response: {'jsonrpc': '2.0', 'id': 4, 'result': '0x6d1fde1f6ec7773600'}
+INFO:root:Oracle wallet 0x5f837F62744D4d80Fc79C3A5346B4A228956914E - Balance: 2012.991411455 KAS
+INFO:root:Loaded TokenFactory at 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc
+INFO:root:Loaded GraduationController at 0x147e3ecbe189bb301175001706ff1f44df33b3ab
+INFO:root:Loaded BondingCurvePool ABI
+INFO:root:Loaded PRO Token Vesting ABIs
+INFO:root:Loaded AirdropDistributor at 0x86b83FE03cDa7456980364c929BB17CFA67E8495
+INFO:root:Loaded QuoterV2 at 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
+INFO:root:Loaded SwapRouter at 0xDf88D478aF51C0AB616aFBfDD933c874e142858c
+INFO:root:Loaded WKAS at 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 5, 'result': '0x28c64'}
+INFO:root:Web3Service initialized - Chain ID: 167012
+INFO:root:TransactionMonitor initialized
+DEBUG:tzlocal:No explicit setting existed. Use localtime
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Added job "Monitor pending transactions" to job store "default"
+INFO:apscheduler.scheduler:Added job "Index blockchain events" to job store "default"
+INFO:apscheduler.scheduler:Added job "Monitor token graduations" to job store "default"
+INFO:apscheduler.scheduler:Scheduler started
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+INFO:root:GraduationCompletionService initialized
+DEBUG:apscheduler.scheduler:Next wakeup is due at 2025-10-23 08:51:47.858762+00:00 (in 9.988804 seconds)
+INFO:root:GraduationCompletionService started - monitoring for graduations
+INFO:root:Transaction monitor scheduler started - checking every 10 seconds
+INFO:root:Event indexer scheduler started - checking every 30 seconds (active tokens only)
+INFO:root:Graduation monitor scheduler started - checking every 60 seconds
+INFO:root:Graduation completion service started - monitoring for pending graduations
+INFO:root:Found 1 tokens pending graduation completion
+INFO:root:Completing graduation for KTR (ID: 72)
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_call
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:web3._utils.http_session_manager.HTTPSessionManager:Session cached: https://rpc.kasplextest.xyz, <requests.sessions.Session object at 0x7fc272f9f210>
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): rpc.kasplextest.xyz:443
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 6, 'result': '0x28c64'}
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_call
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 103
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_call, Response: {'jsonrpc': '2.0', 'id': 7, 'result': '0x0000000000000000000000000000000000000000000000000000000000000001'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 8, 'result': '0x28c64'}
+INFO:root:✅ On-chain check passed: KTR graduating=True, ready to complete
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_gasPrice
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_gasPrice
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 50
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_gasPrice, Response: {'jsonrpc': '2.0', 'id': 9, 'result': '0x1d1e4e4ea00'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getTransactionCount
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getTransactionCount
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 41
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getTransactionCount, Response: {'jsonrpc': '2.0', 'id': 10, 'result': '0xd'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 45
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 11, 'result': '0x28c64'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_estimateGas
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 45
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 12, 'result': '0x28c64'}
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_estimateGas
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 96
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_estimateGas, Response: {'jsonrpc': '2.0', 'id': 13, 'error': {'code': 3, 'message': 'execution reverted', 'data': '0x8bbc6532'}}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 45
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 14, 'result': '0x28c64'}
+ERROR:root:Gas estimation failed: ('0x8bbc6532', '0x8bbc6532')
+ERROR:root:Exception calling completeGraduation: ('0x8bbc6532', '0x8bbc6532')
+INFO:root:Will retry on next cycle
+INFO:root:Oracle initiating graduation for token 0xa75c9441ba642165df45fbcdb03b5627521ecb7a
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_gasPrice
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_gasPrice
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 51
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_gasPrice, Response: {'jsonrpc': '2.0', 'id': 15, 'result': '0x1d1e4e4ea00'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getTransactionCount
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getTransactionCount
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 41
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getTransactionCount, Response: {'jsonrpc': '2.0', 'id': 16, 'result': '0xd'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 45
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 17, 'result': '0x28c64'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_estimateGas
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 45
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 18, 'result': '0x28c64'}
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_estimateGas
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 314
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_estimateGas, Response: {'jsonrpc': '2.0', 'id': 19, 'error': {'code': 3, 'message': 'execution reverted: Only oracle can initiate', 'data': '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000184f6e6c79206f7261636c652063616e20696e6974696174650000000000000000'}}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 45
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 20, 'result': '0x28c64'}
+ERROR:root:Gas estimation failed: ('execution reverted: Only oracle can initiate', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000184f6e6c79206f7261636c652063616e20696e6974696174650000000000000000')
+ERROR:root:Failed to initiate graduation for 0xa75c9441ba642165df45fbcdb03b5627521ecb7a: ('execution reverted: Only oracle can initiate', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000184f6e6c79206f7261636c652063616e20696e6974696174650000000000000000')
+✅ Database tables created
+✅ Sample achievements already exist
+================================================================================
+RAGR TOKEN GRADUATION TEST
+================================================================================
+Timestamp: 2025-10-23T08:51:42.103524
+
+✅ Found token: RAGR (RoadRagers)
+   Current status: active
+   Contract: 0xa75c9441ba642165df45fbcdb03b5627521ecb7a
+
+⚠️ Token is in 'active' status - need to initiate graduation first
+
+================================================================================
+PHASE 0: INITIATE GRADUATION
+================================================================================
+Calling initiate_graduation_oracle('0xa75c9441ba642165df45fbcdb03b5627521ecb7a')...
+❌ ERROR initiating: ('execution reverted: Only oracle can initiate', '0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000184f6e6c79206f7261636c652063616e20696e6974696174650000000000000000')
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+ERROR:apscheduler.scheduler:Error submitting job "Monitor pending transactions (trigger: interval[0:00:10], next run at: 2025-10-23 08:51:47 UTC)" to executor "default"
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/apscheduler/schedulers/base.py", line 1195, in _process_jobs
+    executor.submit_job(job, run_times)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/apscheduler/executors/base.py", line 74, in submit_job
+    self._do_submit_job(job, run_times)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/apscheduler/executors/pool.py", line 27, in _do_submit_job
+    f = self._pool.submit(
+        ^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/concurrent/futures/thread.py", line 169, in submit
+    raise RuntimeError('cannot schedule new futures after '
+RuntimeError: cannot schedule new futures after interpreter shutdown
+DEBUG:apscheduler.scheduler:Next wakeup is due at 2025-10-23 08:51:57.858762+00:00 (in 9.995616 seconds)
+INFO:root:GraduationCompletionService stopped
+INFO:apscheduler.scheduler:Scheduler has been shut down
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+DEBUG:apscheduler.scheduler:No jobs; waiting until a job is added
