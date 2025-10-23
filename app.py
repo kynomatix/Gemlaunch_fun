@@ -1247,7 +1247,8 @@ def token_marketplace():
     tokens = Token.query.options(
         joinedload(Token.creator)
     ).filter(
-        Token.deployment_status == 'deployed'
+        Token.deployment_status == 'deployed',
+        Token.is_visible == True
     ).order_by(Token.created_at.desc()).all()
     
     # Add is_pro flag to each token for the template

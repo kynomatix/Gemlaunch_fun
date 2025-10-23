@@ -215,6 +215,9 @@ class Token(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
+    # Visibility
+    is_visible = db.Column(db.Boolean, default=True)  # Hide test/spam tokens
+    
     # Social features
     view_count = db.Column(db.Integer, default=0)
     trade_count = db.Column(db.Integer, default=0)

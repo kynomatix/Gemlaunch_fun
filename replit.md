@@ -69,6 +69,11 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 ## Database Schema
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.
 
+### Token Visibility System
+- **is_visible** field: Boolean flag to hide test/spam tokens from marketplace
+- Hidden tokens remain in database but are filtered from public views
+- Use case: Remove test tokens like GRAD655 without deleting historical data
+
 ### Data Architecture Strategy
 **Current (Hybrid - Optimal Architecture):** 
 - ✅ **Recent trading data**: Blockscout GraphQL API (real-time, last ~8 transfers, 10s cache)
