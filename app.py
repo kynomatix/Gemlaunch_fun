@@ -7084,7 +7084,15 @@ def get_token_chart_data(contract_address):
         
         # Generate chart data based on format
         if use_format == 'candlestick':
-            chart_data = aggregate_ohlc_data(trade_points, interval, start_time, now, chart_type)
+            # Pass deployment timestamp to enable synthetic zero-market-cap starting candle
+            chart_data = aggregate_ohlc_data(
+                trade_points, 
+                interval, 
+                start_time, 
+                now, 
+                chart_type,
+                deployment_timestamp=token.created_at
+            )
         else:  # area format
             chart_data = []
             for point in trade_points:
@@ -7121,7 +7129,7 @@ def get_token_chart_data(contract_address):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type='marketcap'):
+def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type='marketcap', deployment_timestamp=None):
     """
     Aggregate trade data into OHLC candlesticks
     
@@ -7131,6 +7139,7 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         start_time: Start of time window
         end_time: End of time window
         chart_type: 'price' or 'marketcap' - determines which values to use for OHLC
+        deployment_timestamp: Token deployment datetime (for synthetic zero candle)
     
     Returns:
         List of OHLC candles: [{"time": unix_seconds, "open": x, "high": y, "low": z, "close": w, "volume": v}, ...]
@@ -7199,6 +7208,37 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
     # Build OHLC candles with proper open/close tracking and gap filling
     candles = []
     previous_close = None
+    
+    # Prepend synthetic deployment candle if appropriate
+    if deployment_timestamp and trade_points:
+        # Ensure deployment_timestamp is timezone-aware
+        if deployment_timestamp.tzinfo is None:
+            deployment_timestamp = deployment_timestamp.replace(tzinfo=timezone.utc)
+        
+        deployment_unix = int(deployment_timestamp.timestamp())
+        deployment_bucket = (deployment_unix // interval_seconds) * interval_seconds
+        
+        # Only add deployment candle if it's before the first trade and within/before chart window
+        first_trade_time = min(t['timestamp'].timestamp() for t in trade_points)
+        if deployment_unix < first_trade_time and deployment_bucket <= start_bucket:
+            # Get first trade's close value for high/close of deployment candle
+            first_trade_value = trade_points[0]['price'] if chart_type == 'price' else trade_points[0]['market_cap']
+            
+            # Create zero-start candle: market cap/price starts at 0, jumps to first trade value
+            candles.append({
+                'time': deployment_bucket,
+                'open': 0,
+                'high': first_trade_value,
+                'low': 0,
+                'close': first_trade_value,
+                'volume': 0
+            })
+            previous_close = first_trade_value
+            
+            app.logger.debug(
+                f"Prepended deployment candle at {deployment_timestamp} "
+                f"(0 → {first_trade_value:.2f} {chart_type})"
+            )
     
     # Iterate through ALL time buckets in the range (including empty ones)
     current_bucket = start_bucket
