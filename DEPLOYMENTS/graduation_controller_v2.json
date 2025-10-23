@@ -1,0 +1,26 @@
+{
+  "network": "kasplex-testnet",
+  "address": "0x147e3ecbe189bb301175001706ff1f44df33b3ab",
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "timestamp": "2025-10-23T08:23:00Z",
+  "blockNumber": 8817046,
+  "txHash": "0x87a91adda64749887d0436ea8ab0c6e1d272c6151263a0855fd705d15f1767f2",
+  "gasUsed": "2822322",
+  "version": "2.0.0",
+  "constructor": {
+    "kaspaFinanceFactory": "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
+    "kaspaFinancePositionManager": "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
+    "kaspaFinanceWKAS": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+    "graduationOracle": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "tokenFactory": "0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc"
+  },
+  "criticalFixes": [
+    "Fixed missing Uniswap V3 pool creation",
+    "Fixed missing pool price initialization",
+    "Fixed unsafe token transfers (now uses SafeERC20)",
+    "Added FullMath library for safe sqrtPriceX96 calculation (prevents overflow)",
+    "Added emergency functions (pause/cancel/withdraw)",
+    "Added price deviation detection",
+    "Added comprehensive validation"
+  ]
+}

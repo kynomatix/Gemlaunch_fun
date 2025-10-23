@@ -56,13 +56,31 @@ Deploy **GraduationController V2** with:
 
 **Status**: V2 contract code is complete and ready. Just needs deployment + testing.
 
-**⚠️ CRITICAL UPDATE (Oct 23, 2025 - Architect Review)**:
+**⚠️ CRITICAL UPDATES (Oct 23, 2025 - Architect Reviews)**:
+
+**Review #1 - Mathematical Error (sqrt encoding)**:
 - Architect caught a **critical mathematical bug** in initial V2 code
 - Bug: `_calculateSqrtPriceX96` shifted by 96 instead of 192 before sqrt
 - Impact: Would have initialized pools at wrong price (off by 2^48)
 - Status: ✅ **FIXED** - Now shifts by 192 correctly
 - Added: 7 comprehensive price calculation test cases
-- **Lesson**: Always validate mathematical calculations with multiple test vectors
+
+**Review #2 - Arithmetic Overflow (CRITICAL)**:
+- Architect caught **SHOW-STOPPER BUG** before deployment
+- Bug: Shifting reserves by 192 causes arithmetic overflow for real values
+  ```solidity
+  // BROKEN:
+  uint256 priceX192 = (kasReserve << 192) / tokenReserve;  // OVERFLOW!
+  // kasReserve ≈ 10^21 wei, shift by 192 = multiply by 2^192 ≈ 10^57
+  // Result: 10^78 exceeds uint256 max (10^77) → REVERT
+  ```
+- Impact: Would have failed EVERY graduation with arithmetic overflow
+- Status: ✅ **FIXED** - Now uses FullMath.mulDiv (512-bit safe math)
+  ```solidity
+  // CORRECT:
+  priceX192 = FullMath.mulDiv(kasReserve, 1 << 192, tokenReserve);  // ✓ Safe
+  ```
+- **Lesson**: Always test with realistic production values, not just theoretical math
 
 ---
 
@@ -653,6 +671,46 @@ event EmergencyWithdrawal(address indexed token, uint256 amount, address indexed
     const slot0 = await pool.slot0();
     const expectedSqrtPrice = await controller.calculateSqrtPriceX96(...);
     expect(slot0.sqrtPriceX96).to.equal(expectedSqrtPrice);
+    ```
+  
+  - [ ] **⭐ Test Case 8: REALISTIC PRODUCTION VALUES** (Added after architect overflow fix)
+    ```javascript
+    // CRITICAL: Test with actual bonding curve reserve sizes
+    // KTR example: 1131.177 KAS, 574.62 tokens
+    const kasReserve = ethers.parseEther("1131.177");  // 10^21 wei
+    const tokenReserve = ethers.parseEther("574.62");  // 10^20 wei
+    
+    // This should NOT overflow with FullMath.mulDiv
+    const sqrtPrice = await controller.calculateSqrtPriceX96(
+      kasReserve,
+      tokenReserve,
+      tokenAddress
+    );
+    
+    expect(sqrtPrice).to.be.gt(0);
+    // Validate it's in reasonable range for sqrtPriceX96
+    expect(sqrtPrice).to.be.lt(ethers.MaxUint256);  // Should not overflow
+    
+    console.log("sqrtPriceX96:", sqrtPrice.toString());
+    // Expected: ~111161266831013092294972669952 (KTR actual value)
+    ```
+  
+  - [ ] **⭐ Test Case 9: MAXIMUM RESERVE VALUES** (Edge case for safety)
+    ```javascript
+    // Test with maximum realistic reserves (e.g., $100k graduation)
+    // If KAS = $0.05, $100k = 2M KAS
+    const maxKasReserve = ethers.parseEther("2000000");  // 2M KAS
+    const maxTokenReserve = ethers.parseEther("1000000000");  // 1B tokens
+    
+    // Should still not overflow
+    const sqrtPrice = await controller.calculateSqrtPriceX96(
+      maxKasReserve,
+      maxTokenReserve,
+      tokenAddress
+    );
+    
+    expect(sqrtPrice).to.be.gt(0);
+    console.log("Max reserve sqrtPriceX96:", sqrtPrice.toString());
     ```
 
 - [ ] **3.2 Integration Tests (Testnet)**
