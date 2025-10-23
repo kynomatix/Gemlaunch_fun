@@ -617,6 +617,49 @@ class Web3Service:
             logging.error(f"Failed to build team vesting withdraw tx: {str(e)}")
             raise
     
+    def _decode_revert_reason(self, exception):
+        """
+        Decode contract revert reason from exception
+        
+        Handles custom error selectors like 0x8bbc6532 (InsufficientKAS)
+        
+        Args:
+            exception: Exception from gas estimation or transaction
+        
+        Returns:
+            str: Human-readable error message
+        """
+        error_str = str(exception)
+        
+        # Known custom error selectors
+        CUSTOM_ERRORS = {
+            '0x8bbc6532': 'InsufficientKAS() - Oracle wallet does not have enough KAS to pay for gas. Please fund the oracle wallet.',
+            '0x118cdaa7': 'AddressMismatch() - Token address does not match expected address',
+            '0x48f5c3ed': 'InvalidCaller() - Only authorized caller can execute this function',
+            '0x3204506f': 'InvalidState() - Contract is in invalid state for this operation',
+        }
+        
+        # Check for custom error selector (4-byte function signature)
+        if '0x8bbc6532' in error_str:
+            return CUSTOM_ERRORS['0x8bbc6532']
+        elif '0x118cdaa7' in error_str:
+            return CUSTOM_ERRORS['0x118cdaa7']
+        elif '0x48f5c3ed' in error_str:
+            return CUSTOM_ERRORS['0x48f5c3ed']
+        elif '0x3204506f' in error_str:
+            return CUSTOM_ERRORS['0x3204506f']
+        
+        # Check for standard revert string (execution reverted: ...)
+        if 'execution reverted:' in error_str:
+            # Extract revert reason after "execution reverted: "
+            parts = error_str.split('execution reverted:', 1)
+            if len(parts) > 1:
+                reason = parts[1].strip().strip("'\"")
+                return f"Transaction would revert: {reason}"
+        
+        # Return raw error if we can't decode it
+        return error_str
+    
     def estimate_gas(self, transaction):
         """
         Estimate gas for a transaction with 20% buffer
@@ -626,6 +669,9 @@ class Web3Service:
         
         Returns:
             int: Estimated gas with 20% buffer
+        
+        Raises:
+            ValueError: With decoded revert reason if gas estimation fails
         """
         try:
             # Estimate gas
@@ -651,8 +697,10 @@ class Web3Service:
             }
             
         except Exception as e:
-            logging.error(f"Gas estimation failed: {str(e)}")
-            raise
+            # Decode contract revert reason
+            error_message = self._decode_revert_reason(e)
+            logging.error(f"Gas estimation failed: {error_message}")
+            raise ValueError(error_message)
     
     def estimate_trade_gas(self, action, params):
         """
