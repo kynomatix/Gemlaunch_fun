@@ -607,7 +607,9 @@ contract GraduationController is Ownable, ReentrancyGuard, Pausable {
     
     /**
      * @notice Calculate sqrtPriceX96 for pool initialization
-     * @dev Uniswap V3 price = token1/token0, where token0 < token1
+     * @dev Uniswap V3 requires sqrtPriceX96 = sqrt(price) * 2^96 as a Q64.96 fixed point number
+     *      To achieve this, we calculate price * 2^192, then take sqrt:
+     *      sqrt(price * 2^192) = sqrt(price) * sqrt(2^192) = sqrt(price) * 2^96 ✓
      * @param kasReserve Virtual KAS reserve from bonding curve
      * @param tokenReserve Virtual token reserve from bonding curve
      * @param tokenAddress Address of the token being graduated
@@ -623,23 +625,27 @@ contract GraduationController is Ownable, ReentrancyGuard, Pausable {
         // Determine token ordering
         bool tokenIsToken0 = tokenAddress < kaspaFinanceWKAS;
         
-        // Calculate price in terms of token1/token0
+        // Calculate price * 2^192 in terms of token1/token0
+        // CRITICAL: Must shift by 192 (not 96) before sqrt
+        // sqrt(price * 2^192) = sqrt(price) * 2^96 (correct Q64.96 encoding)
         // If token < WKAS: price = WKAS/token = kasReserve/tokenReserve
         // If WKAS < token: price = token/WKAS = tokenReserve/kasReserve
         
-        uint256 priceX96;
+        uint256 priceX192;
         if (tokenIsToken0) {
             // token0 = token, token1 = WKAS
             // price = WKAS/token = kasReserve/tokenReserve
-            priceX96 = (kasReserve << 96) / tokenReserve;
+            priceX192 = (kasReserve << 192) / tokenReserve;
         } else {
             // token0 = WKAS, token1 = token
             // price = token/WKAS = tokenReserve/kasReserve
-            priceX96 = (tokenReserve << 96) / kasReserve;
+            priceX192 = (tokenReserve << 192) / kasReserve;
         }
         
-        // Calculate sqrt using Babylonian method
-        uint160 sqrtPriceX96 = uint160(_sqrt(priceX96));
+        // Calculate sqrt(priceX192) = sqrt(price * 2^192) = sqrt(price) * 2^96
+        uint160 sqrtPriceX96 = uint160(_sqrt(priceX192));
+        
+        require(sqrtPriceX96 > 0, "sqrtPriceX96 must be > 0");
         
         return sqrtPriceX96;
     }
