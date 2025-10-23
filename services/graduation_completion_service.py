@@ -91,10 +91,13 @@ class GraduationCompletionService:
         
         NEW APPROACH (per architect guidance):
         1. Verify initiation transaction succeeded
-        2. Call GraduationController.completeGraduation(tokenAddress)
-        3. Extract pool data from GraduationCompleted event
-        4. Derive pool address using CREATE2
+        2. Transfer KAS from oracle wallet to GraduationController contract
+        3. Call GraduationController.completeGraduation(tokenAddress)
+        4. Extract pool data from GraduationCompleted event
         5. Update database with all metadata
+        
+        Note: Step 2 is critical - BondingCurvePool sends KAS to oracle wallet,
+        but GraduationController expects KAS in its own balance. We forward it.
         """
         logging.info(f"Completing graduation for {token.symbol} (ID: {token.id})")
         
@@ -122,13 +125,59 @@ class GraduationCompletionService:
             logging.error(f"On-chain verification failed: {str(e)}")
             # Continue anyway - the completion will fail if there's a real issue
         
-        # 2. Call completeGraduation() on blockchain
+        # 2. Transfer KAS from oracle wallet to GraduationController
         try:
             graduation_controller = self.w3_service.contracts['GraduationController']
             oracle_account = self.w3_service.oracle_account
-            
-            # Build transaction (use checksum address)
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
+            
+            # Query expected KAS amount from GraduationController
+            expected_kas = graduation_controller.functions.expectedKasLiquidity(checksum_address).call()
+            
+            if expected_kas > 0:
+                logging.info(f"📤 Transferring {expected_kas / 1e18:.4f} KAS from oracle to GraduationController")
+                
+                # Build KAS transfer transaction
+                transfer_tx = {
+                    'from': oracle_account.address,
+                    'to': graduation_controller.address,
+                    'value': expected_kas,
+                    'gas': 21000,  # Standard ETH transfer gas
+                    'gasPrice': self.w3_service.w3.eth.gas_price,
+                    'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
+                }
+                
+                # Add chainId
+                chain_id = self.w3_service.w3.eth.chain_id
+                transfer_tx['chainId'] = chain_id
+                
+                # Sign and send transfer
+                signed_transfer = oracle_account.sign_transaction(transfer_tx)
+                transfer_hash = self.w3_service.w3.eth.send_raw_transaction(signed_transfer.rawTransaction)
+                
+                logging.info(f"KAS transfer tx sent: {transfer_hash.hex()}")
+                
+                # Wait for confirmation
+                transfer_receipt = self.w3_service.w3.eth.wait_for_transaction_receipt(transfer_hash, timeout=120)
+                
+                if not transfer_receipt or transfer_receipt['status'] != 1:
+                    logging.error(f"KAS transfer failed - aborting graduation completion")
+                    return
+                
+                logging.info(f"✅ KAS transferred successfully to GraduationController")
+            else:
+                logging.warning(f"Expected KAS is 0 - this may indicate graduation was already completed or cancelled")
+                
+        except Exception as e:
+            logging.error(f"Failed to transfer KAS to GraduationController: {str(e)}")
+            logging.info(f"Will retry on next cycle")
+            return
+        
+        # 3. Call completeGraduation() on blockchain
+        try:
+            # Get fresh nonce after KAS transfer
+            current_nonce = self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
+            
             tx_data = graduation_controller.functions.completeGraduation(
                 checksum_address
             ).build_transaction({
@@ -136,7 +185,7 @@ class GraduationCompletionService:
                 'value': 0,
                 'gas': 0,
                 'gasPrice': self.w3_service.w3.eth.gas_price,
-                'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
+                'nonce': current_nonce
             })
             
             # Estimate gas (matches initiation pattern)
@@ -171,7 +220,7 @@ class GraduationCompletionService:
             logging.info(f"Will retry on next cycle")
             return
         
-        # 3. Extract pool data from GraduationCompleted event
+        # 4. Extract pool data from GraduationCompleted event
         pool_data = self._extract_pool_data_from_completion(receipt, token)
         
         if not pool_data:
@@ -179,7 +228,7 @@ class GraduationCompletionService:
             logging.info(f"Will retry on next cycle")
             return
         
-        # 4. Update database with completion data
+        # 5. Update database with completion data
         try:
             token.graduation_status = 'graduated'
             token.graduation_completed_at = datetime.now(timezone.utc)

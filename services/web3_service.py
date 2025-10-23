@@ -234,8 +234,12 @@ class Web3Service:
             )
             logging.info(f"Loaded TokenFactory at {TOKEN_FACTORY_ADDRESS}")
             
-            # Load GraduationController
-            graduation_abi = self._load_contract_abi('GraduationController')
+            # Load GraduationController V2
+            # NOTE: Must load from GraduationControllerV2.sol directory for V2 ABI
+            graduation_abi_path = ARTIFACTS_DIR / "GraduationControllerV2.sol" / "GraduationController.json"
+            with open(graduation_abi_path, 'r') as f:
+                graduation_abi = json.load(f)['abi']
+            
             contracts['GraduationController'] = self.w3.eth.contract(
                 address=Web3.to_checksum_address(GRADUATION_CONTROLLER_ADDRESS),
                 abi=graduation_abi
