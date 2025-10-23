@@ -127,46 +127,65 @@ class GraduationCompletionService:
         
         # 2. Transfer KAS from oracle wallet to GraduationController
         try:
-            graduation_controller = self.w3_service.contracts['GraduationController']
             oracle_account = self.w3_service.oracle_account
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
             
-            # Query expected KAS amount from GraduationController
-            expected_kas = graduation_controller.functions.expectedKasLiquidity(checksum_address).call()
+            # Get the GraduationController address from the pool (supports dynamic controller detection)
+            pool = self.w3_service.get_bonding_pool_contract(checksum_address)
+            gc_address = pool.functions.graduationOracle().call()
             
-            if expected_kas > 0:
-                logging.info(f"📤 Transferring {expected_kas / 1e18:.4f} KAS from oracle to GraduationController")
-                
-                # Build KAS transfer transaction
-                transfer_tx = {
-                    'from': oracle_account.address,
-                    'to': graduation_controller.address,
-                    'value': expected_kas,
-                    'gas': 21000,  # Standard ETH transfer gas
-                    'gasPrice': self.w3_service.w3.eth.gas_price,
-                    'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
-                }
-                
-                # Add chainId
-                chain_id = self.w3_service.w3.eth.chain_id
-                transfer_tx['chainId'] = chain_id
-                
-                # Sign and send transfer
-                signed_transfer = oracle_account.sign_transaction(transfer_tx)
-                transfer_hash = self.w3_service.w3.eth.send_raw_transaction(signed_transfer.rawTransaction)
-                
-                logging.info(f"KAS transfer tx sent: {transfer_hash.hex()}")
-                
-                # Wait for confirmation
-                transfer_receipt = self.w3_service.w3.eth.wait_for_transaction_receipt(transfer_hash, timeout=120)
-                
-                if not transfer_receipt or transfer_receipt['status'] != 1:
-                    logging.error(f"KAS transfer failed - aborting graduation completion")
+            # Load GraduationController contract at the detected address
+            gc_abi = self.w3_service.contracts['GraduationController'].abi
+            graduation_controller = self.w3_service.w3.eth.contract(address=gc_address, abi=gc_abi)
+            
+            # Try to get expected KAS amount from GraduationController
+            try:
+                expected_kas = graduation_controller.functions.expectedKasLiquidity(checksum_address).call()
+            except Exception as e:
+                logging.warning(f"expectedKasLiquidity() call failed: {e}")
+                expected_kas = 0
+            
+            # LEGACY CONTROLLER FIX: If expectedKasLiquidity returns 0, get virtualKasReserve from pool
+            if expected_kas == 0:
+                kas_reserve = pool.functions.virtualKasReserve().call()
+                if kas_reserve > 0:
+                    logging.warning(f"⚠️ Legacy GraduationController detected ({gc_address})")
+                    logging.warning(f"   expectedKasLiquidity() returned 0, using virtualKasReserve instead")
+                    expected_kas = kas_reserve
+                else:
+                    logging.warning(f"Expected KAS is 0 and pool reserve is 0 - graduation may be completed/cancelled")
                     return
-                
-                logging.info(f"✅ KAS transferred successfully to GraduationController")
-            else:
-                logging.warning(f"Expected KAS is 0 - this may indicate graduation was already completed or cancelled")
+            
+            logging.info(f"📤 Transferring {expected_kas / 1e18:.4f} KAS from oracle to GraduationController ({gc_address})")
+            
+            # Build KAS transfer transaction
+            transfer_tx = {
+                'from': oracle_account.address,
+                'to': gc_address,
+                'value': expected_kas,
+                'gas': 21000,  # Standard ETH transfer gas
+                'gasPrice': self.w3_service.w3.eth.gas_price,
+                'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
+            }
+            
+            # Add chainId
+            chain_id = self.w3_service.w3.eth.chain_id
+            transfer_tx['chainId'] = chain_id
+            
+            # Sign and send transfer
+            signed_transfer = oracle_account.sign_transaction(transfer_tx)
+            transfer_hash = self.w3_service.w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
+            
+            logging.info(f"KAS transfer tx sent: {transfer_hash.hex()}")
+            
+            # Wait for confirmation
+            transfer_receipt = self.w3_service.w3.eth.wait_for_transaction_receipt(transfer_hash, timeout=120)
+            
+            if not transfer_receipt or transfer_receipt['status'] != 1:
+                logging.error(f"KAS transfer failed - aborting graduation completion")
+                return
+            
+            logging.info(f"✅ KAS transferred successfully to GraduationController")
                 
         except Exception as e:
             logging.error(f"Failed to transfer KAS to GraduationController: {str(e)}")
