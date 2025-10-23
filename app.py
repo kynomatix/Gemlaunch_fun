@@ -7218,9 +7218,9 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         deployment_unix = int(deployment_timestamp.timestamp())
         deployment_bucket = (deployment_unix // interval_seconds) * interval_seconds
         
-        # Only add deployment candle if it's before the first trade and within/before chart window
+        # Only add deployment candle if it's before the first trade and within chart window
         first_trade_time = min(t['timestamp'].timestamp() for t in trade_points)
-        if deployment_unix < first_trade_time and deployment_bucket <= start_bucket:
+        if deployment_unix < first_trade_time and deployment_bucket >= start_bucket:
             # Get first trade's close value for high/close of deployment candle
             first_trade_value = trade_points[0]['price'] if chart_type == 'price' else trade_points[0]['market_cap']
             
