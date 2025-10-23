@@ -1,6 +1,6 @@
 """
 Graduation Monitor Service
-Monitors token market caps and automatically triggers graduation when they reach $70,000 USD
+Monitors token market caps and automatically triggers graduation when they reach the configured threshold (default $50 USD)
 """
 
 import logging
