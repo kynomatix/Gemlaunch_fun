@@ -36,7 +36,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
   - **Critical Fix (Oct 22, 2025)**: Tokens now correctly initialize with `graduation_status = 'active'` on deployment (app.py line 6578)
   - **Monitor Service**: Background job checks eligible tokens every 60 seconds, properly skips 'failed' status tokens
   - **Oracle Integration**: Uses web3_service.oracle_account for automated graduation transactions
-  - **Legacy Tokens**: JAK (ID 56) and RAGR (ID 63) marked as 'failed' due to pre-V2 TokenFactory oracle misconfiguration
+  - **Legacy Tokens - V1→V2 Migration Issue**: JAK (ID 56), RAGR (ID 63), and SPK (ID 68) marked as 'failed' due to being stuck in graduating state after GraduationController V2 upgrade. These tokens initiated graduation on V1 controller but completion became impossible after V2 redeployment. Pre-flight check (Oct 23, 2025) now detects BondingCurvePool graduating=True with GraduationController hasInitiated=False mismatch and marks such tokens as 'failed' automatically.
 
 ### PRO Token Vesting System
 ✅ **STATUS: Fully implemented - Atomic on-chain deployment (V2 - October 2025)**

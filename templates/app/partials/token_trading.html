@@ -9,6 +9,18 @@
             Liquidity Pool: {{ token.dex_pool_address[:8] }}...{{ token.dex_pool_address[-6:] }}
         </div>
     </div>
+    {% elif token.graduation_status == 'failed' %}
+    <div style="background: linear-gradient(135deg, #f5576c 0%, #d63031 100%); padding: 1rem; border-radius: 10px; margin-bottom: 1rem; text-align: center; color: white;">
+        <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem; font-size: 1.2rem;"></i>
+        <strong style="display: block; font-size: 1.1rem;">Graduation Failed - Trading Disabled</strong>
+        <div style="font-size: 0.85rem; opacity: 0.95; margin-top: 0.75rem; line-height: 1.5; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px;">
+            This token is stuck in an unrecoverable state due to a contract upgrade. The token cannot be traded, and liquidity is locked. This is a known issue affecting legacy tokens (JAK, RAGR, SPK) from the V1→V2 migration.
+        </div>
+        <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.9;">
+            <i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i>
+            Contact support for more information.
+        </div>
+    </div>
     {% elif token.graduation_status in ('initiating', 'completing') %}
     <div style="background: linear-gradient(135deg, #764ba2 0%, #4facfe 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
         <i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
@@ -36,10 +48,10 @@
         <button class="trade-tab sell" onclick="setTradeMode('sell')">Sell</button>
     </div>
     
-    <div class="trade-form">
+    <div class="trade-form" {% if token.graduation_status == 'failed' %}style="opacity: 0.5; pointer-events: none;"{% endif %}>
         <div class="input-group">
             <label id="kasAmountLabel">You Pay (KAS)</label>
-            <input type="number" id="kasAmount" placeholder="0.0" step="0.000001">
+            <input type="number" id="kasAmount" placeholder="0.0" step="0.000001" {% if token.graduation_status == 'failed' %}disabled{% endif %}>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
                 <span class="input-addon" id="kasUsdValue" style="font-size: 0.75rem;">${{ "%.2f"|format(0) }} USD</span>
                 <span id="kasBalanceDisplay" style="font-size: 0.75rem; color: #888;">Balance: -- KAS</span>
@@ -52,7 +64,7 @@
         
         <div class="input-group">
             <label id="tokenAmountLabel">You Receive ({{ token.symbol }})</label>
-            <input type="number" id="tokenAmount" placeholder="0" step="1">
+            <input type="number" id="tokenAmount" placeholder="0" step="1" {% if token.graduation_status == 'failed' %}disabled{% endif %}>
             <span id="tokenBalanceDisplay" style="font-size: 0.75rem; color: #888; display: block; margin-top: 0.25rem;">Balance: -- {{ token.symbol }}</span>
         </div>
         
@@ -109,18 +121,20 @@
         <button type="button" 
                 class="trade-button buy" 
                 id="tradeButton" 
-                {% if token.graduation_status in ('initiating', 'completing') %}
+                {% if token.graduation_status in ('initiating', 'completing', 'failed') %}
                 disabled
                 style="opacity: 0.5; cursor: not-allowed;"
-                title="Trading is temporarily paused during graduation"
+                title="{% if token.graduation_status == 'failed' %}Trading is permanently disabled for this token{% else %}Trading is temporarily paused during graduation{% endif %}"
                 {% else %}
                 onclick="executeTrade()"
                 {% endif %}
                 data-graduation-status="{{ token.graduation_status or 'active' }}"
                 data-dex-pool-address="{{ token.dex_pool_address or '' }}"
                 data-bonding-pool-address="{{ token.liquidity_pool_address or token.contract_address }}">
-            <i class="fas fa-{% if token.graduation_status in ('initiating', 'completing') %}pause-circle{% else %}rocket{% endif %}"></i> 
-            {% if token.graduation_status in ('initiating', 'completing') %}
+            <i class="fas fa-{% if token.graduation_status == 'failed' %}ban{% elif token.graduation_status in ('initiating', 'completing') %}pause-circle{% else %}rocket{% endif %}"></i> 
+            {% if token.graduation_status == 'failed' %}
+            Trading Disabled
+            {% elif token.graduation_status in ('initiating', 'completing') %}
             Trading Paused
             {% else %}
             Buy ${{ token.symbol }}

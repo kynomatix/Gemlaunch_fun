@@ -12,6 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy import or_
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -1244,9 +1245,13 @@ def token_marketplace():
     user = get_current_user()  # Will be None if not connected
     
     # Show only deployed tokens with eager loading of creator information
+    # Exclude failed graduations from marketplace (but include NULL statuses for legacy tokens)
     tokens = Token.query.options(
         joinedload(Token.creator)
-    ).filter(Token.deployment_status == 'deployed').order_by(Token.created_at.desc()).all()
+    ).filter(
+        Token.deployment_status == 'deployed',
+        or_(Token.graduation_status != 'failed', Token.graduation_status.is_(None))
+    ).order_by(Token.created_at.desc()).all()
     
     # Add is_pro flag to each token for the template
     for token in tokens:

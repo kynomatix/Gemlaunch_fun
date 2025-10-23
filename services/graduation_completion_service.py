@@ -107,16 +107,36 @@ class GraduationCompletionService:
             graduation_controller = self.w3_service.contracts['GraduationController']
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
             
+            # Check BondingCurvePool state
+            pool = self.w3_service.get_bonding_pool_contract(checksum_address)
+            graduating = pool.functions.graduating().call()
+            liquid_transferred = pool.functions.liquidityTransferred().call()
+            
             # Call getGraduationInfo() to check if contract knows about this graduation
             grad_info = graduation_controller.functions.getGraduationInfo(checksum_address).call()
             has_initiated = grad_info[0]  # First element is hasInitiated bool
             
             if not has_initiated:
                 logging.warning(f"⚠️ Token {token.symbol} has DB status 'initiating' but on-chain hasInitiated=False")
-                logging.warning(f"   This likely means GraduationController was redeployed after initiation.")
-                logging.warning(f"   Resetting status to 'active' to trigger re-initiation.")
+                logging.warning(f"   GraduationController has no record of this graduation.")
                 
-                # Reset to active so the monitor will re-initiate
+                # CRITICAL CHECK: If BondingCurvePool is stuck in graduating state, this is a fatal condition
+                # ANY graduating=True state with hasInitiated=False means the token is stuck
+                if graduating:
+                    logging.error(f"❌ FATAL: {token.symbol} is stuck in graduating state on BondingCurvePool")
+                    logging.error(f"   BondingCurvePool: graduating={graduating}, liquidityTransferred={liquid_transferred}")
+                    logging.error(f"   GraduationController: hasInitiated={has_initiated}")
+                    logging.error(f"   This token cannot be traded (graduating=True blocks all trades)")
+                    logging.error(f"   This token cannot be completed (hasInitiated=False means no graduation record)")
+                    logging.error(f"   Likely cause: V1→V2 contract upgrade with stale initiation.")
+                    logging.error(f"   Marking as 'failed' - requires manual intervention.")
+                    
+                    # Mark as failed instead of active
+                    GraduationStateManager.mark_failed(token, "Stuck in graduating state after V2 upgrade - cannot complete")
+                    return
+                
+                # Normal case: Just reset to active for re-initiation
+                logging.warning(f"   Resetting status to 'active' to trigger re-initiation.")
                 GraduationStateManager.reset_to_active(token)
                 return
             
