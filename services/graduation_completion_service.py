@@ -102,6 +102,30 @@ class GraduationCompletionService:
         if not token.graduation_initiation_tx:
             logging.warning(f"Token {token.symbol} has no initiation tx recorded")
         
+        # 1.5. PRE-FLIGHT CHECK: Verify on-chain initiation status
+        try:
+            graduation_controller = self.w3_service.contracts['GraduationController']
+            checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
+            
+            # Call getGraduationInfo() to check if contract knows about this graduation
+            grad_info = graduation_controller.functions.getGraduationInfo(checksum_address).call()
+            has_initiated = grad_info[0]  # First element is hasInitiated bool
+            
+            if not has_initiated:
+                logging.warning(f"⚠️ Token {token.symbol} has DB status 'initiating' but on-chain hasInitiated=False")
+                logging.warning(f"   This likely means GraduationController was redeployed after initiation.")
+                logging.warning(f"   Resetting status to 'active' to trigger re-initiation.")
+                
+                # Reset to active so the monitor will re-initiate
+                GraduationStateManager.reset_to_active(token)
+                return
+            
+            logging.info(f"✅ Pre-flight check passed: {token.symbol} is initiated on-chain")
+            
+        except Exception as e:
+            logging.error(f"Pre-flight check failed: {str(e)}")
+            # Continue anyway - the completion will fail if there's a real issue
+        
         # 2. Call completeGraduation() on blockchain
         try:
             graduation_controller = self.w3_service.contracts['GraduationController']
@@ -109,18 +133,31 @@ class GraduationCompletionService:
             
             # Build transaction (use checksum address)
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
-            tx = graduation_controller.functions.completeGraduation(
+            tx_data = graduation_controller.functions.completeGraduation(
                 checksum_address
             ).build_transaction({
                 'from': oracle_account.address,
-                'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address),
-                'gas': 3000000,
-                'gasPrice': self.w3_service.w3.eth.gas_price
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3_service.w3.eth.gas_price,
+                'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
             })
             
-            # Sign and send
-            signed_tx = oracle_account.sign_transaction(tx)
-            tx_hash = self.w3_service.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            # Estimate gas (matches initiation pattern)
+            gas_estimate = self.w3_service.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            # Sign transaction with web3_service helper (adds chainId automatically)
+            signed_txn = self.w3_service.sign_transaction(tx_data)
+            
+            # Relay transaction
+            tx_hash = self.w3_service.relay_transaction(signed_txn)
             
             logging.info(f"Completion tx sent: {tx_hash.hex()}")
             

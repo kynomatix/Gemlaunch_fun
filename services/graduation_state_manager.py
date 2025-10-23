@@ -212,6 +212,15 @@ class GraduationStateManager:
         db.session.commit()
     
     @staticmethod
+    def reset_to_active(token):
+        """Reset graduation status to active (for re-initiation after contract redeploy)"""
+        token.graduation_status = 'active'
+        token.graduation_initiated_at = None
+        token.graduation_initiation_tx = None
+        logging.warning(f"Token {token.symbol} reset to active status for re-initiation")
+        db.session.commit()
+    
+    @staticmethod
     def check_stuck_graduations():
         """
         Monitor for stuck graduations and alert
