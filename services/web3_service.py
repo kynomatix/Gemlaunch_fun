@@ -2281,9 +2281,32 @@ class Web3Service:
     # Task 2.2.3 - GraduationController Interactions (Oracle Only)
     # =========================
     
+    def get_pool_graduation_controller(self, pool_address):
+        """
+        Query which GraduationController a specific pool expects
+        
+        Args:
+            pool_address (str): Pool contract address
+        
+        Returns:
+            str: GraduationController address the pool trusts
+        """
+        try:
+            pool = self.get_bonding_pool_contract(pool_address)
+            controller_address = pool.functions.graduationOracle().call()
+            logging.debug(f"Pool {pool_address} expects GraduationController: {controller_address}")
+            return controller_address
+        except Exception as e:
+            logging.warning(f"Could not query graduationOracle for pool {pool_address}, using default: {str(e)}")
+            # Fall back to default controller
+            return self.contracts['GraduationController'].address
+    
     def initiate_graduation_oracle(self, token_address):
         """
         Oracle signs and relays GraduationController.initiateGraduation() - ORACLE TRANSACTION
+        
+        DYNAMIC CONTROLLER SELECTION: Automatically detects which GraduationController 
+        the pool expects (supports both old and new controllers)
         
         Args:
             token_address (str): Token/pool address to graduate
@@ -2294,9 +2317,20 @@ class Web3Service:
         try:
             logging.info(f"Oracle initiating graduation for token {token_address}")
             
+            # CRITICAL: Query which controller this pool expects
+            expected_controller_address = self.get_pool_graduation_controller(token_address)
+            
+            # Load the controller contract (old or new) with the GraduationController ABI
+            gc_abi = self.contracts['GraduationController'].abi
+            controller_contract = self.w3.eth.contract(
+                address=Web3.to_checksum_address(expected_controller_address),
+                abi=gc_abi
+            )
+            
+            logging.info(f"Using GraduationController at {expected_controller_address} for {token_address}")
+            
             # Build contract call
-            contract = self.contracts['GraduationController']
-            tx_data = contract.functions.initiateGraduation(
+            tx_data = controller_contract.functions.initiateGraduation(
                 Web3.to_checksum_address(token_address)
             ).build_transaction({
                 'from': self.oracle_account.address,
@@ -2322,7 +2356,7 @@ class Web3Service:
             # Relay transaction
             tx_hash = self.relay_transaction(signed_txn)
             
-            logging.info(f"Graduation initiated by oracle - Token: {token_address}, TX: {tx_hash}")
+            logging.info(f"Graduation initiated by oracle - Token: {token_address}, Controller: {expected_controller_address}, TX: {tx_hash}")
             return tx_hash
             
         except Exception as e:
@@ -2333,6 +2367,9 @@ class Web3Service:
         """
         Oracle signs and relays GraduationController.completeGraduation() - ORACLE TRANSACTION
         
+        DYNAMIC CONTROLLER SELECTION: Automatically detects which GraduationController 
+        the pool expects (supports both old and new controllers)
+        
         Args:
             token_address (str): Token/pool address to complete graduation
         
@@ -2342,9 +2379,20 @@ class Web3Service:
         try:
             logging.info(f"Oracle completing graduation for token {token_address}")
             
+            # CRITICAL: Query which controller this pool expects
+            expected_controller_address = self.get_pool_graduation_controller(token_address)
+            
+            # Load the controller contract (old or new) with the GraduationController ABI
+            gc_abi = self.contracts['GraduationController'].abi
+            controller_contract = self.w3.eth.contract(
+                address=Web3.to_checksum_address(expected_controller_address),
+                abi=gc_abi
+            )
+            
+            logging.info(f"Using GraduationController at {expected_controller_address} for {token_address}")
+            
             # Build contract call
-            contract = self.contracts['GraduationController']
-            tx_data = contract.functions.completeGraduation(
+            tx_data = controller_contract.functions.completeGraduation(
                 Web3.to_checksum_address(token_address)
             ).build_transaction({
                 'from': self.oracle_account.address,
@@ -2370,7 +2418,7 @@ class Web3Service:
             # Relay transaction
             tx_hash = self.relay_transaction(signed_txn)
             
-            logging.info(f"Graduation completed by oracle - Token: {token_address}, TX: {tx_hash}")
+            logging.info(f"Graduation completed by oracle - Token: {token_address}, Controller: {expected_controller_address}, TX: {tx_hash}")
             return tx_hash
             
         except Exception as e:
