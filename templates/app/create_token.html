@@ -2250,6 +2250,37 @@
             }
         }
 
+        // Poll token endpoint until it's ready, then redirect
+        async function waitForTokenAndRedirect(contractAddress, maxAttempts = 15) {
+            updateDeploymentStatus('Waiting for token to be ready...', 'Database sync in progress');
+            
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                try {
+                    // Check if token page is ready (HEAD request is faster than GET)
+                    const response = await fetch(`/app/token/${contractAddress}`, {
+                        method: 'HEAD',
+                        cache: 'no-cache'
+                    });
+                    
+                    if (response.ok) {
+                        // Token page is ready, redirect now
+                        updateDeploymentStatus('Token ready!', 'Redirecting...');
+                        window.location.href = `/app/token/${contractAddress}`;
+                        return;
+                    }
+                } catch (error) {
+                    // Token not ready yet, continue polling
+                }
+                
+                // Wait 500ms before next attempt
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            // Fallback: redirect anyway after max attempts (7.5 seconds total)
+            console.warn('Token readiness timeout - redirecting anyway');
+            window.location.href = `/app/token/${contractAddress}`;
+        }
+
         // Convert image file to base64
         async function convertImageToBase64(file) {
             return new Promise((resolve, reject) => {
@@ -2279,10 +2310,8 @@
                             updateDeploymentStatus('Token creation confirmed!', 'Transaction Confirmed');
                             eventSource.close();
                             
-                            // Redirect to token detail page
-                            setTimeout(() => {
-                                window.location.href = `/app/token/${contractAddress}`;
-                            }, 2000);
+                            // Wait for token to be ready before redirecting
+                            waitForTokenAndRedirect(contractAddress);
                             resolve();
                         } else if (data.status === 'failed') {
                             eventSource.close();
@@ -2527,10 +2556,8 @@
                     // Don't fail deployment if sync fails - supply can be synced later
                 }
                 
-                // Step 8: Redirect to token detail page
-                setTimeout(() => {
-                    window.location.href = `/app/token/${extractResult.contractAddress}`;
-                }, 2000);
+                // Step 8: Wait for token to be ready before redirecting
+                await waitForTokenAndRedirect(extractResult.contractAddress);
                 
             } catch (error) {
                 console.error('Token creation error:', error);
