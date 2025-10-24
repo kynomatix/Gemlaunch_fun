@@ -193,55 +193,43 @@ class GraduationCompletionService:
             logging.info(f"Will retry on next cycle")
             return
         
-        # 3. Call completeGraduation() on blockchain
+        # 3. Call completeGraduation() on blockchain with Kasplex retry logic
         try:
-            # Get fresh nonce after KAS transfer
-            current_nonce = self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
-            
+            # Build transaction data
             tx_data = graduation_controller.functions.completeGraduation(
                 checksum_address
             ).build_transaction({
                 'from': oracle_account.address,
                 'value': 0,
-                'gas': 0,
-                'gasPrice': self.w3_service.w3.eth.gas_price,
-                'nonce': current_nonce
+                'gas': 0
             })
             
-            # Estimate gas (matches initiation pattern)
-            gas_estimate = self.w3_service.estimate_gas({
-                'from': tx_data['from'],
+            # Prepare transaction for retry mechanism
+            tx = {
                 'to': tx_data['to'],
                 'data': tx_data['data'],
-                'value': tx_data['value']
-            })
+                'value': 0
+            }
             
-            tx_data['gas'] = gas_estimate['gas']
+            logging.info(f"🚀 Sending completeGraduation with Kasplex retry logic...")
             
-            # Sign transaction with web3_service helper (adds chainId automatically)
-            signed_txn = self.w3_service.sign_transaction(tx_data)
+            # Use new retry mechanism with progressive gas increases
+            result = self.w3_service.send_transaction_with_retry(
+                transaction=tx,
+                account=oracle_account,
+                max_retries=11,  # Kasplex best practice
+                initial_gas=3000000  # Start with 3M gas (skip estimation)
+            )
             
-            # Relay transaction
-            tx_hash = self.w3_service.relay_transaction(signed_txn)
+            tx_hash = result['tx_hash']
+            receipt = result['receipt']
+            attempts = result['attempts']
+            final_gas = result['final_gas']
             
-            logging.info(f"✅ Completion tx sent: {tx_hash.hex()}")
-            
-            # Try to get receipt to extract pool data, but don't block indefinitely
-            receipt = None
-            try:
-                receipt = self.w3_service.w3.eth.get_transaction_receipt(tx_hash)
-            except Exception as e:
-                logging.warning(f"Could not fetch receipt yet (RPC limitation): {str(e)[:100]}")
-            
-            if not receipt:
-                logging.info(f"⏳ Waiting for completion tx confirmation - will extract pool data on next cycle")
-                return
-            
-            if receipt['status'] != 1:
-                logging.error(f"❌ Completion tx failed (status={receipt['status']})")
-                return
-                
-            logging.info(f"✅ Completion tx confirmed in block {receipt['blockNumber']}")
+            logging.info(f"✅ Completion tx confirmed after {attempts} attempt(s)")
+            logging.info(f"   TX: {tx_hash}")
+            logging.info(f"   Block: {receipt['blockNumber']}")
+            logging.info(f"   Final gas: {final_gas:,}")
             
         except Exception as e:
             logging.error(f"Exception calling completeGraduation: {str(e)}")

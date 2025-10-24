@@ -995,6 +995,125 @@ class Web3Service:
             logging.error(f"Error getting transaction status for {tx_hash}: {str(e)}")
             raise
     
+    def send_transaction_with_retry(self, transaction, account=None, max_retries=11, initial_gas=None):
+        """
+        Send transaction with Kasplex-specific retry logic
+        
+        Kasplex testnet can drop transactions due to RPC issues. This method implements:
+        - Progressive gas increases (+15% per retry)
+        - Transaction resubmission on drop
+        - Extended monitoring periods
+        
+        Based on Kasplex developer best practices:
+        "Developers report occasional RPC rejections during deployment requiring 
+        progressive gas adjustments (up to 11 retries)"
+        
+        Args:
+            transaction (dict): Transaction parameters (to, data, value, etc.)
+            account: Account to sign with (defaults to oracle_account)
+            max_retries (int): Maximum retry attempts (default 11 per Kasplex docs)
+            initial_gas (int): Starting gas limit (if None, uses estimation)
+        
+        Returns:
+            dict: {
+                'tx_hash': str,
+                'receipt': dict,
+                'attempts': int,
+                'final_gas': int
+            }
+        
+        Raises:
+            Exception: If all retries fail
+        """
+        if account is None:
+            account = self.oracle_account
+        
+        # Determine initial gas
+        if initial_gas is None:
+            try:
+                gas_estimate = self.w3.eth.estimate_gas(transaction)
+                current_gas = int(gas_estimate * 1.3)  # Start with 30% buffer
+            except Exception as e:
+                logging.warning(f"Gas estimation failed: {e}, using fallback 3M gas")
+                current_gas = 3000000
+        else:
+            current_gas = initial_gas
+        
+        logging.info(f"Starting transaction with retry - Initial gas: {current_gas:,}")
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Get fresh nonce for each attempt
+                nonce = self.w3.eth.get_transaction_count(account.address)
+                
+                # Build transaction with current gas
+                tx = transaction.copy()
+                tx.update({
+                    'from': account.address,
+                    'nonce': nonce,
+                    'gas': current_gas,
+                    'gasPrice': self.w3.eth.gas_price,
+                    'chainId': KASPLEX_TESTNET_CHAIN_ID
+                })
+                
+                # Sign and send
+                signed = account.sign_transaction(tx)
+                tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+                tx_hash_hex = tx_hash.hex()
+                
+                logging.info(f"[Attempt {attempt}/{max_retries}] TX sent: {tx_hash_hex} (gas: {current_gas:,})")
+                
+                # Wait for confirmation with extended timeout
+                receipt = None
+                wait_time = 30 if attempt == 1 else 60  # Longer wait on retries
+                
+                for check in range(wait_time // 5):
+                    time.sleep(5)
+                    try:
+                        receipt = self.w3.eth.get_transaction_receipt(tx_hash_hex)
+                        if receipt:
+                            if receipt['status'] == 1:
+                                logging.info(f"✅ TX confirmed in block {receipt['blockNumber']} (attempt {attempt}, gas: {current_gas:,})")
+                                return {
+                                    'tx_hash': tx_hash_hex,
+                                    'receipt': receipt,
+                                    'attempts': attempt,
+                                    'final_gas': current_gas
+                                }
+                            else:
+                                logging.error(f"❌ TX failed in block {receipt['blockNumber']}")
+                                raise Exception(f"Transaction reverted on-chain")
+                    except Exception as e:
+                        if "reverted" in str(e).lower():
+                            raise
+                        continue
+                
+                # Transaction dropped or pending too long
+                logging.warning(f"⏱️ [Attempt {attempt}] TX {tx_hash_hex} not confirmed after {wait_time}s")
+                
+                if attempt < max_retries:
+                    # Increase gas by 15% for next attempt
+                    current_gas = int(current_gas * 1.15)
+                    logging.info(f"   Retrying with increased gas: {current_gas:,}")
+                    time.sleep(2)  # Brief pause before retry
+                
+            except Exception as e:
+                error_msg = str(e)
+                
+                # Don't retry on fatal errors
+                if any(fatal in error_msg.lower() for fatal in ['insufficient funds', 'nonce too low', 'reverted']):
+                    logging.error(f"❌ Fatal error, cannot retry: {error_msg}")
+                    raise
+                
+                logging.warning(f"[Attempt {attempt}] Send failed: {error_msg}")
+                
+                if attempt < max_retries:
+                    current_gas = int(current_gas * 1.15)
+                    logging.info(f"   Retrying with gas: {current_gas:,}")
+                    time.sleep(2)
+        
+        raise Exception(f"Transaction failed after {max_retries} attempts with final gas {current_gas:,}")
+    
     # =========================
     # Task 2.2.1 - TokenFactory Interactions
     # =========================
