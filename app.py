@@ -7211,6 +7211,8 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
     
     # Handle synthetic deployment candle if appropriate
     deployment_bucket_idx = None
+    actual_start_bucket = start_bucket  # Will be adjusted to deployment/first trade bucket
+    
     if deployment_timestamp and trade_points:
         # Ensure deployment_timestamp is timezone-aware
         if deployment_timestamp.tzinfo is None:
@@ -7221,16 +7223,17 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
         
         # Only add deployment candle if it's before the first trade and within chart window
         first_trade_time = min(t['timestamp'].timestamp() for t in trade_points)
+        first_trade_bucket = (int(first_trade_time) // interval_seconds) * interval_seconds
+        
         if deployment_unix < first_trade_time and deployment_bucket >= start_bucket:
             # Get first trade's close value for high/close of deployment candle
             first_trade_value = trade_points[0]['price'] if chart_type == 'price' else trade_points[0]['market_cap']
             
             # Check if deployment shares a bucket with any trade
-            first_trade_bucket = (int(first_trade_time) // interval_seconds) * interval_seconds
-            
             if deployment_bucket == first_trade_bucket:
                 # Same bucket: we'll mutate the first candle later (mark for mutation)
                 deployment_bucket_idx = deployment_bucket
+                actual_start_bucket = deployment_bucket  # Start from deployment
                 app.logger.debug(
                     f"Deployment shares bucket with first trade, will mutate first candle to start at 0"
                 )
@@ -7245,14 +7248,25 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
                     'volume': 0
                 })
                 previous_close = first_trade_value
+                actual_start_bucket = deployment_bucket  # Start from deployment
                 
                 app.logger.debug(
                     f"Prepended deployment candle at {deployment_timestamp} "
                     f"(0 → {first_trade_value:.2f} {chart_type})"
                 )
+        else:
+            # No deployment candle needed, start from first trade
+            actual_start_bucket = first_trade_bucket
+    else:
+        # No deployment timestamp, start from first trade bucket
+        if trade_points:
+            first_trade_time = min(t['timestamp'].timestamp() for t in trade_points)
+            first_trade_bucket = (int(first_trade_time) // interval_seconds) * interval_seconds
+            actual_start_bucket = first_trade_bucket
     
-    # Iterate through ALL time buckets in the range (including empty ones)
-    current_bucket = start_bucket
+    # Iterate through time buckets from actual_start_bucket (deployment or first trade)
+    # This prevents showing hundreds of empty candles before the token existed
+    current_bucket = actual_start_bucket
     while current_bucket <= end_bucket:
         bucket_trades = buckets.get(current_bucket, [])
         
