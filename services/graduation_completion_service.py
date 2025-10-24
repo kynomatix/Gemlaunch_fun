@@ -178,11 +178,15 @@ class GraduationCompletionService:
             
             logging.info(f"KAS transfer tx sent: {transfer_hash.hex()}")
             
-            # Wait for confirmation
-            transfer_receipt = self.w3_service.w3.eth.wait_for_transaction_receipt(transfer_hash, timeout=120)
+            # Quick check - don't block, let next cycle retry if pending
+            transfer_receipt = self.w3_service.w3.eth.get_transaction_receipt(transfer_hash)
             
-            if not transfer_receipt or transfer_receipt['status'] != 1:
-                logging.error(f"KAS transfer failed - aborting graduation completion")
+            if not transfer_receipt:
+                logging.info(f"⏳ KAS transfer pending - will check on next cycle")
+                return
+            
+            if transfer_receipt['status'] != 1:
+                logging.error(f"❌ KAS transfer failed - will retry on next cycle")
                 return
             
             logging.info(f"✅ KAS transferred successfully to GraduationController")
@@ -225,11 +229,15 @@ class GraduationCompletionService:
             
             logging.info(f"Completion tx sent: {tx_hash.hex()}")
             
-            # Wait for confirmation
-            receipt = self.w3_service.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+            # Quick check - don't block, let next cycle retry if pending
+            receipt = self.w3_service.w3.eth.get_transaction_receipt(tx_hash)
             
-            if not receipt or receipt['status'] != 1:
-                logging.error(f"Completion tx failed - will retry on next cycle")
+            if not receipt:
+                logging.info(f"⏳ Completion tx pending - will check on next cycle")
+                return
+            
+            if receipt['status'] != 1:
+                logging.error(f"❌ Completion tx failed - will retry on next cycle")
                 return
             
             logging.info(f"✅ Completion tx confirmed: {tx_hash.hex()}")
