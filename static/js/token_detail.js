@@ -57,6 +57,7 @@
         
         // Graduation polling interval
         graduationPollingInterval: null,
+        graduationPollingIntervalTime: 30000, // Track current interval time in ms
         graduationTriggered: false, // One-shot flag to prevent repeated graduation triggers
         
         // Initialize the module with data from server
@@ -3575,20 +3576,43 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Determine actual graduation status from API response
+                    let graduationStatus = data.graduation_status || 'active';
+                    
                     if (data.is_graduated) {
+                        graduationStatus = 'graduated';
                         this.updateGraduationProgress({
                             marketCap: data.current_market_cap,
                             graduationThreshold: data.graduation_threshold || 200,
                             isGraduated: true,
-                            dexPoolAddress: data.dex_pool?.pool_address
+                            graduation_status: 'graduated',
+                            dexPoolAddress: data.dex_pool?.pool_address,
+                            dex_pool_address: data.dex_pool?.pool_address
                         });
                     } else {
                         this.updateGraduationProgress({
                             marketCap: data.current_market_cap,
                             graduationThreshold: data.graduation_threshold || 200,
                             isGraduated: false,
+                            graduation_status: graduationStatus,
                             progressPercent: data.progress_percent
                         });
+                    }
+                    
+                    // Adjust polling interval based on graduation status
+                    // During graduation: poll every 10 seconds for faster updates
+                    // Normal: poll every 30 seconds
+                    const isGraduating = graduationStatus === 'initiating' || graduationStatus === 'completing';
+                    const desiredInterval = isGraduating ? 10000 : 30000; // 10s or 30s
+                    
+                    // Update polling interval if it needs to change
+                    if (this.graduationPollingInterval && this.graduationPollingIntervalTime !== desiredInterval) {
+                        clearInterval(this.graduationPollingInterval);
+                        this.graduationPollingInterval = setInterval(() => {
+                            this.fetchGraduationStatus();
+                        }, desiredInterval);
+                        this.graduationPollingIntervalTime = desiredInterval;
+                        console.log(`⏱️ Updated polling interval to ${desiredInterval/1000}s (status: ${graduationStatus})`);
                     }
                 }
             } catch (error) {
@@ -3611,7 +3635,9 @@
                 
                 if (data.success) {
                     console.log('✅ Graduation triggered successfully:', data);
-                    // Immediately refresh graduation status to update UI
+                    // INSTANTLY update trading panel UI to show "Graduation In Progress"
+                    this.updateTradingPanelUI('initiating', {});
+                    // Then refresh graduation status to get latest data
                     this.fetchGraduationStatus();
                 } else {
                     console.log('⚠️ Graduation trigger response:', data);
@@ -3621,9 +3647,105 @@
             }
         },
         
+        // Update trading panel UI based on graduation status (replaces server-side Jinja2 rendering)
+        updateTradingPanelUI: function(graduationStatus, data = {}) {
+            const tradePanel = document.querySelector('.trade-panel');
+            if (!tradePanel) return;
+            
+            // Build banner HTML based on graduation status
+            let bannerHTML = '';
+            
+            if (graduationStatus === 'graduated') {
+                const poolAddr = data.dexPoolAddress || '';
+                const poolDisplay = poolAddr ? `${poolAddr.substring(0, 8)}...${poolAddr.slice(-6)}` : 'Loading...';
+                bannerHTML = `
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
+                        <i class="fas fa-graduation-cap" style="margin-right: 0.5rem;"></i>
+                        <strong>Trading on Kaspa Finance DEX</strong>
+                        <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
+                            Liquidity Pool: ${poolDisplay}
+                        </div>
+                    </div>
+                `;
+            } else if (graduationStatus === 'initiating' || graduationStatus === 'completing') {
+                const statusText = graduationStatus === 'initiating' ? 'Initiating pool creation...' : 'Finalizing graduation...';
+                bannerHTML = `
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #4facfe 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
+                        <i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
+                        <strong>Graduation In Progress</strong>
+                        <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
+                            ${statusText}
+                        </div>
+                    </div>
+                `;
+            } else {
+                // active status - bonding curve
+                bannerHTML = `
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
+                        <i class="fas fa-chart-line" style="margin-right: 0.5rem;"></i>
+                        <strong>Trading on Bonding Curve</strong>
+                        <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
+                            Price increases with each purchase
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Find existing banner (first div child with gradient background)
+            const firstDiv = tradePanel.querySelector('div[style*="linear-gradient"]');
+            if (firstDiv && firstDiv.parentElement === tradePanel) {
+                // Replace existing banner
+                firstDiv.outerHTML = bannerHTML;
+            } else {
+                // Insert banner at the beginning
+                tradePanel.insertAdjacentHTML('afterbegin', bannerHTML);
+            }
+            
+            // Update trade button state
+            const tradeButton = document.getElementById('tradeButton');
+            if (tradeButton) {
+                if (graduationStatus === 'initiating' || graduationStatus === 'completing') {
+                    // Disable button during graduation
+                    tradeButton.disabled = true;
+                    tradeButton.style.opacity = '0.5';
+                    tradeButton.style.cursor = 'not-allowed';
+                    tradeButton.title = 'Trading is temporarily paused during graduation';
+                    tradeButton.innerHTML = '<i class="fas fa-pause-circle"></i> Trading Paused';
+                } else {
+                    // Enable button
+                    tradeButton.disabled = false;
+                    tradeButton.style.opacity = '1';
+                    tradeButton.style.cursor = 'pointer';
+                    tradeButton.title = '';
+                    // Restore button text based on current trade mode
+                    const isBuyMode = this.currentTradeMode === 'buy';
+                    tradeButton.innerHTML = `<i class="fas fa-rocket"></i> ${isBuyMode ? 'Buy' : 'Sell'} $${this.tokenSymbol}`;
+                }
+                
+                // Update data attributes for trade routing
+                tradeButton.setAttribute('data-graduation-status', graduationStatus);
+                if (data.dexPoolAddress) {
+                    tradeButton.setAttribute('data-dex-pool-address', data.dexPoolAddress);
+                }
+            }
+            
+            console.log(`🔄 Trading panel UI updated - Status: ${graduationStatus}`);
+        },
+        
         updateGraduationProgress: function(data) {
-            // Graduation status is now shown in the trading panel only
-            // No separate banner needed since trading panel shows real-time graduation status
+            // Determine graduation status from data
+            let graduationStatus = 'active';
+            if (data.isGraduated) {
+                graduationStatus = 'graduated';
+            } else if (data.graduation_status) {
+                graduationStatus = data.graduation_status;
+            }
+            
+            // Update trading panel UI dynamically
+            this.updateTradingPanelUI(graduationStatus, {
+                dexPoolAddress: data.dexPoolAddress || data.dex_pool_address
+            });
+            
             console.log('Graduation progress:', data);
         },
         
