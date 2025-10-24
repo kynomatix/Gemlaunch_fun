@@ -53,3 +53,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Development documentation and assets (not for git)
+attached_assets/
+DEVDOCS/
+DevDocs/
