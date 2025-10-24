@@ -1548,6 +1548,7 @@ def delete_message(contract_address, message_id):
         return jsonify({'error': 'Failed to delete message'}), 500
 
 @app.route('/api/token/<contract_address>/polls', methods=['GET', 'POST'])
+@csrf.exempt
 @require_wallet_connection
 def token_polls(contract_address):
     """Get or create polls for a token"""
@@ -1665,6 +1666,7 @@ def token_polls(contract_address):
             return jsonify({'error': 'Failed to create poll'}), 500
 
 @app.route('/api/token/<contract_address>/polls/<int:poll_id>/vote', methods=['POST'])
+@csrf.exempt
 @require_wallet_connection
 def vote_on_poll(contract_address, poll_id):
     """Vote on a poll"""
