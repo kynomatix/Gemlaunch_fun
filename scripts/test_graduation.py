@@ -44,17 +44,22 @@ def create_test_token():
     print(f"   Token: {token_name} ({token_symbol})")
     
     # Deploy token via factory
-    factory = web3_service.get_factory_contract()
+    factory = web3_service.contracts['TokenFactory']
     
     tx = factory.functions.createToken(
-        token_name,
-        token_symbol,
-        "ipfs://QmTest",  # Dummy IPFS hash
-        oracle_wallet.address,  # Creator
-        False,  # isPro
-        0,  # airdropPercent
-        0,  # marketingPercent  
-        0   # teamPercent
+        token_name,                      # name
+        token_symbol,                    # symbol
+        1000000000,                      # totalSupply (1B tokens)
+        "Automated graduation test",     # description
+        "ipfs://QmTest",                 # imageUrl
+        "",                               # twitterUrl
+        "",                               # telegramUrl
+        "",                               # websiteUrl
+        False,                            # antiBotEnabled
+        0,                                # reservedPercentage (BASIC token)
+        0,                                # airdropsAllocation
+        0,                                # marketingAllocation
+        0                                 # teamAllocation
     ).build_transaction({
         'from': oracle_wallet.address,
         'nonce': web3_service.w3.eth.get_transaction_count(oracle_wallet.address),
@@ -63,7 +68,7 @@ def create_test_token():
     })
     
     signed_tx = oracle_wallet.sign_transaction(tx)
-    tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
     
     print(f"   Deploying... TX: {tx_hash.hex()}")
     
@@ -157,7 +162,7 @@ def buy_to_threshold(token_address, target_usd):
         })
         
         signed_tx = oracle_wallet.sign_transaction(tx)
-        tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         
         receipt = web3_service.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
         
