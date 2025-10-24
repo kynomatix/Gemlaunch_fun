@@ -371,7 +371,12 @@ def process_anti_bot_fee_events(w3, pool_contract, token, from_block, to_block):
 
 
 def process_graduation_initiated_pool_event(event, token, w3):
-    """Process GraduationInitiated event from BondingCurvePool"""
+    """Process GraduationInitiated event from BondingCurvePool
+    
+    NOTE: This event means graduation has STARTED, not completed.
+    Do NOT set is_graduated=True here - that should only happen when
+    GraduationCompleted event is emitted from GraduationController.
+    """
     try:
         tx_hash = event['transactionHash'].hex()
         block_number = event['blockNumber']
@@ -383,9 +388,7 @@ def process_graduation_initiated_pool_event(event, token, w3):
         kas_liquidity = Decimal(str(w3.from_wei(args['kasLiquidity'], 'ether')))
         token_liquidity = Decimal(str(args['tokenLiquidity']))
         
-        token.is_graduated = True
-        token.graduated_at = timestamp
-        token.graduation_tx = tx_hash
+        # Store liquidity amounts for reference, but do NOT mark as graduated yet
         token.kas_reserve = kas_liquidity
         token.token_reserve = token_liquidity
         
