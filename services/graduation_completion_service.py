@@ -71,8 +71,11 @@ class GraduationCompletionService:
     
     def _check_and_complete_graduations(self):
         """Check for pending graduations and complete them"""
-        # Find tokens in 'initiating' status
-        pending_tokens = Token.query.filter_by(graduation_status='initiating').all()
+        # Find tokens in 'initiating' status (excluding disabled tokens)
+        pending_tokens = Token.query.filter_by(
+            graduation_status='initiating',
+            graduation_disabled=False
+        ).all()
         
         if not pending_tokens:
             return
