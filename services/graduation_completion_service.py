@@ -156,40 +156,37 @@ class GraduationCompletionService:
                     logging.warning(f"Expected KAS is 0 and pool reserve is 0 - graduation may be completed/cancelled")
                     return
             
-            logging.info(f"📤 Transferring {expected_kas / 1e18:.4f} KAS from oracle to GraduationController ({gc_address})")
+            # Check if GraduationController already has the required KAS
+            gc_balance = self.w3_service.w3.eth.get_balance(gc_address)
+            logging.info(f"📊 GraduationController balance: {gc_balance / 1e18:.4f} KAS, required: {expected_kas / 1e18:.4f} KAS")
             
-            # Build KAS transfer transaction
-            transfer_tx = {
-                'from': oracle_account.address,
-                'to': gc_address,
-                'value': expected_kas,
-                'gas': 21000,  # Standard ETH transfer gas
-                'gasPrice': self.w3_service.w3.eth.gas_price,
-                'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
-            }
-            
-            # Add chainId
-            chain_id = self.w3_service.w3.eth.chain_id
-            transfer_tx['chainId'] = chain_id
-            
-            # Sign and send transfer
-            signed_transfer = oracle_account.sign_transaction(transfer_tx)
-            transfer_hash = self.w3_service.w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
-            
-            logging.info(f"KAS transfer tx sent: {transfer_hash.hex()}")
-            
-            # Quick check - don't block, let next cycle retry if pending
-            transfer_receipt = self.w3_service.w3.eth.get_transaction_receipt(transfer_hash)
-            
-            if not transfer_receipt:
-                logging.info(f"⏳ KAS transfer pending - will check on next cycle")
-                return
-            
-            if transfer_receipt['status'] != 1:
-                logging.error(f"❌ KAS transfer failed - will retry on next cycle")
-                return
-            
-            logging.info(f"✅ KAS transferred successfully to GraduationController")
+            if gc_balance >= expected_kas:
+                logging.info(f"✅ GraduationController already has sufficient KAS - skipping transfer")
+            else:
+                logging.info(f"📤 Transferring {expected_kas / 1e18:.4f} KAS from oracle to GraduationController ({gc_address})")
+                
+                # Build KAS transfer transaction
+                transfer_tx = {
+                    'from': oracle_account.address,
+                    'to': gc_address,
+                    'value': expected_kas,
+                    'gas': 21000,  # Standard ETH transfer gas
+                    'gasPrice': self.w3_service.w3.eth.gas_price,
+                    'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
+                }
+                
+                # Add chainId
+                chain_id = self.w3_service.w3.eth.chain_id
+                transfer_tx['chainId'] = chain_id
+                
+                # Sign and send transfer
+                signed_transfer = oracle_account.sign_transaction(transfer_tx)
+                transfer_hash = self.w3_service.w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
+                
+                logging.info(f"✅ KAS transfer tx sent: {transfer_hash.hex()}")
+                logging.info(f"⏳ Waiting for KAS transfer to be mined before calling completeGraduation()")
+                logging.info(f"   Will check on next cycle")
+                return  # Wait for transfer to be mined before proceeding
                 
         except Exception as e:
             logging.error(f"Failed to transfer KAS to GraduationController: {str(e)}")
@@ -227,20 +224,24 @@ class GraduationCompletionService:
             # Relay transaction
             tx_hash = self.w3_service.relay_transaction(signed_txn)
             
-            logging.info(f"Completion tx sent: {tx_hash.hex()}")
+            logging.info(f"✅ Completion tx sent: {tx_hash.hex()}")
             
-            # Quick check - don't block, let next cycle retry if pending
-            receipt = self.w3_service.w3.eth.get_transaction_receipt(tx_hash)
+            # Try to get receipt to extract pool data, but don't block indefinitely
+            receipt = None
+            try:
+                receipt = self.w3_service.w3.eth.get_transaction_receipt(tx_hash)
+            except Exception as e:
+                logging.warning(f"Could not fetch receipt yet (RPC limitation): {str(e)[:100]}")
             
             if not receipt:
-                logging.info(f"⏳ Completion tx pending - will check on next cycle")
+                logging.info(f"⏳ Waiting for completion tx confirmation - will extract pool data on next cycle")
                 return
             
             if receipt['status'] != 1:
-                logging.error(f"❌ Completion tx failed - will retry on next cycle")
+                logging.error(f"❌ Completion tx failed (status={receipt['status']})")
                 return
-            
-            logging.info(f"✅ Completion tx confirmed: {tx_hash.hex()}")
+                
+            logging.info(f"✅ Completion tx confirmed in block {receipt['blockNumber']}")
             
         except Exception as e:
             logging.error(f"Exception calling completeGraduation: {str(e)}")
