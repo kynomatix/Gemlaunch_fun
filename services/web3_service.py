@@ -234,9 +234,10 @@ class Web3Service:
             )
             logging.info(f"Loaded TokenFactory at {TOKEN_FACTORY_ADDRESS}")
             
-            # Load GraduationController V2
-            # NOTE: Must load from GraduationControllerV2.sol directory for V2 ABI
-            graduation_abi_path = ARTIFACTS_DIR / "GraduationControllerV2.sol" / "GraduationController.json"
+            # Load GraduationController V3
+            # NOTE: V3 fixes all 11 critical issues from V2
+            # Uses GraduationControllerV3.sol with snapshot architecture
+            graduation_abi_path = ARTIFACTS_DIR / "GraduationControllerV3.sol" / "GraduationControllerV3.json"
             with open(graduation_abi_path, 'r') as f:
                 graduation_abi = json.load(f)['abi']
             
@@ -244,7 +245,7 @@ class Web3Service:
                 address=Web3.to_checksum_address(GRADUATION_CONTROLLER_ADDRESS),
                 abi=graduation_abi
             )
-            logging.info(f"Loaded GraduationController at {GRADUATION_CONTROLLER_ADDRESS}")
+            logging.info(f"Loaded GraduationController V3 at {GRADUATION_CONTROLLER_ADDRESS}")
             
             # Load BondingCurvePool ABI (for pool interactions later)
             contracts['BondingCurvePoolABI'] = self._load_contract_abi('BondingCurvePool')

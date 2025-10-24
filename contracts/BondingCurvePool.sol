@@ -632,7 +632,9 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     }
 
     // Update graduation oracle (only admin)
+    // FIX #10: Prevent oracle changes during graduation (race condition protection)
     function setGraduationOracle(address newOracle) external onlyOwner {
+        require(!graduating, "Cannot change oracle during graduation");
         require(newOracle != address(0), "Invalid oracle");
         graduationOracle = newOracle;
         emit GraduationOracleUpdated(newOracle);
