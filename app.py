@@ -17,7 +17,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
 from apscheduler.schedulers.background import BackgroundScheduler
-from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent, TokenEngagement, Position
+from models import db, User, Token, Trade, Holding, Achievement, UserAchievement, UserProfile, ConnectedWallet, Referral, Activity, LinkedWallet, WalletVerificationChallenge, TransferRequest, ReserveDistribution, TradeEvent, TokenEngagement, Position, PlatformSettings
 from models_extended import ChatMessage, Poll, PollOption, PollVote, MessageReaction, TokenSettings, TokenLeaderboard
 from services import TokenService
 from services.achievement_service import evaluate_user_achievements
@@ -7975,6 +7975,108 @@ def api_distribute_platform_fees():
     except Exception as e:
         logging.error(f"Error in distribute-platform-fees: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to distribute platform fees'}), 500
+
+# Real-time graduation trigger endpoint (called by frontend when market cap >= threshold)
+@app.route('/api/token/<token_address>/trigger-graduation', methods=['POST'])
+def trigger_graduation(token_address):
+    """
+    Real-time graduation trigger endpoint
+    Called by frontend immediately when bonding curve hits 100% (market cap >= $50)
+    Provides instant, seamless graduation like pump.fun without waiting for polling cycles
+    
+    CONCURRENCY SAFETY: Uses DB-level SELECT FOR UPDATE lock to prevent duplicate graduations
+    when multiple Gunicorn workers handle simultaneous requests
+    """
+    try:
+        from services.graduation_state_manager import GraduationStateManager
+        from services.kas_oracle import oracle
+        from sqlalchemy import select
+        
+        token_address_checksum = Web3.to_checksum_address(token_address)
+        
+        token = db.session.query(Token).filter_by(
+            contract_address=token_address_checksum
+        ).with_for_update().first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        logging.info(f"🚀 Real-time graduation trigger for {token.symbol} ({token_address_checksum})")
+        
+        if token.is_graduated:
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Token already graduated',
+                'status': 'graduated',
+                'already_triggered': True
+            })
+        
+        if token.graduation_status in ['initiating', 'completing']:
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': f'Graduation already in progress (status: {token.graduation_status})',
+                'status': token.graduation_status,
+                'already_triggered': True
+            })
+        
+        web3_service = get_web3_service()
+        pool = web3_service.get_bonding_pool_contract(token_address_checksum)
+        
+        kas_reserve_wei = pool.functions.virtualKasReserve().call()
+        market_cap_usd = oracle.get_market_cap_usd(kas_reserve_wei)
+        
+        graduation_threshold_usd = float(PlatformSettings.get_settings().graduation_threshold_usd)
+        
+        if market_cap_usd < graduation_threshold_usd:
+            db.session.commit()
+            return jsonify({
+                'success': False,
+                'error': f'Market cap ${market_cap_usd:.2f} below threshold ${graduation_threshold_usd:.2f}',
+                'market_cap': market_cap_usd,
+                'threshold': graduation_threshold_usd,
+                'status': 'not_ready'
+            }), 400
+        
+        logging.info(f"✅ {token.symbol} eligible for graduation - Market cap: ${market_cap_usd:.2f} >= ${graduation_threshold_usd:.2f}")
+        
+        oracle_wallet = web3_service.oracle_account
+        
+        result = GraduationStateManager.initiate_graduation(token, oracle_wallet)
+        
+        if result.get('success'):
+            logging.info(f"✅ Graduation initiated for {token.symbol} - TX: {result.get('tx_hash')}")
+            
+            db.session.commit()
+            db.session.refresh(token)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Graduation initiated successfully',
+                'tx_hash': result.get('tx_hash'),
+                'status': token.graduation_status,
+                'market_cap': market_cap_usd
+            })
+        else:
+            error_msg = result.get('error', 'Unknown error during graduation initiation')
+            logging.error(f"❌ Failed to initiate graduation for {token.symbol}: {error_msg}")
+            
+            db.session.rollback()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Graduation already in progress',
+                'status': 'initiating',
+                'already_triggered': True
+            })
+    
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error in trigger_graduation for {token_address}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Admin endpoint for testing graduation completion
 @app.route('/api/admin/trigger-graduation-completion/<token_symbol>', methods=['POST'])
