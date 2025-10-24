@@ -1,5 +1,22 @@
 <!-- Token Charts Partial -->
 
+{% if not token.is_graduated %}
+<!-- Bonding Curve Progress (only shown for non-graduated tokens) -->
+<div class="bonding-curve-frame" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(32, 178, 170, 0.02)); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 15px; padding: 1.5rem; backdrop-filter: blur(20px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+        <span style="color: #CCCCCC; font-size: 0.9rem;">Bonding Curve Progress</span>
+        <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;">{{ "%.1f"|format(token.progress_to_graduation) }}%</span>
+    </div>
+    <div class="progress-bar" style="width: 100%;">
+        <div class="progress-fill" style="width: {{ token.progress_to_graduation }}%"></div>
+    </div>
+    <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
+        Market Cap: <span id="marketCapValue">${{ "%.0f"|format(token.current_market_cap|float * kas_price) }}</span> / ${{ "{:,.0f}".format(graduation_threshold_usd) }}
+    </p>
+    <div id="graduationStatus" style="margin-top: 1rem;"></div>
+</div>
+{% endif %}
+
 <!-- Chart Container -->
 <div class="chart-container">
     <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">

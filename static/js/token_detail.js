@@ -57,6 +57,7 @@
         
         // Graduation polling interval
         graduationPollingInterval: null,
+        graduationTriggered: false, // One-shot flag to prevent repeated graduation triggers
         
         // Initialize the module with data from server
         init: function(config) {
@@ -2058,15 +2059,45 @@
                             }
                         });
                         
+                        // ========== UPDATE BONDING CURVE PROGRESS (for non-graduated tokens) ==========
+                        if (!data.is_graduated) {
+                            const progressTextEls = document.querySelectorAll('.bonding-curve-frame span');
+                            progressTextEls.forEach(el => {
+                                if (el.textContent.includes('%')) {
+                                    el.textContent = `${data.progress_to_graduation}%`;
+                                }
+                            });
+                            
+                            const progressBar = document.querySelector('.progress-fill');
+                            if (progressBar) {
+                                progressBar.style.width = `${data.progress_to_graduation}%`;
+                            }
+                            
+                            const marketCapValueEl = document.getElementById('marketCapValue');
+                            if (marketCapValueEl) {
+                                marketCapValueEl.textContent = data.market_cap_formatted;
+                            }
+                        }
+                        
                         // Update cached values
                         this.marketCap = data.market_cap;
                         this.tokenPrice = data.price_kas;
                         
                         // ========== REAL-TIME GRADUATION TRIGGER ==========
                         // Check if market cap crossed $50 threshold and token is still active
-                        if (data.market_cap >= 50 && !data.is_graduated) {
+                        // Use one-shot guard to prevent repeated triggers
+                        if (data.market_cap >= 50 && !data.is_graduated && !this.graduationTriggered) {
                             console.log('🎓 Market cap >= $50! Triggering graduation immediately...');
+                            this.graduationTriggered = true; // Set flag to prevent repeated calls
                             this.triggerGraduation(tokenAddress);
+                        }
+                        
+                        // Hide bonding curve banner when graduation completes
+                        if (data.is_graduated) {
+                            const banner = document.querySelector('.bonding-curve-frame');
+                            if (banner) {
+                                banner.style.display = 'none';
+                            }
                         }
                         
                         return true; // Success
@@ -2141,16 +2172,45 @@
                     }
                 });
                 
+                // ========== UPDATE BONDING CURVE PROGRESS (for non-graduated tokens) ==========
+                if (!data.is_graduated) {
+                    const progressTextEls = document.querySelectorAll('.bonding-curve-frame span');
+                    progressTextEls.forEach(el => {
+                        if (el.textContent.includes('%')) {
+                            el.textContent = `${data.progress_to_graduation}%`;
+                        }
+                    });
+                    
+                    const progressBar = document.querySelector('.progress-fill');
+                    if (progressBar) {
+                        progressBar.style.width = `${data.progress_to_graduation}%`;
+                    }
+                    
+                    const marketCapValueEl = document.getElementById('marketCapValue');
+                    if (marketCapValueEl) {
+                        marketCapValueEl.textContent = data.market_cap_formatted;
+                    }
+                }
+                
                 // ========== UPDATE CACHED VALUES ==========
                 // Backend returns USD price, convert to KAS price for internal calculations
                 this.marketCap = data.market_cap;
                 this.tokenPrice = data.price_kas;
                 
+                // Hide bonding curve banner if token graduated
+                if (data.is_graduated) {
+                    const banner = document.querySelector('.bonding-curve-frame');
+                    if (banner) {
+                        banner.style.display = 'none';
+                    }
+                }
+                
                 console.log('[RefreshTokenStats] ✅ All stats refreshed:', {
                     price: data.price_formatted,
                     marketCap: data.market_cap_formatted,
                     progress: `${data.progress_to_graduation}%`,
-                    holders: data.holders
+                    holders: data.holders,
+                    is_graduated: data.is_graduated
                 });
                 
             } catch (error) {
