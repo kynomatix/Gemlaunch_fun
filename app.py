@@ -2534,6 +2534,7 @@ def api_token_graduation_status(address):
             return jsonify({
                 'success': True,
                 'is_graduated': False,
+                'graduation_status': token.graduation_status or 'active',
                 'current_market_cap': round(current_market_cap, 2),
                 'graduation_threshold': graduation_threshold,
                 'progress_percent': round(progress_percent, 2),
@@ -2562,6 +2563,7 @@ def api_token_graduation_status(address):
         return jsonify({
             'success': True,
             'is_graduated': True,
+            'graduation_status': 'graduated',
             'dex_pool': pool_data
         })
         
