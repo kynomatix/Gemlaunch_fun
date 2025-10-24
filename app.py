@@ -2835,7 +2835,8 @@ def api_token_stats(address):
             'volume_24h_formatted': volume_24h_formatted,
             
             # Status
-            'is_graduated': token.is_graduated
+            'is_graduated': token.is_graduated,
+            'graduation_status': token.graduation_status or 'active'
         }
         
         # Add DEX pool data if available
