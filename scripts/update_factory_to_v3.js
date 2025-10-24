@@ -1,4 +1,4 @@
-const hre = require("hardhat");
+import hre from "hardhat";
 
 /**
  * Update TokenFactory to use GraduationController V3
