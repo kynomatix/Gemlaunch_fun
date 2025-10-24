@@ -356,8 +356,8 @@
       ]
     },
     "/home/runner/workspace/contracts/BondingCurvePool.sol": {
-      "lastModificationDate": 1760690549410,
-      "contentHash": "03f47376ec72816c775e47e0ffd01e96",
+      "lastModificationDate": 1761308366086,
+      "contentHash": "33c02f99b303e7da9f7a1677fdfa86a7",
       "sourceName": "contracts/BondingCurvePool.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1097,6 +1097,55 @@
       "artifacts": [
         "FullMath",
         "GraduationController",
+        "INonfungiblePositionManager",
+        "IUniswapV3Factory",
+        "IUniswapV3Pool",
+        "IWKAS"
+      ]
+    },
+    "/home/runner/workspace/contracts/GraduationControllerV3.sol": {
+      "lastModificationDate": 1761308354380,
+      "contentHash": "bf3b633eca15c68891632076e32e3884",
+      "sourceName": "contracts/GraduationControllerV3.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "./BondingCurvePool.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "FullMath",
+        "GraduationControllerV3",
         "INonfungiblePositionManager",
         "IUniswapV3Factory",
         "IUniswapV3Pool",
