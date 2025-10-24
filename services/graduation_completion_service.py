@@ -195,20 +195,20 @@ class GraduationCompletionService:
         
         # 3. Call completeGraduation() on blockchain with Kasplex retry logic
         try:
-            # Build transaction data
+            # Build transaction data (let retry mechanism handle gas estimation)
             tx_data = graduation_controller.functions.completeGraduation(
                 checksum_address
             ).build_transaction({
                 'from': oracle_account.address,
-                'value': 0,
-                'gas': 0
+                'value': 0
             })
             
-            # Prepare transaction for retry mechanism
+            # Prepare transaction for retry mechanism (remove gas from tx_data)
             tx = {
                 'to': tx_data['to'],
                 'data': tx_data['data'],
-                'value': 0
+                'value': 0,
+                'from': oracle_account.address
             }
             
             logging.info(f"🚀 Sending completeGraduation with Kasplex retry logic...")
