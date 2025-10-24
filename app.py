@@ -2570,6 +2570,91 @@ def api_token_graduation_status(address):
         logging.error(f"Error fetching graduation status for {address}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch graduation status'}), 500
 
+@app.route('/api/token/<address>/trigger-graduation', methods=['POST'])
+def api_trigger_graduation(address):
+    """
+    Real-time graduation trigger endpoint
+    
+    Called by frontend when market cap crosses $50 threshold for instant graduation initiation
+    instead of waiting for 60-second background monitor poll.
+    
+    Returns:
+    {
+        "success": true,
+        "status": "graduation_initiated",
+        "token_symbol": "TEST",
+        "market_cap_usd": 52.34,
+        "message": "Graduation initiated successfully"
+    }
+    """
+    try:
+        # Normalize address
+        address_normalized = address.strip().lower()
+        
+        # Get token
+        token = Token.query.filter(
+            db.func.lower(Token.contract_address) == address_normalized
+        ).first()
+        
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        # Check if already graduated or in progress
+        if token.is_graduated:
+            return jsonify({
+                'success': False,
+                'error': 'Token already graduated',
+                'status': 'already_graduated'
+            }), 400
+        
+        if token.graduation_status in ['initiating', 'completing']:
+            return jsonify({
+                'success': False,
+                'error': 'Graduation already in progress',
+                'status': token.graduation_status
+            }), 400
+        
+        # Call graduation monitor check function (same as background service)
+        from services.graduation_monitor import check_token_graduation
+        
+        logging.info(f"🎯 Real-time graduation trigger for {token.symbol} ({address})")
+        result = check_token_graduation(token)
+        
+        if result['status'] == 'graduation_initiated':
+            return jsonify({
+                'success': True,
+                'status': result['status'],
+                'token_symbol': token.symbol,
+                'market_cap_usd': result['market_cap_usd'],
+                'graduation_status': token.graduation_status,
+                'message': 'Graduation initiated successfully'
+            })
+        elif result['status'] == 'not_ready':
+            return jsonify({
+                'success': False,
+                'error': 'Market cap below graduation threshold',
+                'status': 'not_ready',
+                'market_cap_usd': result['market_cap_usd'],
+                'progress_pct': result['progress_pct']
+            }), 400
+        elif result['status'] == 'error':
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error'),
+                'status': 'error'
+            }), 500
+        else:
+            return jsonify({
+                'success': False,
+                'error': f"Unexpected status: {result['status']}",
+                'status': result['status']
+            }), 500
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error triggering graduation for {address}: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/token/<address>/stats', methods=['GET'])
 @cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
 def api_token_stats(address):

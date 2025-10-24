@@ -2058,27 +2058,16 @@
                             }
                         });
                         
-                        // Update bonding curve progress
-                        const progressTextEls = document.querySelectorAll('.bonding-curve-frame span');
-                        progressTextEls.forEach(el => {
-                            if (el.textContent.includes('%')) {
-                                el.textContent = `${data.progress_to_graduation}%`;
-                            }
-                        });
-                        
-                        const progressBar = document.querySelector('.progress-fill');
-                        if (progressBar) {
-                            progressBar.style.width = `${data.progress_to_graduation}%`;
-                        }
-                        
-                        const marketCapValueEl = document.getElementById('marketCapValue');
-                        if (marketCapValueEl) {
-                            marketCapValueEl.textContent = data.market_cap_formatted;
-                        }
-                        
                         // Update cached values
                         this.marketCap = data.market_cap;
                         this.tokenPrice = data.price_kas;
+                        
+                        // ========== REAL-TIME GRADUATION TRIGGER ==========
+                        // Check if market cap crossed $50 threshold and token is still active
+                        if (data.market_cap >= 50 && !data.is_graduated) {
+                            console.log('🎓 Market cap >= $50! Triggering graduation immediately...');
+                            this.triggerGraduation(tokenAddress);
+                        }
                         
                         return true; // Success
                     }
@@ -2151,27 +2140,6 @@
                         if (valueEl) valueEl.textContent = data.holders;
                     }
                 });
-                
-                // ========== UPDATE BONDING CURVE PROGRESS ==========
-                // Update progress percentage text
-                const progressTextEls = document.querySelectorAll('.bonding-curve-frame span');
-                progressTextEls.forEach(el => {
-                    if (el.textContent.includes('%')) {
-                        el.textContent = `${data.progress_to_graduation}%`;
-                    }
-                });
-                
-                // Update progress bar width
-                const progressBar = document.querySelector('.progress-fill');
-                if (progressBar) {
-                    progressBar.style.width = `${data.progress_to_graduation}%`;
-                }
-                
-                // Update market cap value in bonding curve section
-                const marketCapValueEl = document.getElementById('marketCapValue');
-                if (marketCapValueEl) {
-                    marketCapValueEl.textContent = data.market_cap_formatted;
-                }
                 
                 // ========== UPDATE CACHED VALUES ==========
                 // Backend returns USD price, convert to KAS price for internal calculations
@@ -3568,59 +3536,45 @@
             }
         },
         
+        triggerGraduation: async function(tokenAddress) {
+            try {
+                console.log('🚀 Triggering real-time graduation for', tokenAddress);
+                
+                const response = await fetch(`/api/token/${tokenAddress}/trigger-graduation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✅ Graduation triggered successfully:', data);
+                    // Immediately refresh graduation status to update UI
+                    this.fetchGraduationStatus();
+                } else {
+                    console.log('⚠️ Graduation trigger response:', data);
+                }
+            } catch (error) {
+                console.error('❌ Failed to trigger graduation:', error);
+            }
+        },
+        
         updateGraduationProgress: function(data) {
-            this.graduationThreshold = data.graduationThreshold;
-            const progressPercent = data.progressPercent || (data.marketCap / data.graduationThreshold) * 100;
-            const progressBar = document.querySelector('.progress-fill');
-            
-            if (progressBar) {
-                progressBar.style.width = `${Math.min(progressPercent, 100)}%`;
-            }
-            
-            const marketCapElement = document.getElementById('marketCapValue');
-            if (marketCapElement) {
-                marketCapElement.textContent = 
-                    `$${data.marketCap.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
-            }
-            
-            if (data.isGraduated) {
-                this.showGraduatedStatus(data.dexPoolAddress);
-            } else if (progressPercent >= 100) {
-                this.showGraduatingStatus();
-            }
+            // Graduation status is now shown in the trading panel only
+            // No separate banner needed since trading panel shows real-time graduation status
+            console.log('Graduation progress:', data);
         },
         
         showGraduatedStatus: function(poolAddress) {
-            const container = document.getElementById('graduationStatus');
-            if (!container) return;
-            
-            container.innerHTML = `
-                <div style="background: linear-gradient(135deg, #4CAF50, #45a049); 
-                            padding: 1rem; border-radius: 10px; text-align: center;">
-                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">🎓 Graduated to Kaspa Finance DEX</h3>
-                    <a href="https://kaspa.finance/pool/${poolAddress}" 
-                       target="_blank" 
-                       class="btn btn-primary" 
-                       style="margin-top: 0.5rem; display: inline-block; padding: 0.5rem 1rem; background: #fff; color: #4CAF50; text-decoration: none; border-radius: 5px; font-weight: 600;">
-                        Trade on DEX →
-                    </a>
-                </div>
-            `;
+            // Graduation status is now shown in the trading panel only
+            console.log('Token graduated to DEX:', poolAddress);
         },
         
         showGraduatingStatus: function() {
-            const container = document.getElementById('graduationStatus');
-            if (!container) return;
-            
-            const thresholdFormatted = (this.graduationThreshold || 200).toLocaleString('en-US', {maximumFractionDigits: 0});
-            
-            container.innerHTML = `
-                <div style="background: linear-gradient(135deg, #6366f1, #4f46e5); 
-                            padding: 1rem; border-radius: 10px; text-align: center;">
-                    <h3 style="margin: 0 0 0.5rem 0; color: #fff;">🚀 Graduating to DEX...</h3>
-                    <p style="margin: 0; color: #fff; font-size: 0.9rem;">Market cap reached $${thresholdFormatted}! Liquidity pool deploying...</p>
-                </div>
-            `;
+            // Graduation status is now shown in the trading panel only
+            console.log('Token is graduating to DEX...');
         },
         
         // Vesting modal and data fetching
