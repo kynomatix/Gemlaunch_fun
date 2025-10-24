@@ -7209,7 +7209,8 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
     candles = []
     previous_close = None
     
-    # Prepend synthetic deployment candle if appropriate
+    # Handle synthetic deployment candle if appropriate
+    deployment_bucket_idx = None
     if deployment_timestamp and trade_points:
         # Ensure deployment_timestamp is timezone-aware
         if deployment_timestamp.tzinfo is None:
@@ -7224,21 +7225,31 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
             # Get first trade's close value for high/close of deployment candle
             first_trade_value = trade_points[0]['price'] if chart_type == 'price' else trade_points[0]['market_cap']
             
-            # Create zero-start candle: market cap/price starts at 0, jumps to first trade value
-            candles.append({
-                'time': deployment_bucket,
-                'open': 0,
-                'high': first_trade_value,
-                'low': 0,
-                'close': first_trade_value,
-                'volume': 0
-            })
-            previous_close = first_trade_value
+            # Check if deployment shares a bucket with any trade
+            first_trade_bucket = (int(first_trade_time) // interval_seconds) * interval_seconds
             
-            app.logger.debug(
-                f"Prepended deployment candle at {deployment_timestamp} "
-                f"(0 → {first_trade_value:.2f} {chart_type})"
-            )
+            if deployment_bucket == first_trade_bucket:
+                # Same bucket: we'll mutate the first candle later (mark for mutation)
+                deployment_bucket_idx = deployment_bucket
+                app.logger.debug(
+                    f"Deployment shares bucket with first trade, will mutate first candle to start at 0"
+                )
+            else:
+                # Different bucket: prepend synthetic zero-start candle
+                candles.append({
+                    'time': deployment_bucket,
+                    'open': 0,
+                    'high': first_trade_value,
+                    'low': 0,
+                    'close': first_trade_value,
+                    'volume': 0
+                })
+                previous_close = first_trade_value
+                
+                app.logger.debug(
+                    f"Prepended deployment candle at {deployment_timestamp} "
+                    f"(0 → {first_trade_value:.2f} {chart_type})"
+                )
     
     # Iterate through ALL time buckets in the range (including empty ones)
     current_bucket = start_bucket
@@ -7284,20 +7295,34 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
                 current_bucket += interval_seconds
                 continue
         
-        candles.append({
+        candle = {
             'time': current_bucket,  # Unix timestamp (seconds)
             'open': open_value,
             'high': high_value,
             'low': low_value,
             'close': close_value,
             'volume': total_volume
-        })
+        }
+        
+        # If this is the first candle and deployment shares this bucket, mutate to start at 0
+        if deployment_bucket_idx is not None and current_bucket == deployment_bucket_idx and len(candles) == 0:
+            candle['open'] = 0
+            candle['low'] = 0
+            app.logger.debug(
+                f"Mutated first candle (same bucket as deployment) to start at 0: "
+                f"open=0, low=0, high={candle['high']:.2f}, close={candle['close']:.2f}"
+            )
+        
+        candles.append(candle)
         
         # Update previous close for next candle
         previous_close = close_value
         
         # Move to next bucket
         current_bucket += interval_seconds
+    
+    # Ensure candles are sorted by time (should already be, but guarantee it)
+    candles.sort(key=lambda c: c['time'])
     
     return candles
 
