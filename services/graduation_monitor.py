@@ -34,6 +34,16 @@ def check_token_graduation(token):
     try:
         logging.info(f"Checking graduation for token {token.symbol} (ID: {token.id}, Address: {token.contract_address})")
         
+        # Skip if graduation is disabled (legacy V1 tokens)
+        if token.graduation_disabled:
+            logging.debug(f"Token {token.symbol} has graduation disabled (legacy V1 token)")
+            return {
+                'status': 'graduation_disabled',
+                'token_id': token.id,
+                'token_symbol': token.symbol,
+                'reason': 'Legacy V1 token - graduation disabled'
+            }
+        
         # Skip if already graduated
         if token.is_graduated:
             logging.debug(f"Token {token.symbol} already graduated")
@@ -165,9 +175,11 @@ def check_all_graduations():
         logging.info("Starting graduation check for all active tokens")
         
         # Query non-graduated tokens with contract addresses
+        # Exclude tokens with graduation_disabled=True (legacy V1 tokens)
         active_tokens = Token.query.filter_by(
             is_graduated=False,
-            deployment_status='deployed'
+            deployment_status='deployed',
+            graduation_disabled=False  # Skip legacy V1 tokens
         ).filter(
             Token.contract_address.isnot(None)
         ).all()

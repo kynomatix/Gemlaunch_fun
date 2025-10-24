@@ -74,6 +74,13 @@ The `Token` model includes blockchain integration fields. New models include `Tr
 - Hidden tokens remain in database but are filtered from public views
 - Use case: Remove test tokens like GRAD655 without deleting historical data
 
+### Legacy Token Management (Oct 24, 2025)
+- **graduation_disabled** field: Boolean flag to disable graduation attempts for legacy V1 tokens
+- **Purpose**: Tokens deployed before V2 GraduationController (Oct 23, 2025) use incompatible V1 contracts
+- **Behavior**: Legacy tokens remain visible in marketplace but graduation system skips them
+- **Migration**: All 29 tokens created before Oct 23, 2025 marked as `graduation_disabled=True`
+- **Active V2 tokens**: KPAN, GLAZED, KRABBY, KTR (created after V2 deployment)
+
 ### Data Architecture Strategy
 **Current (Hybrid - Optimal Architecture):** 
 - ✅ **Recent trading data**: Blockscout GraphQL API (real-time, last ~8 transfers, 10s cache)

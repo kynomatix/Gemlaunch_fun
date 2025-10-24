@@ -217,6 +217,7 @@ class Token(db.Model):
     
     # Visibility
     is_visible = db.Column(db.Boolean, default=True)  # Hide test/spam tokens
+    graduation_disabled = db.Column(db.Boolean, default=False)  # Disable graduation for legacy V1 tokens
     
     # Social features
     view_count = db.Column(db.Integer, default=0)
