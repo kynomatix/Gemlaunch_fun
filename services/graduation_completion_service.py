@@ -166,13 +166,16 @@ class GraduationCompletionService:
             if gc_balance >= expected_kas:
                 logging.info(f"✅ GraduationController already has sufficient KAS - skipping transfer")
             else:
-                logging.info(f"📤 Transferring {expected_kas / 1e18:.4f} KAS from oracle to GraduationController ({gc_address})")
+                # FIX: Only transfer the DIFFERENCE, not the full amount
+                kas_to_transfer = expected_kas - gc_balance
+                logging.info(f"📤 Transferring {kas_to_transfer / 1e18:.10f} KAS from oracle to GraduationController ({gc_address})")
+                logging.info(f"   GC has: {gc_balance / 1e18:.10f} KAS, needs: {expected_kas / 1e18:.10f} KAS")
                 
                 # Build KAS transfer transaction
                 transfer_tx = {
                     'from': oracle_account.address,
                     'to': gc_address,
-                    'value': expected_kas,
+                    'value': kas_to_transfer,  # ✅ FIX: Send only what's missing
                     'gas': 21000,  # Standard ETH transfer gas
                     'gasPrice': self.w3_service.w3.eth.gas_price,
                     'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
