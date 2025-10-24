@@ -1,0 +1,149 @@
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion
+DEBUG:web3._utils.http_session_manager.HTTPSessionManager:Session cached: https://rpc.kasplextest.xyz, <requests.sessions.Session object at 0x7f07b7b8a390>
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): rpc.kasplextest.xyz:443
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 87
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion, Response: {'jsonrpc': '2.0', 'id': 0, 'result': 'Geth/v1.15.5-stable-3add0dd1/linux-amd64/go1.23.10'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 1, 'result': '0x28c64'}
+INFO:root:Connected to RPC: https://rpc.kasplextest.xyz - Chain ID: 167012
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 87
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: web3_clientVersion, Response: {'jsonrpc': '2.0', 'id': 2, 'result': 'Geth/v1.15.5-stable-3add0dd1/linux-amd64/go1.23.10'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getBalance
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 57
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance, Response: {'jsonrpc': '2.0', 'id': 3, 'result': '0x1b4bac46e8a4534800'}
+INFO:root:Deployer wallet 0xe281e4776FB5De20817D0bbC72B0C4b955565619 - Balance: 503.514901204 KAS
+INFO:root:Derived secondary wallet: 0x5f837F62744D4d80Fc79C3A5346B4A228956914E
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getBalance
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 57
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getBalance, Response: {'jsonrpc': '2.0', 'id': 4, 'result': '0xb8a7ff2ff0fadb1c00'}
+INFO:root:Oracle wallet 0x5f837F62744D4d80Fc79C3A5346B4A228956914E - Balance: 3406.306356598 KAS
+INFO:root:Loaded TokenFactory at 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc
+INFO:root:Loaded GraduationController at 0x147e3ecbe189bb301175001706ff1f44df33b3ab
+INFO:root:Loaded BondingCurvePool ABI
+INFO:root:Loaded PRO Token Vesting ABIs
+INFO:root:Loaded AirdropDistributor at 0x86b83FE03cDa7456980364c929BB17CFA67E8495
+INFO:root:Loaded QuoterV2 at 0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B
+INFO:root:Loaded SwapRouter at 0xDf88D478aF51C0AB616aFBfDD933c874e142858c
+INFO:root:Loaded WKAS at 0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 5, 'result': '0x28c64'}
+INFO:root:Web3Service initialized - Chain ID: 167012
+INFO:root:TransactionMonitor initialized
+DEBUG:tzlocal:No explicit setting existed. Use localtime
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Added job "Monitor pending transactions" to job store "default"
+INFO:apscheduler.scheduler:Added job "Index blockchain events" to job store "default"
+INFO:apscheduler.scheduler:Added job "Monitor token graduations" to job store "default"
+INFO:apscheduler.scheduler:Scheduler started
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+INFO:root:GraduationCompletionService initialized
+DEBUG:apscheduler.scheduler:Next wakeup is due at 2025-10-24 03:11:47.719061+00:00 (in 9.996313 seconds)
+INFO:root:GraduationCompletionService started - monitoring for graduations
+INFO:root:Transaction monitor scheduler started - checking every 10 seconds
+INFO:root:Event indexer scheduler started - checking every 30 seconds (active tokens only)
+INFO:root:Graduation monitor scheduler started - checking every 60 seconds
+INFO:root:Graduation completion service started - monitoring for pending graduations
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_call
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 6, 'result': '0x28c64'}
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_call
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 103
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_call, Response: {'jsonrpc': '2.0', 'id': 7, 'result': '0x0000000000000000000000009416d5a5d61ec70c18d1fe1039f8026e29b4820e'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_chainId
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 44
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_chainId, Response: {'jsonrpc': '2.0', 'id': 8, 'result': '0x28c64'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_gasPrice
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_gasPrice
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 50
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_gasPrice, Response: {'jsonrpc': '2.0', 'id': 9, 'result': '0x1d1e4e4ea00'}
+DEBUG:web3.manager.RequestManager:Making request. Method: eth_getTransactionCount
+DEBUG:web3.providers.HTTPProvider:Making request HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getTransactionCount
+DEBUG:urllib3.connectionpool:https://rpc.kasplextest.xyz:443 "POST / HTTP/1.1" 200 42
+DEBUG:web3.providers.HTTPProvider:Getting response HTTP. URI: https://rpc.kasplextest.xyz, Method: eth_getTransactionCount, Response: {'jsonrpc': '2.0', 'id': 10, 'result': '0x17'}
+✅ Database tables created
+✅ Sample achievements already exist
+================================================================================
+V2 GRADUATION CONTROLLER MIGRATION
+================================================================================
+
+STEP 1: Update TokenFactory to use V2 for new tokens
+--------------------------------------------------------------------------------
+TokenFactory: 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc
+Current controller: 0x9416D5a5D61ec70C18D1FE1039f8026E29b4820e
+❌ Using V1 - updating to V2...
+Traceback (most recent call last):
+  File "/home/runner/workspace/scripts/migrate_to_v2_controller.py", line 198, in <module>
+    main()
+  File "/home/runner/workspace/scripts/migrate_to_v2_controller.py", line 49, in main
+    tx = factory.functions.setGraduationController(V2_CONTROLLER).build_transaction({
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/contract/contract.py", line 347, in build_transaction
+    return build_transaction_for_function(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/contract/utils.py", line 317, in build_transaction_for_function
+    prepared_transaction = prepare_transaction(
+                           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/contracts.py", line 223, in prepare_transaction
+    prepared_transaction["data"] = encode_transaction_data(
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/contracts.py", line 266, in encode_transaction_data
+    return add_0x_prefix(encode_abi(w3, info_abi, info_arguments, info_selector))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/contracts.py", line 154, in encode_abi
+    normalized_arguments = map_abi_data(
+                           ^^^^^^^^^^^^^
+  File "cytoolz/functoolz.pyx", line 268, in cytoolz.functoolz.curry.__call__
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/abi.py", line 613, in map_abi_data
+    return pipe(
+           ^^^^^
+  File "cytoolz/functoolz.pyx", line 685, in cytoolz.functoolz.pipe
+  File "cytoolz/functoolz.pyx", line 660, in cytoolz.functoolz.c_pipe
+  File "cytoolz/functoolz.pyx", line 268, in cytoolz.functoolz.curry.__call__
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/abi.py", line 655, in data_tree_map
+    return recursive_map(map_to_typed_data, data_tree)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/decorators.py", line 38, in wrapped
+    return to_wrap(*args)
+           ^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/formatters.py", line 89, in recursive_map
+    items_mapped = map_collection(recurse, data)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/formatters.py", line 73, in map_collection
+    return datatype(map(func, collection))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/formatters.py", line 87, in recurse
+    return recursive_map(func, item)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/decorators.py", line 38, in wrapped
+    return to_wrap(*args)
+           ^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/formatters.py", line 90, in recursive_map
+    return func(items_mapped)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/abi.py", line 651, in map_to_typed_data
+    return ABITypedData(func(*elements))
+                        ^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/normalizers.py", line 79, in wrapper
+    modified = to_wrap(type_str, data)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/normalizers.py", line 202, in abi_address_to_hex
+    validate_address(data)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/web3/_utils/validation.py", line 201, in validate_address
+    raise InvalidAddress(
+web3.exceptions.InvalidAddress: ('web3.py only accepts checksum addresses. The software that gave you this non-checksum address should be considered unsafe, please file it as a bug on their platform. Try using an ENS name instead. Or, if you must accept lower safety, use Web3.to_checksum_address(lower_case_address).', '0x147e3ecbe189bb301175001706ff1f44df33b3ab')
+INFO:root:GraduationCompletionService stopped
+INFO:apscheduler.scheduler:Scheduler has been shut down
+DEBUG:apscheduler.scheduler:Looking for jobs to run
+DEBUG:apscheduler.scheduler:No jobs; waiting until a job is added
