@@ -11,7 +11,7 @@ import hre from "hardhat";
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
     
-    console.log("=" .repeat(80));
+    console.log("=".repeat(80));
     console.log("UPDATING TOKENFACTORY TO GRADUATIONCONTROLLER V3");
     console.log("=".repeat(80));
     console.log("\n🔧 Deployer:", deployer.address);
