@@ -1596,11 +1596,24 @@
         
         // Phase 3.5: executeTrade() with all audit fixes
         executeTrade: async function() {
-            // Check wallet connection
-            if (!window.walletManager.isConnected()) {
-                ModalManager.alert('Wallet Required', 'Please connect your wallet to trade.', 'error');
-                window.walletManager.openWalletModal();
+            // ⚠️ FIX: PREVENT DUPLICATE WALLET POPUPS (double-click protection)
+            if (this._isTradeInProgress) {
+                console.warn('⚠️ Trade already in progress, ignoring duplicate call');
                 return;
+            }
+            this._isTradeInProgress = true;
+            
+            try {
+                // Check wallet connection
+                if (!window.walletManager.isConnected()) {
+                    ModalManager.alert('Wallet Required', 'Please connect your wallet to trade.', 'error');
+                    window.walletManager.openWalletModal();
+                    this._isTradeInProgress = false;
+                    return;
+                }
+            } catch (err) {
+                this._isTradeInProgress = false;
+                throw err;
             }
             
             // ⚠️ FIX #1: NETWORK VALIDATION
@@ -1614,6 +1627,7 @@
                     `Please switch to Kasplex Testnet (Chain ID: 167012). Currently on: ${chainIdDecimal}`,
                     'error'
                 );
+                this._isTradeInProgress = false;
                 return;
             }
             
@@ -1643,6 +1657,7 @@
                 // Only show error if quote genuinely failed after 3 seconds
                 if (!this.isQuoteFresh()) {
                     this.showToast('Quote Unavailable', 'Unable to get current price. Please try again.', 'error');
+                    this._isTradeInProgress = false;
                     return;
                 }
             }
@@ -1658,6 +1673,7 @@
                 
                 if (kasAmount <= 0) {
                     this.showToast('Invalid Amount', 'Please enter a valid KAS amount.', 'error');
+                    this._isTradeInProgress = false;
                     return;
                 }
                 
@@ -1679,6 +1695,7 @@
                         `You need ${requiredKAS.toFixed(4)} KAS (including gas) but only have ${balanceKAS.toFixed(4)} KAS`,
                         'error'
                     );
+                    this._isTradeInProgress = false;
                     return;
                 }
                 
@@ -1715,6 +1732,7 @@
                 
                 if (tokenAmount <= 0) {
                     this.showToast('Invalid Amount', 'Please enter a valid token amount.', 'error');
+                    this._isTradeInProgress = false;
                     return;
                 }
                 
@@ -1725,6 +1743,7 @@
                         `You need ${tokenAmount.toLocaleString()} ${this.tokenSymbol} but only have ${this.tokenBalance.toLocaleString()} ${this.tokenSymbol}`,
                         'error'
                     );
+                    this._isTradeInProgress = false;
                     return;
                 }
                 
@@ -1836,8 +1855,11 @@
                     }
                 );
                 
-                // Success! Transaction submitted
+                // Success! Transaction submitted (wallet popup succeeded)
                 console.log(`[Trade] Success with ${result.slippage_percent}% slippage after ${result.attempts} attempts`);
+                
+                // ✅ CLEAR LOCK: Wallet popup succeeded, allow new trades
+                this._isTradeInProgress = false;
                 
                 // Relay if needed (for Kaspa wallets)
                 let txHash;
@@ -1878,6 +1900,9 @@
                 console.error('Trade execution error:', error);
                 this.hideTradeStatus();
                 this.showToast('Trade Failed', error.message || 'Transaction failed', 'error');
+                
+                // ✅ CLEAR LOCK: Trade failed, allow new attempts
+                this._isTradeInProgress = false;
             }
         },
         
