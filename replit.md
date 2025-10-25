@@ -72,11 +72,13 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.
 
 ### Active Contracts (Kasplex Testnet - October 2025)
-- **TokenFactory V2**: 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc (points to V3 GraduationController)
+- **TokenFactory V3**: 0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A (Oct 25, 2025 - Current BondingCurvePool bytecode, points to V3 GraduationController)
 - **GraduationController V3**: 0x2b68832db449f82bf70907a033bf279c73209b59 (ALL 11 CRITICAL FIXES)
 - **VestingDeployer V2**: 0x319F9D08A9c1167770Fe037cb58e5097e287B9e7
 - **AirdropDistributor**: 0x86b83FE03cDa7456980364c929BB17CFA67E8495
-- **Deprecated**: GraduationController V2 (0x147e3ecbe189bb301175001706ff1f44df33b3ab) - DO NOT USE
+- **Deprecated**: 
+  - TokenFactory V2 (0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc) - OLD BondingCurvePool bytecode with "Price slippage check" error
+  - GraduationController V2 (0x147e3ecbe189bb301175001706ff1f44df33b3ab) - DO NOT USE
 
 ## Database Schema
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.

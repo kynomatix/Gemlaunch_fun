@@ -1,0 +1,64 @@
+{
+  "network": "kasplex_testnet",
+  "chainId": 167012,
+  "version": "V3",
+  "deploymentDate": "2025-10-25",
+  "tokenFactory": "0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A",
+  "graduationController": "0x2b68832db449f82bf70907a033bf279c73209b59",
+  "vestingDeployer": "0x319F9D08A9c1167770Fe037cb58e5097e287B9e7",
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "deploymentTx": "0xc9e65bf8ac4c56b9666fbcf7f38ca8304811c1b18a739af3d4b014c874610874",
+  "blockNumber": 8975782,
+  "gasUsed": 6867403,
+  "wallets": {
+    "primary": {
+      "address": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+      "roles": [
+        "owner",
+        "treasury",
+        "platformDevelopmentWallet",
+        "buybackReserve",
+        "kaspaSupport",
+        "communityRewards"
+      ]
+    },
+    "secondary": {
+      "address": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+      "roles": [
+        "admin",
+        "graduationOracle",
+        "airdropTreasury"
+      ],
+      "controlled": true,
+      "derivedFromDeployer": true
+    }
+  },
+  "constructorParams": {
+    "graduationController": "0x2b68832db449f82bf70907a033bf279c73209b59",
+    "treasury": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "airdropTreasury": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "platformDevelopmentWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "graduationOracle": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "admin": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "buybackReserveWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "kaspaNetworkSupportWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "communityRewardsWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+  },
+  "changes": {
+    "description": "TokenFactory V3 redeployed with current BondingCurvePool bytecode",
+    "fixes": [
+      "Replaces old BondingCurvePool bytecode (with 'Price slippage check' error)",
+      "All new tokens will use current pool implementation",
+      "Links to GraduationController V3 (all 11 critical fixes)",
+      "Bytecode size: 22,338 bytes (1,056 bytes larger than V2)"
+    ],
+    "reason": "V2 was deployed Oct 11 with old BondingCurvePool bytecode. Updating source code locally didn't affect deployed factory since bytecode is embedded at deployment time.",
+    "deprecates": "TokenFactory V2 (0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc)"
+  },
+  "verification": {
+    "explorerUrl": "https://explorer.testnet.kasplextest.xyz/address/0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A",
+    "txUrl": "https://explorer.testnet.kasplextest.xyz/tx/0xc9e65bf8ac4c56b9666fbcf7f38ca8304811c1b18a739af3d4b014c874610874",
+    "graduationControllerVerified": true,
+    "bytecodeDifferenceFromV2": 1056
+  }
+}
