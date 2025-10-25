@@ -2316,7 +2316,7 @@
                     
                     // Show subtle toast notification instead of modal
                     this.showToast(
-                        'Trade Successful! ✅',
+                        'Trade Successful!',
                         `Transaction confirmed - refreshing data...`,
                         'success'
                     );
@@ -2357,7 +2357,7 @@
                     if (status.status === 'confirmed' || status.status === 'success') {
                         // Transaction succeeded! Show success even though monitoring failed
                         this.showToast(
-                            'Trade Successful! ✅',
+                            'Trade Successful!',
                             `Transaction confirmed - refreshing data...`,
                             'success'
                         );
@@ -3259,7 +3259,7 @@
         votePoll: async function(pollId, optionId) {
             const userWallet = localStorage.getItem('connectedWallet');
             if (!userWallet) {
-                ModalManager.alert('❌ Error', 'Please connect your wallet to vote on polls.', 'error');
+                ModalManager.alert('Error', 'Please connect your wallet to vote on polls.', 'error');
                 return;
             }
             
