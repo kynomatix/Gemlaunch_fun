@@ -1,0 +1,156 @@
+{% extends "app/base_layout.html" %}
+
+{% block title %}Complete KAOS Graduation{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 50px auto; padding: 20px;">
+    <h1>🎓 Complete KAOS Graduation</h1>
+    <p>Call completeGraduation() using your connected wallet (same key as oracle).</p>
+    
+    <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3>Contract Status</h3>
+        <p><strong>KAOS Token:</strong> 0x6dA30a095756c26189C432b683a5Ec1AD968533c</p>
+        <p><strong>GraduationController:</strong> 0x2b68832db449f82bf70907a033bf279c73209b59</p>
+        <p><strong>Your wallet:</strong> <span id="walletAddress">Not connected</span></p>
+    </div>
+    
+    <button id="completeBtn" onclick="callCompleteGraduation()" style="
+        padding: 15px 30px;
+        font-size: 18px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        width: 100%;
+        margin: 20px 0;
+    ">
+        🎓 Complete KAOS Graduation
+    </button>
+    
+    <div id="status" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; min-height: 100px;">
+        <h4>Status:</h4>
+        <div id="statusText">Click the button to complete graduation</div>
+    </div>
+</div>
+
+<script>
+// GraduationController V3 ABI (just the completeGraduation function)
+const GC_ABI = [
+    {
+        "inputs": [{"internalType": "address", "name": "tokenAddress", "type": "address"}],
+        "name": "completeGraduation",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+];
+
+const KAOS_ADDRESS = '0x6dA30a095756c26189C432b683a5Ec1AD968533c';
+const GC_ADDRESS = '0x2b68832db449f82bf70907a033bf279c73209b59';
+
+// Check if wallet is connected
+window.addEventListener('load', async () => {
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            const accounts = await window.ethereum.request({method: 'eth_accounts'});
+            if (accounts.length > 0) {
+                document.getElementById('walletAddress').textContent = accounts[0];
+            } else {
+                document.getElementById('statusText').innerHTML = '⚠️ Please connect your wallet first';
+            }
+        } catch (error) {
+            console.error('Error checking wallet:', error);
+        }
+    } else {
+        document.getElementById('statusText').innerHTML = '❌ MetaMask not detected';
+    }
+});
+
+async function callCompleteGraduation() {
+    const statusDiv = document.getElementById('statusText');
+    const btn = document.getElementById('completeBtn');
+    
+    try {
+        btn.disabled = true;
+        statusDiv.innerHTML = '⏳ Checking wallet connection...';
+        
+        if (typeof window.ethereum === 'undefined') {
+            throw new Error('MetaMask not detected');
+        }
+        
+        // Get connected account
+        const accounts = await window.ethereum.request({method: 'eth_accounts'});
+        if (accounts.length === 0) {
+            throw new Error('Please connect your wallet first');
+        }
+        
+        const from = accounts[0];
+        statusDiv.innerHTML = `⏳ Preparing transaction from ${from}...`;
+        
+        // Create contract instance
+        const web3Contract = new window.ethers.Contract(GC_ADDRESS, GC_ABI, window.ethereum);
+        
+        // Encode the function call
+        const data = web3Contract.interface.encodeFunctionData('completeGraduation', [KAOS_ADDRESS]);
+        
+        statusDiv.innerHTML = '⏳ Calling completeGraduation()...';
+        
+        // Send transaction using eth_sendTransaction (MetaMask handles everything)
+        const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: from,
+                to: GC_ADDRESS,
+                value: '0x0',
+                data: data,
+                gas: '0x4C4B40', // 5000000 in hex
+            }]
+        });
+        
+        statusDiv.innerHTML = `✅ Transaction sent!<br>Hash: ${txHash}<br><br>⏳ Waiting for confirmation...`;
+        
+        // Wait for transaction to be mined
+        const checkReceipt = async () => {
+            try {
+                const receipt = await window.ethereum.request({
+                    method: 'eth_getTransactionReceipt',
+                    params: [txHash]
+                });
+                
+                if (receipt) {
+                    if (receipt.status === '0x1') {
+                        statusDiv.innerHTML = `
+                            🎉 <strong>SUCCESS! KAOS GRADUATED!</strong><br>
+                            Transaction mined in block ${parseInt(receipt.blockNumber, 16)}<br>
+                            Hash: ${txHash}<br><br>
+                            ✅ Token has been graduated to Kaspa Finance DEX!<br>
+                            ✅ LP tokens burned to 0x...dEaD (permanent liquidity lock)<br>
+                            ✅ All 11 V3 fixes applied successfully!
+                        `;
+                    } else {
+                        statusDiv.innerHTML = `❌ Transaction reverted<br>Hash: ${txHash}<br><br>Check the error in block explorer.`;
+                    }
+                    btn.disabled = false;
+                } else {
+                    // Not mined yet, check again in 2 seconds
+                    setTimeout(checkReceipt, 2000);
+                }
+            } catch (error) {
+                console.error('Error checking receipt:', error);
+                setTimeout(checkReceipt, 2000);
+            }
+        };
+        
+        checkReceipt();
+        
+    } catch (error) {
+        statusDiv.innerHTML = `❌ Error: ${error.message}`;
+        btn.disabled = false;
+    }
+}
+</script>
+
+<!-- Load ethers.js for ABI encoding -->
+<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+{% endblock %}

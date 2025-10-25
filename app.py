@@ -8126,6 +8126,12 @@ def test_graduation_transfer():
     """Simple test page to send 0.001 KAS to GraduationController using connected wallet"""
     return render_template('app/test_graduation_transfer.html')
 
+# Test page for completing KAOS graduation
+@app.route('/test/complete-graduation')
+def test_complete_graduation():
+    """Test page to call completeGraduation() for KAOS token using connected wallet"""
+    return render_template('app/test_complete_graduation.html')
+
 # Initialize database when app starts
 init_database()
 
