@@ -8132,6 +8132,12 @@ def test_complete_graduation():
     """Test page to call completeGraduation() for KAOS token using connected wallet"""
     return render_template('app/test_complete_graduation.html')
 
+# Test page for manual graduation completion via MetaMask
+@app.route('/test/complete-graduation-manual')
+def test_complete_graduation_manual():
+    """Manual test page to call completeGraduation() via MetaMask"""
+    return render_template('app/test_complete_graduation_manual.html')
+
 # Initialize database when app starts
 init_database()
 
