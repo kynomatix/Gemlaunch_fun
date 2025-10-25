@@ -88,11 +88,14 @@ async function callCompleteGraduation() {
         const from = accounts[0];
         statusDiv.innerHTML = `⏳ Preparing transaction from ${from}...`;
         
-        // Create contract instance
-        const web3Contract = new window.ethers.Contract(GC_ADDRESS, GC_ABI, window.ethereum);
+        // Manually encode completeGraduation(address) call
+        // Function selector: 0x8cd8cf37 (first 4 bytes of keccak256("completeGraduation(address)"))
+        const functionSelector = '0x8cd8cf37';
         
-        // Encode the function call
-        const data = web3Contract.interface.encodeFunctionData('completeGraduation', [KAOS_ADDRESS]);
+        // Encode address parameter (remove 0x, pad to 32 bytes)
+        const addressParam = KAOS_ADDRESS.slice(2).toLowerCase().padStart(64, '0');
+        
+        const data = functionSelector + addressParam;
         
         statusDiv.innerHTML = '⏳ Calling completeGraduation()...';
         
@@ -150,7 +153,4 @@ async function callCompleteGraduation() {
     }
 }
 </script>
-
-<!-- Load ethers.js for ABI encoding -->
-<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
 {% endblock %}
