@@ -1,0 +1,129 @@
+{% extends "app/base_layout.html" %}
+
+{% block title %}Test Graduation Transfer{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 50px auto; padding: 20px;">
+    <h1>🧪 Test Graduation Transfer</h1>
+    <p>This page tests sending 0.001 KAS to GraduationController using your connected wallet.</p>
+    
+    <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3>Current Status</h3>
+        <p><strong>GraduationController:</strong> 0x2b68832db449f82bf70907a033bf279c73209b59</p>
+        <p><strong>Amount to send:</strong> 0.001 KAS</p>
+        <p><strong>Your wallet:</strong> <span id="walletAddress">Not connected</span></p>
+    </div>
+    
+    <button id="sendBtn" onclick="sendKasToGC()" style="
+        padding: 15px 30px;
+        font-size: 18px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        width: 100%;
+        margin: 20px 0;
+    ">
+        Send 0.001 KAS to GraduationController
+    </button>
+    
+    <div id="status" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; min-height: 100px;">
+        <h4>Status:</h4>
+        <div id="statusText">Click the button to send transaction</div>
+    </div>
+</div>
+
+<script>
+// Check if wallet is connected
+window.addEventListener('load', async () => {
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            const accounts = await window.ethereum.request({method: 'eth_accounts'});
+            if (accounts.length > 0) {
+                document.getElementById('walletAddress').textContent = accounts[0];
+            } else {
+                document.getElementById('statusText').innerHTML = '⚠️ Please connect your wallet first';
+            }
+        } catch (error) {
+            console.error('Error checking wallet:', error);
+        }
+    } else {
+        document.getElementById('statusText').innerHTML = '❌ MetaMask not detected';
+    }
+});
+
+async function sendKasToGC() {
+    const statusDiv = document.getElementById('statusText');
+    const btn = document.getElementById('sendBtn');
+    
+    try {
+        btn.disabled = true;
+        statusDiv.innerHTML = '⏳ Checking wallet connection...';
+        
+        if (typeof window.ethereum === 'undefined') {
+            throw new Error('MetaMask not detected');
+        }
+        
+        // Get connected account
+        const accounts = await window.ethereum.request({method: 'eth_accounts'});
+        if (accounts.length === 0) {
+            throw new Error('Please connect your wallet first');
+        }
+        
+        const from = accounts[0];
+        statusDiv.innerHTML = `⏳ Sending from ${from}...`;
+        
+        // Send transaction using eth_sendTransaction (MetaMask handles everything)
+        const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: from,
+                to: '0x2b68832db449f82bf70907a033bf279c73209b59',
+                value: '0x38D7EA4C68000', // 0.001 KAS in hex (1000000000000000 wei)
+                gas: '0x5208', // 21000 in hex
+            }]
+        });
+        
+        statusDiv.innerHTML = `✅ Transaction sent!<br>Hash: ${txHash}<br><br>⏳ Waiting for confirmation...`;
+        
+        // Wait for transaction to be mined
+        const checkReceipt = async () => {
+            try {
+                const receipt = await window.ethereum.request({
+                    method: 'eth_getTransactionReceipt',
+                    params: [txHash]
+                });
+                
+                if (receipt) {
+                    if (receipt.status === '0x1') {
+                        statusDiv.innerHTML = `
+                            ✅ <strong>SUCCESS!</strong><br>
+                            Transaction mined in block ${parseInt(receipt.blockNumber, 16)}<br>
+                            Hash: ${txHash}<br><br>
+                            🎓 GraduationController now has the KAS needed!<br>
+                            The graduation service should complete KAOS graduation shortly.
+                        `;
+                    } else {
+                        statusDiv.innerHTML = `❌ Transaction reverted<br>Hash: ${txHash}`;
+                    }
+                    btn.disabled = false;
+                } else {
+                    // Not mined yet, check again in 2 seconds
+                    setTimeout(checkReceipt, 2000);
+                }
+            } catch (error) {
+                console.error('Error checking receipt:', error);
+                setTimeout(checkReceipt, 2000);
+            }
+        };
+        
+        checkReceipt();
+        
+    } catch (error) {
+        statusDiv.innerHTML = `❌ Error: ${error.message}`;
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

@@ -8120,6 +8120,12 @@ def trigger_graduation_completion(token_symbol):
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# Test page for graduation transfer
+@app.route('/test/graduation-transfer')
+def test_graduation_transfer():
+    """Simple test page to send 0.001 KAS to GraduationController using connected wallet"""
+    return render_template('app/test_graduation_transfer.html')
+
 # Initialize database when app starts
 init_database()
 
