@@ -1,0 +1,9 @@
+{
+  "address": "0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A",
+  "txHash": "c9e65bf8ac4c56b9666fbcf7f38ca8304811c1b18a739af3d4b014c874610874",
+  "blockNumber": 8975782,
+  "gasUsed": 6867403,
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "timestamp": 1761366340,
+  "graduationController": "0x2B68832Db449f82bf70907a033bF279C73209b59"
+}
