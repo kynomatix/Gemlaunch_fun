@@ -33,9 +33,9 @@ def deploy_graduation_controller_v3():
     print(f"   Bytecode size: {len(bytecode) // 2} bytes")
     print(f"   Version: 3.0.0")
     
-    # Configuration addresses
-    KASPA_FINANCE_FACTORY = "0x96a4715280c3dac3f3093d51aA278Aa5eb60ffde"  # Kaspa Finance factory
-    KASPA_FINANCE_POSITION_MANAGER = "0xFeB8E9E808317c8c1B646d82cE5E6993F08eA95D"  # NFT Position Manager
+    # Configuration addresses (CORRECT Kaspa Finance addresses)
+    KASPA_FINANCE_FACTORY = "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8"  # Kaspa Finance factory (FIXED)
+    KASPA_FINANCE_POSITION_MANAGER = "0x4E25637cF39822364b877F81B18c5B6CF0eeF589"  # NFT Position Manager (FIXED)
     KASPA_FINANCE_WKAS = "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94"  # Wrapped KAS
     GRADUATION_ORACLE = os.environ.get('ORACLE_ADDRESS', '0x5f837F62744D4d80Fc79C3A5346B4A228956914E')
     TOKEN_FACTORY = "0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A"  # Current TokenFactory V3
