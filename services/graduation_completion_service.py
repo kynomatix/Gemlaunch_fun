@@ -148,13 +148,17 @@ class GraduationCompletionService:
                 logging.warning(f"expectedKasLiquidity() call failed: {e}")
                 expected_kas = 0
             
-            # LEGACY CONTROLLER FIX: If expectedKasLiquidity returns 0, get virtualKasReserve from pool
+            # V3 CONTROLLER FIX: If expectedKasLiquidity not available, get virtualKasReserve from pool
+            # CRITICAL: Must subtract INITIAL_VIRTUAL_KAS (0.001 KAS seed) that stays in pool
             if expected_kas == 0:
                 kas_reserve = pool.functions.virtualKasReserve().call()
                 if kas_reserve > 0:
-                    logging.warning(f"⚠️ Legacy GraduationController detected ({gc_address})")
-                    logging.warning(f"   expectedKasLiquidity() returned 0, using virtualKasReserve instead")
-                    expected_kas = kas_reserve
+                    INITIAL_VIRTUAL_KAS = int(0.001 * 1e18)  # 0.001 ether in wei (the virtual seed)
+                    logging.warning(f"⚠️ GraduationController V3 detected ({gc_address})")
+                    logging.warning(f"   expectedKasLiquidity() not available, using virtualKasReserve - INITIAL_VIRTUAL_KAS")
+                    expected_kas = kas_reserve - INITIAL_VIRTUAL_KAS  # 🔧 FIX: Subtract the 0.001 KAS seed
+                    logging.info(f"   Virtual reserve: {kas_reserve / 1e18:.10f} KAS")
+                    logging.info(f"   Minus seed (0.001): {expected_kas / 1e18:.10f} KAS required for graduation")
                 else:
                     logging.warning(f"Expected KAS is 0 and pool reserve is 0 - graduation may be completed/cancelled")
                     return
