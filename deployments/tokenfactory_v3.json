@@ -1,9 +1,9 @@
 {
-  "address": "0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A",
-  "txHash": "c9e65bf8ac4c56b9666fbcf7f38ca8304811c1b18a739af3d4b014c874610874",
-  "blockNumber": 8975782,
+  "address": "0xf8F05F8c88Df82b3aA135b9D434553E064b56704",
+  "txHash": "d346f7313f72531d2ccb9ee5ceb649ef2feed580bce38c71f86e0d77a63bc8ba",
+  "blockNumber": 9091673,
   "gasUsed": 6867403,
   "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
-  "timestamp": 1761366340,
-  "graduationController": "0x2B68832Db449f82bf70907a033bF279C73209b59"
+  "timestamp": 1761482326,
+  "graduationController": "0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32"
 }

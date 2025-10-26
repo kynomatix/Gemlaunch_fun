@@ -73,7 +73,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.
 
 ### Active Contracts (Kasplex Testnet - October 2025)
-- **TokenFactory V3**: 0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A (Oct 25, 2025 - Current BondingCurvePool bytecode)
+- **TokenFactory V3**: 0xf8F05F8c88Df82b3aA135b9D434553E064b56704 (Oct 26, 2025 - Links to fixed GC V3)
 - **GraduationController V3 (FIXED)**: 0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32 (Oct 26, 2025 - Clean deployment, no stray bytecode)
 - **VestingDeployer V2**: 0x319F9D08A9c1167770Fe037cb58e5097e287B9e7
 - **AirdropDistributor**: 0x86b83FE03cDa7456980364c929BB17CFA67E8495

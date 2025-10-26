@@ -32,8 +32,8 @@ def deploy_tokenfactory_v3():
     print(f"\n📋 Contract Info:")
     print(f"   Bytecode size: {len(bytecode) // 2} bytes")
     
-    # Configuration addresses (same as V2)
-    GC_V3 = "0x2b68832db449f82bf70907a033bf279c73209b59"
+    # Configuration addresses - UPDATED Oct 26, 2025
+    GC_V3 = "0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32"  # NEW GC V3 FIXED (clean bytecode)
     TREASURY = os.environ.get('DEPLOYER_ADDRESS', '0xe281e4776FB5De20817D0bbC72B0C4b955565619')
     AIRDROP_TREASURY = os.environ.get('ORACLE_ADDRESS', '0x5f837F62744D4d80Fc79C3A5346B4A228956914E')
     PLATFORM_DEV = TREASURY
