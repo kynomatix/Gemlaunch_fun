@@ -26,7 +26,7 @@ RPC_ENDPOINTS = [
 # Deployed Contract Addresses (Kasplex Testnet - October 2025)
 TOKEN_FACTORY_ADDRESS = "0xf8F05F8c88Df82b3aA135b9D434553E064b56704"  # V3 UPDATED - Oct 26, 2025 - Links to fixed GC (prev: 0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A)
 VESTING_DEPLOYER_ADDRESS = "0x319F9D08A9c1167770Fe037cb58e5097e287B9e7"  # V2 - Auto-deployed with TokenFactory
-GRADUATION_CONTROLLER_ADDRESS = "0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32"  # V3 FIXED - Oct 26, 2025 - Clean bytecode (prev 0x2b68832 had reentrancy issue)
+GRADUATION_CONTROLLER_ADDRESS = "0xBCF73222ee4B438e49b512d911440725E36642a0"  # V3 FIXED - Oct 26, 2025 - Correct Kaspa Finance addresses (prev 0xD02b169B had wrong DEX addresses)
 AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
 
 # Kaspa Finance DEX Addresses (Kasplex Testnet)
