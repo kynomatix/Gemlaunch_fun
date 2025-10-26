@@ -34,11 +34,12 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 - **Graduation System**: Automated token lifecycle management transitioning tokens from bonding curve to DEX at $50 market cap threshold.
   - **Status Flow**: active → initiating → completing → graduated (4-state lifecycle per KASPA_FINANCE_DEX_INTEGRATION_PLAN.md)
   - **Critical Fix (Oct 22, 2025)**: Tokens now correctly initialize with `graduation_status = 'active'` on deployment (app.py line 6578)
-  - **V3 Upgrade (Oct 24, 2025)**: TokenFactory updated to use GraduationController V3 with all 11 critical fixes
-    - Transaction: 0x21c58f5618795a4f3c08caf1af31a8a675de09e186ba8557c15a6b799e3b15b7
-    - GraduationController V3: 0x2b68832db449f82bf70907a033bf279c73209b59
+  - **V3 Upgrade (Oct 26, 2025)**: TokenFactory updated to use GraduationController V3 with all 11 critical fixes
+    - GraduationController V3 (FIXED): 0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32 (Block 9060968)
+    - Transaction: 00eb985e014c65d75570cd356a1ea6ee065c92b98d217164286ca645b2a10faf
     - All new tokens will graduate with correct liquidity (1089.99 KAS), tick spacing, LP burn, and 30-min deadline
-    - Legacy tokens (KRABBY + 29 V1 tokens) marked as graduation_disabled to prevent system lockup
+    - Legacy tokens (KHAOS, ZLC + 30 older tokens) marked as graduation_disabled pending retest
+    - Previous V3 (0x2b68832...) deprecated due to bytecode reentrancy issue
   - **Monitor Service**: Background job checks eligible tokens every 60 seconds for graduation eligibility
   - **Oracle Integration**: Uses web3_service.oracle_account for automated graduation transactions
 
@@ -72,13 +73,14 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.
 
 ### Active Contracts (Kasplex Testnet - October 2025)
-- **TokenFactory V3**: 0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A (Oct 25, 2025 - Current BondingCurvePool bytecode, points to V3 GraduationController)
-- **GraduationController V3**: 0x2b68832db449f82bf70907a033bf279c73209b59 (ALL 11 CRITICAL FIXES)
+- **TokenFactory V3**: 0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A (Oct 25, 2025 - Current BondingCurvePool bytecode)
+- **GraduationController V3 (FIXED)**: 0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32 (Oct 26, 2025 - Clean deployment, no stray bytecode)
 - **VestingDeployer V2**: 0x319F9D08A9c1167770Fe037cb58e5097e287B9e7
 - **AirdropDistributor**: 0x86b83FE03cDa7456980364c929BB17CFA67E8495
 - **Deprecated**: 
-  - TokenFactory V2 (0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc) - OLD BondingCurvePool bytecode with "Price slippage check" error
-  - GraduationController V2 (0x147e3ecbe189bb301175001706ff1f44df33b3ab) - DO NOT USE
+  - GraduationController V3 (OLD): 0x2b68832db449f82bf70907a033bf279c73209b59 - Bytecode reentrancy issue
+  - TokenFactory V2: 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc - OLD BondingCurvePool bytecode
+  - GraduationController V2: 0x147e3ecbe189bb301175001706ff1f44df33b3ab - DO NOT USE
 
 ## Database Schema
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.
