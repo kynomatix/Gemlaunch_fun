@@ -1,0 +1,17 @@
+{
+  "address": "0xD02b169Bfd1C98D509894F7b19bfA80a7db06a32",
+  "txHash": "00eb985e014c65d75570cd356a1ea6ee065c92b98d217164286ca645b2a10faf",
+  "blockNumber": 9060968,
+  "gasUsed": 2108293,
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "timestamp": 1761451061,
+  "version": "3.0.0-fixed",
+  "constructorParams": {
+    "kaspaFinanceFactory": "0x96a4715280c3dac3f3093d51aA278Aa5eb60ffde",
+    "kaspaFinancePositionManager": "0xFeB8E9E808317c8c1B646d82cE5E6993F08eA95D",
+    "kaspaFinanceWKAS": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+    "graduationOracle": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "tokenFactory": "0x765a83A91305bc1F7Ed44944A0a192c73A5eDE9A",
+    "treasury": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+  }
+}
