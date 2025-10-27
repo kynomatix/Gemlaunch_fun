@@ -1,6 +1,7 @@
 # Graduation System Recovery Plan
 **Created:** October 27, 2025  
-**Status:** In Progress  
+**Updated:** October 27, 2025  
+**Status:** ✅ Contract Fixes Complete - Ready for Deployment Testing  
 **Purpose:** Document comprehensive graduation system audit, recovery, and fix
 
 ---
@@ -364,6 +365,81 @@ This causes backend to manually call GC, but GC expects pool as msg.sender → c
 - ❌ Option B (integrate into pool): 89KB bytecode, way over 24KB limit
 - ❌ Keep current architecture: ordering bug persists
 
+
+---
+
+## ✅ COMPLETED FIXES (October 27, 2025)
+
+### Emergency Recovery
+**Status:** ✅ Complete  
+**Result:** 990 KAS successfully recovered from corrupted WOK graduation
+- Deployed GraduationController V3 with `emergencyWithdrawToTreasury()` function
+- Transaction: Emergency withdrawal sent 990 KAS to treasury wallet
+- WOK pool restored to tradeable state
+
+### Root Cause Analysis
+**Status:** ✅ Complete  
+**Finding:** Backend/oracle calls GC.initiateGraduation() directly instead of Pool → GC handshake
+- **Problem:** msg.sender = oracle (not pool) → corrupted snapshots (poolContract = 0x0)
+- **Impact:** 990 KAS stuck, graduation locked, database out of sync
+
+### Architecture Decision
+**Status:** ✅ Complete  
+**Decision:** Pool-initiated handshake (Option A/C hybrid)
+- **Rationale:** Integrating into pool exceeds 24KB EVM limit (89.59 KB bytecode)
+- **Solution:** Pool sends KAS to GC, then calls `GC.initiateGraduation(address(this))`
+- **Benefit:** msg.sender = pool → correct snapshots + compatible with PRO vesting
+
+### Contract Implementation
+**Status:** ✅ Complete - Architect Approved  
+**Files Modified:** 
+- `contracts/BondingCurvePool.sol`
+- `contracts/GraduationControllerV3.sol`
+- `contracts/TokenFactory.sol`
+
+**Security Evolution (4 Iterations):**
+1. ❌ Attempt 1: Trust pool's self-reported `factory()` - easily faked
+2. ❌ Attempt 2: Use `pool.owner()` - still fakeable by malicious contracts
+3. ❌ Attempt 3: Various other validation approaches - all spoofable
+4. ✅ **FINAL SOLUTION:** Query `TokenFactory.isDeployedPool` mapping
+
+**Final Secure Architecture:**
+```solidity
+// TokenFactory.sol
+mapping(address => bool) public isDeployedPool;  // Set during deployment
+
+// GraduationControllerV3.sol  
+require(msg.sender == tokenAddress, "Only pool can initiate");
+require(ITokenFactory(tokenFactory).isDeployedPool(tokenAddress), "Not from factory");
+require(pool.graduating(), "Pool must be graduating");
+require(pool.liquidityTransferred(), "KAS must be transferred first");
+```
+
+**Why This Is Secure:**
+- ✅ Can't fake `msg.sender` (pool calls itself)
+- ✅ Can't fake `TokenFactory` mapping (queries trusted source)
+- ✅ Prevents spoofed pools (mapping set only during legitimate deployment)
+- ✅ No circular callbacks (clean handshake)
+- ✅ Snapshot captures correct pool address (no more 0x0 corruption)
+
+**Compilation Status:**
+- ✅ All contracts compile successfully
+- ✅ No bytecode size violations
+- ✅ Ready for deployment
+
+**Architect Review:**
+- ✅ Security: PASS - No vulnerabilities detected
+- ✅ Architecture: PASS - Pool registry closes attack path
+- ✅ Implementation: PASS - Handshake flow correct
+- ✅ Next Step: Deploy and test on testnet
+
+### Next Steps
+1. Deploy new contracts to Kasplex testnet
+2. Create test token and verify initiation phase (pool → GC handshake)
+3. Test completion phase with 30-minute wait
+4. Update backend to remove direct GC calls (database read-only)
+5. Run full end-to-end graduation test
+6. Document test results and update deployment records
 
 ---
 

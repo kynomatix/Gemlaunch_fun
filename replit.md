@@ -35,6 +35,14 @@ Built with Flask, the backend features a minimal, route-based architecture with 
   - **Status Flow**: active → initiating → completing → graduated (4-state lifecycle per KASPA_FINANCE_DEX_INTEGRATION_PLAN.md)
   - **Critical Fix (Oct 22, 2025)**: Tokens now correctly initialize with `graduation_status = 'active'` on deployment (app.py line 6578)
   - **V3 Upgrade (Oct 26, 2025)**: TokenFactory updated to use GraduationController V3 with all 11 critical fixes + CORRECT Kaspa Finance addresses
+  - **MAJOR FIX (Oct 27, 2025)**: Pool-initiated handshake + TokenFactory validation prevents corrupted snapshots
+    - **Problem Fixed:** Backend was calling GC directly (msg.sender = oracle) → snapshot corruption (poolContract = 0x0)
+    - **Solution:** Pool now calls GC.initiateGraduation(address(this)) → msg.sender = pool → correct snapshots
+    - **Security:** TokenFactory.isDeployedPool mapping prevents fake pools from spoofing graduation
+    - **Recovery:** 990 KAS recovered from corrupted WOK graduation via emergency withdrawal
+    - **Status:** ✅ All contracts compile, architect approved, ready for deployment testing
+    - **Contracts Modified:** BondingCurvePool.sol, GraduationControllerV3.sol, TokenFactory.sol
+    - **Next:** Deploy to testnet, test initiation/completion phases, update backend to remove direct GC calls
     - GraduationController V3 (FINAL): 0x628EC1FF659e2935d531cec5aC489baCf06898aA (Block 9129036) ✅ ALL ADDRESSES CORRECT
     - Transaction: 7d4b267cb5f2ad0726c1e30ab964236be2bcbff2849809737aa6013ab27cb50b
     - Correct Kaspa Finance: Factory 0x1b72D7165..., PositionManager 0x4E25637cF..., WKAS 0xD18FCd278...
