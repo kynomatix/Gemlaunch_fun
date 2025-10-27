@@ -58,3 +58,19 @@ logs/
 attached_assets/
 DEVDOCS/
 DevDocs/
+
+# Temporary debug/test scripts (not for git)
+check_*.js
+debug_*.js
+verify_*.js
+test_*.js
+*_temp.js
+decode_*.js
+
+# Old deployment summaries (not for git)
+*SUMMARY*.md
+*PLAN*.md
+*REPORT*.md
+*ANALYSIS*.md
+*STATUS*.md
+deployments/
