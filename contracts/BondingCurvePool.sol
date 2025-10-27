@@ -509,8 +509,9 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // Calculate liquidity: virtualKasReserve + 25% token supply
         uint256 lpTokens = totalSupply() * LP_SUPPLY_PCT / 100; // 25%
         
-        // Approve GraduationController to transfer LP tokens for DEX liquidity (FIXED: was approving oracle)
-        _approve(address(this), graduationController, lpTokens);
+        // V10 FIX: Transfer tokens directly to GC (no approve/transferFrom - avoids STF error)
+        // Use same pattern as KAS transfer - pool PUSHES liquidity instead of GC PULLING it
+        _transfer(address(this), graduationController, lpTokens);
         
         // Transfer actual KAS liquidity to GraduationController (excluding virtual seed)
         // FIXED: Send to GraduationController, not oracle wallet

@@ -590,8 +590,10 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         // STEP 2: Validate we received the KAS
         require(address(this).balance >= kasLiquidity, "Insufficient KAS");
         
-        // STEP 3: Transfer tokens from pool
-        IERC20(tokenAddress).safeTransferFrom(address(pool), address(this), tokenLiquidity);
+        // STEP 3: V10 FIX - Tokens already transferred during pool.initiateGraduation()
+        // Pool PUSHES tokens directly to GC (no approve/transferFrom needed)
+        // Just verify we have the tokens we expect
+        require(IERC20(tokenAddress).balanceOf(address(this)) >= tokenLiquidity, "Insufficient tokens");
         
         // STEP 4: Wrap KAS to WKAS (FIX #3: Use full snapshot amount)
         IWKAS(kaspaFinanceWKAS).deposit{value: kasLiquidity}();

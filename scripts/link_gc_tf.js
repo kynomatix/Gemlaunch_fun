@@ -2,16 +2,21 @@ import hre from "hardhat";
 import fs from "fs";
 
 async function main() {
-  console.log("=== Linking GC V6 ← → TF V8 ===\n");
+  console.log("=== Linking GC ← → TF ===\n");
   
-  // Load deployed addresses
-  const registry = JSON.parse(fs.readFileSync('contracts/deployed_addresses.json', 'utf8'));
+  // Load deployed addresses (path relative to where hardhat runs from)
+  const registryPath = process.cwd().includes('/contracts') 
+    ? '../contracts/deployed_addresses.json' 
+    : 'contracts/deployed_addresses.json';
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
   
   const GC_ADDR = registry.contracts.GraduationController.address;
+  const GC_VER = registry.contracts.GraduationController.version;
   const TF_ADDR = registry.contracts.TokenFactory.address;
+  const TF_VER = registry.contracts.TokenFactory.version;
   
-  console.log(`GraduationController V6: ${GC_ADDR}`);
-  console.log(`TokenFactory V8:         ${TF_ADDR}`);
+  console.log(`GraduationController ${GC_VER}: ${GC_ADDR}`);
+  console.log(`TokenFactory ${TF_VER}:         ${TF_ADDR}`);
   
   // Load GC contract
   const GC = await hre.ethers.getContractFactory("GraduationControllerV3");

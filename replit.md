@@ -41,18 +41,21 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 **CRITICAL: All contract addresses are managed in `contracts/deployed_addresses.json`**
 **ALWAYS follow `contracts/DEPLOYMENT_GUIDE.md` when deploying new contracts**
 
-Current working contracts (Oct 27, 2025 - Kaspa Finance Integration Fix):
-- **TokenFactory V8**: `0x1b641c1dF9eEbaf5bd8B5251e24794Cab01D9071` (Properly linked to GC V6, VALIDATED)
-- **GraduationController V6**: `0xBbfdF7341aaF104D259876972844EBF9795b9C4C` (FIXED: Correct Kaspa Finance testnet addresses from working LP tx)
+Current working contracts (Oct 27, 2025 - STF Error Fix):
+- **TokenFactory V10**: `0xCD8e8F442E187B811130F8924B91a8F3445Ffb21` (V10 FIX: Pool uses _transfer() to PUSH tokens directly to GC during initiation)
+- **GraduationController V7**: `0xeb753f81F9beD4B6ea27381476a20d71ae496Cd1` (V7 FIX: Tokens already transferred, balance check instead of safeTransferFrom)
 - **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`
 
-Broken/deprecated contracts (DO NOT USE):
-- **TokenFactory V7**: `0x1111bF4794407109a55015d86639c80ec1cb51E5` (References GC V5 with wrong Kaspa Finance addresses)
-- **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Wrong Kaspa Finance DEX addresses, graduation fails at LP creation)
-- **TokenFactory V6**: `0x222B82584B445Fab6AbBb1588855e3d9F93476b1` (References GC V4 which has wrong factory config)
+Deprecated contracts (DO NOT USE):
+- **TokenFactory V9**: `0xB4D21bD000275F58A7180502Af5215fc4adE9984` (Attempted GC exemption fix, but STF error persisted)
+- **TokenFactory V8**: `0x1b641c1dF9eEbaf5bd8B5251e24794Cab01D9071` (References GC V6 with STF error on graduation)
+- **GraduationController V6**: `0xBbfdF7341aaF104D259876972844EBF9795b9C4C` (STF error when pulling tokens via safeTransferFrom)
+- **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Wrong Kaspa Finance DEX addresses)
 
-Known issues:
-- **PBORN Token**: 940.5 KAS locked on GC V5 (marked graduation_disabled). Graduation initiated successfully but stuck on wrong GC with incorrect Kaspa Finance addresses.
+Legacy tokens (graduation disabled):
+- **$PBORN**: 940.5 KAS locked on GC V5 (marked graduation_disabled)
+- **$MLEAF**: Stuck on GC V6 with STF error (marked graduation_disabled)
+- **$CHIM**: Stuck on GC V6 with STF error, tested V9 fix (marked graduation_disabled)
 
 ### Contract Deployment Protocol
 1. **NEVER deploy contracts without checking the deployment guide first**

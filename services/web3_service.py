@@ -25,9 +25,9 @@ RPC_ENDPOINTS = [
 
 # Deployed Contract Addresses (Kasplex Testnet - October 2025)
 # SOURCE OF TRUTH: contracts/deployed_addresses.json
-TOKEN_FACTORY_ADDRESS = "0xB4D21bD000275F58A7180502Af5215fc4adE9984"  # V9 - Oct 27, 2025 - CRITICAL FIX: graduationController exemption in _update()
+TOKEN_FACTORY_ADDRESS = "0xCD8e8F442E187B811130F8924B91a8F3445Ffb21"  # V10 - Oct 27, 2025 - Pool uses _transfer() to push tokens (no approve/transferFrom)
 VESTING_DEPLOYER_ADDRESS = "0x69AC4E0235757B6E81072A13E79c67aD964A9c21"  # Auto-deployed with TokenFactory V7
-GRADUATION_CONTROLLER_ADDRESS = "0xBbfdF7341aaF104D259876972844EBF9795b9C4C"  # V6 - Oct 27, 2025 - FIXED: Correct Kaspa Finance testnet addresses from working LP tx
+GRADUATION_CONTROLLER_ADDRESS = "0xeb753f81F9beD4B6ea27381476a20d71ae496Cd1"  # V7 - Oct 27, 2025 - Tokens transferred directly from pool (no safeTransferFrom)
 AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
 
 # Kaspa Finance DEX Addresses (Kasplex Testnet)
