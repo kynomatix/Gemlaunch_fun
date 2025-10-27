@@ -26,7 +26,7 @@ RPC_ENDPOINTS = [
 # Deployed Contract Addresses (Kasplex Testnet - October 2025)
 TOKEN_FACTORY_ADDRESS = "0x222B82584B445Fab6AbBb1588855e3d9F93476b1"  # V6 - Oct 27, 2025 - V4 GraduationController baked in (no updates needed)
 VESTING_DEPLOYER_ADDRESS = "0x8cb6fFD14725AEAb2b2E019e04DAa7d5b44b4cCe"  # Auto-deployed with TokenFactory V6
-GRADUATION_CONTROLLER_ADDRESS = "0x01Be48DeA4a1a8e4D625E6C2f253D05ebdb59031"  # V4 - Oct 27, 2025 - Adds corrupted graduation recovery + LP creation before pool callback
+GRADUATION_CONTROLLER_ADDRESS = "0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac"  # V5 - Oct 27, 2025 - Fixed constructor params, correct tokenFactory config
 AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
 
 # Kaspa Finance DEX Addresses (Kasplex Testnet)
