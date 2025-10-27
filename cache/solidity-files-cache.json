@@ -1153,6 +1153,46 @@
       "artifacts": [
         "IWKAS"
       ]
+    },
+    "/home/runner/workspace/contracts/PoolMigrationHelper.sol": {
+      "lastModificationDate": 1761532682636,
+      "contentHash": "29c6372d6c212730e3e1cb2a4d295705",
+      "sourceName": "contracts/PoolMigrationHelper.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./BondingCurvePool.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "PoolMigrationHelper"
+      ]
     }
   }
 }
