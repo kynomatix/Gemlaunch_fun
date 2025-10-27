@@ -3,6 +3,14 @@
 *.sqlite
 *.sqlite3
 
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Python
 __pycache__/
 *.py[cod]
@@ -74,3 +82,18 @@ decode_*.js
 *ANALYSIS*.md
 *STATUS*.md
 deployments/
+
+# Replit specific
+.replit
+.breakpoints
+.upm/
+.pythonlibs/
+.cache/
+.config/
+.local/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.nfs*
