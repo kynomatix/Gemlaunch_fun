@@ -120,6 +120,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         address _platformDevelopmentWallet,
         bool _antiBotEnabled,
         address _graduationOracle,
+        address _graduationController,
         address _admin,
         address _buybackReserve,
         address _kaspaSupport,
@@ -133,6 +134,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(_airdropTreasury != address(this), "Airdrop treasury cannot be self");
         require(_platformDevelopmentWallet != address(this), "Platform wallet cannot be self");
         require(_graduationOracle != address(0), "Invalid graduation oracle");
+        require(_graduationController != address(0), "Invalid graduation controller");
         require(_admin != address(0), "Invalid admin");
         require(_buybackReserve != address(0), "Invalid buyback reserve");
         require(_kaspaSupport != address(0), "Invalid kaspa support");
@@ -154,6 +156,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         platformDevelopmentWallet = _platformDevelopmentWallet;
         antiBotEnabled = _antiBotEnabled;
         graduationOracle = _graduationOracle;
+        graduationController = _graduationController;
         admin = _admin;
         buybackReserveWallet = _buybackReserve;
         kaspaNetworkSupportWallet = _kaspaSupport;

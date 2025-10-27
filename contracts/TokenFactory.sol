@@ -165,7 +165,8 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
             airdropTreasury,
             platformDevelopmentWallet,
             antiBotEnabled,
-            graduationController, // GRADUATION FIX: Pass controller, not oracle (msg.sender changes in delegatecall)
+            graduationOracle, // Oracle address for graduation trigger
+            graduationController, // Controller address for DEX deployment
             admin,
             buybackReserveWallet,
             kaspaNetworkSupportWallet,
