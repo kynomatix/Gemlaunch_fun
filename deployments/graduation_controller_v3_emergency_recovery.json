@@ -1,0 +1,20 @@
+{
+  "address": "0x0F070975ee4bbF8e4a2e049BDAd53297D8346039",
+  "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+  "block": 9135104,
+  "tx_hash": "4003ac8ac0395dc29fa5035c31bda98c0a8281ec947d3a5149e4d7099a80215f",
+  "timestamp": 1761525684.860874,
+  "parameters": {
+    "kaspaFinanceFactory": "0x1B72D71657dd4CBee1e89FE1c55B401f42AfE1c5",
+    "kaspaFinancePositionManager": "0x4E25637cf96Dab79dC49DdEBC68171c6eD7a34c3",
+    "kaspaFinanceWKAS": "0xd18Fcd278c85FCa60D6cD49F300C6E0B380B5F0b",
+    "oracle": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "tokenFactory": "0xf8F05F8c88Df82b3aA135b9D434553E064b56704",
+    "treasury": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+  },
+  "features": [
+    "Emergency recovery function: emergencyReturnGraduationFunds()",
+    "Returns stuck KAS from corrupted graduations",
+    "Owner-only access control"
+  ]
+}

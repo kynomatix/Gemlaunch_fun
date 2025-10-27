@@ -279,3 +279,47 @@ Each phase must pass these tests before proceeding:
 - User emphasized: Document work for agent memory optimization
 - Working implementations integrate graduation into bonding curve
 - Current split architecture is the root cause of ordering bugs
+
+### October 27, 2025 - Emergency Recovery Deployment
+- Deployed new GraduationController V3 with `emergencyReturnGraduationFunds()` function
+- New contract: `0x0F070975ee4bbF8e4a2e049BDAd53297D8346039`
+- Block: 9135104
+- **Note:** Will use existing `emergencyWithdraw()` on old contract (0x628EC1FF) to recover WOK funds
+
+
+### October 27, 2025 - Emergency Recovery Executed
+**CRITICAL DISCOVERY:** BondingCurvePool.receive() rejects KAS when not graduating (FIX #7)
+- ❌ Cannot send KAS directly back to pool (receive() reverts)
+- ✅ Solution: Send to treasury (EOA) instead
+- **Emergency withdrawal successful!**
+  - TX: 94b4fc49853ded7ede43067d98192d9c4f86cb9be45c50631867d1b0b8367738
+  - Block: 9135408
+  - 990 KAS recovered to treasury: 0xe281e4776FB5De20817D0bbC72B0C4b955565619
+  - GraduationController V3 balance: 0 KAS ✅
+
+**Phase 1a-1c: COMPLETE**
+- ✅ Emergency recovery function deployed
+- ✅ 990 KAS safely recovered from corrupted graduation
+- 📝 Next: Reset WOK database state to 'active'
+
+
+### Phase 1 Tests - COMPLETED ✅
+
+- [x] 990 KAS returned from GraduationController (to treasury, not pool)
+- [x] GraduationController balance = 0
+- [x] WOK not in database - nothing to reset (database clean state)
+- [x] 990 KAS safely in treasury: 0xe281e4776FB5De20817D0bbC72B0C4b955565619
+
+**Phase 1 COMPLETE!** Stuck funds recovered successfully.
+
+---
+
+## Phase 2: Architecture Audit & Decision
+
+**Next Steps:**
+1. Analyze current BondingCurvePool graduation mechanism
+2. Research working implementations that integrate graduation
+3. Make architecture decision: Fix handshake OR integrate into pool
+4. Consider EVM 24KB contract size limit
+5. Ensure PRO token vesting compatibility
+

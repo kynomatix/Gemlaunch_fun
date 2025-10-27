@@ -763,6 +763,42 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
     }
     
     /**
+     * @notice Emergency function to return stuck graduation funds to pool
+     * @dev Use this when graduation snapshot is corrupted and funds are stuck
+     * @param tokenAddress The bonding curve pool address to return funds to
+     */
+    function emergencyReturnGraduationFunds(address tokenAddress) 
+        external 
+        onlyOwner 
+    {
+        require(tokenAddress != address(0), "Invalid token address");
+        require(!hasGraduated[tokenAddress], "Already graduated");
+        
+        GraduationSnapshot storage snapshot = graduationSnapshots[tokenAddress];
+        require(snapshot.initiatedAt != 0, "No graduation initiated");
+        require(!snapshot.lpMinted, "Graduation already completed");
+        
+        uint256 kasToReturn = snapshot.kasLiquidity;
+        require(kasToReturn > 0, "No KAS to return");
+        require(address(this).balance >= kasToReturn, "Insufficient balance");
+        
+        // Clear the snapshot
+        delete graduationSnapshots[tokenAddress];
+        
+        // Return KAS to pool
+        (bool success, ) = payable(tokenAddress).call{value: kasToReturn}("");
+        require(success, "KAS transfer failed");
+        
+        emit GraduationCancelled(
+            tokenAddress,
+            kasToReturn,
+            0,
+            "Emergency fund recovery",
+            block.timestamp
+        );
+    }
+    
+    /**
      * @notice Emergency withdrawal of stuck tokens
      */
     function emergencyWithdraw(address token, uint256 amount, address recipient) 
