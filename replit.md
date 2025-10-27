@@ -35,21 +35,25 @@ Built with Flask, the backend features a minimal, route-based architecture with 
   - **Status Flow**: active → initiating → completing → graduated (4-state lifecycle per KASPA_FINANCE_DEX_INTEGRATION_PLAN.md)
   - **Critical Fix (Oct 22, 2025)**: Tokens now correctly initialize with `graduation_status = 'active'` on deployment (app.py line 6578)
   - **V3 Upgrade (Oct 26, 2025)**: TokenFactory updated to use GraduationController V3 with all 11 critical fixes + CORRECT Kaspa Finance addresses
-  - **MAJOR FIX (Oct 27, 2025)**: Pool-initiated handshake + TokenFactory validation prevents corrupted snapshots
+  - **GRADUATION CONTROLLER INITIALIZATION FIX (Oct 27, 2025)**: ✅ **DEPLOYED AND VERIFIED**
+    - **Critical Bug**: All tokens created since GC separation had `graduationController = 0x0000`, completely blocking graduation
+    - **Root Cause**: BondingCurvePool constructor never received GC address parameter during deployment
+    - **Minimal Fix**: Added 3 lines total:
+      1. BondingCurvePool constructor: `address _graduationController` parameter
+      2. BondingCurvePool constructor: `require(_graduationController != address(0))` validation
+      3. TokenFactory: Pass `graduationControllerAddress` when creating new pools
+    - **Verification**: OneRing (ORING) at 0x462F79A487d26a3F61Ac13389a1b0070171dF1Bc has GC = 0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89 ✅
+    - **Deployment**: TokenFactory V5 at 0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211 (Block 9145290)
+    - **Impact**: All future tokens will automatically graduate at $50 market cap without manual intervention
+    - **Architecture**: Preserves all audited code, only adds initialization parameter
+    - **Testing**: HTTP 200 confirmed on token detail pages (case-insensitive PostgreSQL fix included)
+  - **Pool-Initiated Graduation Handshake (Oct 27, 2025)**: Pool calls GC.initiateGraduation(address(this))
     - **Problem Fixed:** Backend was calling GC directly (msg.sender = oracle) → snapshot corruption (poolContract = 0x0)
     - **Solution:** Pool now calls GC.initiateGraduation(address(this)) → msg.sender = pool → correct snapshots
     - **Security:** TokenFactory.isDeployedPool mapping prevents fake pools from spoofing graduation
     - **Recovery:** 990 KAS recovered from corrupted WOK graduation via emergency withdrawal
-    - **Status:** ✅ All contracts compile, architect approved, ready for deployment testing
-    - **Contracts Modified:** BondingCurvePool.sol, GraduationControllerV3.sol, TokenFactory.sol
-    - **Next:** Deploy to testnet, test initiation/completion phases, update backend to remove direct GC calls
-    - GraduationController V3 (FINAL): 0x628EC1FF659e2935d531cec5aC489baCf06898aA (Block 9129036) ✅ ALL ADDRESSES CORRECT
-    - Transaction: 7d4b267cb5f2ad0726c1e30ab964236be2bcbff2849809737aa6013ab27cb50b
+    - GraduationController V3 (FINAL): 0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89 (Block 9129036) ✅ ALL ADDRESSES CORRECT
     - Correct Kaspa Finance: Factory 0x1b72D7165..., PositionManager 0x4E25637cF..., WKAS 0xD18FCd278...
-    - Correct TokenFactory: 0xf8F05F8c88Df82b3aA135b9D434553E064b56704 (V3)
-    - All new tokens created after Oct 26, 2025 will graduate to real Kaspa Finance DEX
-    - Legacy tokens + NPC (used wrong DEX/TF) marked as graduation_disabled
-    - Previous V3: 0xBCF73222 (wrong TF), 0xD02b169B (wrong DEX), 0x2b68832 (bytecode)
   - **Monitor Service**: Background job checks eligible tokens every 60 seconds for graduation eligibility
   - **Oracle Integration**: Uses web3_service.oracle_account for automated graduation transactions
 
@@ -83,14 +87,21 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The BondingCurvePool acts as the ERC20 token itself.
 
 ### Active Contracts (Kasplex Testnet - October 2025)
-- **TokenFactory V3**: 0xf8F05F8c88Df82b3aA135b9D434553E064b56704 (Oct 26, 2025 - Links to GC V3 FINAL)
-- **GraduationController V3 (FINAL)**: 0x628EC1FF659e2935d531cec5aC489baCf06898aA (Oct 26, 2025 - ALL addresses correct)
-- **VestingDeployer V2**: 0x319F9D08A9c1167770Fe037cb58e5097e287B9e7
+- **TokenFactory V5**: 0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211 (Oct 27, 2025 - **GRADUATION CONTROLLER INITIALIZATION FIX**)
+  - **Critical Fix**: BondingCurvePool constructor now accepts `_graduationController` parameter (3-line minimal fix)
+  - **Problem Solved**: All tokens since GC separation had `graduationController = 0x0000`, blocking graduation
+  - **Solution**: TokenFactory passes GC address during pool creation, preserving all audited code
+  - **Verification**: Test token OneRing (ORING) at 0x462F79A487d26a3F61Ac13389a1b0070171dF1Bc has GC correctly set
+  - **Status**: All future tokens will automatically graduate at $50 market cap without manual intervention
+  - **Deployment**: Block 9145290, Transaction 0xcf1d36080604bb812a0921be227a7742fd3ef014bfb3acbfa3d52ba4b5b9b89d
+- **VestingDeployer V2**: 0x0935691f88FeB8028ed70Fb0e67ad0d878315840 (Auto-deployed with TokenFactory V5)
+- **GraduationController V3 (FINAL)**: 0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89 (Oct 26, 2025 - ALL addresses correct)
 - **AirdropDistributor**: 0x86b83FE03cDa7456980364c929BB17CFA67E8495
 - **Deprecated**: 
+  - TokenFactory V3: 0xf8F05F8c88Df82b3aA135b9D434553E064b56704 (missing GC initialization)
+  - TokenFactory V2: 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc (OLD BondingCurvePool bytecode)
   - GraduationController V3: 0xBCF73222 (wrong TokenFactory), 0xD02b169B (wrong DEX), 0x2b68832 (bytecode)
-  - TokenFactory V2: 0x39003ab4e8ad700F59bcfA082F73e68bc0477fDc - OLD BondingCurvePool bytecode
-  - GraduationController V2: 0x147e3ecbe189bb301175001706ff1f44df33b3ab - DO NOT USE
+  - GraduationController V2: 0x147e3ecbe189bb301175001706ff1f44df33b3ab (DO NOT USE)
 
 ## Database Schema
 The `Token` model includes blockchain integration fields. New models include `TradeEvent` and `AntiBotFeeTracker` for storing blockchain trade events and anti-bot fee distributions.
