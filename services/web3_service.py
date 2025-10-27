@@ -2423,10 +2423,11 @@ class Web3Service:
     
     def initiate_graduation_oracle(self, token_address):
         """
-        Oracle signs and relays GraduationController.initiateGraduation() - ORACLE TRANSACTION
+        Oracle signs and relays Pool.initiateGraduation() - ORACLE TRANSACTION
         
-        DYNAMIC CONTROLLER SELECTION: Automatically detects which GraduationController 
-        the pool expects (supports both old and new controllers)
+        POOL-INITIATED GRADUATION: Oracle calls the pool, which then forwards to its 
+        configured GraduationController. This is the only way to initiate graduation
+        in GraduationControllerV3 architecture.
         
         Args:
             token_address (str): Token/pool address to graduate
@@ -2437,22 +2438,12 @@ class Web3Service:
         try:
             logging.info(f"Oracle initiating graduation for token {token_address}")
             
-            # CRITICAL: Query which controller this pool expects
-            expected_controller_address = self.get_pool_graduation_controller(token_address)
+            # Get the pool contract
+            pool = self.get_bonding_pool_contract(token_address)
             
-            # Load the controller contract (old or new) with the GraduationController ABI
-            gc_abi = self.contracts['GraduationController'].abi
-            controller_contract = self.w3.eth.contract(
-                address=Web3.to_checksum_address(expected_controller_address),
-                abi=gc_abi
-            )
-            
-            logging.info(f"Using GraduationController at {expected_controller_address} for {token_address}")
-            
-            # Build contract call
-            tx_data = controller_contract.functions.initiateGraduation(
-                Web3.to_checksum_address(token_address)
-            ).build_transaction({
+            # Build contract call - call POOL.initiateGraduation()
+            # The pool will internally call its graduationController.initiateGraduation(msg.sender)
+            tx_data = pool.functions.initiateGraduation().build_transaction({
                 'from': self.oracle_account.address,
                 'value': 0,
                 'gas': 0,
@@ -2476,7 +2467,7 @@ class Web3Service:
             # Relay transaction
             tx_hash = self.relay_transaction(signed_txn)
             
-            logging.info(f"Graduation initiated by oracle - Token: {token_address}, Controller: {expected_controller_address}, TX: {tx_hash}")
+            logging.info(f"Graduation initiated by oracle - Pool: {token_address}, TX: {tx_hash}")
             return tx_hash
             
         except Exception as e:
