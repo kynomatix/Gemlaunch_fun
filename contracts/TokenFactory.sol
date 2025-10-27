@@ -327,20 +327,6 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         pool.setGraduationOracle(newOracle);
     }
 
-    // MIGRATION: Update graduationController on existing pools (V3→V4 controller upgrade)
-    function migratePoolGraduationController(address poolAddress, address newController) external onlyOwner {
-        require(poolAddress != address(0), "Bad pool");
-        require(newController != address(0), "Bad controller");
-        
-        BondingCurvePool pool = BondingCurvePool(payable(poolAddress));
-        
-        // Verify factory owns the pool
-        require(pool.owner() == address(this), "Not pool owner");
-        
-        // Update controller address
-        pool.setGraduationController(newController);
-    }
-
     // MIGRATION: Batch update multiple pools (gas-efficient for mass migration)
     function batchMigratePoolGraduationOracle(address[] calldata poolAddresses, address newOracle) external onlyOwner {
         require(newOracle != address(0), "Bad oracle");
