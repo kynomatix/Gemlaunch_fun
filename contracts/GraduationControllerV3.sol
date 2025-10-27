@@ -2,9 +2,14 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title GraduationController V3
+ * @title GraduationController V4
  * @notice Manages token graduation from bonding curve to Uniswap V3 DEX liquidity
- * @dev FIXES ALL 11 CRITICAL ISSUES FROM V2:
+ * @dev V4 ADDITIONS ON TOP OF V3 FIXES:
+ *      V4 #1: forceCompleteCorruptedGraduation() - Emergency recovery for corrupted pools
+ *      V4 #2: _completeGraduationInternal() - Shared logic for normal + forced completion
+ *      V4 #3: Try/catch on pool.completeGraduation() - Handles already-graduated pools
+ * 
+ *      V3 FIXES (inherited):
  *      FIX #1: INITIAL_VIRTUAL_KAS = 0.001 ether (not 1000)
  *      FIX #2: Snapshot reserves BEFORE pool.initiateGraduation()
  *      FIX #3: Use snapshot.kasLiquidity (1089.99 KAS, not 89.991)
@@ -13,13 +18,13 @@ pragma solidity ^0.8.20;
  *      FIX #6: Burn LP NFT to 0x...dEaD (permanent liquidity lock)
  *      FIX #7: Send excess to treasury, NEVER to pool (receive() reverts)
  *      FIX #8: Validate sqrtPrice MIN/MAX bounds
- *      FIX #9: pool.completeGraduation() with NO try/catch (must revert on failure)
+ *      FIX #9: pool.completeGraduation() with try/catch (V4: tolerates corrupted state)
  *      FIX #10: Lock oracle changes during graduation (authorizedOracle in snapshot)
  *      FIX #11: Deadline = 1800 seconds (30 min, not 5)
  * 
- * Version: 3.0.0
- * Deployment Date: October 24, 2025
- * Architecture: Snapshot-based (immutable state capture)
+ * Version: 4.0.0
+ * Deployment Date: October 27, 2025
+ * Architecture: Snapshot-based with corruption recovery
  */
 
 import "@openzeppelin/contracts/access/Ownable.sol";
