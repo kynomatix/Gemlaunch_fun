@@ -364,3 +364,35 @@ This causes backend to manually call GC, but GC expects pool as msg.sender → c
 - ❌ Option B (integrate into pool): 89KB bytecode, way over 24KB limit
 - ❌ Keep current architecture: ordering bug persists
 
+
+---
+
+## Phase 3: Implementation Plan (13 Work Packages)
+
+### Contract Changes (BondingCurvePool.sol)
+- **3.1:** Add `graduationController` address state variable + constructor parameter + owner-only setter
+- **3.2:** Rewrite `initiateGraduation()` to transfer KAS to GC and call `GC.initiateGraduation()`
+- **3.3:** Update reentrancy guards and flag sequencing
+- **3.4:** Add Hardhat tests for storage, events, revert paths, fund flow
+- **3.5:** Verify bytecode size < 24KB (currently 89KB indicates using libraries)
+- **3.6:** Compile and verify no size violations
+
+### GraduationController Changes
+- **3.7:** Verify caller expectations (msg.sender validation)
+- **3.8:** Add explicit pool authorization mapping if needed
+- **3.9:** Regression tests for existing invariants
+
+### Backend Changes
+- **3.10:** Update graduation monitor to only call `pool.initiateGraduation()`
+- **3.11:** Remove all direct GC calls from backend
+- **3.12:** Make database read-only (event-driven snapshot)
+
+### Deployment & Validation
+- **3.13:** Deploy new contracts, update factory configs, run end-to-end test
+
+**Risk Mitigations:**
+- Incremental testing at each step
+- Feature flags for new behavior
+- Config fallbacks
+- Dry-run rehearsals before production
+

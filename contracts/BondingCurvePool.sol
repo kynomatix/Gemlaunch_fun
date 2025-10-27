@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// Interface for GraduationController
+interface IGraduationController {
+    function initiateGraduation(address tokenAddress) external;
+}
+
 contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     // Supply distribution
     uint256 public constant CURVE_SUPPLY_PCT = 75;
@@ -17,6 +22,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     // GRADUATION: Backend oracle calculates USD market cap off-chain
     // Target: $70,000 USD market cap (backend checks: virtualKasReserve * kasPrice >= $70K)
     address public graduationOracle; // Backend oracle address authorized to trigger graduation
+    address public graduationController; // GraduationController contract address for DEX migration
 
     uint256 public constant MIN_TRADE_AMOUNT = 0.001 ether; // Minimum trade size
     uint256 public constant INITIAL_VIRTUAL_KAS = 0.001 ether; // Initial virtual seed (not actual KAS)
@@ -487,6 +493,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     function initiateGraduation() external nonReentrant {
         require(msg.sender == graduationOracle, "Only oracle can initiate");
         require(!graduated && !graduating, "Already graduated or graduating");
+        require(graduationController != address(0), "GraduationController not set");
         
         // Verify sufficient balance for DEX liquidity
         // Note: Subtract initial virtual seed since it was never actual KAS
@@ -499,19 +506,21 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // Calculate liquidity: virtualKasReserve + 25% token supply
         uint256 lpTokens = totalSupply() * LP_SUPPLY_PCT / 100; // 25%
         
-        // Approve GraduationController to transfer LP tokens for DEX liquidity
-        _approve(address(this), graduationOracle, lpTokens);
+        // Approve GraduationController to transfer LP tokens for DEX liquidity (FIXED: was approving oracle)
+        _approve(address(this), graduationController, lpTokens);
         
         // Transfer actual KAS liquidity to GraduationController (excluding virtual seed)
+        // FIXED: Send to GraduationController, not oracle wallet
         require(virtualKasReserve >= INITIAL_VIRTUAL_KAS, "Invalid reserve state");
         uint256 actualKasLiquidity = virtualKasReserve - INITIAL_VIRTUAL_KAS;
-        _safeSend(graduationOracle, actualKasLiquidity);
+        _safeSend(graduationController, actualKasLiquidity);
         liquidityTransferred = true; // Mark KAS as transferred - prevents cancellation after this point
         
         emit GraduationInitiated(virtualKasReserve, lpTokens);
         
-        // Note: Actual DEX migration handled by GraduationController
-        // This contract prepares state and emits event for indexer
+        // CRITICAL FIX: Pool calls GraduationController directly so msg.sender = pool address
+        // This ensures GC captures correct snapshot with poolContract = address(this)
+        IGraduationController(graduationController).initiateGraduation(address(this));
     }
 
     // Completes graduation after DEX liquidity added
@@ -638,6 +647,13 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(newOracle != address(0), "Invalid oracle");
         graduationOracle = newOracle;
         emit GraduationOracleUpdated(newOracle);
+    }
+    
+    // Set graduation controller contract address (only admin)
+    function setGraduationController(address newController) external onlyOwner {
+        require(!graduating, "Cannot change controller during graduation");
+        require(newController != address(0), "Invalid controller");
+        graduationController = newController;
     }
 
     // Override _update to enforce 10% wallet cap (OpenZeppelin v5)

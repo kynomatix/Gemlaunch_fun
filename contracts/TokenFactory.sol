@@ -40,6 +40,9 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
     uint256 public deploymentCooldown = 60; // 60 seconds between deployments per user
     mapping(address => uint256) public lastDeploymentTime;
     
+    // Pool tracking for GraduationController validation
+    mapping(address => bool) public isDeployedPool;
+    
     // Events
     event TokenCreated(
         address indexed tokenAddress,
@@ -171,6 +174,9 @@ contract TokenFactory is Ownable, Pausable, ReentrancyGuard {
         );
         
         poolAddress = address(pool);
+        
+        // SECURITY: Track deployed pools for GraduationController validation
+        isDeployedPool[poolAddress] = true;
         
         // Deploy vesting contracts if PRO token
         if (reservedPercentage > 0) {

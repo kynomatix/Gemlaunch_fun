@@ -206,6 +206,13 @@ interface IWKAS {
 }
 
 /**
+ * @title TokenFactory Interface  
+ */
+interface ITokenFactory {
+    function isDeployedPool(address pool) external view returns (bool);
+}
+
+/**
  * @title GraduationController V3
  * @notice Snapshot-based graduation with all 11 critical fixes
  */
@@ -435,21 +442,32 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
     // ============ Core Graduation Functions ============
     
     /**
-     * @notice FIX #2/#3: Initiate graduation with snapshot BEFORE pool changes
-     * @dev Captures immutable state, then triggers pool transfer
+     * @notice FIX #2/#3: Initiate graduation with snapshot (POOL-INITIATED)
+     * @dev NOW CALLED BY POOL DIRECTLY - msg.sender is the pool contract!
+     * @param tokenAddress The pool address (should match msg.sender for validation)
      */
     function initiateGraduation(address tokenAddress) 
         external 
         nonReentrant 
         whenNotPaused
-        onlyOracle 
     {
+        // CRITICAL FIX: Caller must be the pool itself (not oracle!)
+        require(msg.sender == tokenAddress, "Only pool can initiate");
+        
         if (hasGraduated[tokenAddress]) revert AlreadyGraduated();
         if (graduationSnapshots[tokenAddress].initiatedAt != 0) revert AlreadyInitiated();
         
         BondingCurvePool pool = BondingCurvePool(payable(tokenAddress));
         
-        // STEP 1: Snapshot BEFORE any state changes (FIX #2/#3)
+        // SECURITY: Query TokenFactory to verify pool is legitimate (prevents fake pools)
+        // This is the ONLY secure way - querying trusted factory, not trusting pool's self-reported data
+        require(ITokenFactory(tokenFactory).isDeployedPool(tokenAddress), "Pool not deployed by authorized factory");
+        
+        // STEP 1: Snapshot pool state (FIX #2/#3)
+        // Pool has already sent KAS and set graduating=true before calling us
+        require(pool.graduating(), "Pool must be graduating");
+        require(pool.liquidityTransferred(), "KAS must be transferred first");
+        
         uint256 kasLiquidity = pool.virtualKasReserve() > INITIAL_VIRTUAL_KAS 
             ? pool.virtualKasReserve() - INITIAL_VIRTUAL_KAS 
             : 0;
@@ -459,14 +477,14 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         
         // STEP 2: Pre-calculate sqrtPrice from snapshot values (FIX #2)
         uint160 targetSqrtPrice = _calculateSqrtPriceX96(
-            kasLiquidity,      // 1089.99 KAS (correct!)
-            tokenLiquidity,    // 250M tokens
+            kasLiquidity,
+            tokenLiquidity,
             tokenAddress
         );
         
         require(targetSqrtPrice > 0, "Invalid price");
         
-        // STEP 3: Store immutable snapshot (FIX #10: Store authorized oracle)
+        // STEP 3: Store immutable snapshot with CORRECT pool address (msg.sender = pool!)
         graduationSnapshots[tokenAddress] = GraduationSnapshot({
             kasLiquidity: kasLiquidity,
             tokenLiquidity: tokenLiquidity,
@@ -476,29 +494,25 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
             poolInitialized: false,
             lpMinted: false,
             uniswapPool: address(0),
-            authorizedOracle: msg.sender  // FIX #10: Freeze oracle address
+            authorizedOracle: graduationOracle  // Store oracle for completion auth
         });
         
-        // STEP 4: Trigger pool graduation (transfers KAS to this contract)
-        try pool.initiateGraduation() {
-            emit GraduationSnapshotCreated(
-                tokenAddress,
-                kasLiquidity,
-                tokenLiquidity,
-                targetSqrtPrice,
-                block.timestamp
-            );
-            
-            emit GraduationInitiated(
-                tokenAddress,
-                kasLiquidity,
-                tokenLiquidity,
-                block.timestamp
-            );
-        } catch {
-            delete graduationSnapshots[tokenAddress];
-            revert("Pool initiation failed");
-        }
+        emit GraduationSnapshotCreated(
+            tokenAddress,
+            kasLiquidity,
+            tokenLiquidity,
+            targetSqrtPrice,
+            block.timestamp
+        );
+        
+        emit GraduationInitiated(
+            tokenAddress,
+            kasLiquidity,
+            tokenLiquidity,
+            block.timestamp
+        );
+        
+        // NOTE: Pool has already transferred KAS and set state, no callback needed!
     }
     
     /**
