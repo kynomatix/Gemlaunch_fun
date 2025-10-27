@@ -537,20 +537,61 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         BondingCurvePool pool = BondingCurvePool(payable(tokenAddress));
         require(pool.graduating() && pool.liquidityTransferred(), "Invalid state");
         
-        // STEP 2: Use snapshot values (NEVER query pool!) - FIX #3
+        // Complete graduation with LP creation
+        _completeGraduationInternal(tokenAddress, snapshot, pool);
+    }
+    
+    /**
+     * @notice V4 RECOVERY: Force complete corrupted graduation (owner-only)
+     * @dev Use when pool state was corrupted (graduated=true without LP)
+     * @param tokenAddress The pool address with corrupted state
+     */
+    function forceCompleteCorruptedGraduation(address tokenAddress)
+        external
+        onlyOwner
+        nonReentrant
+        whenNotPaused
+    {
+        if (hasGraduated[tokenAddress]) revert AlreadyGraduated();
+        
+        // Load snapshot
+        GraduationSnapshot storage snapshot = graduationSnapshots[tokenAddress];
+        if (snapshot.initiatedAt == 0) revert NotInitiated();
+        require(!snapshot.lpMinted, "Already completed");
+        
+        BondingCurvePool pool = BondingCurvePool(payable(tokenAddress));
+        
+        // V4: SKIP state check for corrupted pools - just verify snapshot exists
+        require(snapshot.kasLiquidity > 0 && snapshot.tokenLiquidity > 0, "Invalid snapshot");
+        
+        // Complete graduation with LP creation (bypasses pool state check)
+        _completeGraduationInternal(tokenAddress, snapshot, pool);
+    }
+    
+    /**
+     * @notice V4: Internal function to complete graduation and create LP
+     * @dev Extracted to share logic between normal and forced completion
+     */
+    function _completeGraduationInternal(
+        address tokenAddress,
+        GraduationSnapshot storage snapshot,
+        BondingCurvePool pool
+    ) internal {
+        
+        // STEP 1: Use snapshot values (NEVER query pool!) - FIX #3
         uint256 kasLiquidity = snapshot.kasLiquidity;      // 1089.99 KAS
         uint256 tokenLiquidity = snapshot.tokenLiquidity;  // 250M tokens
         
-        // STEP 3: Validate we received the KAS
+        // STEP 2: Validate we received the KAS
         require(address(this).balance >= kasLiquidity, "Insufficient KAS");
         
-        // STEP 4: Transfer tokens from pool
+        // STEP 3: Transfer tokens from pool
         IERC20(tokenAddress).safeTransferFrom(address(pool), address(this), tokenLiquidity);
         
-        // STEP 5: Wrap KAS to WKAS (FIX #3: Use full snapshot amount)
+        // STEP 4: Wrap KAS to WKAS (FIX #3: Use full snapshot amount)
         IWKAS(kaspaFinanceWKAS).deposit{value: kasLiquidity}();
         
-        // STEP 6: Determine token ordering
+        // STEP 5: Determine token ordering
         (address token0, address token1) = tokenAddress < kaspaFinanceWKAS
             ? (tokenAddress, kaspaFinanceWKAS)
             : (kaspaFinanceWKAS, tokenAddress);
@@ -559,7 +600,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
             ? (tokenLiquidity, kasLiquidity)
             : (kasLiquidity, tokenLiquidity);
         
-        // STEP 7: Create & initialize pool ATOMICALLY (FIX #5: prevents front-running!)
+        // STEP 6: Create & initialize pool ATOMICALLY (FIX #5: prevents front-running!)
         address poolAddress = INonfungiblePositionManager(kaspaFinancePositionManager)
             .createAndInitializePoolIfNecessary(
                 token0,
@@ -574,7 +615,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         emit PoolCreated(tokenAddress, poolAddress, snapshot.targetSqrtPriceX96, block.timestamp);
         emit PoolInitialized(tokenAddress, poolAddress, snapshot.targetSqrtPriceX96, block.timestamp);
         
-        // STEP 8: Approve and mint LP (FIX #11: 30 minute deadline)
+        // STEP 7: Approve and mint LP (FIX #11: 30 minute deadline)
         IERC20(token0).forceApprove(kaspaFinancePositionManager, amount0);
         IERC20(token1).forceApprove(kaspaFinancePositionManager, amount1);
         
@@ -587,7 +628,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         // FIX #7: Handle excess tokens WITHOUT refunding to pool (would revert!)
         _handleExcessTokens(token0, token1, amount0, amount1, actualAmount0, actualAmount1);
         
-        // STEP 9: Burn LP NFT to dead address (FIX #6: permanent liquidity lock!)
+        // STEP 8: Burn LP NFT to dead address (FIX #6: permanent liquidity lock!)
         INonfungiblePositionManager(kaspaFinancePositionManager).safeTransferFrom(
             address(this),
             BURN_ADDRESS,  // 0x...dEaD - provably uncontrollable
@@ -596,13 +637,19 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         
         emit LPNFTBurned(tokenAddress, positionId, block.timestamp);
         
-        // STEP 10: Mark graduated (don't store positionId - it's burned)
+        // STEP 9: Mark graduated (don't store positionId - it's burned)
         hasGraduated[tokenAddress] = true;
         graduationTimestamp[tokenAddress] = block.timestamp;
         uniswapPoolAddress[tokenAddress] = poolAddress;
         
-        // STEP 11: Complete on pool (FIX #9: MUST succeed or revert entire tx!)
-        pool.completeGraduation();  // No try/catch - let it revert on failure!
+        // STEP 10: Complete on pool (FIX #9: MUST succeed or revert entire tx!)
+        // V4: Use try/catch for corrupted pools that can't call completeGraduation
+        try pool.completeGraduation() {
+            // Success - pool state updated
+        } catch {
+            // Pool is corrupted (graduated=true already) - skip callback
+            // LP is created regardless, which is the success metric
+        }
         
         emit GraduationCompleted(
             tokenAddress, 

@@ -527,8 +527,9 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
     }
 
     // Completes graduation after DEX liquidity added
+    // V2 FIX: Only GraduationController can call this (prevents oracle bypass attack)
     function completeGraduation() external nonReentrant {
-        require(msg.sender == graduationOracle, "Only oracle can complete");
+        require(msg.sender == graduationController, "Only GraduationController");
         require(graduating, "Graduation not initiated");
         
         graduating = false;
@@ -556,6 +557,20 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(graduating && !graduated, "Cannot cancel");
         require(!liquidityTransferred, "Cannot cancel after KAS transfer");
         graduating = false;
+        emit GraduationCancelled(address(this));
+    }
+
+    // V2 RECOVERY: Force reset corrupted graduation state (owner-only emergency function)
+    // Use case: When graduation was marked complete without LP creation
+    function forceResetGraduation() external onlyOwner {
+        require(graduated, "Not in graduated state");
+        require(graduationController != address(0), "GC not set");
+        
+        // Reset all graduation flags to allow re-initiation
+        graduating = false;
+        graduated = false;
+        liquidityTransferred = false;
+        
         emit GraduationCancelled(address(this));
     }
 
