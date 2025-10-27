@@ -26,7 +26,7 @@ RPC_ENDPOINTS = [
 # Deployed Contract Addresses (Kasplex Testnet - October 2025)
 TOKEN_FACTORY_ADDRESS = "0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211"  # GC_INIT_FIX - Oct 27, 2025 - GraduationController address set during pool deployment
 VESTING_DEPLOYER_ADDRESS = "0x0935691f88FeB8028ed70Fb0e67ad0d878315840"  # Auto-deployed with TokenFactory GC_INIT_FIX
-GRADUATION_CONTROLLER_ADDRESS = "0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89"  # V3 - Oct 27, 2025 - Pool-initiated handshake prevents snapshot corruption
+GRADUATION_CONTROLLER_ADDRESS = "0x01Be48DeA4a1a8e4D625E6C2f253D05ebdb59031"  # V4 - Oct 27, 2025 - Adds corrupted graduation recovery + LP creation before pool callback
 AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
 
 # Kaspa Finance DEX Addresses (Kasplex Testnet)
@@ -245,7 +245,7 @@ class Web3Service:
                 address=Web3.to_checksum_address(GRADUATION_CONTROLLER_ADDRESS),
                 abi=graduation_abi
             )
-            logging.info(f"Loaded GraduationController V3 at {GRADUATION_CONTROLLER_ADDRESS}")
+            logging.info(f"Loaded GraduationController V4 at {GRADUATION_CONTROLLER_ADDRESS}")
             
             # Load BondingCurvePool ABI (for pool interactions later)
             contracts['BondingCurvePoolABI'] = self._load_contract_abi('BondingCurvePool')
@@ -2474,12 +2474,17 @@ class Web3Service:
             logging.error(f"Failed to initiate graduation for {token_address}: {str(e)}")
             raise
     
-    def complete_graduation_oracle(self, token_address):
+    def complete_graduation_via_controller(self, token_address):
         """
-        Oracle signs and relays Pool.completeGraduation() - ORACLE TRANSACTION
+        V4 CORRECT FLOW: Oracle calls GraduationController.completeGraduation()
         
-        POOL-INITIATED COMPLETION: Oracle calls the pool directly. The pool then
-        finalizes graduation internally and emits completion events.
+        THIS IS THE CORRECT FLOW FOR V4 ARCHITECTURE:
+        1. Oracle calls GraduationController.completeGraduation(tokenAddress)
+        2. GC creates LP on Kaspa Finance DEX (CRITICAL: LP creation FIRST)
+        3. GC calls Pool.completeGraduation() as callback
+        4. Pool marks itself graduated (only after LP exists)
+        
+        SUCCESS METRIC: LP exists on Kaspa Finance before pool marks graduated
         
         Args:
             token_address (str): Token/pool address to complete graduation
@@ -2487,6 +2492,66 @@ class Web3Service:
         Returns:
             str: Transaction hash
         """
+        try:
+            logging.info(f"🚀 V4 FLOW: Oracle calling GraduationController.completeGraduation({token_address})")
+            
+            # Get GraduationController contract
+            gc = self.contracts['GraduationController']
+            
+            # Build contract call - call GC.completeGraduation(tokenAddress)
+            # This creates LP FIRST, then calls pool as callback
+            tx_data = gc.functions.completeGraduation(
+                Web3.to_checksum_address(token_address)
+            ).build_transaction({
+                'from': self.oracle_account.address,
+                'value': 0,
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(self.oracle_account.address)
+            })
+            
+            # Estimate gas (high limit for DEX operations)
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            # Use higher gas limit for DEX operations
+            tx_data['gas'] = min(gas_estimate['gas'] * 2, 8000000)
+            
+            # Sign transaction with oracle account
+            signed_txn = self.sign_transaction(tx_data)
+            
+            # Relay transaction
+            tx_hash = self.relay_transaction(signed_txn)
+            
+            logging.info(f"✅ GC.completeGraduation() called - Token: {token_address}, TX: {tx_hash}")
+            logging.info(f"   This will: (1) Create LP on Kaspa Finance, (2) Call pool callback, (3) Mark graduated")
+            return tx_hash
+            
+        except Exception as e:
+            logging.error(f"Failed to complete graduation via GC for {token_address}: {str(e)}")
+            raise
+    
+    def complete_graduation_oracle(self, token_address):
+        """
+        DEPRECATED V3 FLOW - DO NOT USE
+        
+        This function calls Pool.completeGraduation() directly, which is WRONG!
+        It allows the pool to mark itself graduated WITHOUT verifying LP creation.
+        
+        USE complete_graduation_via_controller() INSTEAD
+        
+        Args:
+            token_address (str): Token/pool address to complete graduation
+        
+        Returns:
+            str: Transaction hash
+        """
+        logging.warning("⚠️ DEPRECATED: complete_graduation_oracle() calls Pool directly - USE complete_graduation_via_controller() instead!")
+        
         try:
             logging.info(f"Oracle completing graduation for token {token_address}")
             

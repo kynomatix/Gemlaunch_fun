@@ -90,16 +90,18 @@ class GraduationCompletionService:
     
     def _complete_single_graduation(self, token):
         """
-        Complete graduation for a single token using pool-initiated architecture
+        Complete graduation for a single token using V4 GraduationController architecture
         
-        POOL-INITIATED COMPLETION: Oracle calls Pool.completeGraduation()
-        The pool then finalizes graduation and emits completion events.
+        V4 CORRECT FLOW: Oracle calls GraduationController.completeGraduation()
         
-        Steps:
-        1. Verify on-chain graduation status (pool.graduating() == true)
-        2. Call Pool.completeGraduation() via oracle (uses already-fixed web3_service function)
-        3. Extract pool data from events
-        4. Update database
+        THIS IS THE CORRECT ORDER:
+        1. Oracle calls GC.completeGraduation(tokenAddress)
+        2. GC creates LP on Kaspa Finance DEX (CRITICAL: LP creation FIRST)
+        3. GC calls Pool.completeGraduation() as callback  
+        4. Pool marks itself graduated (only after LP exists)
+        5. Database synced from on-chain state
+        
+        SUCCESS METRIC: LP exists on Kaspa Finance before database marks graduated
         """
         logging.info(f"Completing graduation for {token.symbol} (ID: {token.id})")
         
@@ -112,20 +114,39 @@ class GraduationCompletionService:
             graduating = pool.functions.graduating().call()
             graduated = pool.functions.graduated().call()
             
-            # Case 1: Already graduated on-chain - sync database
+            # Case 1: Already graduated on-chain - verify LP exists before syncing database
             if graduated:
                 logging.info(f"✅ Token {token.symbol} is already graduated on-chain!")
-                logging.info(f"   Syncing database to match on-chain state...")
                 
-                # Mark as graduated in database
+                # V4 FIX: Verify LP actually exists on Kaspa Finance before marking graduated
+                gc = self.w3_service.contracts['GraduationController']
+                try:
+                    lp_address = gc.functions.uniswapPoolAddress(checksum_address).call()
+                    
+                    if lp_address == '0x0000000000000000000000000000000000000000':
+                        logging.error(f"❌ Token {token.symbol} marked graduated but NO LP exists!")
+                        logging.error(f"   This is a corrupted state - pool.graduated=true but LP not created")
+                        logging.error(f"   Keeping DB status as 'initiating' to prevent false completion")
+                        return
+                    
+                    logging.info(f"✅ LP verified on Kaspa Finance: {lp_address}")
+                    
+                except Exception as lp_check_error:
+                    logging.error(f"Failed to verify LP exists: {str(lp_check_error)}")
+                    logging.error(f"Cannot confirm LP creation - keeping DB as 'initiating'")
+                    return
+                
+                # LP exists - safe to sync database
+                logging.info(f"   Syncing database to match on-chain state...")
                 from datetime import datetime, timezone
                 token.graduation_status = 'graduated'
                 token.is_graduated = True
+                token.lp_pool_address = lp_address
                 if not token.graduation_completed_at:
                     token.graduation_completed_at = datetime.now(timezone.utc)
                 db.session.commit()
                 
-                logging.info(f"✅ {token.symbol} database status synced to graduated")
+                logging.info(f"✅ {token.symbol} database status synced to graduated with LP {lp_address}")
                 return
             
             # Case 2: Graduation not initiated on-chain - reset to active
@@ -142,13 +163,13 @@ class GraduationCompletionService:
             logging.error(f"On-chain verification failed: {str(e)}")
             return
         
-        # 2. Call Pool.completeGraduation() via oracle (uses already-fixed function)
+        # 2. Call GraduationController.completeGraduation() via oracle (V4 CORRECT FLOW)
         try:
-            logging.info(f"🚀 Calling Pool.completeGraduation() for {token.symbol}")
+            logging.info(f"🚀 V4 FLOW: Calling GraduationController.completeGraduation() for {token.symbol}")
             
-            # Use the already-fixed complete_graduation_oracle function from web3_service
-            # This function correctly calls Pool.completeGraduation() instead of GC directly
-            tx_hash = self.w3_service.complete_graduation_oracle(checksum_address)
+            # V4 CORRECT FLOW: Call GC which creates LP FIRST, then calls pool callback
+            # SUCCESS METRIC: LP on Kaspa Finance before pool marks graduated
+            tx_hash = self.w3_service.complete_graduation_via_controller(checksum_address)
             
             # Wait for confirmation
             receipt = self.w3_service.wait_for_transaction_receipt(tx_hash, timeout=120)
