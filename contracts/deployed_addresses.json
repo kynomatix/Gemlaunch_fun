@@ -10,10 +10,10 @@
       "notes": "FIXED: Correct Kaspa Finance testnet addresses from working LP tx"
     },
     "TokenFactory": {
-      "version": "V8",
-      "address": "0x1b641c1dF9eEbaf5bd8B5251e24794Cab01D9071",
+      "version": "V9",
+      "address": "0xB4D21bD000275F58A7180502Af5215fc4adE9984",
       "deployedAt": "2025-10-27",
-      "notes": "References GC V6 with correct Kaspa Finance addresses"
+      "notes": "CRITICAL FIX: Added graduationController to _update() exemptions - allows GC to receive 25% LP supply"
     },
     "VestingDeployer": {
       "version": "V2",
