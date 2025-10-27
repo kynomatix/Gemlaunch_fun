@@ -41,12 +41,18 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 **CRITICAL: All contract addresses are managed in `contracts/deployed_addresses.json`**
 **ALWAYS follow `contracts/DEPLOYMENT_GUIDE.md` when deploying new contracts**
 
-Current working contracts:
-- **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Fixed constructor params, correct tokenFactory config)
+Current working contracts (Oct 27, 2025 - Kaspa Finance Integration Fix):
+- **TokenFactory V8**: `0x1b641c1dF9eEbaf5bd8B5251e24794Cab01D9071` (Properly linked to GC V6, VALIDATED)
+- **GraduationController V6**: `0xBbfdF7341aaF104D259876972844EBF9795b9C4C` (FIXED: Correct Kaspa Finance testnet addresses from working LP tx)
 - **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`
 
 Broken/deprecated contracts (DO NOT USE):
+- **TokenFactory V7**: `0x1111bF4794407109a55015d86639c80ec1cb51E5` (References GC V5 with wrong Kaspa Finance addresses)
+- **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Wrong Kaspa Finance DEX addresses, graduation fails at LP creation)
 - **TokenFactory V6**: `0x222B82584B445Fab6AbBb1588855e3d9F93476b1` (References GC V4 which has wrong factory config)
+
+Known issues:
+- **PBORN Token**: 940.5 KAS locked on GC V5 (marked graduation_disabled). Graduation initiated successfully but stuck on wrong GC with incorrect Kaspa Finance addresses.
 
 ### Contract Deployment Protocol
 1. **NEVER deploy contracts without checking the deployment guide first**
