@@ -127,6 +127,14 @@ class GraduationCompletionService:
                         logging.error(f"❌ Token {token.symbol} marked graduated but NO LP exists!")
                         logging.error(f"   This is a corrupted state - pool.graduated=true but LP not created")
                         logging.error(f"   Keeping DB status as 'initiating' to prevent false completion")
+                        logging.error(f"   RECOVERY: Run forceCompleteCorruptedGraduation() if using V4 GC")
+                        return
+                    
+                    # Enhanced verification: Check LP is initialized with liquidity
+                    lp_verified = self._verify_lp_initialized(lp_address, checksum_address)
+                    if not lp_verified:
+                        logging.error(f"❌ LP exists but not initialized: {lp_address}")
+                        logging.error(f"   Pool may need manual recovery")
                         return
                     
                     logging.info(f"✅ LP verified on Kaspa Finance: {lp_address}")
@@ -285,6 +293,57 @@ class GraduationCompletionService:
             import traceback
             traceback.print_exc()
             return None
+    
+    def _verify_lp_initialized(self, lp_address, token_address):
+        """
+        Verify that LP pool is initialized with liquidity
+        
+        Args:
+            lp_address: Uniswap V3 pool address
+            token_address: Token address
+        
+        Returns:
+            bool: True if LP is initialized and has liquidity
+        """
+        try:
+            # Minimal Uniswap V3 Pool ABI for slot0 check
+            pool_abi = [{
+                "inputs": [],
+                "name": "slot0",
+                "outputs": [
+                    {"internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
+                    {"internalType": "int24", "name": "tick", "type": "int24"},
+                    {"internalType": "uint16", "name": "observationIndex", "type": "uint16"},
+                    {"internalType": "uint16", "name": "observationCardinality", "type": "uint16"},
+                    {"internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16"},
+                    {"internalType": "uint8", "name": "feeProtocol", "type": "uint8"},
+                    {"internalType": "bool", "name": "unlocked", "type": "bool"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }]
+            
+            pool_contract = self.w3_service.w3.eth.contract(
+                address=self.w3_service.w3.to_checksum_address(lp_address),
+                abi=pool_abi
+            )
+            
+            # Check slot0 - sqrtPriceX96 must be > 0 for initialized pool
+            slot0 = pool_contract.functions.slot0().call()
+            sqrt_price_x96 = slot0[0]
+            
+            if sqrt_price_x96 == 0:
+                logging.error(f"LP pool {lp_address} not initialized (sqrtPriceX96 = 0)")
+                return False
+            
+            logging.info(f"LP pool verified: sqrtPriceX96={sqrt_price_x96}")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error verifying LP initialization: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def _compute_pool_address(self, token_address, fee_tier):
         """

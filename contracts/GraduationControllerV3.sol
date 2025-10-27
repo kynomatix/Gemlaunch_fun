@@ -308,6 +308,9 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
     /// @notice Maximum price deviation tolerance (in basis points, 100 = 1%)
     uint256 public maxPriceDeviationBps = 100;
     
+    /// @notice FIX LOG-2: Timeout for stuck graduations (1 hour)
+    uint256 public constant GRADUATION_TIMEOUT = 1 hours;
+    
     // ============ Events ============
     
     /**
@@ -380,6 +383,15 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
     );
     
     event GraduationFailed(
+        address indexed tokenAddress,
+        string reason,
+        uint256 timestamp
+    );
+    
+    /**
+     * @notice FIX GR-2: New event for failed pool callbacks
+     */
+    event PoolCallbackFailed(
         address indexed tokenAddress,
         string reason,
         uint256 timestamp
@@ -651,11 +663,20 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         
         // STEP 10: Complete on pool (FIX #9: MUST succeed or revert entire tx!)
         // V4: Use try/catch for corrupted pools that can't call completeGraduation
+        // FIX GR-2: Emit event when callback fails for monitoring
         try pool.completeGraduation() {
             // Success - pool state updated
-        } catch {
+        } catch Error(string memory reason) {
             // Pool is corrupted (graduated=true already) - skip callback
             // LP is created regardless, which is the success metric
+            emit PoolCallbackFailed(tokenAddress, reason, block.timestamp);
+        } catch (bytes memory lowLevelData) {
+            // Low-level failure (e.g., out of gas, invalid opcode)
+            emit PoolCallbackFailed(
+                tokenAddress, 
+                "Low-level failure in pool.completeGraduation()", 
+                block.timestamp
+            );
         }
         
         emit GraduationCompleted(
@@ -831,13 +852,76 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
     }
     
     /**
+     * @notice FIX LOG-2: Check if graduation is stuck and can be cancelled
+     * @param tokenAddress Token address to check
+     * @return True if graduation is stuck and can be cancelled
+     */
+    function canCancelStuckGraduation(address tokenAddress) public view returns (bool) {
+        GraduationSnapshot memory snapshot = graduationSnapshots[tokenAddress];
+        
+        // Must have initiated graduation
+        if (snapshot.initiatedAt == 0) return false;
+        
+        // Must not have completed (LP not minted)
+        if (snapshot.lpMinted) return false;
+        
+        // Must not have graduated
+        if (hasGraduated[tokenAddress]) return false;
+        
+        // Must be past timeout
+        return block.timestamp > uint256(snapshot.initiatedAt) + GRADUATION_TIMEOUT;
+    }
+    
+    /**
+     * @notice FIX LOG-2: Cancel stuck graduation and return funds
+     * @dev Can only cancel if graduation has been stuck for > GRADUATION_TIMEOUT
+     * @param tokenAddress Token address with stuck graduation
+     */
+    function cancelStuckGraduation(address tokenAddress) 
+        external 
+        onlyOwner 
+        nonReentrant
+    {
+        require(canCancelStuckGraduation(tokenAddress), "Cannot cancel yet or already completed");
+        
+        GraduationSnapshot storage snapshot = graduationSnapshots[tokenAddress];
+        uint256 kasToReturn = snapshot.kasLiquidity;
+        uint256 tokensToReturn = snapshot.tokenLiquidity;
+        
+        // Clear snapshot before transferring (CEI pattern)
+        delete graduationSnapshots[tokenAddress];
+        
+        // Return KAS if we have it
+        if (kasToReturn > 0 && address(this).balance >= kasToReturn) {
+            (bool success, ) = payable(tokenAddress).call{value: kasToReturn}("");
+            require(success, "KAS transfer failed");
+        }
+        
+        // Return tokens if we have them
+        uint256 tokenBalance = IERC20(tokenAddress).balanceOf(address(this));
+        if (tokenBalance > 0) {
+            IERC20(tokenAddress).safeTransfer(tokenAddress, tokenBalance);
+        }
+        
+        emit GraduationCancelled(
+            tokenAddress,
+            kasToReturn,
+            tokensToReturn,
+            "Stuck graduation cancelled (timeout)",
+            block.timestamp
+        );
+    }
+    
+    /**
      * @notice Emergency function to return stuck graduation funds to pool
      * @dev Use this when graduation snapshot is corrupted and funds are stuck
+     * @dev FIX SEC-1: Added nonReentrant modifier to prevent reentrancy attacks
      * @param tokenAddress The bonding curve pool address to return funds to
      */
     function emergencyReturnGraduationFunds(address tokenAddress) 
         external 
-        onlyOwner 
+        onlyOwner
+        nonReentrant
     {
         require(tokenAddress != address(0), "Invalid token address");
         require(!hasGraduated[tokenAddress], "Already graduated");
@@ -868,10 +952,12 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
     
     /**
      * @notice Emergency withdrawal of stuck tokens
+     * @dev FIX SEC-1: Added nonReentrant modifier to prevent reentrancy attacks
      */
     function emergencyWithdraw(address token, uint256 amount, address recipient) 
         external 
-        onlyOwner 
+        onlyOwner
+        nonReentrant
     {
         require(recipient != address(0), "Invalid recipient");
         
