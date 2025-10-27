@@ -23,19 +23,59 @@ RPC_ENDPOINTS = [
     # Add fallback RPCs here when available
 ]
 
-# Deployed Contract Addresses (Kasplex Testnet - October 2025)
-# SOURCE OF TRUTH: contracts/deployed_addresses.json
-TOKEN_FACTORY_ADDRESS = "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1"  # V11 - Oct 27, 2025 - Points to GC V9
-VESTING_DEPLOYER_ADDRESS = "0x69AC4E0235757B6E81072A13E79c67aD964A9c21"  # Auto-deployed with TokenFactory V7
-GRADUATION_CONTROLLER_ADDRESS = "0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6"  # V9 - Oct 27, 2025 - Configured with TF V11 address
-AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
+# FIX CFG-1: Load addresses from deployed_addresses.json
+def load_deployed_addresses():
+    """
+    Load contract addresses from deployed_addresses.json
+    This ensures addresses are always in sync with deployment state
+    """
+    config_path = Path(__file__).parent.parent / "contracts" / "deployed_addresses.json"
+    
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            
+        contracts = config.get('contracts', {})
+        external = config.get('externalContracts', {}).get('KaspaFinance', {})
+        
+        return {
+            'TOKEN_FACTORY_ADDRESS': contracts.get('TokenFactory', {}).get('address'),
+            'VESTING_DEPLOYER_ADDRESS': contracts.get('VestingDeployer', {}).get('address'),
+            'GRADUATION_CONTROLLER_ADDRESS': contracts.get('GraduationController', {}).get('address'),
+            'AIRDROP_DISTRIBUTOR_ADDRESS': contracts.get('AirdropDistributor', {}).get('address'),
+            'KASPA_FINANCE_FACTORY': external.get('Factory'),
+            'KASPA_FINANCE_NFT_POSITION_MANAGER': external.get('PositionManager'),
+            'KASPA_FINANCE_WKAS': external.get('WKAS'),
+            'KASPA_FINANCE_SWAP_ROUTER': external.get('SwapRouter'),
+            'KASPA_FINANCE_QUOTER_V2': external.get('QuoterV2'),
+        }
+    except Exception as e:
+        logging.warning(f"Failed to load deployed_addresses.json: {e}")
+        logging.warning("Falling back to hardcoded addresses")
+        # Fallback to current addresses if file doesn't exist
+        return {
+            'TOKEN_FACTORY_ADDRESS': "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1",
+            'VESTING_DEPLOYER_ADDRESS': "0x69AC4E0235757B6E81072A13E79c67aD964A9c21",
+            'GRADUATION_CONTROLLER_ADDRESS': "0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6",
+            'AIRDROP_DISTRIBUTOR_ADDRESS': "0x86b83FE03cDa7456980364c929BB17CFA67E8495",
+            'KASPA_FINANCE_FACTORY': "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
+            'KASPA_FINANCE_NFT_POSITION_MANAGER': "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
+            'KASPA_FINANCE_WKAS': "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+            'KASPA_FINANCE_SWAP_ROUTER': "0xDf88D478aF51C0AB616aFBfDD933c874e142858c",
+            'KASPA_FINANCE_QUOTER_V2': "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B",
+        }
 
-# Kaspa Finance DEX Addresses (Kasplex Testnet)
-KASPA_FINANCE_FACTORY = "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8"
-KASPA_FINANCE_NFT_POSITION_MANAGER = "0x4E25637cF39822364b877F81B18c5B6CF0eeF589"
-KASPA_FINANCE_WKAS = "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94"
-KASPA_FINANCE_SWAP_ROUTER = "0xDf88D478aF51C0AB616aFBfDD933c874e142858c"
-KASPA_FINANCE_QUOTER_V2 = "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B"
+# Load addresses dynamically
+_ADDRESSES = load_deployed_addresses()
+TOKEN_FACTORY_ADDRESS = _ADDRESSES['TOKEN_FACTORY_ADDRESS']
+VESTING_DEPLOYER_ADDRESS = _ADDRESSES['VESTING_DEPLOYER_ADDRESS']
+GRADUATION_CONTROLLER_ADDRESS = _ADDRESSES['GRADUATION_CONTROLLER_ADDRESS']
+AIRDROP_DISTRIBUTOR_ADDRESS = _ADDRESSES['AIRDROP_DISTRIBUTOR_ADDRESS']
+KASPA_FINANCE_FACTORY = _ADDRESSES['KASPA_FINANCE_FACTORY']
+KASPA_FINANCE_NFT_POSITION_MANAGER = _ADDRESSES['KASPA_FINANCE_NFT_POSITION_MANAGER']
+KASPA_FINANCE_WKAS = _ADDRESSES['KASPA_FINANCE_WKAS']
+KASPA_FINANCE_SWAP_ROUTER = _ADDRESSES['KASPA_FINANCE_SWAP_ROUTER']
+KASPA_FINANCE_QUOTER_V2 = _ADDRESSES['KASPA_FINANCE_QUOTER_V2']
 
 # Fee tiers for Kaspa Finance (Uniswap V3 compatible)
 FEE_TIER_005 = 500    # 0.05%
