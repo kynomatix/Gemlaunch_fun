@@ -4,16 +4,16 @@
   "lastUpdated": "2025-10-27",
   "contracts": {
     "GraduationController": {
-      "version": "V8",
-      "address": "0x22F3cC689401462B6ceb85EF544E86FE27ad178f",
+      "version": "V9",
+      "address": "0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6",
       "deployedAt": "2025-10-27",
-      "notes": "V8 FIX: Correct oracle address! (V7 had treasury instead of oracle)"
+      "notes": "V9 FIX: Configured with TokenFactory V11 address (V8 had V10, causing factory validation failure)"
     },
     "TokenFactory": {
       "version": "V11",
       "address": "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1",
       "deployedAt": "2025-10-27",
-      "notes": "V11: Points to GraduationController V8 with correct oracle"
+      "notes": "V11: Updated to use GraduationController V9"
     },
     "VestingDeployer": {
       "version": "V2",
