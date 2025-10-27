@@ -1,0 +1,41 @@
+{
+  "deployment_date": "2025-10-27",
+  "deployment_timestamp": 1761535383,
+  "network": "kasplex_testnet",
+  "chain_id": 167012,
+  "version": "GC_INIT_FIX",
+  "fix_description": "Added _graduationController parameter to BondingCurvePool constructor to ensure GC address is set during deployment",
+  "contracts": {
+    "TokenFactory": {
+      "address": "0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211",
+      "tx_hash": "0x4b146f053b8b292946b5da29815f5b18bee05c7c8d0689f8499711b0a4bc0195",
+      "block": 9144699,
+      "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+    },
+    "VestingDeployer": {
+      "address": "0x0935691f88FeB8028ed70Fb0e67ad0d878315840",
+      "deployer": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+    }
+  },
+  "constructor_params": {
+    "graduationController": "0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89",
+    "treasury": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "airdropTreasury": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "platformDevelopmentWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "graduationOracle": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "admin": "0x5f837F62744D4d80Fc79C3A5346B4A228956914E",
+    "buybackReserveWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "kaspaNetworkSupportWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619",
+    "communityRewardsWallet": "0xe281e4776FB5De20817D0bbC72B0C4b955565619"
+  },
+  "changes": [
+    "BondingCurvePool: Added _graduationController parameter to constructor",
+    "BondingCurvePool: Added require(_graduationController != address(0)) validation",
+    "BondingCurvePool: Added graduationController = _graduationController assignment",
+    "TokenFactory: Now passes both graduationOracle AND graduationController to pool constructor"
+  ],
+  "references": {
+    "graduationController": "0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89",
+    "previous_tokenfactory": "0x408dcf382d38eCe30b2b25C86440f923CAa7B631"
+  }
+}
