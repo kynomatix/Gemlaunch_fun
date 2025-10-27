@@ -323,3 +323,44 @@ Each phase must pass these tests before proceeding:
 4. Consider EVM 24KB contract size limit
 5. Ensure PRO token vesting compatibility
 
+
+---
+
+## Phase 2: Architecture Decision
+
+### October 27, 2025 - Root Cause & Solution Identified
+
+**ROOT CAUSE CONFIRMED:**
+Line 508 in BondingCurvePool.sol sends KAS to `graduationOracle` (backend wallet), NOT to GraduationController:
+```solidity
+_safeSend(graduationOracle, actualKasLiquidity);  // ❌ WRONG!
+```
+
+This causes backend to manually call GC, but GC expects pool as msg.sender → corrupted snapshots.
+
+**ARCHITECTURE DECISION: Option A/C Hybrid** ✅
+
+**Contract Changes:**
+1. Add `graduationController` address to BondingCurvePool
+2. Rewrite `initiateGraduation()` to:
+   - Transfer KAS to GraduationController (not oracle)
+   - Call `GC.initiateGraduation()` directly from pool
+   - Makes `msg.sender = pool` → snapshot correct!
+
+**Backend Changes:**
+3. Backend monitors market cap only
+4. Backend calls `pool.initiateGraduation()` (triggers pool → GC handshake)
+5. Backend NEVER calls GC directly
+6. Database = read-only snapshot of events
+
+**Why This Solution:**
+- ✅ Minimal changes (no 24KB size violation)
+- ✅ Fixes ordering bug (pool calls GC)
+- ✅ Compatible with PRO token vesting
+- ✅ Backend becomes pure monitor
+- ✅ Database out of execution flow
+
+**Rejected Alternatives:**
+- ❌ Option B (integrate into pool): 89KB bytecode, way over 24KB limit
+- ❌ Keep current architecture: ordering bug persists
+
