@@ -75,6 +75,23 @@ def check_token_graduation(token):
         
         logging.debug(f"Token {token.symbol} - virtualKasReserve: {kas_reserve_wei} wei ({web3_service.w3.from_wei(kas_reserve_wei, 'ether')} KAS)")
         
+        # Check if already graduated on-chain (sync database if needed)
+        graduated_onchain = pool.functions.graduated().call()
+        if graduated_onchain and not token.is_graduated:
+            logging.info(f"✅ Token {token.symbol} already graduated on-chain! Syncing database...")
+            token.graduation_status = 'graduated'
+            token.is_graduated = True
+            if not token.graduation_completed_at:
+                token.graduation_completed_at = datetime.now(timezone.utc)
+            db.session.commit()
+            logging.info(f"✅ {token.symbol} database synced to graduated status")
+            return {
+                'status': 'already_graduated_synced',
+                'token_id': token.id,
+                'token_symbol': token.symbol,
+                'market_cap_usd': oracle.get_market_cap_usd(kas_reserve_wei)
+            }
+        
         # Calculate USD market cap using oracle
         market_cap_usd = oracle.get_market_cap_usd(kas_reserve_wei)
         

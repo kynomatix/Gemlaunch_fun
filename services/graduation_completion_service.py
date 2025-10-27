@@ -90,156 +90,74 @@ class GraduationCompletionService:
     
     def _complete_single_graduation(self, token):
         """
-        Complete graduation for a single token
+        Complete graduation for a single token using pool-initiated architecture
         
-        NEW APPROACH (per architect guidance):
-        1. Verify initiation transaction succeeded
-        2. Transfer KAS from oracle wallet to GraduationController contract
-        3. Call GraduationController.completeGraduation(tokenAddress)
-        4. Extract pool data from GraduationCompleted event
-        5. Update database with all metadata
+        POOL-INITIATED COMPLETION: Oracle calls Pool.completeGraduation()
+        The pool then finalizes graduation and emits completion events.
         
-        Note: Step 2 is critical - BondingCurvePool sends KAS to oracle wallet,
-        but GraduationController expects KAS in its own balance. We forward it.
+        Steps:
+        1. Verify on-chain graduation status (pool.graduating() == true)
+        2. Call Pool.completeGraduation() via oracle (uses already-fixed web3_service function)
+        3. Extract pool data from events
+        4. Update database
         """
         logging.info(f"Completing graduation for {token.symbol} (ID: {token.id})")
         
-        # 1. Verify initiation transaction (optional but good for logging)
-        if not token.graduation_initiation_tx:
-            logging.warning(f"Token {token.symbol} has no initiation tx recorded")
-        
-        # Verify on-chain graduation status before attempting completion
+        # 1. Verify on-chain graduation status before attempting completion
         try:
             checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
             
-            # Check BondingCurvePool.graduating() to confirm token is in graduation state
+            # Check BondingCurvePool.graduating() and graduated() to confirm token state
             pool = self.w3_service.get_bonding_pool_contract(checksum_address)
             graduating = pool.functions.graduating().call()
+            graduated = pool.functions.graduated().call()
             
+            # Case 1: Already graduated on-chain - sync database
+            if graduated:
+                logging.info(f"✅ Token {token.symbol} is already graduated on-chain!")
+                logging.info(f"   Syncing database to match on-chain state...")
+                
+                # Mark as graduated in database
+                from datetime import datetime, timezone
+                token.graduation_status = 'graduated'
+                token.is_graduated = True
+                if not token.graduation_completed_at:
+                    token.graduation_completed_at = datetime.now(timezone.utc)
+                db.session.commit()
+                
+                logging.info(f"✅ {token.symbol} database status synced to graduated")
+                return
+            
+            # Case 2: Graduation not initiated on-chain - reset to active
             if not graduating:
                 logging.warning(f"⚠️ Token {token.symbol} has DB status 'initiating' but on-chain graduating=False")
                 logging.warning(f"   Resetting status to 'active' to trigger re-initiation.")
                 GraduationStateManager.reset_to_active(token)
                 return
             
+            # Case 3: Graduation in progress - ready to complete
             logging.info(f"✅ On-chain check passed: {token.symbol} graduating={graduating}, ready to complete")
             
         except Exception as e:
             logging.error(f"On-chain verification failed: {str(e)}")
-            # Continue anyway - the completion will fail if there's a real issue
-        
-        # 2. Transfer KAS from oracle wallet to GraduationController
-        try:
-            oracle_account = self.w3_service.oracle_account
-            checksum_address = self.w3_service.w3.to_checksum_address(token.contract_address)
-            
-            # Get the GraduationController address from the pool (supports dynamic controller detection)
-            pool = self.w3_service.get_bonding_pool_contract(checksum_address)
-            gc_address = pool.functions.graduationOracle().call()
-            
-            # Load GraduationController contract at the detected address
-            gc_abi = self.w3_service.contracts['GraduationController'].abi
-            graduation_controller = self.w3_service.w3.eth.contract(address=gc_address, abi=gc_abi)
-            
-            # Try to get expected KAS amount from GraduationController
-            try:
-                expected_kas = graduation_controller.functions.expectedKasLiquidity(checksum_address).call()
-            except Exception as e:
-                logging.warning(f"expectedKasLiquidity() call failed: {e}")
-                expected_kas = 0
-            
-            # V3 CONTROLLER FIX: If expectedKasLiquidity not available, get virtualKasReserve from pool
-            # CRITICAL: Must subtract INITIAL_VIRTUAL_KAS (0.001 KAS seed) that stays in pool
-            if expected_kas == 0:
-                kas_reserve = pool.functions.virtualKasReserve().call()
-                if kas_reserve > 0:
-                    INITIAL_VIRTUAL_KAS = int(0.001 * 1e18)  # 0.001 ether in wei (the virtual seed)
-                    logging.warning(f"⚠️ GraduationController V3 detected ({gc_address})")
-                    logging.warning(f"   expectedKasLiquidity() not available, using virtualKasReserve - INITIAL_VIRTUAL_KAS")
-                    expected_kas = kas_reserve - INITIAL_VIRTUAL_KAS  # 🔧 FIX: Subtract the 0.001 KAS seed
-                    logging.info(f"   Virtual reserve: {kas_reserve / 1e18:.10f} KAS")
-                    logging.info(f"   Minus seed (0.001): {expected_kas / 1e18:.10f} KAS required for graduation")
-                else:
-                    logging.warning(f"Expected KAS is 0 and pool reserve is 0 - graduation may be completed/cancelled")
-                    return
-            
-            # Check if GraduationController already has the required KAS
-            gc_balance = self.w3_service.w3.eth.get_balance(gc_address)
-            logging.info(f"📊 GraduationController balance: {gc_balance / 1e18:.4f} KAS, required: {expected_kas / 1e18:.4f} KAS")
-            
-            if gc_balance >= expected_kas:
-                logging.info(f"✅ GraduationController already has sufficient KAS - skipping transfer")
-            else:
-                # FIX: Only transfer the DIFFERENCE, not the full amount
-                kas_to_transfer = expected_kas - gc_balance
-                logging.info(f"📤 Transferring {kas_to_transfer / 1e18:.10f} KAS from oracle to GraduationController ({gc_address})")
-                logging.info(f"   GC has: {gc_balance / 1e18:.10f} KAS, needs: {expected_kas / 1e18:.10f} KAS")
-                
-                # Build KAS transfer transaction
-                transfer_tx = {
-                    'from': oracle_account.address,
-                    'to': gc_address,
-                    'value': kas_to_transfer,  # ✅ FIX: Send only what's missing
-                    'gas': 21000,  # Standard ETH transfer gas
-                    'gasPrice': self.w3_service.w3.eth.gas_price,
-                    'nonce': self.w3_service.w3.eth.get_transaction_count(oracle_account.address)
-                }
-                
-                # Add chainId
-                chain_id = self.w3_service.w3.eth.chain_id
-                transfer_tx['chainId'] = chain_id
-                
-                # Sign and send transfer
-                signed_transfer = oracle_account.sign_transaction(transfer_tx)
-                transfer_hash = self.w3_service.w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
-                
-                logging.info(f"✅ KAS transfer tx sent: {transfer_hash.hex()}")
-                logging.info(f"⏳ Waiting for KAS transfer to be mined before calling completeGraduation()")
-                logging.info(f"   Will check on next cycle")
-                return  # Wait for transfer to be mined before proceeding
-                
-        except Exception as e:
-            logging.error(f"Failed to transfer KAS to GraduationController: {str(e)}")
-            logging.info(f"Will retry on next cycle")
             return
         
-        # 3. Call completeGraduation() on blockchain with Kasplex retry logic
+        # 2. Call Pool.completeGraduation() via oracle (uses already-fixed function)
         try:
-            # Build transaction data (let retry mechanism handle gas estimation)
-            tx_data = graduation_controller.functions.completeGraduation(
-                checksum_address
-            ).build_transaction({
-                'from': oracle_account.address,
-                'value': 0
-            })
+            logging.info(f"🚀 Calling Pool.completeGraduation() for {token.symbol}")
             
-            # Prepare transaction for retry mechanism (remove gas from tx_data)
-            tx = {
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': 0,
-                'from': oracle_account.address
-            }
+            # Use the already-fixed complete_graduation_oracle function from web3_service
+            # This function correctly calls Pool.completeGraduation() instead of GC directly
+            tx_hash = self.w3_service.complete_graduation_oracle(checksum_address)
             
-            logging.info(f"🚀 Sending completeGraduation with Kasplex retry logic...")
+            # Wait for confirmation
+            receipt = self.w3_service.wait_for_transaction_receipt(tx_hash, timeout=120)
             
-            # Use new retry mechanism with progressive gas increases
-            result = self.w3_service.send_transaction_with_retry(
-                transaction=tx,
-                account=oracle_account,
-                max_retries=11,  # Kasplex best practice
-                initial_gas=3000000  # Start with 3M gas (skip estimation)
-            )
+            if not receipt or receipt['status'] != 1:
+                raise Exception(f"Completion transaction failed: {tx_hash}")
             
-            tx_hash = result['tx_hash']
-            receipt = result['receipt']
-            attempts = result['attempts']
-            final_gas = result['final_gas']
-            
-            logging.info(f"✅ Completion tx confirmed after {attempts} attempt(s)")
-            logging.info(f"   TX: {tx_hash}")
+            logging.info(f"✅ Completion tx confirmed: {tx_hash}")
             logging.info(f"   Block: {receipt['blockNumber']}")
-            logging.info(f"   Final gas: {final_gas:,}")
             
         except Exception as e:
             logging.error(f"Exception calling completeGraduation: {str(e)}")
