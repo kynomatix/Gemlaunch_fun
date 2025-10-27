@@ -2413,11 +2413,11 @@ class Web3Service:
         """
         try:
             pool = self.get_bonding_pool_contract(pool_address)
-            controller_address = pool.functions.graduationOracle().call()
+            controller_address = pool.functions.graduationController().call()
             logging.debug(f"Pool {pool_address} expects GraduationController: {controller_address}")
             return controller_address
         except Exception as e:
-            logging.warning(f"Could not query graduationOracle for pool {pool_address}, using default: {str(e)}")
+            logging.warning(f"Could not query graduationController for pool {pool_address}, using default: {str(e)}")
             # Fall back to default controller
             return self.contracts['GraduationController'].address
     
