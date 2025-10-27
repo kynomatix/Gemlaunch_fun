@@ -4,16 +4,16 @@
   "lastUpdated": "2025-10-27",
   "contracts": {
     "GraduationController": {
-      "version": "V7",
-      "address": "0xeb753f81F9beD4B6ea27381476a20d71ae496Cd1",
+      "version": "V8",
+      "address": "0x22F3cC689401462B6ceb85EF544E86FE27ad178f",
       "deployedAt": "2025-10-27",
-      "notes": "V7 FIX: Tokens transferred directly from pool during initiation (no safeTransferFrom)"
+      "notes": "V8 FIX: Correct oracle address! (V7 had treasury instead of oracle)"
     },
     "TokenFactory": {
-      "version": "V10",
-      "address": "0xCD8e8F442E187B811130F8924B91a8F3445Ffb21",
+      "version": "V11",
+      "address": "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1",
       "deployedAt": "2025-10-27",
-      "notes": "V10 FIX: Pool uses _transfer() to push tokens to GC during initiation (no approve/transferFrom)"
+      "notes": "V11: Points to GraduationController V8 with correct oracle"
     },
     "VestingDeployer": {
       "version": "V2",
