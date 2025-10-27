@@ -680,15 +680,17 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // 1. Contract itself (holds curve + LP supply)
         // 2. Airdrop treasury (holds vested allocations up to 25%)
         // 3. Graduation oracle (receives LP tokens for DEX)
-        // 4. Owner (emergency operations and administrative actions)
-        // 5. Vesting contracts (can hold up to 25%)
-        // 6. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
-        // 7. Transfers FROM contract (buy operations bypass cap due to bonding curve pricing)
-        // 8. Graduated pools (no restrictions after DEX listing)
+        // 4. Graduation controller (receives 25% LP supply for DEX)
+        // 5. Owner (emergency operations and administrative actions)
+        // 6. Vesting contracts (can hold up to 25%)
+        // 7. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
+        // 8. Transfers FROM contract (buy operations bypass cap due to bonding curve pricing)
+        // 9. Graduated pools (no restrictions after DEX listing)
         if (to != address(0) &&
             to != address(this) && 
             to != airdropTreasury && 
             to != graduationOracle &&
+            to != graduationController &&
             to != owner() &&
             !isVestingContract[to] &&
             !isVestingContract[from] &&
