@@ -24,8 +24,8 @@ RPC_ENDPOINTS = [
 ]
 
 # Deployed Contract Addresses (Kasplex Testnet - October 2025)
-TOKEN_FACTORY_ADDRESS = "0x408dcf382d38eCe30b2b25C86440f923CAa7B631"  # V4 - Oct 27, 2025 - Pool-initiated handshake + isDeployedPool mapping
-VESTING_DEPLOYER_ADDRESS = "0xD1d36E077D059De5Ab327bC0889826685DeF16e7"  # V2 - Auto-deployed with TokenFactory V4
+TOKEN_FACTORY_ADDRESS = "0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211"  # GC_INIT_FIX - Oct 27, 2025 - GraduationController address set during pool deployment
+VESTING_DEPLOYER_ADDRESS = "0x0935691f88FeB8028ed70Fb0e67ad0d878315840"  # Auto-deployed with TokenFactory GC_INIT_FIX
 GRADUATION_CONTROLLER_ADDRESS = "0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89"  # V3 - Oct 27, 2025 - Pool-initiated handshake prevents snapshot corruption
 AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # Batch airdrop helper
 
