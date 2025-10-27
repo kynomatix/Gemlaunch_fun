@@ -1,0 +1,12 @@
+{
+  "timestamp": 1761538244453,
+  "date": "2025-10-27T04:10:44.453Z",
+  "network": "kasplex_testnet",
+  "action": "update_gc_factory_authorization",
+  "graduationController": "0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89",
+  "oldFactory": "0x408dcf382d38eCe30b2b25C86440f923CAa7B631",
+  "newFactory": "0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211",
+  "txHash": "0x1f1d3d3e5f30c322961ce8d531424749d115949c5fe1e2758791463770626ba6",
+  "blockNumber": 9147581,
+  "gasUsed": "30476"
+}
