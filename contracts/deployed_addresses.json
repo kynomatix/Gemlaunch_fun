@@ -4,16 +4,16 @@
   "lastUpdated": "2025-10-27",
   "contracts": {
     "GraduationController": {
-      "version": "V5",
-      "address": "0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac",
+      "version": "V6",
+      "address": "0xBbfdF7341aaF104D259876972844EBF9795b9C4C",
       "deployedAt": "2025-10-27",
-      "notes": "Fixed constructor params, correct tokenFactory config"
+      "notes": "FIXED: Correct Kaspa Finance testnet addresses from working LP tx"
     },
     "TokenFactory": {
-      "version": "V7",
-      "address": "0x1111bF4794407109a55015d86639c80ec1cb51E5",
+      "version": "V8",
+      "address": "0x1b641c1dF9eEbaf5bd8B5251e24794Cab01D9071",
       "deployedAt": "2025-10-27",
-      "notes": "Correctly references GC V5. VALIDATED."
+      "notes": "References GC V6 with correct Kaspa Finance addresses"
     },
     "VestingDeployer": {
       "version": "V2",
@@ -30,11 +30,12 @@
   },
   "externalContracts": {
     "KaspaFinance": {
-      "Factory": "0x9d0bFe8fB0b36C8fc7b6DC3AD00Eee87ba07a04A",
-      "PositionManager": "0x6B55ee3477d25fdA21c345798ce8e33A6f0C7A7B",
-      "WKAS": "0x8940Fe0d0e4e1bbD1B076E1Fd2c56a4133978fd4",
+      "Factory": "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
+      "PositionManager": "0x4E25637cF39822364b877F81B18c5B6CF0eeF589",
+      "WKAS": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
       "SwapRouter": "0xDf88D478aF51C0AB616aFBfDD933c874e142858c",
-      "QuoterV2": "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B"
+      "QuoterV2": "0x3ACc31F8fe86E365604eAa6dDCbcB7fEba7a4c2B",
+      "notes": "CORRECTED 2025-10-27: Fixed addresses from working LP tx 0x896689b0e7f108c1aa9e8f174497fda14af1a25690402a0f8a96e742d5e40f8b"
     }
   },
   "wallets": {
