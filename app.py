@@ -1280,10 +1280,11 @@ def token_detail(contract_address):
     # Normalize address to lowercase for database lookup (Ethereum addresses are case-insensitive)
     contract_address = contract_address.lower()
     
+    # Use case-insensitive comparison for PostgreSQL
     token = Token.query.options(
         joinedload(Token.creator),
         joinedload(Token.settings)  # Load token settings
-    ).filter_by(contract_address=contract_address).first_or_404()
+    ).filter(db.func.lower(Token.contract_address) == contract_address).first_or_404()
     
     # Check if current user is the token owner
     user = get_current_user()
