@@ -41,21 +41,26 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 **CRITICAL: All contract addresses are managed in `contracts/deployed_addresses.json`**
 **ALWAYS follow `contracts/DEPLOYMENT_GUIDE.md` when deploying new contracts**
 
-Current working contracts (Oct 27, 2025 - STF Error Fix):
-- **TokenFactory V10**: `0xCD8e8F442E187B811130F8924B91a8F3445Ffb21` (V10 FIX: Pool uses _transfer() to PUSH tokens directly to GC during initiation)
-- **GraduationController V7**: `0xeb753f81F9beD4B6ea27381476a20d71ae496Cd1` (V7 FIX: Tokens already transferred, balance check instead of safeTransferFrom)
+Current working contracts (Oct 27, 2025 - Oracle Configuration Fix):
+- **TokenFactory V11**: `0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1` (V11: Points to GraduationController V8 with correct oracle)
+- **GraduationController V8**: `0x22F3cC689401462B6ceb85EF544E86FE27ad178f` (V8 FIX: Deployed with CORRECT oracle address - V7 had treasury instead!)
 - **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`
 
 Deprecated contracts (DO NOT USE):
+- **TokenFactory V10**: `0xCD8e8F442E187B811130F8924B91a8F3445Ffb21` (Points to GC V7 with wrong oracle)
+- **GraduationController V7**: `0xeb753f81F9beD4B6ea27381476a20d71ae496Cd1` (WRONG ORACLE: Used treasury address instead of oracle wallet)
 - **TokenFactory V9**: `0xB4D21bD000275F58A7180502Af5215fc4adE9984` (Attempted GC exemption fix, but STF error persisted)
 - **TokenFactory V8**: `0x1b641c1dF9eEbaf5bd8B5251e24794Cab01D9071` (References GC V6 with STF error on graduation)
 - **GraduationController V6**: `0xBbfdF7341aaF104D259876972844EBF9795b9C4C` (STF error when pulling tokens via safeTransferFrom)
 - **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Wrong Kaspa Finance DEX addresses)
 
-Legacy tokens (graduation disabled):
+Legacy tokens (39 tokens with graduation_disabled):
+- All tokens deployed before Oct 27, 2025 are incompatible with V11/V8 contracts
 - **$PBORN**: 940.5 KAS locked on GC V5 (marked graduation_disabled)
 - **$MLEAF**: Stuck on GC V6 with STF error (marked graduation_disabled)
 - **$CHIM**: Stuck on GC V6 with STF error, tested V9 fix (marked graduation_disabled)
+- **$GNT**: Tested V10/V7 initiation, but V7 has wrong oracle (marked graduation_disabled)
+- **IMPORTANT**: Only tokens created with TokenFactory V11 can graduate using GraduationController V8
 
 ### Contract Deployment Protocol
 1. **NEVER deploy contracts without checking the deployment guide first**
