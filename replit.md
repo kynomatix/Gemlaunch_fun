@@ -38,10 +38,22 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The `BondingCurvePool` acts as the ERC20 token itself.
 
 ### Active Contracts (Kasplex Testnet)
-- **TokenFactory V5**: `0xDe2a7Ef9A8e29EDF2f6A16a3Ca6fe512E88c9211` (Includes `_graduationController` parameter fix for automatic graduation).
-- **VestingDeployer V2**: `0x0935691f88FeB8028ed70Fb0e67ad0d878315840` (Auto-deployed with TokenFactory V5).
-- **GraduationController V3 (FINAL)**: `0x91e405C15F7aD99b2E669c7E745422c4DC8f5A89` (All addresses corrected).
-- **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`.
+**CRITICAL: All contract addresses are managed in `contracts/deployed_addresses.json`**
+**ALWAYS follow `contracts/DEPLOYMENT_GUIDE.md` when deploying new contracts**
+
+Current working contracts:
+- **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Fixed constructor params, correct tokenFactory config)
+- **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`
+
+Broken/deprecated contracts (DO NOT USE):
+- **TokenFactory V6**: `0x222B82584B445Fab6AbBb1588855e3d9F93476b1` (References GC V4 which has wrong factory config)
+
+### Contract Deployment Protocol
+1. **NEVER deploy contracts without checking the deployment guide first**
+2. **ALWAYS update `contracts/deployed_addresses.json` after deployment**
+3. **ALWAYS run validation script after deploying TokenFactory**
+4. **ALWAYS update `services/web3_service.py` constants to match registry**
+5. **Test with a new token** before considering deployment successful
 
 ## Database Schema
 The `Token` model includes blockchain integration fields, `TradeEvent` for trade history, and `AntiBotFeeTracker` for fee distributions. `is_visible` and `graduation_disabled` flags manage token visibility and graduation eligibility for legacy tokens.
