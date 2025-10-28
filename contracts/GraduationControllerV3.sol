@@ -239,7 +239,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable, IERC721Re
     // ============ State Variables ============
     
     /// @notice Contract version
-    string public constant VERSION = "12.0.0";
+    string public constant VERSION = "13.0.0";
     
     /// @notice Kaspa Finance Uniswap V3 factory address
     address public immutable kaspaFinanceFactory;
@@ -912,7 +912,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable, IERC721Re
         address from,
         uint256 tokenId,
         bytes calldata data
-    ) external pure override returns (bytes4) {
+    ) external override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
     

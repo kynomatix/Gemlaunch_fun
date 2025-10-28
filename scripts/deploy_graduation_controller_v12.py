@@ -21,13 +21,13 @@ def deploy_graduation_controller_v12():
     w3 = web3_service.w3
     
     print("=" * 80)
-    print("🚀 DEPLOYING GRADUATIONCONTROLLER V12 (COMPLETE STF FIX)")
+    print("🚀 DEPLOYING GRADUATIONCONTROLLER V13 (FINAL onERC721Received FIX)")
     print("=" * 80)
-    print("\n🔧 TWO-PART FIX:")
-    print("   #12A: Implement IERC721Receiver to receive LP NFT from Position Manager")
-    print("   #12B: Use transferFrom (NOT safeTransferFrom) to burn LP NFT")
-    print("         - Burn address (0x...dEaD) doesn't implement IERC721Receiver")
-    print("         - This was the HIDDEN bug that caused STF in V11!")
+    print("\n🔧 THREE-PART FIX:")
+    print("   #13A: Implement IERC721Receiver to receive LP NFT from Position Manager")
+    print("   #13B: Remove 'pure' modifier from onERC721Received (was blocking calls)")
+    print("   #13C: Use transferFrom (NOT safeTransferFrom) to burn LP NFT")
+    print("         - V12 had 'pure' modifier preventing onERC721Received from being called correctly")
     
     # Load GraduationController V3 artifact (contract file name hasn't changed)
     with open('artifacts/contracts/GraduationControllerV3.sol/GraduationControllerV3.json') as f:
