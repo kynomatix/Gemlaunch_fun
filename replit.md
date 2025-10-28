@@ -41,12 +41,15 @@ Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationControlle
 **CRITICAL: All contract addresses are managed in `contracts/deployed_addresses.json`**
 **ALWAYS follow `contracts/DEPLOYMENT_GUIDE.md` when deploying new contracts**
 
-Current working contracts (Oct 27, 2025 - FINAL CONFIGURATION):
-- **TokenFactory V11**: `0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1` (Points to GraduationController V9)
-- **GraduationController V9**: `0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6` (Configured with TokenFactory V11)
+Current working contracts (Oct 28, 2025 - V12 COMPLETE FIX):
+- **TokenFactory V11**: `0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1` (Points to GraduationController V12)
+- **GraduationController V12**: `0xD7B75104f005DFC9dE004fdb97399444752d66D3` (COMPLETE STF FIX: IERC721Receiver + unsafe burn transfer)
 - **AirdropDistributor**: `0x86b83FE03cDa7456980364c929BB17CFA67E8495`
 
 Deprecated contracts (DO NOT USE):
+- **GraduationController V11**: `0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0` (PARTIAL FIX: Has IERC721Receiver but uses safeTransferFrom for burn)
+- **GraduationController V10**: `0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9` (Wrong fix - approval ordering)
+- **GraduationController V9**: `0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6` (Pre-fix version)
 - **GraduationController V8**: `0x22F3cC689401462B6ceb85EF544E86FE27ad178f` (Points to TF V10, wrong factory)
 - **TokenFactory V10**: `0xCD8e8F442E187B811130F8924B91a8F3445Ffb21` (Points to GC V7 with wrong oracle)
 - **GraduationController V7**: `0xeb753f81F9beD4B6ea27381476a20d71ae496Cd1` (WRONG ORACLE: Used treasury address)
@@ -55,12 +58,13 @@ Deprecated contracts (DO NOT USE):
 - **GraduationController V6**: `0xBbfdF7341aaF104D259876972844EBF9795b9C4C` (STF error on safeTransferFrom)
 - **GraduationController V5**: `0xbC90b2a362Af9fdF2067EDeE5F166CF88fbb39Ac` (Wrong DEX addresses)
 
-Legacy tokens (49 tokens with graduation_disabled - ALL tokens created before final V11/V9 config):
+Legacy tokens (50 tokens with graduation_disabled - ALL tokens created before V12 deployment):
 - **Locked KAS**: ~1,812 KAS stuck in failed graduation contracts (recoverable via Treasury wallet)
   - $MLEAF: 891 KAS locked in GC V6
   - $CHIM: 920.7 KAS locked in GC V6
+- **$KYR**: Created with TF V11 pointing to GC V11 (partial fix - graduation_disabled)
 - **$CYBR**: Created by TF V11 but has GC V8 embedded (graduation_disabled)
-- **IMPORTANT**: Only NEW tokens created after V11/V9 config can graduate successfully
+- **IMPORTANT**: Only NEW tokens created after V12 deployment can graduate successfully
 
 ### Contract Deployment Protocol
 1. **NEVER deploy contracts without checking the deployment guide first**
