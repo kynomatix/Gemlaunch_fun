@@ -2576,6 +2576,7 @@ def api_token_graduation_status(address):
         return jsonify({'success': False, 'error': 'Failed to fetch graduation status'}), 500
 
 @app.route('/api/token/<address>/trigger-graduation', methods=['POST'])
+@csrf.exempt
 def api_trigger_graduation(address):
     """
     Real-time graduation trigger endpoint
@@ -7984,6 +7985,7 @@ def api_distribute_platform_fees():
 
 # Real-time graduation trigger endpoint (called by frontend when market cap >= threshold)
 @app.route('/api/token/<token_address>/trigger-graduation', methods=['POST'])
+@csrf.exempt
 def trigger_graduation(token_address):
     """
     Real-time graduation trigger endpoint
@@ -8086,6 +8088,7 @@ def trigger_graduation(token_address):
 
 # Admin endpoint for testing graduation completion
 @app.route('/api/admin/trigger-graduation-completion/<token_symbol>', methods=['POST'])
+@csrf.exempt
 def trigger_graduation_completion(token_symbol):
     """
     Admin endpoint to manually trigger graduation completion for a specific token
