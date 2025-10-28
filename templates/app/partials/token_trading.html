@@ -5,9 +5,16 @@
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
         <i class="fas fa-graduation-cap" style="margin-right: 0.5rem;"></i>
         <strong>Trading on Kaspa Finance DEX</strong>
+        {% if token.dex_pool_address %}
         <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
-            Liquidity Pool: {{ token.dex_pool_address[:8] }}...{{ token.dex_pool_address[-6:] }}
+            <a href="https://explorer.testnet.kasplextest.xyz/address/{{ token.dex_pool_address }}" 
+               target="_blank" 
+               style="color: rgba(255,255,255,0.95); text-decoration: none;">
+                Pool: {{ token.dex_pool_address[:8] }}...{{ token.dex_pool_address[-6:] }}
+                <i class="fas fa-external-link-alt" style="font-size: 0.65rem; margin-left: 0.25rem;"></i>
+            </a>
         </div>
+        {% endif %}
     </div>
     {% elif token.graduation_status in ('initiating', 'completing') %}
     <div style="background: linear-gradient(135deg, #764ba2 0%, #4facfe 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
@@ -128,49 +135,7 @@
         </button>
         
         {% if token.graduation_status == 'graduated' %}
-        <!-- DEX Pool Reserves Display -->
-        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(102, 126, 234, 0.1); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
-            <div style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem; text-align: center;">
-                <i class="fas fa-water"></i> Uniswap V3 Pool Liquidity
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                <div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                    <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.25rem;">KAS Reserve</div>
-                    <div style="font-size: 1rem; font-weight: bold;" id="dexKasReserve">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                    <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.25rem;">{{ token.symbol }} Reserve</div>
-                    <div style="font-size: 1rem; font-weight: bold;" id="dexTokenReserve">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </div>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.25rem;">Current DEX Price</div>
-                <div style="font-size: 0.9rem; font-weight: bold; color: #4facfe;" id="dexCurrentPrice">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- DEX Trading Info Panel -->
-        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 10px; font-size: 0.85rem;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span style="color: #888;">DEX Pool Address:</span>
-                <a href="https://explorer.testnet.kasplextest.xyz/address/{{ token.dex_pool_address }}" 
-                   target="_blank" 
-                   style="color: #4facfe; text-decoration: none;">
-                    {{ token.dex_pool_address[:8] }}...{{ token.dex_pool_address[-6:] }}
-                    <i class="fas fa-external-link-alt" style="font-size: 0.7rem; margin-left: 0.25rem;"></i>
-                </a>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span style="color: #888;">Trading Fee:</span>
-                <span>0.3% (goes to LPs)</span>
-            </div>
-        </div>
+        <!-- Simplified DEX Info - Clean UI without technical details -->
         {% elif token.graduation_status in ('initiating', 'completing') %}
         <!-- Graduation In Progress Info -->
         <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(245, 87, 108, 0.1); border-radius: 10px; font-size: 0.85rem; text-align: center;">
