@@ -2,12 +2,19 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title GraduationController V4
+ * @title GraduationController V11 (Final Fix)
  * @notice Manages token graduation from bonding curve to Uniswap V3 DEX liquidity
- * @dev V4 ADDITIONS ON TOP OF V3 FIXES:
+ * @dev V11 CRITICAL FIX:
+ *      FIX #12: Implement IERC721Receiver to accept LP NFTs from Position Manager
+ *               - Position Manager uses safeMint which requires recipient to implement onERC721Received
+ *               - V10's approval ordering fix was NOT the issue
+ *               - This was the root cause of all "STF" (Safe Transfer Failed) errors
+ * 
+ *      V4-V10 HISTORY (inherited):
  *      V4 #1: forceCompleteCorruptedGraduation() - Emergency recovery for corrupted pools
  *      V4 #2: _completeGraduationInternal() - Shared logic for normal + forced completion
  *      V4 #3: Try/catch on pool.completeGraduation() - Handles already-graduated pools
+ *      V10: Approval ordering fix (moved pool approvals before controller approvals) - INEFFECTIVE
  * 
  *      V3 FIXES (inherited):
  *      FIX #1: INITIAL_VIRTUAL_KAS = 0.001 ether (not 1000)
@@ -22,15 +29,16 @@ pragma solidity ^0.8.20;
  *      FIX #10: Lock oracle changes during graduation (authorizedOracle in snapshot)
  *      FIX #11: Deadline = 1800 seconds (30 min, not 5)
  * 
- * Version: 4.0.0
- * Deployment Date: October 27, 2025
- * Architecture: Snapshot-based with corruption recovery
+ * Version: 11.0.0
+ * Deployment Date: October 28, 2025
+ * Architecture: Snapshot-based with ERC721 receiver implementation
  */
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./BondingCurvePool.sol";
 
@@ -221,13 +229,13 @@ interface ITokenFactory {
  * @title GraduationController V3
  * @notice Snapshot-based graduation with all 11 critical fixes
  */
-contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
+contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable, IERC721Receiver {
     using SafeERC20 for IERC20;
     
     // ============ State Variables ============
     
     /// @notice Contract version
-    string public constant VERSION = "3.0.0";
+    string public constant VERSION = "11.0.0";
     
     /// @notice Kaspa Finance Uniswap V3 factory address
     address public immutable kaspaFinanceFactory;
@@ -887,6 +895,20 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         }
         
         emit EmergencyWithdrawal(token, amount, recipient);
+    }
+    
+    /**
+     * @notice IERC721Receiver implementation to accept LP NFTs from Position Manager
+     * @dev Required for Position Manager's safeMint to succeed
+     * @return bytes4 The function selector to confirm successful receipt
+     */
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external pure override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
     
     // Receive KAS from bonding curve
