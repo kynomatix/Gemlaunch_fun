@@ -4,10 +4,16 @@
   "lastUpdated": "2025-10-28",
   "contracts": {
     "GraduationController": {
+      "version": "V11",
+      "address": "0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0",
+      "deployedAt": "2025-10-28",
+      "notes": "V11 FINAL FIX: Implements IERC721Receiver to accept LP NFTs from Position Manager's safeMint. This is the ACTUAL fix for STF errors. V10's approval ordering was NOT the issue."
+    },
+    "GraduationController_V10_DEPRECATED": {
       "version": "V10",
       "address": "0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9",
       "deployedAt": "2025-10-28",
-      "notes": "V10 STF FIX: Token approvals moved BEFORE pool creation to prevent 'execution reverted: STF' errors during createAndInitializePoolIfNecessary()"
+      "notes": "DEPRECATED - Approval ordering fix was ineffective, STF persisted. Missing IERC721Receiver interface."
     },
     "GraduationController_V9_DEPRECATED": {
       "version": "V9",
@@ -19,7 +25,7 @@
       "version": "V11",
       "address": "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1",
       "deployedAt": "2025-10-27",
-      "notes": "V11: Updated to use GraduationController V9"
+      "notes": "V11: Updated to use GraduationController V11 (IERC721Receiver fix)"
     },
     "VestingDeployer": {
       "version": "V2",
