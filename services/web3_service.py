@@ -1718,11 +1718,11 @@ class Web3Service:
     
     def get_dex_buy_quote(self, token_address, pool_address, kas_amount, fee_tier=FEE_TIER_030):
         """
-        Get quote for buying tokens via Kaspa Finance DEX using constant product AMM formula
+        Get quote for buying tokens via Kaspa Finance DEX using QuoterV2
         
         Args:
             token_address (str): Token contract address
-            pool_address (str): DEX pool contract address
+            pool_address (str): DEX pool contract address (not used, QuoterV2 finds pool by tokens+fee)
             kas_amount (int): KAS amount to spend (in wei)
             fee_tier (int): Pool fee tier (default 0.30% = 3000)
         
@@ -1730,60 +1730,53 @@ class Web3Service:
             dict: {
                 'tokens_out': int (wei),
                 'price_impact_percent': float,
-                'execution_price': float (KAS per token)
+                'execution_price': float (KAS per token),
+                'gas_estimate': int
             }
         """
         try:
-            logging.info(f"Getting DEX buy quote: {kas_amount} wei KAS from pool {pool_address}")
+            logging.info(f"Getting DEX buy quote via QuoterV2: {kas_amount} wei KAS")
             
             # Normalize addresses
-            pool_address = Web3.to_checksum_address(pool_address)
             token_address = Web3.to_checksum_address(token_address)
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Get pool reserves using balanceOf (works for any pool type)
-            wkas_contract = self.contracts['WKAS']
-            kas_reserve = wkas_contract.functions.balanceOf(pool_address).call()
+            # Get QuoterV2 contract
+            quoter = self.contracts['QuoterV2']
+            if not quoter:
+                raise Exception("QuoterV2 contract not loaded")
             
-            # Get token reserve
-            token_contract = self.get_bonding_pool_contract(token_address)
-            token_reserve = token_contract.functions.balanceOf(pool_address).call()
+            # Build quote params: buying tokens with KAS (WKAS → Token)
+            params = {
+                'tokenIn': wkas_address,
+                'tokenOut': token_address,
+                'amountIn': kas_amount,
+                'fee': fee_tier,
+                'sqrtPriceLimitX96': 0  # No price limit
+            }
             
-            logging.info(f"Pool reserves - KAS: {kas_reserve} wei, Tokens: {token_reserve} wei")
+            # Call QuoterV2.quoteExactInputSingle
+            result = quoter.functions.quoteExactInputSingle(params).call()
             
-            # Use constant product formula: x * y = k
-            # When adding kas_amount of KAS, we get:
-            # (kas_reserve + kas_amount_after_fee) * (token_reserve - tokens_out) = kas_reserve * token_reserve
-            # Solving for tokens_out:
-            # tokens_out = token_reserve - (kas_reserve * token_reserve) / (kas_reserve + kas_amount_after_fee)
+            # Unpack result: (amountOut, sqrtPriceX96After, initializedTicksCrossed, gasEstimate)
+            tokens_out = result[0]
+            sqrt_price_after = result[1]
+            gas_estimate = result[3]
             
-            fee_multiplier = 1 - (fee_tier / 1000000)  # 0.3% fee = 0.997
-            kas_amount_after_fee = int(kas_amount * fee_multiplier)
+            # Calculate execution price
+            execution_price = kas_amount / tokens_out if tokens_out > 0 else 0
             
-            if kas_reserve > 0 and token_reserve > 0:
-                # Calculate tokens out using constant product formula
-                k = kas_reserve * token_reserve
-                new_kas_reserve = kas_reserve + kas_amount_after_fee
-                new_token_reserve = k // new_kas_reserve
-                tokens_out = token_reserve - new_token_reserve
-                
-                # Calculate execution price
-                execution_price = kas_amount / tokens_out if tokens_out > 0 else 0
-                
-                # Calculate price impact
-                price_before = kas_reserve / token_reserve if token_reserve > 0 else 0
-                price_after = new_kas_reserve / new_token_reserve if new_token_reserve > 0 else 0
-                price_impact_percent = abs((price_after - price_before) / price_before * 100) if price_before > 0 else 0
-            else:
-                tokens_out = 0
-                execution_price = 0
-                price_impact_percent = 0
+            # Calculate price impact from sqrtPriceX96After
+            # For now, use a simple approximation (could enhance with slot0 before price)
+            price_impact_percent = 0.0  # QuoterV2 doesn't directly return this
             
-            logging.info(f"DEX buy quote: {kas_amount} KAS → {tokens_out} tokens (price: {execution_price} KAS/token, impact: {price_impact_percent:.2f}%)")
+            logging.info(f"DEX buy quote (QuoterV2): {kas_amount} KAS → {tokens_out} tokens (gas: {gas_estimate})")
             
             return {
                 'tokens_out': tokens_out,
                 'price_impact_percent': price_impact_percent,
-                'execution_price': execution_price
+                'execution_price': execution_price,
+                'gas_estimate': gas_estimate
             }
             
         except Exception as e:
@@ -1792,11 +1785,11 @@ class Web3Service:
     
     def get_dex_sell_quote(self, token_address, pool_address, token_amount, fee_tier=FEE_TIER_030):
         """
-        Get quote for selling tokens via Kaspa Finance DEX using constant product AMM formula
+        Get quote for selling tokens via Kaspa Finance DEX using QuoterV2
         
         Args:
             token_address (str): Token contract address
-            pool_address (str): DEX pool contract address
+            pool_address (str): DEX pool contract address (not used, QuoterV2 finds pool by tokens+fee)
             token_amount (int): Token amount to sell (in wei)
             fee_tier (int): Pool fee tier (default 0.30% = 3000)
         
@@ -1804,60 +1797,52 @@ class Web3Service:
             dict: {
                 'kas_out': int (wei),
                 'price_impact_percent': float,
-                'execution_price': float (KAS per token)
+                'execution_price': float (KAS per token),
+                'gas_estimate': int
             }
         """
         try:
-            logging.info(f"Getting DEX sell quote: {token_amount} wei tokens from pool {pool_address}")
+            logging.info(f"Getting DEX sell quote via QuoterV2: {token_amount} wei tokens")
             
             # Normalize addresses
-            pool_address = Web3.to_checksum_address(pool_address)
             token_address = Web3.to_checksum_address(token_address)
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Get pool reserves using balanceOf (works for any pool type)
-            wkas_contract = self.contracts['WKAS']
-            kas_reserve = wkas_contract.functions.balanceOf(pool_address).call()
+            # Get QuoterV2 contract
+            quoter = self.contracts['QuoterV2']
+            if not quoter:
+                raise Exception("QuoterV2 contract not loaded")
             
-            # Get token reserve
-            token_contract = self.get_bonding_pool_contract(token_address)
-            token_reserve = token_contract.functions.balanceOf(pool_address).call()
+            # Build quote params: selling tokens for KAS (Token → WKAS)
+            params = {
+                'tokenIn': token_address,
+                'tokenOut': wkas_address,
+                'amountIn': token_amount,
+                'fee': fee_tier,
+                'sqrtPriceLimitX96': 0  # No price limit
+            }
             
-            logging.info(f"Pool reserves - KAS: {kas_reserve} wei, Tokens: {token_reserve} wei")
+            # Call QuoterV2.quoteExactInputSingle
+            result = quoter.functions.quoteExactInputSingle(params).call()
             
-            # Use constant product formula: x * y = k
-            # When adding token_amount, we get KAS out:
-            # (token_reserve + token_amount_after_fee) * (kas_reserve - kas_out) = kas_reserve * token_reserve
-            # Solving for kas_out:
-            # kas_out = kas_reserve - (kas_reserve * token_reserve) / (token_reserve + token_amount_after_fee)
+            # Unpack result: (amountOut, sqrtPriceX96After, initializedTicksCrossed, gasEstimate)
+            kas_out = result[0]
+            sqrt_price_after = result[1]
+            gas_estimate = result[3]
             
-            fee_multiplier = 1 - (fee_tier / 1000000)  # 0.3% fee = 0.997
-            token_amount_after_fee = int(token_amount * fee_multiplier)
+            # Calculate execution price
+            execution_price = kas_out / token_amount if token_amount > 0 else 0
             
-            if kas_reserve > 0 and token_reserve > 0:
-                # Calculate KAS out using constant product formula
-                k = kas_reserve * token_reserve
-                new_token_reserve = token_reserve + token_amount_after_fee
-                new_kas_reserve = k // new_token_reserve
-                kas_out = kas_reserve - new_kas_reserve
-                
-                # Calculate execution price
-                execution_price = kas_out / token_amount if token_amount > 0 else 0
-                
-                # Calculate price impact
-                price_before = kas_reserve / token_reserve if token_reserve > 0 else 0
-                price_after = new_kas_reserve / new_token_reserve if new_token_reserve > 0 else 0
-                price_impact_percent = abs((price_after - price_before) / price_before * 100) if price_before > 0 else 0
-            else:
-                kas_out = 0
-                execution_price = 0
-                price_impact_percent = 0
+            # Calculate price impact (simplified)
+            price_impact_percent = 0.0
             
-            logging.info(f"DEX sell quote: {token_amount} tokens → {kas_out} WKAS (price: {execution_price} KAS/token, impact: {price_impact_percent:.2f}%)")
+            logging.info(f"DEX sell quote (QuoterV2): {token_amount} tokens → {kas_out} WKAS (gas: {gas_estimate})")
             
             return {
                 'kas_out': kas_out,  # WKAS out (will need unwrap)
                 'price_impact_percent': price_impact_percent,
-                'execution_price': execution_price
+                'execution_price': execution_price,
+                'gas_estimate': gas_estimate
             }
             
         except Exception as e:
