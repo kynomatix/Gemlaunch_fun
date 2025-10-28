@@ -2542,31 +2542,83 @@ def api_token_graduation_status(address):
                 'message': 'Token has not graduated yet'
             })
         
-        # Token has graduated - return DEX pool data
-        # Basic pool data from database
-        pool_data = {
-            'pool_address': token.liquidity_pool_address,
-            'nft_position_id': token.nft_position_id,
-            'dex_name': 'Kaspa Finance',
-            'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}'
-        }
+        # Token has graduated - calculate market cap from DEX pool reserves
+        from services.web3_service import get_web3_service
+        from services.kas_oracle import oracle as kas_oracle
         
-        # Add price data from token if available
-        if token.current_price:
-            pool_data['price'] = str(token.current_price)
-        else:
-            pool_data['price'] = 'N/A'
+        # Check if DEX pool address exists
+        if not token.dex_pool_address:
+            app.logger.warning(f"Graduated token {token.symbol} missing dex_pool_address - cannot calculate market cap")
+            pool_data = {
+                'pool_address': token.dex_pool_address or 'N/A',
+                'nft_position_id': token.nft_position_id,
+                'dex_name': 'Kaspa Finance',
+                'dex_url': f'https://kaspa.finance/pool/{token.dex_pool_address}' if token.dex_pool_address else '#',
+                'price': 'N/A'
+            }
+            
+            return jsonify({
+                'success': True,
+                'is_graduated': True,
+                'graduation_status': 'graduated',
+                'current_market_cap': 0,
+                'dex_pool': pool_data,
+                'error': 'DEX pool address not set'
+            })
         
-        # Liquidity and volume require pool contract integration (not in scope)
-        pool_data['liquidity'] = 'N/A'
-        pool_data['volume_24h'] = 'N/A'
+        web3_service = get_web3_service()
+        kas_price_usd = kas_oracle.get_kas_price()
         
-        return jsonify({
-            'success': True,
-            'is_graduated': True,
-            'graduation_status': 'graduated',
-            'dex_pool': pool_data
-        })
+        try:
+            # Calculate real-time market cap from DEX pool
+            market_cap_data = web3_service.get_graduated_token_market_cap(
+                token.contract_address,
+                token.dex_pool_address,
+                kas_price_usd
+            )
+            
+            # Build comprehensive pool data
+            pool_data = {
+                'pool_address': token.liquidity_pool_address,
+                'nft_position_id': token.nft_position_id,
+                'dex_name': 'Kaspa Finance',
+                'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}',
+                'kas_reserve': market_cap_data['kas_reserve'],
+                'token_reserve': market_cap_data['token_reserve'],
+                'price': str(market_cap_data['price_kas'])
+            }
+            
+            return jsonify({
+                'success': True,
+                'is_graduated': True,
+                'graduation_status': 'graduated',
+                'current_market_cap': round(market_cap_data['market_cap_usd'], 2),
+                'price_kas': market_cap_data['price_kas'],
+                'price_usd': market_cap_data['price_usd'],
+                'total_supply': market_cap_data['total_supply'],
+                'dex_pool': pool_data,
+                'market_cap_formatted': f"${market_cap_data['market_cap_usd']:,.0f}"
+            })
+            
+        except Exception as e:
+            app.logger.error(f"Failed to get graduated token data: {str(e)}")
+            # Fallback to minimal data on error
+            pool_data = {
+                'pool_address': token.liquidity_pool_address,
+                'nft_position_id': token.nft_position_id,
+                'dex_name': 'Kaspa Finance',
+                'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}',
+                'price': 'N/A'
+            }
+            
+            return jsonify({
+                'success': True,
+                'is_graduated': True,
+                'graduation_status': 'graduated',
+                'current_market_cap': 0,
+                'dex_pool': pool_data,
+                'error': 'Failed to fetch DEX pool data'
+            })
         
     except ValueError as e:
         logging.error(f"Invalid address format: {address}, error: {str(e)}")

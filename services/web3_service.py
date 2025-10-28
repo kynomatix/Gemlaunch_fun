@@ -2064,6 +2064,81 @@ class Web3Service:
             logging.error(f"Failed to get DEX pool reserves for {pool_address}: {str(e)}")
             raise
     
+    def get_graduated_token_market_cap(self, token_address, pool_address, kas_price_usd):
+        """
+        Calculate market cap for a graduated token using DEX pool data
+        
+        Args:
+            token_address (str): Token contract address
+            pool_address (str): Uniswap V3 pool address
+            kas_price_usd (float): Current KAS/USD price
+        
+        Returns:
+            dict: {
+                'market_cap_usd': float,
+                'price_kas': float,
+                'price_usd': float,
+                'total_supply': int,
+                'kas_reserve': float,
+                'token_reserve': float
+            }
+        """
+        try:
+            logging.info(f"Calculating market cap for graduated token {token_address}")
+            
+            # Get token contract to read total supply and balances
+            token_contract = self.get_bonding_pool_contract(token_address)
+            
+            # Get total supply
+            total_supply_wei = token_contract.functions.totalSupply().call()
+            total_supply = total_supply_wei / 10**18
+            
+            # Get actual token balances in the pool (not virtual reserves)
+            # This works for both Uniswap V2 and V3 pools
+            token_balance_in_pool = token_contract.functions.balanceOf(
+                Web3.to_checksum_address(pool_address)
+            ).call()
+            
+            # Get WKAS balance in pool
+            wkas_contract = self.contracts['WKAS']
+            kas_balance_in_pool = wkas_contract.functions.balanceOf(
+                Web3.to_checksum_address(pool_address)
+            ).call()
+            
+            # Convert to human-readable
+            token_reserve = token_balance_in_pool / 10**18
+            kas_reserve = kas_balance_in_pool / 10**18
+            
+            # Calculate price: KAS per token
+            if token_reserve > 0:
+                price_kas = kas_reserve / token_reserve
+            else:
+                # Fallback to pool slot0 price if no reserves
+                pool_data = self.get_dex_pool_reserves(pool_address)
+                price_kas = pool_data['price']
+            
+            # Calculate market cap
+            price_usd = price_kas * kas_price_usd
+            market_cap_usd = total_supply * price_usd
+            
+            logging.info(
+                f"✅ Graduated token market cap: ${market_cap_usd:.2f} "
+                f"(Supply: {total_supply:,.0f}, Price: {price_kas:.8f} KAS = ${price_usd:.6f})"
+            )
+            
+            return {
+                'market_cap_usd': market_cap_usd,
+                'price_kas': price_kas,
+                'price_usd': price_usd,
+                'total_supply': total_supply,
+                'kas_reserve': kas_reserve,
+                'token_reserve': token_reserve
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to calculate graduated token market cap: {str(e)}")
+            raise
+    
     # =========================
     # Creator Fee Methods (Bonding Curve)
     # =========================

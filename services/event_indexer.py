@@ -1437,7 +1437,8 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
         for token in deployed_tokens:
             try:
                 # STEP 2A: Process bonding curve events (pre-graduation or non-graduated)
-                if token.graduation_status in (None, 'not_started', 'initiating'):
+                # Valid bonding curve statuses: None, 'active', 'initiating', 'completing'
+                if token.graduation_status in (None, 'active', 'initiating', 'completing'):
                     # Use liquidity_pool_address (BondingCurvePool) which emits trade events
                     pool_address = token.liquidity_pool_address or token.contract_address
                     result = process_bonding_pool_events(
@@ -1459,7 +1460,7 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
                         summary['errors'] += 1
                 
                 # STEP 2B: Process DEX events (graduated tokens only)
-                elif token.graduation_status == 'completed' and token.dex_pool_address:
+                elif token.graduation_status == 'graduated' and token.dex_pool_address:
                     # Token has graduated and has a DEX pool - process DEX Swap events
                     result = process_dex_pool_events(
                         token.dex_pool_address,
