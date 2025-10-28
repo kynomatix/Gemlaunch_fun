@@ -3791,7 +3791,7 @@
             console.log('Graduation progress:', data);
         },
         
-        updateMarketCapDisplay: function(marketCapKas) {
+        updateMarketCapDisplay: function(marketCapUsd) {
             // Find the market cap stat elements in the token header
             const statItems = document.querySelectorAll('.stat-item');
             let marketCapItem = null;
@@ -3807,13 +3807,13 @@
             if (!marketCapItem) return;
             
             // Guard against null/undefined values
-            if (marketCapKas === undefined || marketCapKas === null || !this.kasToUsd) {
+            if (marketCapUsd === undefined || marketCapUsd === null || !this.kasToUsd) {
                 console.warn('⚠️ Cannot update market cap display - missing data');
                 return;
             }
             
-            // Calculate USD value using kasToUsd (not kasPrice)
-            const marketCapUsd = marketCapKas * this.kasToUsd;
+            // Backend sends market cap already in USD, calculate KAS value
+            const marketCapKas = marketCapUsd / this.kasToUsd;
             
             // Update the display
             const statValue = marketCapItem.querySelector('.stat-value');
@@ -3826,7 +3826,7 @@
                 statSub.textContent = `${this.formatNumber(marketCapKas)} KAS`;
             }
             
-            console.log(`💰 Updated market cap display: $${this.formatNumber(marketCapUsd, true)}`);
+            console.log(`💰 Updated market cap display: $${this.formatNumber(marketCapUsd, true)} (${this.formatNumber(marketCapKas)} KAS)`);
         },
         
         formatNumber: function(value, isUsd = false) {
