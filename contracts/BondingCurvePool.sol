@@ -687,6 +687,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
         // 7. Transfers FROM airdropTreasury (allows >10% vesting distributions to team/founders)
         // 8. Transfers FROM contract (buy operations bypass cap due to bonding curve pricing)
         // 9. Graduated pools (no restrictions after DEX listing)
+        // 10. Transfers FROM graduationController (allows Uniswap pool to receive 25% LP during graduation)
         if (to != address(0) &&
             to != address(this) && 
             to != airdropTreasury && 
@@ -697,6 +698,7 @@ contract BondingCurvePool is ERC20, ReentrancyGuard, Pausable, Ownable {
             !isVestingContract[from] &&
             from != airdropTreasury &&
             from != address(this) &&
+            from != graduationController &&  // FIX: Allow GC to transfer 25% to Uniswap pool (targeted exemption)
             !graduated) {
             uint256 recipientBalance = balanceOf(to);
             uint256 maxWallet = totalSupply() * MAX_WALLET_PCT / 100; // 10%
