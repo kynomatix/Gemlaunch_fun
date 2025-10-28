@@ -1410,7 +1410,7 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
             # FAST SCAN: Index only recently active tokens
             recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             
-            # Get tokens with recent trades OR newly deployed
+            # Get tokens with recent trades OR newly deployed OR graduated with DEX pool
             deployed_tokens = Token.query.filter(
                 Token.contract_address.isnot(None),
                 Token.deployment_status == 'deployed'
@@ -1419,11 +1419,15 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
                 TradeEvent.token_id == Token.id,
                 isouter=True  # LEFT JOIN to include tokens with no trades yet
             ).filter(
-                # Include if: has recent trades OR deployed recently OR no trades yet
+                # Include if: has recent trades OR deployed recently OR no trades yet OR graduated with DEX pool
                 db.or_(
                     TradeEvent.timestamp >= recent_cutoff,
                     Token.created_at >= recent_cutoff,
-                    TradeEvent.id.is_(None)  # No trades yet (newly deployed)
+                    TradeEvent.id.is_(None),  # No trades yet (newly deployed)
+                    db.and_(  # Graduated tokens with DEX pools (always include)
+                        Token.graduation_status == 'graduated',
+                        Token.dex_pool_address.isnot(None)
+                    )
                 )
             ).distinct().all()
             
