@@ -2579,10 +2579,10 @@ def api_token_graduation_status(address):
             
             # Build comprehensive pool data
             pool_data = {
-                'pool_address': token.liquidity_pool_address,
+                'pool_address': token.dex_pool_address,
                 'nft_position_id': token.nft_position_id,
                 'dex_name': 'Kaspa Finance',
-                'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}',
+                'dex_url': f'https://kaspa.finance/pool/{token.dex_pool_address}',
                 'kas_reserve': market_cap_data['kas_reserve'],
                 'token_reserve': market_cap_data['token_reserve'],
                 'price': str(market_cap_data['price_kas'])
@@ -2604,10 +2604,10 @@ def api_token_graduation_status(address):
             app.logger.error(f"Failed to get graduated token data: {str(e)}")
             # Fallback to minimal data on error
             pool_data = {
-                'pool_address': token.liquidity_pool_address,
+                'pool_address': token.dex_pool_address,
                 'nft_position_id': token.nft_position_id,
                 'dex_name': 'Kaspa Finance',
-                'dex_url': f'https://kaspa.finance/pool/{token.liquidity_pool_address}',
+                'dex_url': f'https://kaspa.finance/pool/{token.dex_pool_address}',
                 'price': 'N/A'
             }
             
