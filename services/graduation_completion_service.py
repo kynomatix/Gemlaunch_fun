@@ -288,45 +288,44 @@ class GraduationCompletionService:
     
     def _compute_pool_address(self, token_address, fee_tier):
         """
-        Compute Kaspa Finance (Uniswap V3) pool address using CREATE2
+        Extract Uniswap V3 pool address from Factory PoolCreated event
         
-        Pool address = CREATE2(
-            factory_address,
-            keccak256(abi.encode(token0, token1, fee)),
-            POOL_INIT_CODE_HASH
+        Event PoolCreated(
+            address indexed token0,
+            address indexed token1,
+            uint24 indexed fee,
+            int24 tickSpacing,
+            address pool  <-- This is what we need (in event data, not indexed)
         )
         """
         from web3 import Web3
         
-        # Kaspa Finance addresses (from web3_service)
-        wkas_address = self.w3_service.contracts['WKAS'].address
-        
-        # Determine token0 and token1 (sorted by address)
-        if int(token_address, 16) < int(wkas_address, 16):
-            token0 = token_address
-            token1 = wkas_address
-        else:
-            token0 = wkas_address
-            token1 = token_address
-        
-        # For now, return a placeholder since we need the factory address and init code hash
-        # TODO: Get these constants from deployment or contract
-        logging.warning(f"Pool address derivation not fully implemented - returning placeholder")
-        
-        # For now, we can query the pool address from the blockchain
-        # The GraduationController should have a getter function
         try:
-            grad_controller = self.w3_service.contracts['GraduationController']
-            # Try to get graduation info
-            info = grad_controller.functions.getGraduationInfo(token_address).call()
-            # info should contain the pool address
-            # The exact structure depends on the contract
-            logging.info(f"Graduation info: {info}")
+            # Get the completion transaction receipt (should be available in context)
+            # We need to search logs for PoolCreated event from Factory
+            factory_address = self.w3_service.contracts['Factory'].address
+            pool_created_signature = Web3.keccak(text="PoolCreated(address,address,uint24,int24,address)").hex()
             
-            # Return placeholder for now
-            return "0x0000000000000000000000000000000000000000"
+            # Search through current transaction logs (will be called from _extract_pool_data_from_completion)
+            # For now, query the factory directly
+            factory = self.w3_service.contracts['Factory']
+            wkas_address = self.w3_service.contracts['WKAS'].address
+            
+            pool_address = factory.functions.getPool(
+                Web3.to_checksum_address(token_address),
+                Web3.to_checksum_address(wkas_address),
+                fee_tier
+            ).call()
+            
+            if pool_address != "0x0000000000000000000000000000000000000000":
+                logging.info(f"Found pool address from factory: {pool_address}")
+                return pool_address
+            else:
+                logging.error(f"Pool not found in factory for token {token_address}")
+                return "0x0000000000000000000000000000000000000000"
+                
         except Exception as e:
-            logging.error(f"Could not query pool address: {str(e)}")
+            logging.error(f"Error querying pool address from factory: {str(e)}")
             return "0x0000000000000000000000000000000000000000"
 
 # Singleton instance
