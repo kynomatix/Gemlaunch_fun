@@ -993,24 +993,29 @@ async function recoverAllKAS() {
         const data = await response.json();
         
         if (data.success) {
-            const successCount = data.recovered_from;
-            const totalAttempts = data.total_attempts;
-            const totalRecovered = data.total_recovered_kas;
+            const submitted = data.submitted;
+            const total = data.total;
+            const totalKas = data.total_kas;
             
-            // Show detailed results
             console.log('Recovery results:', data.results);
             
-            if (successCount > 0) {
+            if (submitted > 0) {
+                // Build transaction links
+                const txLinks = data.results
+                    .filter(r => r.status === 'pending')
+                    .map(r => `<a href="${r.blockscout_url}" target="_blank">${r.version}</a>`)
+                    .join(', ');
+                
                 showRecoveryStatus('success', 
-                    `✅ Recovered ${totalRecovered.toFixed(4)} KAS from ${successCount}/${totalAttempts} GraduationControllers!`
+                    `✅ Submitted ${submitted} recovery transactions for ${totalKas.toFixed(2)} KAS! View: ${txLinks}`
                 );
                 
-                // Reload recovery data after 2 seconds
-                setTimeout(() => loadRecoveryData(), 2000);
+                // Reload recovery data after 30 seconds (give time for confirmations)
+                setTimeout(() => loadRecoveryData(), 30000);
             } else {
-                const errors = data.results.filter(r => !r.success).map(r => `${r.version}: ${r.error}`);
+                const errors = data.results.filter(r => r.status === 'failed').map(r => `${r.version}: ${r.error}`);
                 showRecoveryStatus('error', 
-                    `❌ Failed to recover any KAS. Errors: ${errors.join('; ')}`
+                    `❌ Failed to submit transactions. Errors: ${errors.join('; ')}`
                 );
             }
         } else {

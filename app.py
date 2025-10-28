@@ -8205,46 +8205,35 @@ def api_admin_recover_kas():
                 
                 logging.info(f"📤 Transaction sent: {tx_hash_hex}")
                 
-                # Wait for receipt
-                receipt = web3_service.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-                
-                if receipt['status'] == 1:
-                    logging.info(f"✅ {version} recovery successful! Block: {receipt['blockNumber']}")
-                    results.append({
-                        'version': version,
-                        'address': gc_addr,
-                        'recovered_kas': balance_kas,
-                        'tx_hash': tx_hash_hex,
-                        'success': True
-                    })
-                    total_recovered += balance_kas
-                else:
-                    logging.error(f"❌ {version} recovery failed - transaction reverted")
-                    results.append({
-                        'version': version,
-                        'address': gc_addr,
-                        'recovered_kas': 0,
-                        'error': 'Transaction reverted',
-                        'success': False
-                    })
+                # Return immediately with tx hash - don't wait for confirmation
+                results.append({
+                    'version': version,
+                    'address': gc_addr,
+                    'amount_kas': balance_kas,
+                    'tx_hash': tx_hash_hex,
+                    'status': 'pending',
+                    'blockscout_url': f'https://explorer.kasplextest.xyz/tx/{tx_hash_hex}'
+                })
+                total_recovered += balance_kas
                 
             except Exception as e:
                 logging.error(f"Error recovering from {version}: {str(e)}")
                 results.append({
                     'version': version,
                     'address': gc_addr,
-                    'recovered_kas': 0,
+                    'amount_kas': 0,
                     'error': str(e),
-                    'success': False
+                    'status': 'failed'
                 })
         
-        success_count = sum(1 for r in results if r.get('success', False))
+        submitted_count = sum(1 for r in results if r.get('status') == 'pending')
         
         return jsonify({
             'success': True,
-            'total_recovered_kas': total_recovered,
-            'recovered_from': success_count,
-            'total_attempts': len(results),
+            'total_kas': total_recovered,
+            'submitted': submitted_count,
+            'total': len(results),
+            'message': f'{submitted_count} transactions submitted. Check Blockscout for confirmation status.',
             'results': results
         })
         
