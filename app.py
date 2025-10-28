@@ -5333,6 +5333,10 @@ def api_dex_quote():
         if not token.is_graduated:
             return jsonify({'success': False, 'error': 'Token has not graduated yet. Use /api/trade/quote-buy or /api/trade/quote-sell for bonding curve trading.'}), 400
         
+        # Validate DEX pool address exists
+        if not token.dex_pool_address:
+            return jsonify({'success': False, 'error': 'DEX pool not found - graduation may have failed'}), 404
+        
         # Parse optional parameters
         slippage_bps = data.get('slippage_bps', 50)
         fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
@@ -5350,9 +5354,9 @@ def api_dex_quote():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': 'Invalid amount_in format'}), 400
         
-        # Get quote from web3_service
+        # Get quote from web3_service using pool address from database
         web3_service = get_web3_service()
-        quote = web3_service.get_dex_quote(side, token_address, amount_in_wei, fee_tier)
+        quote = web3_service.get_dex_quote(side, token.contract_address, token.dex_pool_address, amount_in_wei, fee_tier)
         
         # Format response
         if side == 'buy':
