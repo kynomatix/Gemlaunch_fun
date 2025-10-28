@@ -33,16 +33,17 @@ def verify_token(token_address):
     
     print(f"\nContract Version Check:")
     print(f"   GraduationController: {gc_address}")
-    print(f"   Expected V10: 0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9")
+    print(f"   Expected V11: 0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0")
     
-    is_v10 = gc_address.lower() == "0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9".lower()
+    is_v11 = gc_address.lower() == "0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0".lower()
     
     print(f"\n" + "=" * 80)
-    if is_v10:
-        print(f"✅ VERIFIED: Using LATEST V10 contracts!")
+    if is_v11:
+        print(f"✅ VERIFIED: Using LATEST V11 contracts!")
         print(f"=" * 80)
         print(f"\nWhat this means:")
-        print(f"   ✅ Has STF fix applied (approvals before pool creation)")
+        print(f"   ✅ Has IERC721Receiver implementation (FINAL STF fix)")
+        print(f"   ✅ Position Manager can safely mint LP NFT to contract")
         print(f"   ✅ Will graduate successfully at $50 market cap")
         print(f"   ✅ Ready for production testing")
         print(f"\nNext Steps:")
@@ -53,14 +54,14 @@ def verify_token(token_address):
         print(f"❌ WARNING: Using OLD contract version!")
         print(f"=" * 80)
         print(f"\nIssues:")
-        print(f"   ❌ Does NOT have STF fix")
+        print(f"   ❌ Does NOT have IERC721Receiver implementation")
         print(f"   ❌ Will encounter 'execution reverted: STF' error")
         print(f"   ❌ Cannot graduate successfully")
         print(f"\nRecommendation:")
-        print(f"   Create a new token to use V10 contracts")
+        print(f"   Create a new token to use V11 contracts with IERC721Receiver fix")
     
     print(f"\n" + "=" * 80)
-    return is_v10
+    return is_v11
 
 if __name__ == "__main__":
     token_address = sys.argv[1] if len(sys.argv) > 1 else "0x4c54aB0B2cFF4D05AeB8efAF1d5E8d4436953D1E"
