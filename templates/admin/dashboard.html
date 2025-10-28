@@ -969,12 +969,19 @@ async function recoverAllKAS() {
     }
     
     if (!recoveryData || recoveryData.graduation_controllers.length === 0) {
-        showRecoveryStatus('error', 'No KAS to recover');
-        return;
+        showRecoveryStatus('error', 'No KAS to recover. Loading data...');
+        await loadRecoveryData();
+        if (!recoveryData || recoveryData.graduation_controllers.length === 0) {
+            showRecoveryStatus('error', 'No GraduationControllers with locked KAS found');
+            return;
+        }
     }
     
     const btn = document.getElementById('recover-all-kas');
     btn.disabled = true;
+    
+    console.log(`🚀 Starting recovery from ${recoveryData.graduation_controllers.length} GraduationControllers`);
+    console.log('Recovery data:', recoveryData);
     
     showRecoveryStatus('loading', 
         `Recovering KAS from ${recoveryData.graduation_controllers.length} GraduationControllers...`
@@ -983,11 +990,12 @@ async function recoverAllKAS() {
     try {
         let totalRecovered = 0;
         let successCount = 0;
+        const errors = [];
         
         for (const gc of recoveryData.graduation_controllers) {
             try {
                 showRecoveryStatus('loading', 
-                    `Recovering ${gc.balance.toFixed(2)} KAS from ${gc.version}...`
+                    `Recovering ${gc.balance.toFixed(2)} KAS from ${gc.version} (${successCount + 1}/${recoveryData.graduation_controllers.length})...`
                 );
                 
                 const success = await recoverFromGC(gc);
@@ -997,17 +1005,25 @@ async function recoverAllKAS() {
                 }
             } catch (error) {
                 console.error(`Failed to recover from ${gc.version}:`, error);
+                errors.push(`${gc.version}: ${error.message}`);
             }
         }
         
-        showRecoveryStatus('success', 
-            `✅ Recovered ${totalRecovered.toFixed(4)} KAS from ${successCount} GraduationControllers!`
-        );
-        
-        // Reload recovery data
-        setTimeout(() => loadRecoveryData(), 3000);
+        if (successCount > 0) {
+            showRecoveryStatus('success', 
+                `✅ Recovered ${totalRecovered.toFixed(4)} KAS from ${successCount}/${recoveryData.graduation_controllers.length} GraduationControllers!`
+            );
+            
+            // Reload recovery data after 2 seconds
+            setTimeout(() => loadRecoveryData(), 2000);
+        } else {
+            showRecoveryStatus('error', 
+                `❌ Failed to recover any KAS. Errors: ${errors.join('; ')}`
+            );
+        }
         
     } catch (error) {
+        console.error('Recovery error:', error);
         showRecoveryStatus('error', 'Recovery failed: ' + error.message);
     } finally {
         btn.disabled = false;
@@ -1015,35 +1031,45 @@ async function recoverAllKAS() {
 }
 
 async function recoverFromGC(gc) {
+    // Simple ABI for emergencyWithdrawKAS() - no parameters needed
     const abi = [
         {
-            "inputs": [
-                {"internalType": "address", "name": "token", "type": "address"},
-                {"internalType": "uint256", "name": "amount", "type": "uint256"},
-                {"internalType": "address", "name": "recipient", "type": "address"}
-            ],
-            "name": "emergencyWithdraw",
+            "inputs": [],
+            "name": "emergencyWithdrawKAS",
             "outputs": [],
             "stateMutability": "nonpayable",
             "type": "function"
         }
     ];
     
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
-    const contract = new ethers.Contract(gc.address, abi, signer);
-    
-    // For native KAS: token = 0x0, amount = gc.balance (in wei), recipient = treasury
-    const amountWei = ethers.utils.parseEther(gc.balance.toString());
-    
-    const tx = await contract.emergencyWithdraw(
-        '0x0000000000000000000000000000000000000000',  // Native KAS
-        amountWei,
-        TREASURY_ADDRESS
-    );
-    
-    await tx.wait();
-    return true;
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(gc.address, abi, signer);
+        
+        console.log(`📤 Calling emergencyWithdrawKAS() on ${gc.version} (${gc.address})`);
+        
+        // Call emergencyWithdrawKAS() - withdraws all KAS to owner automatically
+        const tx = await contract.emergencyWithdrawKAS({
+            gasLimit: 100000  // Set explicit gas limit
+        });
+        
+        console.log(`⏳ Transaction sent: ${tx.hash}, waiting for confirmation...`);
+        const receipt = await tx.wait();
+        console.log(`✅ ${gc.version} recovery confirmed! Block: ${receipt.blockNumber}`);
+        
+        return true;
+    } catch (error) {
+        console.error(`❌ Recovery failed for ${gc.version}:`, error);
+        // Show user-friendly error
+        if (error.code === 4001) {
+            throw new Error('Transaction rejected by user');
+        } else if (error.message) {
+            throw new Error(error.message);
+        } else {
+            throw new Error('Unknown error during recovery');
+        }
+    }
 }
 
 function showRecoveryStatus(type, message) {
