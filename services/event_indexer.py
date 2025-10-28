@@ -11,6 +11,7 @@ from pathlib import Path
 from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 from web3.exceptions import BlockNotFound
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app import db
 from models import Token, TradeEvent, AntiBotFeeTracker
@@ -1320,6 +1321,83 @@ def index_transaction_immediately(tx_hash):
         return {'success': False, 'error': str(e)}
 
 
+def process_single_token(token_id, from_block, to_block):
+    """
+    Worker function to process a single token's events in parallel
+    Thread-safe: Creates its own Flask application context and database session
+    
+    Args:
+        token_id: Token database ID
+        from_block: Starting block
+        to_block: Ending block
+    
+    Returns:
+        dict: Processing results with stats
+    """
+    from app import app  # Import app for context
+    
+    result = {
+        'token_id': token_id,
+        'success': True,
+        'trades': 0,
+        'graduations': 0,
+        'errors': 0
+    }
+    
+    # Create Flask application context for this thread
+    with app.app_context():
+        try:
+            # Fetch token in this thread's context
+            token = Token.query.get(token_id)
+            if not token:
+                result['success'] = False
+                result['errors'] = 1
+                return result
+            
+            # STEP 2A: Process bonding curve events (pre-graduation or non-graduated)
+            if token.graduation_status in (None, 'active', 'initiating', 'completing'):
+                pool_address = token.liquidity_pool_address or token.contract_address
+                bc_result = process_bonding_pool_events(
+                    pool_address,
+                    from_block,
+                    to_block
+                )
+                
+                if bc_result.get('success'):
+                    stats = bc_result.get('stats', {})
+                    result['trades'] += stats.get('purchases', 0) + stats.get('sells', 0)
+                    result['graduations'] += stats.get('graduations', 0)
+                    result['errors'] += stats.get('errors', 0)
+                    logger.debug(f"Token {token.symbol}: {stats.get('purchases', 0)} buys, {stats.get('sells', 0)} sells")
+                else:
+                    logger.error(f"Failed to process bonding curve events for {token.symbol}: {bc_result.get('error')}")
+                    result['errors'] += 1
+            
+            # STEP 2B: Process DEX events (graduated tokens only)
+            elif token.graduation_status == 'graduated' and token.dex_pool_address:
+                dex_result = process_dex_pool_events(
+                    token.dex_pool_address,
+                    from_block,
+                    to_block
+                )
+                
+                if dex_result.get('success'):
+                    stats = dex_result.get('stats', {})
+                    result['trades'] += stats.get('dex_buys', 0) + stats.get('dex_sells', 0)
+                    result['errors'] += stats.get('errors', 0)
+                    logger.debug(f"DEX Token {token.symbol}: {stats.get('dex_buys', 0)} DEX buys, {stats.get('dex_sells', 0)} DEX sells")
+                else:
+                    logger.error(f"Failed to process DEX events for {token.symbol}: {dex_result.get('error')}")
+                    result['errors'] += 1
+                    
+        except Exception as e:
+            logger.error(f"Error processing token ID {token_id}: {str(e)}")
+            result['success'] = False
+            result['errors'] += 1
+    
+    return result
+
+
 def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000):
     """
     Index all events from all contracts
@@ -1437,55 +1515,29 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
             
             logger.info(f"📊 Processing {len(deployed_tokens)} active tokens out of {all_deployed} total (cycle #{index_all_events._cycle_counter})")
         
-        for token in deployed_tokens:
-            try:
-                # STEP 2A: Process bonding curve events (pre-graduation or non-graduated)
-                # Valid bonding curve statuses: None, 'active', 'initiating', 'completing'
-                if token.graduation_status in (None, 'active', 'initiating', 'completing'):
-                    # Use liquidity_pool_address (BondingCurvePool) which emits trade events
-                    pool_address = token.liquidity_pool_address or token.contract_address
-                    result = process_bonding_pool_events(
-                        pool_address,
-                        from_block,
-                        to_block
-                    )
-                    
-                    if result.get('success'):
-                        stats = result.get('stats', {})
-                        summary['trades'] += stats.get('purchases', 0) + stats.get('sells', 0)
-                        summary['graduations'] += stats.get('graduations', 0)
-                        summary['errors'] += stats.get('errors', 0)
+        # STEP 2: Process tokens in parallel (10 workers)
+        # This dramatically improves performance by making concurrent RPC calls
+        token_ids = [token.id for token in deployed_tokens]
+        
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            # Submit all token processing jobs
+            future_to_token = {
+                executor.submit(process_single_token, token_id, from_block, to_block): token_id 
+                for token_id in token_ids
+            }
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_token):
+                try:
+                    result = future.result()
+                    if result['success']:
+                        summary['trades'] += result['trades']
+                        summary['graduations'] += result['graduations']
+                        summary['errors'] += result['errors']
                         summary['tokens_processed'] += 1
-                        
-                        logger.debug(f"Token {token.symbol}: {stats.get('purchases', 0)} buys, {stats.get('sells', 0)} sells")
-                    else:
-                        logger.error(f"Failed to process bonding curve events for {token.symbol}: {result.get('error')}")
-                        summary['errors'] += 1
-                
-                # STEP 2B: Process DEX events (graduated tokens only)
-                elif token.graduation_status == 'graduated' and token.dex_pool_address:
-                    # Token has graduated and has a DEX pool - process DEX Swap events
-                    result = process_dex_pool_events(
-                        token.dex_pool_address,
-                        from_block,
-                        to_block
-                    )
-                    
-                    if result.get('success'):
-                        stats = result.get('stats', {})
-                        summary['trades'] += stats.get('dex_buys', 0) + stats.get('dex_sells', 0)
-                        summary['errors'] += stats.get('errors', 0)
-                        summary['tokens_processed'] += 1
-                        
-                        logger.debug(f"DEX Token {token.symbol}: {stats.get('dex_buys', 0)} DEX buys, {stats.get('dex_sells', 0)} DEX sells")
-                    else:
-                        logger.error(f"Failed to process DEX events for {token.symbol}: {result.get('error')}")
-                        summary['errors'] += 1
-                    
-            except Exception as e:
-                logger.error(f"Error processing token {token.symbol}: {str(e)}")
-                summary['errors'] += 1
-                continue
+                except Exception as e:
+                    logger.error(f"Thread execution error: {str(e)}")
+                    summary['errors'] += 1
         
         grad_result = process_graduation_events(from_block, to_block)
         if grad_result.get('success'):
