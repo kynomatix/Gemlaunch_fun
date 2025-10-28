@@ -55,8 +55,8 @@ class TransactionManager {
         if (isGraduated) {
             // Use DEX quote endpoint for graduated tokens
             endpoint = '/api/dex/quote';
-            // Add trade_type to params for DEX endpoint
-            params.trade_type = quoteType;
+            // Add side parameter for DEX endpoint (backend expects 'side', not 'trade_type')
+            params.side = quoteType;
         } else {
             // Use bonding curve endpoints for active tokens
             endpoint = quoteType === 'buy' 
