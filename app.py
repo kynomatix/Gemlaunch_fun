@@ -2792,12 +2792,37 @@ def api_token_stats(address):
                 current_market_cap_usd = float(token.current_market_cap if token.current_market_cap else 0)
                 current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
         else:
-            # ✅ FIX: Graduated tokens - database values are already in USD
-            # Convert Decimal to float to avoid type errors
-            current_price_usd = float(token.current_price if token.current_price else 0)
-            current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
-            current_market_cap_usd = float(token.current_market_cap if token.current_market_cap else 0)
-            current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
+            # Graduated tokens - calculate from DEX pool balances
+            try:
+                if token.dex_pool_address:
+                    logging.debug(f"Calculating market cap for graduated token {token.symbol}")
+                    
+                    # Use the proper graduated token market cap calculation
+                    market_cap_data = web3_service.get_graduated_token_market_cap(
+                        token.contract_address,
+                        token.dex_pool_address,
+                        kas_price_usd
+                    )
+                    
+                    current_market_cap_usd = market_cap_data['market_cap_usd']
+                    current_price_kas = market_cap_data['price_kas']
+                    current_price_usd = market_cap_data['price_usd']
+                    current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
+                    
+                    logging.debug(f"✅ Graduated token {token.symbol}: MC=${current_market_cap_usd:.2f} ({current_market_cap_kas:.2f} KAS)")
+                else:
+                    # No pool address - use database fallback
+                    current_price_usd = float(token.current_price if token.current_price else 0)
+                    current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
+                    current_market_cap_usd = float(token.current_market_cap if token.current_market_cap else 0)
+                    current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
+            except Exception as e:
+                logging.error(f"Error calculating market cap for graduated token: {e}")
+                # Fallback to database values
+                current_price_usd = float(token.current_price if token.current_price else 0)
+                current_price_kas = current_price_usd / kas_price_usd if kas_price_usd > 0 else 0
+                current_market_cap_usd = float(token.current_market_cap if token.current_market_cap else 0)
+                current_market_cap_kas = current_market_cap_usd / kas_price_usd if kas_price_usd > 0 else 0
         
         # Format values for display
         def format_usd(val):
