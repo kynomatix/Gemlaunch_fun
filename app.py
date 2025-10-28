@@ -8139,6 +8139,78 @@ def test_complete_graduation_manual():
     """Manual test page to call completeGraduation() via MetaMask"""
     return render_template('app/test_complete_graduation_manual.html')
 
+# Admin KAS Recovery API
+@app.route('/api/admin/recovery-info')
+def api_admin_recovery_info():
+    """
+    Get information about locked KAS in failed graduations
+    Returns list of GraduationControllers with locked KAS that can be recovered
+    """
+    try:
+        # Known GraduationControllers
+        graduation_controllers = {
+            'V6':  '0xBbfdF7341aaF104D259876972844EBF9795b9C4C',
+            'V9':  '0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6',
+            'V10': '0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9',
+            'V11': '0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0',
+            'V12': '0xD7B75104f005DFC9dE004fdb97399444752d66D3',
+            'V13': '0xf04aB5deE799DDb217a03bF07fFf4dDf541dD9f1',
+        }
+        
+        # Treasury wallet (owner of all GCs)
+        treasury = '0xe281e4776FB5De20817D0bbC72B0C4b955565619'
+        
+        total_locked = 0
+        recoverable = 0
+        gc_list = []
+        
+        owner_selector = web3_service.w3.keccak(text='owner()')[:4].hex()
+        
+        for version, gc_addr in graduation_controllers.items():
+            try:
+                gc_checksum = Web3.to_checksum_address(gc_addr)
+                
+                # Get balance
+                balance_wei = web3_service.w3.eth.get_balance(gc_checksum)
+                balance_kas = float(Web3.from_wei(balance_wei, 'ether'))
+                
+                # Skip if no balance
+                if balance_kas <= 0:
+                    continue
+                
+                # Get owner
+                result = web3_service.w3.eth.call({'to': gc_checksum, 'data': owner_selector})
+                owner = Web3.to_checksum_address('0x' + result.hex()[-40:])
+                
+                total_locked += balance_kas
+                
+                gc_info = {
+                    'version': version,
+                    'address': gc_addr,
+                    'balance': balance_kas,
+                    'owner': owner,
+                    'recoverable': owner.lower() == treasury.lower()
+                }
+                
+                if gc_info['recoverable']:
+                    recoverable += balance_kas
+                    gc_list.append(gc_info)
+                
+            except Exception as e:
+                logging.error(f"Error checking {version}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'total_locked_kas': total_locked,
+            'recoverable_kas': recoverable,
+            'graduation_controllers': gc_list,
+            'treasury_address': treasury
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting recovery info: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Initialize database when app starts
 init_database()
 
