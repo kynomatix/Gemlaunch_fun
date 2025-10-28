@@ -57,6 +57,16 @@ class TransactionManager {
             endpoint = '/api/dex/quote';
             // Add side parameter for DEX endpoint (backend expects 'side', not 'trade_type')
             params.side = quoteType;
+            
+            // Map bonding curve params to DEX params
+            // DEX expects 'amount_in' instead of 'kas_amount'/'token_amount'
+            if (quoteType === 'buy' && params.kas_amount) {
+                params.amount_in = params.kas_amount;
+                delete params.kas_amount;
+            } else if (quoteType === 'sell' && params.token_amount) {
+                params.amount_in = params.token_amount;
+                delete params.token_amount;
+            }
         } else {
             // Use bonding curve endpoints for active tokens
             endpoint = quoteType === 'buy' 
