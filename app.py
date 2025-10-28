@@ -7027,6 +7027,359 @@ def sync_token_supply(contract_address):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def build_bonding_curve_chart_data(token, timeframe, interval, chart_type, kas_to_usd):
+    """
+    Build chart data for bonding curve trades (is_dex_trade = False)
+    Used for active tokens and historical data for graduated tokens
+    
+    Args:
+        token: Token model instance
+        timeframe: '24h', '7d', '30d'
+        interval: '1m', '5m', '15m', '1h', '4h', '1d'
+        chart_type: 'price' or 'marketcap'
+        kas_to_usd: KAS to USD conversion rate
+    
+    Returns:
+        dict: Chart data response with format, timeframe, interval
+    """
+    logging.info(f"📊 Building bonding curve chart for {token.symbol} (timeframe={timeframe}, interval={interval}, type={chart_type})")
+    
+    # Calculate time window
+    now = datetime.now(timezone.utc)
+    if timeframe == '7d':
+        start_time = now - timedelta(days=7)
+    elif timeframe == '30d':
+        start_time = now - timedelta(days=30)
+    else:  # Default 24h
+        start_time = now - timedelta(hours=24)
+    
+    # Use TradeEvent database for chart data (bonding curve trades only)
+    all_db_trades = TradeEvent.query.filter(
+        TradeEvent.token_id == token.id,
+        TradeEvent.is_dex_trade == False  # Bonding curve trades only
+    ).order_by(TradeEvent.timestamp.asc()).all()
+    
+    if not all_db_trades:
+        # No trades yet, return current stats as area chart
+        current_price_kas = float(token.current_price or 0)
+        current_mc_kas = float(token.current_market_cap or 0)
+        current_price_usd = current_price_kas * kas_to_usd
+        current_mc_usd = current_mc_kas * kas_to_usd
+        
+        value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
+        return {
+            'success': True,
+            'data': [{
+                'time': int(now.timestamp()),
+                'value': value,
+                'volume': 0
+            }],
+            'format': 'area',
+            'timeframe': timeframe,
+            'interval': interval
+        }
+    
+    # Convert database trades to dict format
+    all_trades = []
+    for trade in all_db_trades:
+        all_trades.append({
+            'trade_type': trade.trade_type,
+            'timestamp': trade.timestamp,
+            'kas_amount': float(trade.kas_amount or 0),
+            'token_amount': float(trade.token_amount or 0),
+            'trader_address': trade.user_wallet_address,
+            'tx_hash': trade.tx_hash
+        })
+    
+    # Filter trades within the requested timeframe
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+    
+    for trade in all_trades:
+        if trade['timestamp'].tzinfo is None:
+            trade['timestamp'] = trade['timestamp'].replace(tzinfo=timezone.utc)
+    
+    trades_in_window = [t for t in all_trades if t['timestamp'] >= start_time]
+    
+    # If no trades in time window but trades exist, show all available data
+    if not trades_in_window and all_trades:
+        logging.info(f"No trades in {timeframe} window for {token.symbol}, showing all {len(all_trades)} trades")
+        trades_in_window = all_trades
+        if all_trades:
+            start_time = min(t['timestamp'] for t in all_trades)
+    
+    # Get CURRENT blockchain reserves (live state)
+    web3_service = get_web3_service()
+    try:
+        current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+        current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
+        current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
+        current_token_reserve = float(current_token_wei)
+        
+        logging.debug(
+            f"[Chart] Starting from CURRENT blockchain reserves for {token.symbol}: "
+            f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.2f}"
+        )
+        
+        # Work BACKWARDS through trades in window to get starting reserves
+        for trade in reversed(trades_in_window):
+            kas_amt = float(trade['kas_amount'])
+            token_amt = float(trade['token_amount'])
+            
+            if trade['trade_type'] == 'buy':
+                current_kas_reserve -= kas_amt
+                current_token_reserve += token_amt
+            else:
+                current_kas_reserve += kas_amt
+                current_token_reserve -= token_amt
+        
+        # Clamp to prevent negative reserves
+        current_kas_reserve = max(0.001, current_kas_reserve)
+        current_token_reserve = max(1e18, current_token_reserve)
+        
+    except Exception as e:
+        logging.error(f"Failed to get blockchain reserves for {token.symbol}, using fallback: {e}")
+        # Fallback: Calculate from database
+        total_supply_tokens = float(token.total_supply or 0)
+        reserved_pct = float(token.reserved_percentage or 0)
+        bonding_curve_tokens = total_supply_tokens * ((100 - reserved_pct) / 100)
+        current_token_reserve = bonding_curve_tokens * 1e18
+        current_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
+    
+    logging.debug(
+        f"Chart starting reserves for {token.symbol}: "
+        f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.0f}"
+    )
+    
+    # Build trade points by processing trades in window
+    trade_points = []
+    for trade in trades_in_window:
+        kas_amt = float(trade['kas_amount'])
+        token_amt = float(trade['token_amount'])
+        
+        # Update reserves based on trade type
+        if trade['trade_type'] == 'buy':
+            current_kas_reserve += kas_amt
+            current_token_reserve -= token_amt
+        else:
+            current_kas_reserve -= kas_amt
+            current_token_reserve += token_amt
+        
+        # Calculate spot price from reserve ratio (bonding curve formula)
+        if current_token_reserve > 0:
+            price_per_token_kas = current_kas_reserve / (current_token_reserve / 1e18)
+        else:
+            price_per_token_kas = 0
+        
+        price_per_token_usd = price_per_token_kas * kas_to_usd
+        market_cap_usd = current_kas_reserve * kas_to_usd
+        
+        trade_points.append({
+            'timestamp': trade['timestamp'],
+            'price': price_per_token_usd,
+            'market_cap': market_cap_usd,
+            'volume': kas_amt,
+            'trade_type': trade['trade_type']
+        })
+    
+    # If no trades, return current stats as area chart
+    if not trade_points:
+        current_price_kas = float(token.current_price or 0)
+        current_mc_kas = float(token.current_market_cap or 0)
+        current_price_usd = current_price_kas * kas_to_usd
+        current_mc_usd = current_mc_kas * kas_to_usd
+        
+        value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
+        return {
+            'success': True,
+            'data': [{
+                'time': int(now.timestamp()),
+                'value': value,
+                'volume': 0
+            }],
+            'format': 'area',
+            'timeframe': timeframe,
+            'interval': interval
+        }
+    
+    # Generate candlestick chart data
+    chart_data = aggregate_ohlc_data(
+        trade_points, 
+        interval, 
+        start_time, 
+        now, 
+        chart_type,
+        deployment_timestamp=token.created_at
+    )
+    
+    return {
+        'success': True,
+        'data': chart_data,
+        'format': 'candlestick',
+        'timeframe': timeframe,
+        'interval': interval
+    }
+
+def build_dex_chart_data(token, timeframe, interval, chart_type, kas_to_usd):
+    """
+    Build chart data for DEX pool trades (is_dex_trade = True)
+    Used for graduated tokens showing DEX activity
+    
+    Args:
+        token: Token model instance
+        timeframe: '24h', '7d', '30d'
+        interval: '1m', '5m', '15m', '1h', '4h', '1d'
+        chart_type: 'price' or 'marketcap'
+        kas_to_usd: KAS to USD conversion rate
+    
+    Returns:
+        dict: Chart data response with format, timeframe, interval
+    """
+    logging.info(f"📊 Building DEX chart for {token.symbol} (timeframe={timeframe}, interval={interval}, type={chart_type})")
+    
+    if not token.dex_pool_address:
+        logging.error(f"Token {token.symbol} has no DEX pool address")
+        return {
+            'success': False,
+            'error': 'Token has no DEX pool'
+        }
+    
+    # Calculate time window
+    now = datetime.now(timezone.utc)
+    if timeframe == '7d':
+        start_time = now - timedelta(days=7)
+    elif timeframe == '30d':
+        start_time = now - timedelta(days=30)
+    else:  # Default 24h
+        start_time = now - timedelta(hours=24)
+    
+    # Get DEX trades only
+    all_db_trades = TradeEvent.query.filter(
+        TradeEvent.token_id == token.id,
+        TradeEvent.is_dex_trade == True  # DEX trades only
+    ).order_by(TradeEvent.timestamp.asc()).all()
+    
+    # Get initial DEX pool reserves
+    web3_service = get_web3_service()
+    try:
+        pool_data = web3_service.get_dex_pool_reserves(token.dex_pool_address)
+        initial_price = pool_data.get('price', 0)
+        logging.info(f"DEX pool initial price for {token.symbol}: {initial_price}")
+    except Exception as e:
+        logging.error(f"Failed to get DEX pool reserves for {token.symbol}: {e}")
+        initial_price = float(token.current_price or 0)
+    
+    # Get total supply for market cap calculation
+    total_supply = float(token.total_supply or 0)
+    
+    if not all_db_trades:
+        # No DEX trades yet, return current DEX price
+        current_price_kas = initial_price
+        current_price_usd = current_price_kas * kas_to_usd
+        current_mc_usd = total_supply * current_price_usd
+        
+        value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
+        return {
+            'success': True,
+            'data': [{
+                'time': int(now.timestamp()),
+                'value': value,
+                'volume': 0
+            }],
+            'format': 'area',
+            'timeframe': timeframe,
+            'interval': interval
+        }
+    
+    # Convert database trades to dict format
+    all_trades = []
+    for trade in all_db_trades:
+        all_trades.append({
+            'trade_type': trade.trade_type,
+            'timestamp': trade.timestamp,
+            'kas_amount': float(trade.kas_amount or 0),
+            'token_amount': float(trade.token_amount or 0),
+            'trader_address': trade.user_wallet_address,
+            'tx_hash': trade.tx_hash
+        })
+    
+    # Filter trades within timeframe
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+    
+    for trade in all_trades:
+        if trade['timestamp'].tzinfo is None:
+            trade['timestamp'] = trade['timestamp'].replace(tzinfo=timezone.utc)
+    
+    trades_in_window = [t for t in all_trades if t['timestamp'] >= start_time]
+    
+    if not trades_in_window and all_trades:
+        logging.info(f"No DEX trades in {timeframe} window for {token.symbol}, showing all {len(all_trades)} trades")
+        trades_in_window = all_trades
+        if all_trades:
+            start_time = min(t['timestamp'] for t in all_trades)
+    
+    # Build trade points from DEX trades
+    # For DEX, price is determined by the actual trade execution price
+    trade_points = []
+    for trade in trades_in_window:
+        kas_amt = float(trade['kas_amount'])
+        token_amt = float(trade['token_amount'])
+        
+        # Calculate price from trade execution
+        if token_amt > 0:
+            price_per_token_kas = kas_amt / token_amt
+        else:
+            price_per_token_kas = 0
+        
+        price_per_token_usd = price_per_token_kas * kas_to_usd
+        market_cap_usd = total_supply * price_per_token_usd
+        
+        trade_points.append({
+            'timestamp': trade['timestamp'],
+            'price': price_per_token_usd,
+            'market_cap': market_cap_usd,
+            'volume': kas_amt,
+            'trade_type': trade['trade_type']
+        })
+    
+    if not trade_points:
+        # No trades in window, return current price
+        current_price_kas = initial_price
+        current_price_usd = current_price_kas * kas_to_usd
+        current_mc_usd = total_supply * current_price_usd
+        
+        value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
+        return {
+            'success': True,
+            'data': [{
+                'time': int(now.timestamp()),
+                'value': value,
+                'volume': 0
+            }],
+            'format': 'area',
+            'timeframe': timeframe,
+            'interval': interval
+        }
+    
+    # Generate candlestick chart data
+    chart_data = aggregate_ohlc_data(
+        trade_points,
+        interval,
+        start_time,
+        now,
+        chart_type,
+        deployment_timestamp=token.graduated_at or token.created_at
+    )
+    
+    return {
+        'success': True,
+        'data': chart_data,
+        'format': 'candlestick',
+        'timeframe': timeframe,
+        'interval': interval
+    }
+
 @app.route('/api/token/<contract_address>/chart-data', methods=['GET'])
 @cache.cached(timeout=5, query_string=True)  # Cache for 5 seconds (real-time charts need fresher data)
 def get_token_chart_data(contract_address):
@@ -7075,120 +7428,305 @@ def get_token_chart_data(contract_address):
         # Get query parameters
         timeframe = request.args.get('timeframe', '24h')
         requested_interval = request.args.get('interval', None)
-        requested_format = request.args.get('format', None)
         chart_type = request.args.get('type', 'marketcap')  # 'price' or 'marketcap'
+        mode = request.args.get('mode', None)  # 'dex' or 'bonding_curve' (defaults based on graduation status)
         
-        # Calculate time window
-        now = datetime.now(timezone.utc)
+        # Determine default interval based on timeframe
         if timeframe == '7d':
-            start_time = now - timedelta(days=7)
             default_interval = '1h'
         elif timeframe == '30d':
-            start_time = now - timedelta(days=30)
             default_interval = '4h'
         else:  # Default 24h
-            start_time = now - timedelta(hours=24)
             default_interval = '5m'
         
         interval = requested_interval or default_interval
         
-        # Use TradeEvent database for chart data (indexed by event indexer)
-        # GraphQL has complexity limits that prevent fetching complete history
-        all_db_trades = TradeEvent.query.filter(
-            TradeEvent.token_id == token.id
-        ).order_by(TradeEvent.timestamp.asc()).all()
+        # Dispatcher: Route to appropriate chart builder based on token status and mode
+        is_graduated = token.graduation_status == 'graduated'
         
-        if not all_db_trades:
-            # No trades yet, return current stats as area chart
-            current_price_kas = float(token.current_price or 0)
-            current_mc_kas = float(token.current_market_cap or 0)
-            current_price_usd = current_price_kas * kas_to_usd
-            current_mc_usd = current_mc_kas * kas_to_usd
+        # Determine chart mode
+        if mode is None:
+            # Auto-select: DEX for graduated tokens, bonding curve for active tokens
+            mode = 'dex' if is_graduated else 'bonding_curve'
+        
+        logging.info(
+            f"📊 Chart request for {token.symbol}: "
+            f"graduation_status={token.graduation_status}, mode={mode}, "
+            f"timeframe={timeframe}, interval={interval}, type={chart_type}"
+        )
+        
+        # Route to appropriate chart builder
+        if mode == 'dex':
+            if not is_graduated:
+                return jsonify({
+                    'success': False,
+                    'error': 'DEX chart mode is only available for graduated tokens'
+                }), 400
             
-            value = current_mc_usd if chart_type == 'marketcap' else current_price_usd
-            return jsonify({
-                'success': True,
-                'data': [{
-                    'time': int(now.timestamp()),
-                    'value': value,
+            chart_result = build_dex_chart_data(token, timeframe, interval, chart_type, kas_to_usd)
+        else:  # mode == 'bonding_curve'
+            chart_result = build_bonding_curve_chart_data(token, timeframe, interval, chart_type, kas_to_usd)
+        
+        # Return the chart data
+        return jsonify(chart_result)
+        
+    except Exception as e:
+        logging.error(f"Error fetching chart data for {contract_address}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type='marketcap', deployment_timestamp=None):
+    """
+    Aggregate trade data into OHLC candlesticks
+    
+    Args:
+        trade_points: List of dicts with timestamp, price, market_cap, volume
+        interval: '1m', '5m', '15m', '1h', '4h', '1d'
+        start_time: Start of time window
+        end_time: End of time window
+        chart_type: 'price' or 'marketcap' - determines which values to use for OHLC
+        deployment_timestamp: Token deployment datetime (for synthetic zero candle)
+    
+    Returns:
+        List of OHLC candles: [{"time": unix_seconds, "open": x, "high": y, "low": z, "close": w, "volume": v}, ...]
+    """
+    from collections import defaultdict
+    
+    # Validate and parse interval to seconds
+    valid_intervals = {
+        '1m': 60,
+        '5m': 300,
+        '15m': 900,
+        '1h': 3600,
+        '4h': 14400,
+        '1d': 86400
+    }
+    
+    if interval not in valid_intervals:
+        logging.warning(f"Invalid interval '{interval}', defaulting to 5m")
+        interval = '5m'
+    
+    interval_seconds = valid_intervals[interval]
+    
+    # Group trades into time buckets
+    buckets = defaultdict(list)
+    
+    for point in trade_points:
+        # Calculate bucket timestamp (floor to ABSOLUTE interval boundaries)
+        timestamp = point['timestamp']
+        
+        # Ensure timestamp is timezone-aware
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        
+        # Get Unix timestamp (seconds since epoch)
+        unix_timestamp = int(timestamp.timestamp())
+        
+        # Floor to absolute interval boundary
+        bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
+        buckets[bucket_key].append(point)
+    
+    # If no trades, return empty list
+    if not buckets:
+        return []
+    
+    # Calculate the full range of candles from first trade to current time
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+    if end_time.tzinfo is None:
+        end_time = end_time.replace(tzinfo=timezone.utc)
+    
+    # Floor start_time to interval boundary
+    start_unix = int(start_time.timestamp())
+    start_bucket = (start_unix // interval_seconds) * interval_seconds
+    
+    # Floor end_time to interval boundary
+    end_unix = int(end_time.timestamp())
+    end_bucket = (end_unix // interval_seconds) * interval_seconds
+    
+    # Build OHLC candles with proper open/close tracking and gap filling
+    candles = []
+    previous_close = None
+    
+    # Handle synthetic deployment candle if appropriate
+    deployment_bucket_idx = None
+    actual_start_bucket = start_bucket
+    
+    if deployment_timestamp and trade_points:
+        if deployment_timestamp.tzinfo is None:
+            deployment_timestamp = deployment_timestamp.replace(tzinfo=timezone.utc)
+        
+        deployment_unix = int(deployment_timestamp.timestamp())
+        deployment_bucket = (deployment_unix // interval_seconds) * interval_seconds
+        
+        first_trade_time = min(t['timestamp'].timestamp() for t in trade_points)
+        first_trade_bucket = (int(first_trade_time) // interval_seconds) * interval_seconds
+        
+        if deployment_unix < first_trade_time and deployment_bucket >= start_bucket:
+            first_trade_value = trade_points[0]['price'] if chart_type == 'price' else trade_points[0]['market_cap']
+            
+            if deployment_bucket == first_trade_bucket:
+                deployment_bucket_idx = deployment_bucket
+                actual_start_bucket = deployment_bucket
+            else:
+                candles.append({
+                    'time': deployment_bucket,
+                    'open': 0,
+                    'high': first_trade_value,
+                    'low': 0,
+                    'close': first_trade_value,
                     'volume': 0
-                }],
-                'format': 'area',
-                'timeframe': timeframe,
-                'interval': interval
-            })
+                })
+                previous_close = first_trade_value
+                actual_start_bucket = deployment_bucket
+        else:
+            actual_start_bucket = first_trade_bucket
+    else:
+        if trade_points:
+            first_trade_time = min(t['timestamp'].timestamp() for t in trade_points)
+            first_trade_bucket = (int(first_trade_time) // interval_seconds) * interval_seconds
+            actual_start_bucket = first_trade_bucket
+    
+    # Iterate through time buckets
+    current_bucket = actual_start_bucket
+    while current_bucket <= end_bucket:
+        bucket_trades = buckets.get(current_bucket, [])
         
-        # Convert database trades to dict format
-        all_trades = []
-        for trade in all_db_trades:
-            all_trades.append({
-                'trade_type': trade.trade_type,
-                'timestamp': trade.timestamp,
-                'kas_amount': float(trade.kas_amount or 0),
-                'token_amount': float(trade.token_amount or 0),
-                'trader_address': trade.user_wallet_address,
-                'tx_hash': trade.tx_hash
-            })
+        if bucket_trades:
+            if chart_type == 'price':
+                values = [t['price'] for t in bucket_trades]
+            else:
+                values = [t['market_cap'] for t in bucket_trades]
+            
+            if previous_close is not None:
+                open_value = previous_close
+            else:
+                open_value = values[0]
+            
+            close_value = values[-1]
+            high_value = max(max(values), open_value)
+            low_value = min(min(values), open_value)
+            total_volume = sum(t['volume'] for t in bucket_trades)
+        else:
+            if previous_close is not None:
+                open_value = previous_close
+                high_value = previous_close
+                low_value = previous_close
+                close_value = previous_close
+                total_volume = 0
+            else:
+                current_bucket += interval_seconds
+                continue
         
-        # Filter trades within the requested timeframe (ensure timezone-aware comparison)
-        # Make start_time timezone-aware if it isn't already
-        if start_time.tzinfo is None:
-            start_time = start_time.replace(tzinfo=timezone.utc)
+        candle = {
+            'time': current_bucket,
+            'open': open_value,
+            'high': high_value,
+            'low': low_value,
+            'close': close_value,
+            'volume': total_volume
+        }
         
-        # Ensure all timestamps are timezone-aware for comparison
-        for trade in all_trades:
-            if trade['timestamp'].tzinfo is None:
-                trade['timestamp'] = trade['timestamp'].replace(tzinfo=timezone.utc)
+        if deployment_bucket_idx is not None and current_bucket == deployment_bucket_idx and len(candles) == 0:
+            candle['open'] = 0
+            candle['low'] = 0
         
-        trades_in_window = [t for t in all_trades if t['timestamp'] >= start_time]
-        prior_trades = [t for t in all_trades if t['timestamp'] < start_time]
-        
-        # If no trades in time window but trades exist, show all available data
-        if not trades_in_window and all_trades:
-            logging.info(f"No trades in {timeframe} window for {token.symbol}, showing all {len(all_trades)} trades")
-            trades_in_window = all_trades
-            prior_trades = []
-            # Adjust start_time to earliest trade
-            if all_trades:
-                start_time = min(t['timestamp'] for t in all_trades)
-        
-        # Get CURRENT blockchain reserves (live state)
-        web3_service = get_web3_service()
+        candles.append(candle)
+        previous_close = close_value
+        current_bucket += interval_seconds
+    
+    candles.sort(key=lambda c: c['time'])
+    return candles
+
+# ========================================
+# PRO Token Vesting API Endpoints
+# ========================================
+
+@app.route('/api/token/<int:token_id>/vesting/status', methods=['GET'])
+@cache.cached(timeout=30, query_string=True)  # Cache for 30 seconds (vesting changes slowly)
+@csrf.exempt
+def get_token_vesting_status(token_id):
+    """
+    Get vesting status for a PRO token (marketing, team, airdrop contracts)
+    
+    Response:
+    {
+        "success": true,
+        "vesting": {
+            "marketing": {
+                "contract_address": "0x...",
+                "total_amount": 1000000,
+                "unlocked_amount": 250000,
+                "claimed_amount": 100000,
+                "available_to_claim": 150000,
+                "duration": 31536000,
+                "start_time": 1234567890,
+                "beneficiary": "0x..."
+            },
+            "team": { ... },
+            "airdrop": { ... }
+        }
+    }
+    """
+    # Let 404s propagate correctly
+    token = Token.query.get_or_404(token_id)
+    
+    # Check if this is a PRO token with vesting
+    if not token.reserved_percentage or token.reserved_percentage == 0:
+        return jsonify({
+            'success': False,
+            'error': 'This token does not have vesting contracts'
+        }), 400
+    
+    # Get the vesting contract addresses
+    web3_service = get_web3_service()
+    vesting_status = {}
+    
+    # Get marketing vesting status
+    if token.marketing_vesting_address:
         try:
-            current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
-            current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
-            current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
-            current_token_reserve = float(current_token_wei)
-            
-            app.logger.info(
-                f"[Chart] Starting from CURRENT blockchain reserves for {token.symbol}: "
-                f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.2f}"
-            )
-            
-            # Work BACKWARDS through trades in window to get starting reserves for the chart
-            for trade in reversed(trades_in_window):
-                kas_amt = float(trade['kas_amount'])
-                token_amt = float(trade['token_amount'])
-                
-                if trade['trade_type'] == 'buy':
-                    # Undo buy: remove KAS, add back tokens
-                    current_kas_reserve -= kas_amt
-                    current_token_reserve += token_amt
-                else:
-                    # Undo sell: add back KAS, remove tokens
-                    current_kas_reserve += kas_amt
-                    current_token_reserve -= token_amt
-            
-            # Clamp to prevent negative reserves from incomplete trade history
-            current_kas_reserve = max(0.001, current_kas_reserve)
-            current_token_reserve = max(1e18, current_token_reserve)
-            
+            marketing_status = web3_service.get_marketing_vesting_status(token.marketing_vesting_address)
+            vesting_status['marketing'] = {
+                'contract_address': token.marketing_vesting_address,
+                **marketing_status
+            }
         except Exception as e:
-            app.logger.error(f"Failed to get blockchain reserves for {token.symbol}, using fallback: {e}")
-            # Fallback: Calculate from database (less accurate)
-            total_supply_tokens = float(token.total_supply or 0)
-            reserved_pct = float(token.reserved_percentage or 0)
-            bonding_curve_tokens = total_supply_tokens * ((100 - reserved_pct) / 100)
+            logging.error(f"Failed to get marketing vesting status: {e}")
+            vesting_status['marketing'] = {'error': str(e)}
+    
+    # Get team vesting status
+    if token.team_vesting_address:
+        try:
+            team_status = web3_service.get_team_vesting_status(token.team_vesting_address)
+            vesting_status['team'] = {
+                'contract_address': token.team_vesting_address,
+                **team_status
+            }
+        except Exception as e:
+            logging.error(f"Failed to get team vesting status: {e}")
+            vesting_status['team'] = {'error': str(e)}
+    
+    # Get airdrop vesting status
+    if token.airdrop_vesting_address:
+        try:
+            airdrop_status = web3_service.get_airdrop_vesting_status(token.airdrop_vesting_address)
+            vesting_status['airdrop'] = {
+                'contract_address': token.airdrop_vesting_address,
+                **airdrop_status
+            }
+        except Exception as e:
+            logging.error(f"Failed to get airdrop vesting status: {e}")
+            vesting_status['airdrop'] = {'error': str(e)}
+    
+    return jsonify({
+        'success': True,
+        'vesting': vesting_status
+    })
+
+
+@app.route('/api/token/<int:token_id>/vesting/withdraw-marketing', methods=['POST'])
+@csrf.exempt
+def build_marketing_vesting_withdraw(token_id):
             current_token_reserve = bonding_curve_tokens * 1e18
             current_kas_reserve = float(token.kas_reserve or 0) if token.kas_reserve else 200 / kas_to_usd
         
