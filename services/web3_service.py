@@ -1716,7 +1716,7 @@ class Web3Service:
     # DEX Trading Methods (Post-Graduation)
     # =========================
     
-    def get_dex_buy_quote(self, token_address, pool_address, kas_amount, fee_tier=FEE_TIER_030):
+    def get_dex_buy_quote(self, token_address, pool_address, kas_amount, fee_tier=FEE_TIER_025):
         """
         Get quote for buying tokens via Kaspa Finance DEX using QuoterV2
         
@@ -1785,7 +1785,7 @@ class Web3Service:
             logging.error(f"Failed to get DEX buy quote: {str(e)}")
             raise
     
-    def get_dex_sell_quote(self, token_address, pool_address, token_amount, fee_tier=FEE_TIER_030):
+    def get_dex_sell_quote(self, token_address, pool_address, token_amount, fee_tier=FEE_TIER_025):
         """
         Get quote for selling tokens via Kaspa Finance DEX using QuoterV2
         
@@ -1854,7 +1854,7 @@ class Web3Service:
             logging.error(f"Failed to get DEX sell quote: {str(e)}")
             raise
     
-    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_030):
+    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
         """
         Build transaction for buying tokens via Kaspa Finance DEX
         
@@ -1912,7 +1912,7 @@ class Web3Service:
             logging.error(f"Failed to build DEX buy tx: {str(e)}")
             raise
     
-    def build_dex_sell_tx(self, user_address, token_address, token_amount, min_kas_out, deadline, fee_tier=FEE_TIER_030):
+    def build_dex_sell_tx(self, user_address, token_address, token_amount, min_kas_out, deadline, fee_tier=FEE_TIER_025):
         """
         Build transaction for selling tokens via Kaspa Finance DEX
         
@@ -2014,7 +2014,7 @@ class Web3Service:
             logging.error(f"Failed to build WKAS unwrap tx: {str(e)}")
             raise
     
-    def get_dex_buy_quote_reverse(self, token_address, pool_address, tokens_out, fee_tier=FEE_TIER_030):
+    def get_dex_buy_quote_reverse(self, token_address, pool_address, tokens_out, fee_tier=FEE_TIER_025):
         """
         REVERSE calculation: Calculate KAS needed to buy a specific amount of tokens using QuoterV2
         
@@ -2083,7 +2083,7 @@ class Web3Service:
             logging.error(f"Failed to get DEX reverse buy quote: {str(e)}")
             raise
     
-    def get_dex_sell_quote_reverse(self, token_address, pool_address, kas_out, fee_tier=FEE_TIER_030):
+    def get_dex_sell_quote_reverse(self, token_address, pool_address, kas_out, fee_tier=FEE_TIER_025):
         """
         REVERSE calculation: Calculate tokens needed to sell to get a specific amount of KAS using QuoterV2
         
@@ -2152,7 +2152,7 @@ class Web3Service:
             logging.error(f"Failed to get DEX reverse sell quote: {str(e)}")
             raise
     
-    def get_dex_quote(self, side, token_address, pool_address, amount_in=None, amount_out=None, fee_tier=FEE_TIER_030):
+    def get_dex_quote(self, side, token_address, pool_address, amount_in=None, amount_out=None, fee_tier=FEE_TIER_025):
         """
         Unified DEX quote method (wraps buy/sell quotes with forward and reverse calculations)
         
