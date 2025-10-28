@@ -2847,18 +2847,28 @@ def api_token_stats(address):
         
         # Get DEX pool data for graduated tokens
         dex_pool_data = None
-        if token.is_graduated and token.liquidity_pool_address:
+        if token.is_graduated and token.dex_pool_address:
+            # Always include pool address for graduated tokens
+            dex_pool_data = {
+                'pool_address': token.dex_pool_address,
+                'price': 0,
+                'liquidity': 0,
+                'sqrtPriceX96': '0',
+                'fee_tier': token.dex_pool_fee_tier or 3000
+            }
+            
+            # Try to fetch live reserves, but don't fail if unavailable
             try:
-                reserves = web3_service.get_dex_pool_reserves(token.liquidity_pool_address)
-                dex_pool_data = {
-                    'pool_address': token.liquidity_pool_address,
+                logging.debug(f"Fetching DEX pool reserves for {token.symbol} from pool {token.dex_pool_address}")
+                reserves = web3_service.get_dex_pool_reserves(token.dex_pool_address)
+                dex_pool_data.update({
                     'price': reserves.get('price', 0),
                     'liquidity': reserves.get('liquidity', 0),
-                    'sqrtPriceX96': str(reserves.get('sqrtPriceX96', 0)),
-                    'fee_tier': token.dex_pool_fee_tier or 3000
-                }
+                    'sqrtPriceX96': str(reserves.get('sqrtPriceX96', 0))
+                })
+                logging.debug(f"Successfully fetched DEX pool data for {token.symbol}")
             except Exception as e:
-                logging.debug(f"Could not fetch DEX pool reserves for {token.contract_address}: {e}")
+                logging.debug(f"Could not fetch DEX pool reserves for {token.symbol} (pool: {token.dex_pool_address}): {e}")
         
         # Return single response with all data
         response_data = {
