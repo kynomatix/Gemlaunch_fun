@@ -607,7 +607,14 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
             ? (tokenLiquidity, kasLiquidity)
             : (kasLiquidity, tokenLiquidity);
         
-        // STEP 6: Create & initialize pool ATOMICALLY (FIX #5: prevents front-running!)
+        // STEP 6: V10 FIX - Approve tokens BEFORE pool creation (prevents STF errors!)
+        // If createAndInitializePoolIfNecessary needs tokens during initialization,
+        // the Position Manager must already have approval
+        IERC20(token0).forceApprove(kaspaFinancePositionManager, amount0);
+        IERC20(token1).forceApprove(kaspaFinancePositionManager, amount1);
+        
+        // STEP 7: Create & initialize pool ATOMICALLY (FIX #5: prevents front-running!)
+        // Now that tokens are approved, pool creation can transfer if needed
         address poolAddress = INonfungiblePositionManager(kaspaFinancePositionManager)
             .createAndInitializePoolIfNecessary(
                 token0,
@@ -622,10 +629,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         emit PoolCreated(tokenAddress, poolAddress, snapshot.targetSqrtPriceX96, block.timestamp);
         emit PoolInitialized(tokenAddress, poolAddress, snapshot.targetSqrtPriceX96, block.timestamp);
         
-        // STEP 7: Approve and mint LP (FIX #11: 30 minute deadline)
-        IERC20(token0).forceApprove(kaspaFinancePositionManager, amount0);
-        IERC20(token1).forceApprove(kaspaFinancePositionManager, amount1);
-        
+        // STEP 8: Mint LP position (FIX #11: 30 minute deadline)
         (uint256 positionId, uint128 liquidity, uint256 actualAmount0, uint256 actualAmount1) = 
             _mintLiquidityPosition(token0, token1, amount0, amount1);
         
@@ -635,7 +639,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         // FIX #7: Handle excess tokens WITHOUT refunding to pool (would revert!)
         _handleExcessTokens(token0, token1, amount0, amount1, actualAmount0, actualAmount1);
         
-        // STEP 8: Burn LP NFT to dead address (FIX #6: permanent liquidity lock!)
+        // STEP 9: Burn LP NFT to dead address (FIX #6: permanent liquidity lock!)
         INonfungiblePositionManager(kaspaFinancePositionManager).safeTransferFrom(
             address(this),
             BURN_ADDRESS,  // 0x...dEaD - provably uncontrollable
@@ -644,12 +648,12 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         
         emit LPNFTBurned(tokenAddress, positionId, block.timestamp);
         
-        // STEP 9: Mark graduated (don't store positionId - it's burned)
+        // STEP 10: Mark graduated (don't store positionId - it's burned)
         hasGraduated[tokenAddress] = true;
         graduationTimestamp[tokenAddress] = block.timestamp;
         uniswapPoolAddress[tokenAddress] = poolAddress;
         
-        // STEP 10: Complete on pool (FIX #9: MUST succeed or revert entire tx!)
+        // STEP 11: Complete on pool (FIX #9: MUST succeed or revert entire tx!)
         // V4: Use try/catch for corrupted pools that can't call completeGraduation
         try pool.completeGraduation() {
             // Success - pool state updated

@@ -1,13 +1,19 @@
 {
   "network": "Kasplex Testnet",
   "chainId": 167012,
-  "lastUpdated": "2025-10-27",
+  "lastUpdated": "2025-10-28",
   "contracts": {
     "GraduationController": {
+      "version": "V10",
+      "address": "0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9",
+      "deployedAt": "2025-10-28",
+      "notes": "V10 STF FIX: Token approvals moved BEFORE pool creation to prevent 'execution reverted: STF' errors during createAndInitializePoolIfNecessary()"
+    },
+    "GraduationController_V9_DEPRECATED": {
       "version": "V9",
       "address": "0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6",
       "deployedAt": "2025-10-27",
-      "notes": "V9 FIX: Configured with TokenFactory V11 address (V8 had V10, causing factory validation failure)"
+      "notes": "DEPRECATED - Had STF error, replaced by V10"
     },
     "TokenFactory": {
       "version": "V11",
