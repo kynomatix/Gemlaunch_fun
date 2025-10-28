@@ -793,18 +793,16 @@ def build_trade_event_from_dex_swap(event, token, block, w3, trader_address):
     amount1 = args['amount1']  # Token amount in wei (negative = out, positive = in)
     amount0 = args['amount0']  # WKAS amount in wei (negative = out, positive = in)
     
-    # CRITICAL: Normalize token amounts from wei to human-readable units
-    # Gemlaunch tokens use 18 decimals (standard ERC20)
-    token_decimals = Decimal(10 ** 18)
-    
+    # CRITICAL: Store token amounts in WEI (raw format) to match bonding curve trades
+    # The display layer will convert to human-readable format using token decimals
     if amount1 < 0:  # Tokens out = Buy
         trade_type = 'dex_buy'
-        token_amount = Decimal(str(abs(amount1))) / token_decimals  # Normalize from wei
-        kas_amount = Decimal(str(w3.from_wei(abs(amount0), 'ether')))  # WKAS in (also wei)
+        token_amount = Decimal(str(abs(amount1)))  # Store in wei (raw format)
+        kas_amount = Decimal(str(w3.from_wei(abs(amount0), 'ether')))  # WKAS in KAS
     else:  # Tokens in = Sell
         trade_type = 'dex_sell'
-        token_amount = Decimal(str(abs(amount1))) / token_decimals  # Normalize from wei
-        kas_amount = Decimal(str(w3.from_wei(abs(amount0), 'ether')))  # WKAS out (also wei)
+        token_amount = Decimal(str(abs(amount1)))  # Store in wei (raw format)
+        kas_amount = Decimal(str(w3.from_wei(abs(amount0), 'ether')))  # WKAS out in KAS
     
     trade_event = TradeEvent(
         token_id=token.id,
@@ -817,7 +815,8 @@ def build_trade_event_from_dex_swap(event, token, block, w3, trader_address):
         anti_bot_fee=0,
         tx_hash=tx_hash,
         block_number=block_number,
-        timestamp=timestamp
+        timestamp=timestamp,
+        is_dex_trade=True  # Flag as DEX trade for filtering
     )
     
     return trade_event, kas_amount
