@@ -2,19 +2,22 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title GraduationController V11 (Final Fix)
+ * @title GraduationController V12 (COMPLETE FIX)
  * @notice Manages token graduation from bonding curve to Uniswap V3 DEX liquidity
- * @dev V11 CRITICAL FIX:
- *      FIX #12: Implement IERC721Receiver to accept LP NFTs from Position Manager
- *               - Position Manager uses safeMint which requires recipient to implement onERC721Received
- *               - V10's approval ordering fix was NOT the issue
- *               - This was the root cause of all "STF" (Safe Transfer Failed) errors
+ * @dev V12 COMPLETE STF FIX (Two-Part Solution):
+ *      FIX #12A: Implement IERC721Receiver to receive LP NFT from Position Manager
+ *                - Position Manager's safeMint requires recipient to implement onERC721Received
+ *      FIX #12B: Use transferFrom (NOT safeTransferFrom) to burn LP NFT
+ *                - Burn address (0x...dEaD) doesn't implement IERC721Receiver
+ *                - safeTransferFrom would fail with STF when burning
+ *                - This was the HIDDEN bug that persisted in V11!
  * 
- *      V4-V10 HISTORY (inherited):
- *      V4 #1: forceCompleteCorruptedGraduation() - Emergency recovery for corrupted pools
- *      V4 #2: _completeGraduationInternal() - Shared logic for normal + forced completion
- *      V4 #3: Try/catch on pool.completeGraduation() - Handles already-graduated pools
- *      V10: Approval ordering fix (moved pool approvals before controller approvals) - INEFFECTIVE
+ *      V11 (PARTIAL FIX - had #12A but missing #12B):
+ *      - Added IERC721Receiver but still used safeTransferFrom for burn
+ *      - Tokens created with V11 will fail with STF during burn phase
+ * 
+ *      V10 (INEFFECTIVE - wrong fix):
+ *      - Approval ordering change did not address the real issue
  * 
  *      V3 FIXES (inherited):
  *      FIX #1: INITIAL_VIRTUAL_KAS = 0.001 ether (not 1000)
@@ -29,9 +32,9 @@ pragma solidity ^0.8.20;
  *      FIX #10: Lock oracle changes during graduation (authorizedOracle in snapshot)
  *      FIX #11: Deadline = 1800 seconds (30 min, not 5)
  * 
- * Version: 11.0.0
+ * Version: 12.0.0
  * Deployment Date: October 28, 2025
- * Architecture: Snapshot-based with ERC721 receiver implementation
+ * Architecture: Snapshot-based with complete ERC721 handling (receive + unsafe burn)
  */
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -236,7 +239,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable, IERC721Re
     // ============ State Variables ============
     
     /// @notice Contract version
-    string public constant VERSION = "11.0.0";
+    string public constant VERSION = "12.0.0";
     
     /// @notice Kaspa Finance Uniswap V3 factory address
     address public immutable kaspaFinanceFactory;

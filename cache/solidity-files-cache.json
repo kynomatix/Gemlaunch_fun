@@ -307,8 +307,8 @@
       ]
     },
     "/home/runner/workspace/contracts/GraduationControllerV3.sol": {
-      "lastModificationDate": 1761619270148,
-      "contentHash": "6d7f0b61cd2e86145c4a2a812a6db5e3",
+      "lastModificationDate": 1761619398206,
+      "contentHash": "0b44701a9a92964875cd1753234c719a",
       "sourceName": "contracts/GraduationControllerV3.sol",
       "solcConfig": {
         "version": "0.8.20",

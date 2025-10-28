@@ -4,10 +4,16 @@
   "lastUpdated": "2025-10-28",
   "contracts": {
     "GraduationController": {
+      "version": "V12",
+      "address": "0xD7B75104f005DFC9dE004fdb97399444752d66D3",
+      "deployedAt": "2025-10-28",
+      "notes": "V12 COMPLETE FIX: Two-part solution - (A) IERC721Receiver to receive NFT from Position Manager, (B) Use transferFrom (NOT safeTransferFrom) to burn NFT since burn address can't receive safe transfers. V11 had only part A."
+    },
+    "GraduationController_V11_DEPRECATED": {
       "version": "V11",
       "address": "0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0",
       "deployedAt": "2025-10-28",
-      "notes": "V11 FINAL FIX: Implements IERC721Receiver to accept LP NFTs from Position Manager's safeMint. This is the ACTUAL fix for STF errors. V10's approval ordering was NOT the issue."
+      "notes": "DEPRECATED - Partial fix: had IERC721Receiver but used safeTransferFrom for burn, causing STF when transferring to burn address."
     },
     "GraduationController_V10_DEPRECATED": {
       "version": "V10",
@@ -25,7 +31,7 @@
       "version": "V11",
       "address": "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1",
       "deployedAt": "2025-10-27",
-      "notes": "V11: Updated to use GraduationController V11 (IERC721Receiver fix)"
+      "notes": "V11: Updated to use GraduationController V12 (complete STF fix with unsafe burn transfer)"
     },
     "VestingDeployer": {
       "version": "V2",
