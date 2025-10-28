@@ -4,10 +4,16 @@
   "lastUpdated": "2025-10-28",
   "contracts": {
     "GraduationController": {
+      "version": "V13",
+      "address": "0xf04aB5deE799DDb217a03bF07fFf4dDf541dD9f1",
+      "deployedAt": "2025-10-28",
+      "notes": "V13: Removed 'pure' modifier from onERC721Received (compatibility fix). Used by TokenFactory V12."
+    },
+    "GraduationController_V12_DEPRECATED": {
       "version": "V12",
       "address": "0xD7B75104f005DFC9dE004fdb97399444752d66D3",
       "deployedAt": "2025-10-28",
-      "notes": "V12 COMPLETE FIX: Two-part solution - (A) IERC721Receiver to receive NFT from Position Manager, (B) Use transferFrom (NOT safeTransferFrom) to burn NFT since burn address can't receive safe transfers. V11 had only part A."
+      "notes": "DEPRECATED - V12 COMPLETE FIX: Two-part solution - (A) IERC721Receiver to receive NFT from Position Manager, (B) Use transferFrom (NOT safeTransferFrom) to burn NFT since burn address can't receive safe transfers. V11 had only part A."
     },
     "GraduationController_V11_DEPRECATED": {
       "version": "V11",
@@ -28,10 +34,16 @@
       "notes": "DEPRECATED - Had STF error, replaced by V10"
     },
     "TokenFactory": {
+      "version": "V12",
+      "address": "0x3abF3c17a89687FF449DD1aa24A1C159eD4f5F07",
+      "deployedAt": "2025-10-28",
+      "notes": "V12: MAX_WALLET_PCT FIX - BondingCurvePool now exempts transfers FROM graduationController, allowing Uniswap pool to receive 25% LP supply during graduation. Uses GC V13."
+    },
+    "TokenFactory_V11_DEPRECATED": {
       "version": "V11",
       "address": "0x427B039bc381911a40AC25Fc50AB9e6f5633A5B1",
       "deployedAt": "2025-10-27",
-      "notes": "V11: Updated to use GraduationController V12 (complete STF fix with unsafe burn transfer)"
+      "notes": "DEPRECATED - V11: Updated to use GraduationController V12 (complete STF fix with unsafe burn transfer)"
     },
     "VestingDeployer": {
       "version": "V2",
