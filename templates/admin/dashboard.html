@@ -78,15 +78,12 @@
                 <!-- Will be populated by JavaScript -->
             </div>
             <div class="recovery-actions">
-                <button id="connect-recovery-wallet" class="recovery-btn" style="display: none;">
-                    <i class="fas fa-wallet"></i> Connect Treasury Wallet
-                </button>
-                <button id="recover-all-kas" class="recovery-btn-primary" disabled>
+                <button id="recover-all-kas" class="recovery-btn-primary">
                     <i class="fas fa-download"></i> Recover All KAS
                 </button>
                 <div class="recovery-info">
-                    <i class="fas fa-info-circle"></i>
-                    Connect your Treasury wallet (0xe281...5619) to recover locked KAS
+                    <i class="fas fa-robot"></i>
+                    Backend will automatically recover KAS using Treasury wallet
                 </div>
             </div>
             <div id="recovery-status" class="recovery-status"></div>
@@ -966,11 +963,6 @@ async function connectTreasuryWallet() {
 }
 
 async function recoverAllKAS() {
-    if (!connectedWallet || connectedWallet !== TREASURY_ADDRESS) {
-        showRecoveryStatus('error', 'Please connect Treasury wallet first');
-        return;
-    }
-    
     if (!recoveryData || recoveryData.graduation_controllers.length === 0) {
         showRecoveryStatus('error', 'No KAS to recover. Loading data...');
         await loadRecoveryData();
@@ -983,7 +975,7 @@ async function recoverAllKAS() {
     const btn = document.getElementById('recover-all-kas');
     btn.disabled = true;
     
-    console.log(`🚀 Starting recovery from ${recoveryData.graduation_controllers.length} GraduationControllers`);
+    console.log(`🚀 Starting backend recovery from ${recoveryData.graduation_controllers.length} GraduationControllers`);
     console.log('Recovery data:', recoveryData);
     
     showRecoveryStatus('loading', 
@@ -991,38 +983,38 @@ async function recoverAllKAS() {
     );
     
     try {
-        let totalRecovered = 0;
-        let successCount = 0;
-        const errors = [];
+        const response = await fetch('/api/admin/recover-kas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
         
-        for (const gc of recoveryData.graduation_controllers) {
-            try {
-                showRecoveryStatus('loading', 
-                    `Recovering ${gc.balance.toFixed(2)} KAS from ${gc.version} (${successCount + 1}/${recoveryData.graduation_controllers.length})...`
+        const data = await response.json();
+        
+        if (data.success) {
+            const successCount = data.recovered_from;
+            const totalAttempts = data.total_attempts;
+            const totalRecovered = data.total_recovered_kas;
+            
+            // Show detailed results
+            console.log('Recovery results:', data.results);
+            
+            if (successCount > 0) {
+                showRecoveryStatus('success', 
+                    `✅ Recovered ${totalRecovered.toFixed(4)} KAS from ${successCount}/${totalAttempts} GraduationControllers!`
                 );
                 
-                const success = await recoverFromGC(gc);
-                if (success) {
-                    totalRecovered += gc.balance;
-                    successCount++;
-                }
-            } catch (error) {
-                console.error(`Failed to recover from ${gc.version}:`, error);
-                errors.push(`${gc.version}: ${error.message}`);
+                // Reload recovery data after 2 seconds
+                setTimeout(() => loadRecoveryData(), 2000);
+            } else {
+                const errors = data.results.filter(r => !r.success).map(r => `${r.version}: ${r.error}`);
+                showRecoveryStatus('error', 
+                    `❌ Failed to recover any KAS. Errors: ${errors.join('; ')}`
+                );
             }
-        }
-        
-        if (successCount > 0) {
-            showRecoveryStatus('success', 
-                `✅ Recovered ${totalRecovered.toFixed(4)} KAS from ${successCount}/${recoveryData.graduation_controllers.length} GraduationControllers!`
-            );
-            
-            // Reload recovery data after 2 seconds
-            setTimeout(() => loadRecoveryData(), 2000);
         } else {
-            showRecoveryStatus('error', 
-                `❌ Failed to recover any KAS. Errors: ${errors.join('; ')}`
-            );
+            showRecoveryStatus('error', 'Recovery failed: ' + (data.error || 'Unknown error'));
         }
         
     } catch (error) {
@@ -1033,74 +1025,17 @@ async function recoverAllKAS() {
     }
 }
 
-async function recoverFromGC(gc) {
-    // Simple ABI for emergencyWithdrawKAS() - no parameters needed
-    const abi = [
-        {
-            "inputs": [],
-            "name": "emergencyWithdrawKAS",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }
-    ];
-    
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(gc.address, abi, signer);
-        
-        console.log(`📤 Calling emergencyWithdrawKAS() on ${gc.version} (${gc.address})`);
-        
-        // Call emergencyWithdrawKAS() - withdraws all KAS to owner automatically
-        const tx = await contract.emergencyWithdrawKAS({
-            gasLimit: 100000  // Set explicit gas limit
-        });
-        
-        console.log(`⏳ Transaction sent: ${tx.hash}, waiting for confirmation...`);
-        const receipt = await tx.wait();
-        console.log(`✅ ${gc.version} recovery confirmed! Block: ${receipt.blockNumber}`);
-        
-        return true;
-    } catch (error) {
-        console.error(`❌ Recovery failed for ${gc.version}:`, error);
-        // Show user-friendly error
-        if (error.code === 4001) {
-            throw new Error('Transaction rejected by user');
-        } else if (error.message) {
-            throw new Error(error.message);
-        } else {
-            throw new Error('Unknown error during recovery');
-        }
-    }
-}
-
 function showRecoveryStatus(type, message) {
     const statusEl = document.getElementById('recovery-status');
     statusEl.className = `recovery-status ${type}`;
     statusEl.textContent = message;
 }
 
-// Connect wallet button
-document.getElementById('connect-recovery-wallet').addEventListener('click', connectTreasuryWallet);
-
-// Recover button
+// Recover button (no wallet connection needed - backend handles it)
 document.getElementById('recover-all-kas').addEventListener('click', recoverAllKAS);
 
 // Load recovery data on page load
 loadRecoveryData();
-
-// Auto-detect if wallet is already connected
-if (window.ethereum) {
-    window.ethereum.request({ method: 'eth_accounts' })
-        .then(accounts => {
-            if (accounts.length > 0 && accounts[0].toLowerCase() === TREASURY_ADDRESS) {
-                connectedWallet = accounts[0].toLowerCase();
-                document.getElementById('recover-all-kas').disabled = false;
-                showRecoveryStatus('success', 'Treasury wallet already connected');
-            }
-        });
-}
 </script>
 
 {% endblock %}

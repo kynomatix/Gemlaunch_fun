@@ -8139,6 +8139,120 @@ def test_complete_graduation_manual():
     """Manual test page to call completeGraduation() via MetaMask"""
     return render_template('app/test_complete_graduation_manual.html')
 
+# Admin KAS Recovery - Execute Recovery
+@app.route('/api/admin/recover-kas', methods=['POST'])
+def api_admin_recover_kas():
+    """
+    Execute KAS recovery from all GraduationControllers
+    This endpoint calls emergencyWithdrawKAS() on each GC using the Treasury wallet
+    """
+    try:
+        web3_service = get_web3_service()
+        
+        # Known GraduationControllers with KAS
+        graduation_controllers = {
+            'V6':  '0xBbfdF7341aaF104D259876972844EBF9795b9C4C',
+            'V9':  '0xaC022Ab0860D3D7D5A8738cd6BF58090117CC7f6',
+            'V10': '0x7384F95729Ff5c2B2BFe4Cc101139a13A85a66e9',
+            'V11': '0xd0Ca76Dc29714Ef316a6aacCAC8837c3119439e0',
+            'V12': '0xD7B75104f005DFC9dE004fdb97399444752d66D3',
+        }
+        
+        # Simple ABI for emergencyWithdrawKAS()
+        abi = [{
+            "inputs": [],
+            "name": "emergencyWithdrawKAS",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }]
+        
+        results = []
+        total_recovered = 0
+        
+        for version, gc_addr in graduation_controllers.items():
+            try:
+                gc_checksum = Web3.to_checksum_address(gc_addr)
+                
+                # Check balance first
+                balance_wei = web3_service.w3.eth.get_balance(gc_checksum)
+                balance_kas = float(Web3.from_wei(balance_wei, 'ether'))
+                
+                if balance_kas <= 0:
+                    logging.info(f"Skipping {version} - no balance")
+                    continue
+                
+                logging.info(f"💰 Recovering {balance_kas} KAS from {version} ({gc_addr})")
+                
+                # Create contract instance
+                contract = web3_service.w3.eth.contract(address=gc_checksum, abi=abi)
+                
+                # Build transaction
+                tx = contract.functions.emergencyWithdrawKAS().build_transaction({
+                    'from': web3_service.oracle_address,
+                    'nonce': web3_service.w3.eth.get_transaction_count(web3_service.oracle_address),
+                    'gas': 100000,
+                    'gasPrice': web3_service.w3.eth.gas_price
+                })
+                
+                # Sign transaction
+                signed_tx = web3_service.w3.eth.account.sign_transaction(tx, web3_service.oracle_private_key)
+                
+                # Send transaction
+                tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+                tx_hash_hex = tx_hash.hex()
+                
+                logging.info(f"📤 Transaction sent: {tx_hash_hex}")
+                
+                # Wait for receipt
+                receipt = web3_service.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                
+                if receipt['status'] == 1:
+                    logging.info(f"✅ {version} recovery successful! Block: {receipt['blockNumber']}")
+                    results.append({
+                        'version': version,
+                        'address': gc_addr,
+                        'recovered_kas': balance_kas,
+                        'tx_hash': tx_hash_hex,
+                        'success': True
+                    })
+                    total_recovered += balance_kas
+                else:
+                    logging.error(f"❌ {version} recovery failed - transaction reverted")
+                    results.append({
+                        'version': version,
+                        'address': gc_addr,
+                        'recovered_kas': 0,
+                        'error': 'Transaction reverted',
+                        'success': False
+                    })
+                
+            except Exception as e:
+                logging.error(f"Error recovering from {version}: {str(e)}")
+                results.append({
+                    'version': version,
+                    'address': gc_addr,
+                    'recovered_kas': 0,
+                    'error': str(e),
+                    'success': False
+                })
+        
+        success_count = sum(1 for r in results if r.get('success', False))
+        
+        return jsonify({
+            'success': True,
+            'total_recovered_kas': total_recovered,
+            'recovered_from': success_count,
+            'total_attempts': len(results),
+            'results': results
+        })
+        
+    except Exception as e:
+        logging.error(f"Error in recovery: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Admin KAS Recovery API
 @app.route('/api/admin/recovery-info')
 def api_admin_recovery_info():
