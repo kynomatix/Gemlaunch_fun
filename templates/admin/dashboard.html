@@ -446,6 +446,12 @@
     to { transform: rotate(360deg); }
 }
 
+</style>
+
+<!-- Load ethers.js FIRST before any code that uses it -->
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+
+<style>
 /* Recovery Section Styles */
 .recovery-section {
     background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.05));
@@ -1099,8 +1105,5 @@ if (window.ethereum) {
         });
 }
 </script>
-
-<!-- Load ethers.js for wallet interactions -->
-<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
 
 {% endblock %}
