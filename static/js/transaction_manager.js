@@ -59,13 +59,27 @@ class TransactionManager {
             params.side = quoteType;
             
             // Map bonding curve params to DEX params
-            // DEX expects 'amount_in' instead of 'kas_amount'/'token_amount'
-            if (quoteType === 'buy' && params.kas_amount) {
-                params.amount_in = params.kas_amount;
-                delete params.kas_amount;
-            } else if (quoteType === 'sell' && params.token_amount) {
-                params.amount_in = params.token_amount;
-                delete params.token_amount;
+            // Detect forward vs reverse calculation based on which parameter is provided
+            if (quoteType === 'buy') {
+                if (params.kas_amount) {
+                    // Forward: Have KAS, want tokens → amount_in
+                    params.amount_in = params.kas_amount;
+                    delete params.kas_amount;
+                } else if (params.token_amount) {
+                    // Reverse: Want tokens, need KAS → amount_out
+                    params.amount_out = params.token_amount;
+                    delete params.token_amount;
+                }
+            } else if (quoteType === 'sell') {
+                if (params.token_amount) {
+                    // Forward: Have tokens, want KAS → amount_in
+                    params.amount_in = params.token_amount;
+                    delete params.token_amount;
+                } else if (params.kas_amount) {
+                    // Reverse: Want KAS, need tokens → amount_out
+                    params.amount_out = params.kas_amount;
+                    delete params.kas_amount;
+                }
             }
         } else {
             // Use bonding curve endpoints for active tokens

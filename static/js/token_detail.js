@@ -1487,15 +1487,15 @@
                             // Unified response format - update the output field
                             if (outputField === 'tokenAmount') {
                                 // Output is tokens (API returns in ether units)
-                                // DEX quotes return 'amount_out', bonding curve returns 'tokens_out' or 'token_amount'
-                                const tokensOut = quote.amount_out || quote.tokens_out || quote.token_amount;
+                                // DEX forward: 'amount_out', DEX reverse: 'amount_in', bonding curve: 'tokens_out' or 'token_amount'
+                                const tokensOut = quote.amount_out || quote.amount_in || quote.tokens_out || quote.token_amount;
                                 // Display with 2 decimal places
                                 document.getElementById('tokenAmount').value = 
                                     parseFloat(tokensOut).toFixed(2);
                             } else {
                                 // Output is KAS (API returns in ether units)
-                                // DEX quotes return 'amount_out', bonding curve returns 'kas_out' or 'kas_amount'
-                                const kasOut = quote.amount_out || quote.kas_out || quote.kas_amount;
+                                // DEX forward: 'amount_out', DEX reverse: 'amount_in', bonding curve: 'kas_out' or 'kas_amount'
+                                const kasOut = quote.amount_out || quote.amount_in || quote.kas_out || quote.kas_amount;
                                 document.getElementById('kasAmount').value = 
                                     parseFloat(kasOut).toFixed(2);
                             }
