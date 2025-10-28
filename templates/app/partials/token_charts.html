@@ -66,7 +66,7 @@
                 {% for trade in recent_trades[:10] %}
                 <div class="trade-item" style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span class="trade-type-badge" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: {% if trade.trade_type == 'buy' %}rgba(34, 197, 94, 0.2); color: #22c55e;{% else %}rgba(239, 68, 68, 0.2); color: #ef4444;{% endif %}">
+                        <span class="trade-type-badge" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: {% if trade.trade_type in ['buy', 'dex_buy'] %}rgba(34, 197, 94, 0.2); color: #22c55e;{% else %}rgba(239, 68, 68, 0.2); color: #ef4444;{% endif %}">
                             {{ trade.trade_type.upper() }}
                         </span>
                         <div style="display: flex; flex-direction: column;">
