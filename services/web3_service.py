@@ -2024,20 +2024,165 @@ class Web3Service:
             logging.error(f"Failed to build WKAS unwrap tx: {str(e)}")
             raise
     
-    def get_dex_quote(self, side, token_address, pool_address, amount_in, fee_tier=FEE_TIER_030):
+    def get_dex_buy_quote_reverse(self, token_address, pool_address, tokens_out, fee_tier=FEE_TIER_030):
         """
-        Unified DEX quote method (wraps buy/sell quotes)
+        REVERSE calculation: Calculate KAS needed to buy a specific amount of tokens
+        
+        Args:
+            token_address (str): Token contract address
+            pool_address (str): DEX pool contract address
+            tokens_out (int): Desired token amount to receive (in wei)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: {
+                'kas_in': int (wei),
+                'price_impact_percent': float,
+                'execution_price': float (KAS per token)
+            }
+        """
+        try:
+            logging.info(f"Getting DEX reverse buy quote: Want {tokens_out} wei tokens from pool {pool_address}")
+            
+            # Normalize addresses
+            pool_address = Web3.to_checksum_address(pool_address)
+            token_address = Web3.to_checksum_address(token_address)
+            
+            # Get pool reserves
+            wkas_contract = self.contracts['WKAS']
+            kas_reserve = wkas_contract.functions.balanceOf(pool_address).call()
+            
+            token_contract = self.get_bonding_pool_contract(token_address)
+            token_reserve = token_contract.functions.balanceOf(pool_address).call()
+            
+            logging.info(f"Pool reserves - KAS: {kas_reserve} wei, Tokens: {token_reserve} wei")
+            
+            # Reverse calculation: Given tokens_out, find kas_in
+            # new_token_reserve = token_reserve - tokens_out
+            # new_kas_reserve = k / new_token_reserve
+            # kas_in_after_fee = new_kas_reserve - kas_reserve
+            # kas_in = kas_in_after_fee / fee_multiplier
+            
+            fee_multiplier = 1 - (fee_tier / 1000000)  # 0.3% fee = 0.997
+            
+            if kas_reserve > 0 and token_reserve > 0 and tokens_out < token_reserve:
+                k = kas_reserve * token_reserve
+                new_token_reserve = token_reserve - tokens_out
+                new_kas_reserve = k // new_token_reserve
+                kas_in_after_fee = new_kas_reserve - kas_reserve
+                kas_in = int(kas_in_after_fee / fee_multiplier)
+                
+                # Calculate execution price
+                execution_price = kas_in / tokens_out if tokens_out > 0 else 0
+                
+                # Calculate price impact
+                price_before = kas_reserve / token_reserve if token_reserve > 0 else 0
+                price_after = new_kas_reserve / new_token_reserve if new_token_reserve > 0 else 0
+                price_impact_percent = abs((price_after - price_before) / price_before * 100) if price_before > 0 else 0
+            else:
+                kas_in = 0
+                execution_price = 0
+                price_impact_percent = 0
+            
+            logging.info(f"DEX reverse buy quote: {kas_in} KAS needed → {tokens_out} tokens (price: {execution_price} KAS/token, impact: {price_impact_percent:.2f}%)")
+            
+            return {
+                'kas_in': kas_in,
+                'price_impact_percent': price_impact_percent,
+                'execution_price': execution_price
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to get DEX reverse buy quote: {str(e)}")
+            raise
+    
+    def get_dex_sell_quote_reverse(self, token_address, pool_address, kas_out, fee_tier=FEE_TIER_030):
+        """
+        REVERSE calculation: Calculate tokens needed to sell to get a specific amount of KAS
+        
+        Args:
+            token_address (str): Token contract address
+            pool_address (str): DEX pool contract address
+            kas_out (int): Desired KAS amount to receive (in wei)
+            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+        
+        Returns:
+            dict: {
+                'tokens_in': int (wei),
+                'price_impact_percent': float,
+                'execution_price': float (KAS per token)
+            }
+        """
+        try:
+            logging.info(f"Getting DEX reverse sell quote: Want {kas_out} wei KAS from pool {pool_address}")
+            
+            # Normalize addresses
+            pool_address = Web3.to_checksum_address(pool_address)
+            token_address = Web3.to_checksum_address(token_address)
+            
+            # Get pool reserves
+            wkas_contract = self.contracts['WKAS']
+            kas_reserve = wkas_contract.functions.balanceOf(pool_address).call()
+            
+            token_contract = self.get_bonding_pool_contract(token_address)
+            token_reserve = token_contract.functions.balanceOf(pool_address).call()
+            
+            logging.info(f"Pool reserves - KAS: {kas_reserve} wei, Tokens: {token_reserve} wei")
+            
+            # Reverse calculation: Given kas_out, find tokens_in
+            # new_kas_reserve = kas_reserve - kas_out
+            # new_token_reserve = k / new_kas_reserve
+            # tokens_in_after_fee = new_token_reserve - token_reserve
+            # tokens_in = tokens_in_after_fee / fee_multiplier
+            
+            fee_multiplier = 1 - (fee_tier / 1000000)  # 0.3% fee = 0.997
+            
+            if kas_reserve > 0 and token_reserve > 0 and kas_out < kas_reserve:
+                k = kas_reserve * token_reserve
+                new_kas_reserve = kas_reserve - kas_out
+                new_token_reserve = k // new_kas_reserve
+                tokens_in_after_fee = new_token_reserve - token_reserve
+                tokens_in = int(tokens_in_after_fee / fee_multiplier)
+                
+                # Calculate execution price
+                execution_price = kas_out / tokens_in if tokens_in > 0 else 0
+                
+                # Calculate price impact
+                price_before = kas_reserve / token_reserve if token_reserve > 0 else 0
+                price_after = new_kas_reserve / new_token_reserve if new_token_reserve > 0 else 0
+                price_impact_percent = abs((price_after - price_before) / price_before * 100) if price_before > 0 else 0
+            else:
+                tokens_in = 0
+                execution_price = 0
+                price_impact_percent = 0
+            
+            logging.info(f"DEX reverse sell quote: {tokens_in} tokens needed → {kas_out} KAS (price: {execution_price} KAS/token, impact: {price_impact_percent:.2f}%)")
+            
+            return {
+                'tokens_in': tokens_in,
+                'price_impact_percent': price_impact_percent,
+                'execution_price': execution_price
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to get DEX reverse sell quote: {str(e)}")
+            raise
+    
+    def get_dex_quote(self, side, token_address, pool_address, amount_in=None, amount_out=None, fee_tier=FEE_TIER_030):
+        """
+        Unified DEX quote method (wraps buy/sell quotes with forward and reverse calculations)
         
         Args:
             side (str): 'buy' or 'sell'
             token_address (str): Token contract address
             pool_address (str): DEX pool contract address
-            amount_in (int): Amount in wei (KAS for buy, tokens for sell)
+            amount_in (int): Amount in wei (KAS for buy, tokens for sell) - for forward calculation
+            amount_out (int): Amount out wei (tokens for buy, KAS for sell) - for reverse calculation
             fee_tier (int): Pool fee tier (default 0.30% = 3000)
         
         Returns:
             dict: {
-                'amount_out': int (wei),
+                'amount_out': int (wei) OR 'amount_in': int (wei),
                 'execution_price': float (KAS per token),
                 'price_impact_pct': float,
                 'gas_estimate': int,
@@ -2045,28 +2190,60 @@ class Web3Service:
             }
         """
         try:
-            logging.info(f"Getting DEX {side} quote: {amount_in} wei from pool {pool_address}")
+            if amount_in is not None and amount_out is not None:
+                raise ValueError("Specify either amount_in OR amount_out, not both")
+            if amount_in is None and amount_out is None:
+                raise ValueError("Must specify either amount_in or amount_out")
             
-            if side == 'buy':
-                quote = self.get_dex_buy_quote(token_address, pool_address, amount_in, fee_tier)
-                return {
-                    'amount_out': quote['tokens_out'],
-                    'execution_price': quote['execution_price'],
-                    'price_impact_pct': quote['price_impact_percent'],
-                    'gas_estimate': 150000,  # Approximate gas for DEX swap
-                    'fee_tier': fee_tier
-                }
-            elif side == 'sell':
-                quote = self.get_dex_sell_quote(token_address, pool_address, amount_in, fee_tier)
-                return {
-                    'amount_out': quote['kas_out'],
-                    'execution_price': quote['execution_price'],
-                    'price_impact_pct': quote['price_impact_percent'],
-                    'gas_estimate': 150000,
-                    'fee_tier': fee_tier
-                }
-            else:
-                raise ValueError(f"Invalid side: {side}. Must be 'buy' or 'sell'")
+            # Forward calculation (amount_in → amount_out)
+            if amount_in is not None:
+                logging.info(f"Getting DEX {side} quote (forward): {amount_in} wei from pool {pool_address}")
+                
+                if side == 'buy':
+                    quote = self.get_dex_buy_quote(token_address, pool_address, amount_in, fee_tier)
+                    return {
+                        'amount_out': quote['tokens_out'],
+                        'execution_price': quote['execution_price'],
+                        'price_impact_pct': quote['price_impact_percent'],
+                        'gas_estimate': 150000,
+                        'fee_tier': fee_tier
+                    }
+                elif side == 'sell':
+                    quote = self.get_dex_sell_quote(token_address, pool_address, amount_in, fee_tier)
+                    return {
+                        'amount_out': quote['kas_out'],
+                        'execution_price': quote['execution_price'],
+                        'price_impact_pct': quote['price_impact_percent'],
+                        'gas_estimate': 150000,
+                        'fee_tier': fee_tier
+                    }
+            
+            # Reverse calculation (amount_out → amount_in)
+            else:  # amount_out is not None
+                logging.info(f"Getting DEX {side} quote (reverse): want {amount_out} wei from pool {pool_address}")
+                
+                if side == 'buy':
+                    # Reverse buy: Given tokens_out, find kas_in
+                    quote = self.get_dex_buy_quote_reverse(token_address, pool_address, amount_out, fee_tier)
+                    return {
+                        'amount_in': quote['kas_in'],
+                        'execution_price': quote['execution_price'],
+                        'price_impact_pct': quote['price_impact_percent'],
+                        'gas_estimate': 150000,
+                        'fee_tier': fee_tier
+                    }
+                elif side == 'sell':
+                    # Reverse sell: Given kas_out, find tokens_in
+                    quote = self.get_dex_sell_quote_reverse(token_address, pool_address, amount_out, fee_tier)
+                    return {
+                        'amount_in': quote['tokens_in'],
+                        'execution_price': quote['execution_price'],
+                        'price_impact_pct': quote['price_impact_percent'],
+                        'gas_estimate': 150000,
+                        'fee_tier': fee_tier
+                    }
+                
+            raise ValueError(f"Invalid side: {side}. Must be 'buy' or 'sell'")
                 
         except Exception as e:
             logging.error(f"Failed to get DEX quote: {str(e)}")

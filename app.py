@@ -5310,13 +5310,16 @@ def api_dex_quote():
         token_address = data.get('token_address', '').strip()
         side = data.get('side', '').strip().lower()
         amount_in = data.get('amount_in')
+        amount_out = data.get('amount_out')
         
         if not token_address:
             return jsonify({'success': False, 'error': 'token_address is required'}), 400
         if side not in ['buy', 'sell']:
             return jsonify({'success': False, 'error': 'side must be "buy" or "sell"'}), 400
-        if amount_in is None:
-            return jsonify({'success': False, 'error': 'amount_in is required'}), 400
+        if amount_in is None and amount_out is None:
+            return jsonify({'success': False, 'error': 'Either amount_in or amount_out is required'}), 400
+        if amount_in is not None and amount_out is not None:
+            return jsonify({'success': False, 'error': 'Specify either amount_in OR amount_out, not both'}), 400
         
         # Normalize address
         try:
@@ -5345,33 +5348,61 @@ def api_dex_quote():
         if not isinstance(slippage_bps, (int, float)) or slippage_bps < 0 or slippage_bps > 10000:
             return jsonify({'success': False, 'error': 'slippage_bps must be between 0 and 10000 (0% to 100%)'}), 422
         
-        # Convert amount_in to wei
+        # Convert amounts to wei based on forward or reverse calculation
         try:
-            if side == 'buy':
-                amount_in_wei = Web3.to_wei(float(amount_in), 'ether')
+            if amount_in is not None:
+                # Forward calculation
+                if side == 'buy':
+                    amount_in_wei = Web3.to_wei(float(amount_in), 'ether')
+                else:
+                    amount_in_wei = int(float(amount_in))
+                amount_out_wei = None
             else:
-                amount_in_wei = int(float(amount_in))
-        except (ValueError, TypeError):
-            return jsonify({'success': False, 'error': 'Invalid amount_in format'}), 400
+                # Reverse calculation
+                if side == 'buy':
+                    amount_out_wei = int(float(amount_out))
+                else:
+                    amount_out_wei = Web3.to_wei(float(amount_out), 'ether')
+                amount_in_wei = None
+        except (ValueError, TypeError) as e:
+            return jsonify({'success': False, 'error': f'Invalid amount format: {str(e)}'}), 400
         
         # Get quote from web3_service using pool address from database
         web3_service = get_web3_service()
-        quote = web3_service.get_dex_quote(side, token.contract_address, token.dex_pool_address, amount_in_wei, fee_tier)
+        quote = web3_service.get_dex_quote(side, token.contract_address, token.dex_pool_address, 
+                                           amount_in=amount_in_wei, amount_out=amount_out_wei, fee_tier=fee_tier)
         
-        # Format response
-        if side == 'buy':
-            amount_out_formatted = str(Web3.from_wei(quote['amount_out'], 'ether'))
+        # Format response based on forward or reverse calculation
+        if 'amount_out' in quote:
+            # Forward calculation - return amount_out
+            if side == 'buy':
+                amount_out_formatted = str(Web3.from_wei(quote['amount_out'], 'ether'))
+            else:
+                amount_out_formatted = str(Web3.from_wei(quote['amount_out'], 'ether'))
+            
+            return jsonify({
+                'success': True,
+                'amount_out': amount_out_formatted,
+                'execution_price': str(quote['execution_price']),
+                'price_impact_pct': quote['price_impact_pct'],
+                'gas_estimate': str(quote['gas_estimate']),
+                'fee_tier': fee_tier
+            })
         else:
-            amount_out_formatted = str(Web3.from_wei(quote['amount_out'], 'ether'))
-        
-        return jsonify({
-            'success': True,
-            'amount_out': amount_out_formatted,
-            'execution_price': str(quote['execution_price']),
-            'price_impact_pct': quote['price_impact_pct'],
-            'gas_estimate': str(quote['gas_estimate']),
-            'fee_tier': fee_tier
-        })
+            # Reverse calculation - return amount_in
+            if side == 'buy':
+                amount_in_formatted = str(Web3.from_wei(quote['amount_in'], 'ether'))
+            else:
+                amount_in_formatted = str(Web3.from_wei(quote['amount_in'], 'ether'))
+            
+            return jsonify({
+                'success': True,
+                'amount_in': amount_in_formatted,
+                'execution_price': str(quote['execution_price']),
+                'price_impact_pct': quote['price_impact_pct'],
+                'gas_estimate': str(quote['gas_estimate']),
+                'fee_tier': fee_tier
+            })
         
     except ValueError as e:
         logging.error(f"Validation error in DEX quote: {str(e)}")
