@@ -7170,11 +7170,11 @@ def get_token_chart_data(contract_address):
                 kas_amt = float(trade['kas_amount'])
                 token_amt = float(trade['token_amount'])
                 
-                if trade['trade_type'] == 'buy':
+                if trade['trade_type'] in ['buy', 'dex_buy']:
                     # Undo buy: remove KAS, add back tokens
                     current_kas_reserve -= kas_amt
                     current_token_reserve += token_amt
-                else:
+                else:  # 'sell' or 'dex_sell'
                     # Undo sell: add back KAS, remove tokens
                     current_kas_reserve += kas_amt
                     current_token_reserve -= token_amt
@@ -7204,10 +7204,10 @@ def get_token_chart_data(contract_address):
             token_amt = float(trade['token_amount'])
             
             # Update reserves based on trade type
-            if trade['trade_type'] == 'buy':
+            if trade['trade_type'] in ['buy', 'dex_buy']:
                 current_kas_reserve += kas_amt
                 current_token_reserve -= token_amt
-            else:
+            else:  # 'sell' or 'dex_sell'
                 current_kas_reserve -= kas_amt
                 current_token_reserve += token_amt
             
