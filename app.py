@@ -8141,6 +8141,7 @@ def test_complete_graduation_manual():
 
 # Admin KAS Recovery - Execute Recovery
 @app.route('/api/admin/recover-kas', methods=['POST'])
+@csrf.exempt
 def api_admin_recover_kas():
     """
     Execute KAS recovery from all GraduationControllers
@@ -8189,17 +8190,17 @@ def api_admin_recover_kas():
                 
                 # Build transaction
                 tx = contract.functions.emergencyWithdrawKAS().build_transaction({
-                    'from': web3_service.oracle_address,
-                    'nonce': web3_service.w3.eth.get_transaction_count(web3_service.oracle_address),
+                    'from': web3_service.oracle_account.address,
+                    'nonce': web3_service.w3.eth.get_transaction_count(web3_service.oracle_account.address),
                     'gas': 100000,
                     'gasPrice': web3_service.w3.eth.gas_price
                 })
                 
                 # Sign transaction
-                signed_tx = web3_service.w3.eth.account.sign_transaction(tx, web3_service.oracle_private_key)
+                signed_tx = web3_service.w3.eth.account.sign_transaction(tx, web3_service.oracle_account.key)
                 
                 # Send transaction
-                tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+                tx_hash = web3_service.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
                 tx_hash_hex = tx_hash.hex()
                 
                 logging.info(f"📤 Transaction sent: {tx_hash_hex}")
