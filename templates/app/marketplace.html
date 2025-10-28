@@ -854,7 +854,8 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Progress Bar -->
+                                <!-- Progress Bar (only for non-graduated tokens) -->
+                                {% if not token.is_graduated %}
                                 <div class="progress-bar-compact">
                                     <div class="progress-fill-compact" style="width: {{ token.graduation_progress or 0 }}%"></div>
                                 </div>
@@ -862,6 +863,13 @@
                                     <span>DEX Graduation Progress</span>
                                     <span class="token-grad-progress">{{ "%.0f"|format(token.graduation_progress or 0) }}%</span>
                                 </div>
+                                {% else %}
+                                <!-- Graduated Badge -->
+                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.6rem; border-radius: 10px; margin-top: 0.5rem; text-align: center;">
+                                    <i class="fas fa-graduation-cap" style="margin-right: 0.5rem; color: white;"></i>
+                                    <strong style="color: white;">Trading on Kaspa Finance DEX</strong>
+                                </div>
+                                {% endif %}
                             </div>
                         </a>
                     {% endfor %}
@@ -1125,20 +1133,21 @@
                         priceChangeElement.style.color = change >= 0 ? '#20B2AA' : '#FF4444';
                     }
                     
-                    // Update graduation progress
-                    const progressElement = tokenCard.querySelector('.token-grad-progress');
-                    const progressBar = tokenCard.querySelector('.progress-fill-compact');
-                    console.log(`📊 Progress element found: ${!!progressElement}, bar found: ${!!progressBar}, progress value: ${data.progress_to_graduation}`);
-                    if (data.progress_to_graduation !== undefined) {
-                        // Update the text percentage
-                        if (progressElement) {
-                            progressElement.textContent = `${data.progress_to_graduation.toFixed(1)}%`;
+                    // Update graduation progress (only for non-graduated tokens)
+                    if (!data.is_graduated) {
+                        const progressElement = tokenCard.querySelector('.token-grad-progress');
+                        const progressBar = tokenCard.querySelector('.progress-fill-compact');
+                        if (data.progress_to_graduation !== undefined) {
+                            // Update the text percentage
+                            if (progressElement) {
+                                progressElement.textContent = `${data.progress_to_graduation.toFixed(1)}%`;
+                            }
+                            // Update the visual bar width
+                            if (progressBar) {
+                                progressBar.style.width = `${data.progress_to_graduation}%`;
+                            }
+                            console.log(`✅ Updated graduation progress to: ${data.progress_to_graduation.toFixed(1)}%`);
                         }
-                        // Update the visual bar width
-                        if (progressBar) {
-                            progressBar.style.width = `${data.progress_to_graduation}%`;
-                        }
-                        console.log(`✅ Updated graduation progress to: ${data.progress_to_graduation.toFixed(1)}%`);
                     }
                     
                     // Update holders count
