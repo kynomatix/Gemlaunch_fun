@@ -3,14 +3,27 @@ import "@nomicfoundation/hardhat-toolbox";
 /** @type import('hardhat/config').HardhatUserConfig */
 export default {
   solidity: {
-    version: "0.8.20",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 1,
+    compilers: [
+      {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1,
+          },
+          viaIR: true,
+        },
       },
-      viaIR: true,
-    },
+      {
+        version: "0.7.6",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 800,
+          },
+        },
+      },
+    ],
   },
   networks: {
     hardhat: {
@@ -31,7 +44,7 @@ export default {
     kasplex_testnet: {
       url: "https://rpc.kasplextest.xyz",
       chainId: 167012,
-      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+      accounts: process.env.ORACLE_PRIVATE_KEY ? [process.env.ORACLE_PRIVATE_KEY] : [],
       gasPrice: "auto",
     },
     kasplex_mainnet: {

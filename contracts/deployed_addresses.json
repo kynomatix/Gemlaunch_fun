@@ -62,6 +62,14 @@
       "address": "0x86b83FE03cDa7456980364c929BB17CFA67E8495",
       "deployedAt": "2025-10-27",
       "notes": "Batch airdrop helper"
+    },
+    "QuoterV2": {
+      "version": "V1",
+      "address": "0xE0EE9e756CB67f49326DCEf98e24e1231F26Ce70",
+      "deployedAt": "2025-10-28",
+      "factory": "0x1b72D7165a0D7256a4F197765C15bb70bC5D66A8",
+      "wkas": "0xD18FCd278F7156DaA2a506dBC2A4a15337B91b94",
+      "notes": "Kaspa Finance V3 QuoterV2 - deployed from V3-Periphery-Contracts repo"
     }
   },
   "externalContracts": {

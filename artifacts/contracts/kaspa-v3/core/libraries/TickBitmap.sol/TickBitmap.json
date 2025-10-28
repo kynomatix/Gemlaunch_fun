@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "TickBitmap",
+  "sourceName": "contracts/kaspa-v3/core/libraries/TickBitmap.sol",
+  "abi": [],
+  "bytecode": "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea2646970667358221220e262b92cd34eaa1b0d5b80eeb266d784816322017bae34375a570cec926a156a64736f6c63430008140033",
+  "deployedBytecode": "0x600080fdfea2646970667358221220e262b92cd34eaa1b0d5b80eeb266d784816322017bae34375a570cec926a156a64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
