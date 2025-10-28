@@ -446,12 +446,6 @@
     to { transform: rotate(360deg); }
 }
 
-</style>
-
-<!-- Load ethers.js FIRST before any code that uses it -->
-<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
-
-<style>
 /* Recovery Section Styles */
 .recovery-section {
     background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.05));
@@ -785,6 +779,9 @@
     font-size: 0.9rem;
 }
 </style>
+
+<!-- Load ethers.js library BEFORE the recovery code -->
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
 
 <script>
 // Auto-refresh oracle price
