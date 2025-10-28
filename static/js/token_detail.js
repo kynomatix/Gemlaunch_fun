@@ -3695,12 +3695,13 @@
             if (graduationStatus === 'graduated') {
                 const poolAddr = data.dexPoolAddress || '';
                 const poolDisplay = poolAddr ? `${poolAddr.substring(0, 8)}...${poolAddr.slice(-6)}` : 'Loading...';
+                const poolLink = poolAddr ? `https://explorer.testnet.kasplextest.xyz/address/${poolAddr}` : '#';
                 bannerHTML = `
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.5rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
                         <i class="fas fa-graduation-cap" style="margin-right: 0.5rem;"></i>
                         <strong>Trading on Kaspa Finance DEX</strong>
                         <div style="font-size: 0.75rem; opacity: 0.9; margin-top: 0.25rem;">
-                            Liquidity Pool: ${poolDisplay}
+                            Pool: <a href="${poolLink}" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: underline;">${poolDisplay} <i class="fas fa-external-link-alt" style="font-size: 0.65rem;"></i></a>
                         </div>
                     </div>
                 `;
