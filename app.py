@@ -8147,6 +8147,8 @@ def api_admin_recovery_info():
     Returns list of GraduationControllers with locked KAS that can be recovered
     """
     try:
+        web3_service = get_web3_service()
+        
         # Known GraduationControllers
         graduation_controllers = {
             'V6':  '0xBbfdF7341aaF104D259876972844EBF9795b9C4C',
@@ -8209,6 +8211,8 @@ def api_admin_recovery_info():
         
     except Exception as e:
         logging.error(f"Error getting recovery info: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Initialize database when app starts
