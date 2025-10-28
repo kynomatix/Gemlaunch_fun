@@ -2178,7 +2178,7 @@ class Web3Service:
                         'amount_out': quote['tokens_out'],
                         'execution_price': quote['execution_price'],
                         'price_impact_pct': quote['price_impact_percent'],
-                        'gas_estimate': 150000,
+                        'gas_estimate': quote['gas_estimate'],
                         'fee_tier': fee_tier
                     }
                 elif side == 'sell':
@@ -2187,7 +2187,7 @@ class Web3Service:
                         'amount_out': quote['kas_out'],
                         'execution_price': quote['execution_price'],
                         'price_impact_pct': quote['price_impact_percent'],
-                        'gas_estimate': 150000,
+                        'gas_estimate': quote['gas_estimate'],
                         'fee_tier': fee_tier
                     }
             
@@ -2202,7 +2202,7 @@ class Web3Service:
                         'amount_in': quote['kas_in'],
                         'execution_price': quote['execution_price'],
                         'price_impact_pct': quote['price_impact_percent'],
-                        'gas_estimate': 150000,
+                        'gas_estimate': quote['gas_estimate'],
                         'fee_tier': fee_tier
                     }
                 elif side == 'sell':
@@ -2212,7 +2212,7 @@ class Web3Service:
                         'amount_in': quote['tokens_in'],
                         'execution_price': quote['execution_price'],
                         'price_impact_pct': quote['price_impact_percent'],
-                        'gas_estimate': 150000,
+                        'gas_estimate': quote['gas_estimate'],
                         'fee_tier': fee_tier
                     }
                 
