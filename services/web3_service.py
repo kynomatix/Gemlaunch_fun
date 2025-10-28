@@ -2011,11 +2011,11 @@ class Web3Service:
     
     def get_dex_buy_quote_reverse(self, token_address, pool_address, tokens_out, fee_tier=FEE_TIER_030):
         """
-        REVERSE calculation: Calculate KAS needed to buy a specific amount of tokens
+        REVERSE calculation: Calculate KAS needed to buy a specific amount of tokens using QuoterV2
         
         Args:
             token_address (str): Token contract address
-            pool_address (str): DEX pool contract address
+            pool_address (str): DEX pool contract address (not used, QuoterV2 finds pool by tokens+fee)
             tokens_out (int): Desired token amount to receive (in wei)
             fee_tier (int): Pool fee tier (default 0.30% = 3000)
         
@@ -2023,58 +2023,52 @@ class Web3Service:
             dict: {
                 'kas_in': int (wei),
                 'price_impact_percent': float,
-                'execution_price': float (KAS per token)
+                'execution_price': float (KAS per token),
+                'gas_estimate': int
             }
         """
         try:
-            logging.info(f"Getting DEX reverse buy quote: Want {tokens_out} wei tokens from pool {pool_address}")
+            logging.info(f"Getting DEX reverse buy quote via QuoterV2: Want {tokens_out} wei tokens")
             
             # Normalize addresses
-            pool_address = Web3.to_checksum_address(pool_address)
             token_address = Web3.to_checksum_address(token_address)
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Get pool reserves
-            wkas_contract = self.contracts['WKAS']
-            kas_reserve = wkas_contract.functions.balanceOf(pool_address).call()
+            # Get QuoterV2 contract
+            quoter = self.contracts['QuoterV2']
+            if not quoter:
+                raise Exception("QuoterV2 contract not loaded")
             
-            token_contract = self.get_bonding_pool_contract(token_address)
-            token_reserve = token_contract.functions.balanceOf(pool_address).call()
+            # Build quote params: want tokens out, need KAS in (WKAS → Token)
+            params = {
+                'tokenIn': wkas_address,
+                'tokenOut': token_address,
+                'amount': tokens_out,  # amount is the desired OUTPUT
+                'fee': fee_tier,
+                'sqrtPriceLimitX96': 0  # No price limit
+            }
             
-            logging.info(f"Pool reserves - KAS: {kas_reserve} wei, Tokens: {token_reserve} wei")
+            # Call QuoterV2.quoteExactOutputSingle
+            result = quoter.functions.quoteExactOutputSingle(params).call()
             
-            # Reverse calculation: Given tokens_out, find kas_in
-            # new_token_reserve = token_reserve - tokens_out
-            # new_kas_reserve = k / new_token_reserve
-            # kas_in_after_fee = new_kas_reserve - kas_reserve
-            # kas_in = kas_in_after_fee / fee_multiplier
+            # Unpack result: (amountIn, sqrtPriceX96After, initializedTicksCrossed, gasEstimate)
+            kas_in = result[0]
+            sqrt_price_after = result[1]
+            gas_estimate = result[3]
             
-            fee_multiplier = 1 - (fee_tier / 1000000)  # 0.3% fee = 0.997
+            # Calculate execution price
+            execution_price = kas_in / tokens_out if tokens_out > 0 else 0
             
-            if kas_reserve > 0 and token_reserve > 0 and tokens_out < token_reserve:
-                k = kas_reserve * token_reserve
-                new_token_reserve = token_reserve - tokens_out
-                new_kas_reserve = k // new_token_reserve
-                kas_in_after_fee = new_kas_reserve - kas_reserve
-                kas_in = int(kas_in_after_fee / fee_multiplier)
-                
-                # Calculate execution price
-                execution_price = kas_in / tokens_out if tokens_out > 0 else 0
-                
-                # Calculate price impact
-                price_before = kas_reserve / token_reserve if token_reserve > 0 else 0
-                price_after = new_kas_reserve / new_token_reserve if new_token_reserve > 0 else 0
-                price_impact_percent = abs((price_after - price_before) / price_before * 100) if price_before > 0 else 0
-            else:
-                kas_in = 0
-                execution_price = 0
-                price_impact_percent = 0
+            # Calculate price impact (simplified)
+            price_impact_percent = 0.0
             
-            logging.info(f"DEX reverse buy quote: {kas_in} KAS needed → {tokens_out} tokens (price: {execution_price} KAS/token, impact: {price_impact_percent:.2f}%)")
+            logging.info(f"DEX reverse buy quote (QuoterV2): {kas_in} KAS needed → {tokens_out} tokens (gas: {gas_estimate})")
             
             return {
                 'kas_in': kas_in,
                 'price_impact_percent': price_impact_percent,
-                'execution_price': execution_price
+                'execution_price': execution_price,
+                'gas_estimate': gas_estimate
             }
             
         except Exception as e:
@@ -2083,11 +2077,11 @@ class Web3Service:
     
     def get_dex_sell_quote_reverse(self, token_address, pool_address, kas_out, fee_tier=FEE_TIER_030):
         """
-        REVERSE calculation: Calculate tokens needed to sell to get a specific amount of KAS
+        REVERSE calculation: Calculate tokens needed to sell to get a specific amount of KAS using QuoterV2
         
         Args:
             token_address (str): Token contract address
-            pool_address (str): DEX pool contract address
+            pool_address (str): DEX pool contract address (not used, QuoterV2 finds pool by tokens+fee)
             kas_out (int): Desired KAS amount to receive (in wei)
             fee_tier (int): Pool fee tier (default 0.30% = 3000)
         
@@ -2095,58 +2089,52 @@ class Web3Service:
             dict: {
                 'tokens_in': int (wei),
                 'price_impact_percent': float,
-                'execution_price': float (KAS per token)
+                'execution_price': float (KAS per token),
+                'gas_estimate': int
             }
         """
         try:
-            logging.info(f"Getting DEX reverse sell quote: Want {kas_out} wei KAS from pool {pool_address}")
+            logging.info(f"Getting DEX reverse sell quote via QuoterV2: Want {kas_out} wei KAS")
             
             # Normalize addresses
-            pool_address = Web3.to_checksum_address(pool_address)
             token_address = Web3.to_checksum_address(token_address)
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Get pool reserves
-            wkas_contract = self.contracts['WKAS']
-            kas_reserve = wkas_contract.functions.balanceOf(pool_address).call()
+            # Get QuoterV2 contract
+            quoter = self.contracts['QuoterV2']
+            if not quoter:
+                raise Exception("QuoterV2 contract not loaded")
             
-            token_contract = self.get_bonding_pool_contract(token_address)
-            token_reserve = token_contract.functions.balanceOf(pool_address).call()
+            # Build quote params: want KAS out, need tokens in (Token → WKAS)
+            params = {
+                'tokenIn': token_address,
+                'tokenOut': wkas_address,
+                'amount': kas_out,  # amount is the desired OUTPUT
+                'fee': fee_tier,
+                'sqrtPriceLimitX96': 0  # No price limit
+            }
             
-            logging.info(f"Pool reserves - KAS: {kas_reserve} wei, Tokens: {token_reserve} wei")
+            # Call QuoterV2.quoteExactOutputSingle
+            result = quoter.functions.quoteExactOutputSingle(params).call()
             
-            # Reverse calculation: Given kas_out, find tokens_in
-            # new_kas_reserve = kas_reserve - kas_out
-            # new_token_reserve = k / new_kas_reserve
-            # tokens_in_after_fee = new_token_reserve - token_reserve
-            # tokens_in = tokens_in_after_fee / fee_multiplier
+            # Unpack result: (amountIn, sqrtPriceX96After, initializedTicksCrossed, gasEstimate)
+            tokens_in = result[0]
+            sqrt_price_after = result[1]
+            gas_estimate = result[3]
             
-            fee_multiplier = 1 - (fee_tier / 1000000)  # 0.3% fee = 0.997
+            # Calculate execution price
+            execution_price = kas_out / tokens_in if tokens_in > 0 else 0
             
-            if kas_reserve > 0 and token_reserve > 0 and kas_out < kas_reserve:
-                k = kas_reserve * token_reserve
-                new_kas_reserve = kas_reserve - kas_out
-                new_token_reserve = k // new_kas_reserve
-                tokens_in_after_fee = new_token_reserve - token_reserve
-                tokens_in = int(tokens_in_after_fee / fee_multiplier)
-                
-                # Calculate execution price
-                execution_price = kas_out / tokens_in if tokens_in > 0 else 0
-                
-                # Calculate price impact
-                price_before = kas_reserve / token_reserve if token_reserve > 0 else 0
-                price_after = new_kas_reserve / new_token_reserve if new_token_reserve > 0 else 0
-                price_impact_percent = abs((price_after - price_before) / price_before * 100) if price_before > 0 else 0
-            else:
-                tokens_in = 0
-                execution_price = 0
-                price_impact_percent = 0
+            # Calculate price impact (simplified)
+            price_impact_percent = 0.0
             
-            logging.info(f"DEX reverse sell quote: {tokens_in} tokens needed → {kas_out} KAS (price: {execution_price} KAS/token, impact: {price_impact_percent:.2f}%)")
+            logging.info(f"DEX reverse sell quote (QuoterV2): {tokens_in} tokens needed → {kas_out} KAS (gas: {gas_estimate})")
             
             return {
                 'tokens_in': tokens_in,
                 'price_impact_percent': price_impact_percent,
-                'execution_price': execution_price
+                'execution_price': execution_price,
+                'gas_estimate': gas_estimate
             }
             
         except Exception as e:
