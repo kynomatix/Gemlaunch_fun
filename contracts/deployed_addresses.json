@@ -46,10 +46,16 @@
       "notes": "DEPRECATED - V11: Updated to use GraduationController V12 (complete STF fix with unsafe burn transfer)"
     },
     "VestingDeployer": {
+      "version": "V3",
+      "address": "0x8d19a3Fae7231aA495Db2De545DD16cD1BB8bAB8",
+      "deployedAt": "2025-10-28",
+      "notes": "Auto-deployed with TokenFactory V12 during constructor. Handles PRO token vesting for airdrop/marketing/team allocations."
+    },
+    "VestingDeployer_V2_DEPRECATED": {
       "version": "V2",
       "address": "0x69AC4E0235757B6E81072A13E79c67aD964A9c21",
       "deployedAt": "2025-10-27",
-      "notes": "Auto-deployed with TokenFactory V7"
+      "notes": "DEPRECATED - Auto-deployed with TokenFactory V7"
     },
     "AirdropDistributor": {
       "version": "V1",

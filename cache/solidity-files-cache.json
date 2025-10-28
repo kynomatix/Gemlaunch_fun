@@ -1268,6 +1268,43 @@
       "artifacts": [
         "IUniswapV3Pool"
       ]
+    },
+    "/home/runner/workspace/contracts/interfaces/IUniswapV3Factory.sol": {
+      "lastModificationDate": 1761630736475,
+      "contentHash": "9a900fd9726db64baacc9e6442dcdf7c",
+      "sourceName": "contracts/interfaces/IUniswapV3Factory.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IUniswapV3Factory"
+      ]
     }
   }
 }
