@@ -607,7 +607,11 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
             ? (tokenLiquidity, kasLiquidity)
             : (kasLiquidity, tokenLiquidity);
         
-        // STEP 6: Create & initialize pool ATOMICALLY (FIX #5: prevents front-running!)
+        // STEP 6: Approve tokens BEFORE pool creation (prevents STF errors)
+        IERC20(token0).forceApprove(kaspaFinancePositionManager, amount0);
+        IERC20(token1).forceApprove(kaspaFinancePositionManager, amount1);
+        
+        // STEP 7: Create & initialize pool ATOMICALLY (FIX #5: prevents front-running!)
         address poolAddress = INonfungiblePositionManager(kaspaFinancePositionManager)
             .createAndInitializePoolIfNecessary(
                 token0,
@@ -622,9 +626,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable {
         emit PoolCreated(tokenAddress, poolAddress, snapshot.targetSqrtPriceX96, block.timestamp);
         emit PoolInitialized(tokenAddress, poolAddress, snapshot.targetSqrtPriceX96, block.timestamp);
         
-        // STEP 7: Approve and mint LP (FIX #11: 30 minute deadline)
-        IERC20(token0).forceApprove(kaspaFinancePositionManager, amount0);
-        IERC20(token1).forceApprove(kaspaFinancePositionManager, amount1);
+        // STEP 8: Mint LP (FIX #11: 30 minute deadline)
         
         (uint256 positionId, uint128 liquidity, uint256 actualAmount0, uint256 actualAmount1) = 
             _mintLiquidityPosition(token0, token1, amount0, amount1);
