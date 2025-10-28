@@ -38,6 +38,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./BondingCurvePool.sol";
@@ -648,7 +649,8 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable, IERC721Re
         _handleExcessTokens(token0, token1, amount0, amount1, actualAmount0, actualAmount1);
         
         // STEP 9: Burn LP NFT to dead address (FIX #6: permanent liquidity lock!)
-        INonfungiblePositionManager(kaspaFinancePositionManager).safeTransferFrom(
+        // NOTE: Use transferFrom (NOT safeTransferFrom) because burn address doesn't implement IERC721Receiver
+        IERC721(kaspaFinancePositionManager).transferFrom(
             address(this),
             BURN_ADDRESS,  // 0x...dEaD - provably uncontrollable
             positionId
@@ -908,7 +910,7 @@ contract GraduationControllerV3 is Ownable, ReentrancyGuard, Pausable, IERC721Re
         uint256 tokenId,
         bytes calldata data
     ) external pure override returns (bytes4) {
-        return this.onERC721Received.selector;
+        return IERC721Receiver.onERC721Received.selector;
     }
     
     // Receive KAS from bonding curve

@@ -307,8 +307,8 @@
       ]
     },
     "/home/runner/workspace/contracts/GraduationControllerV3.sol": {
-      "lastModificationDate": 1761615371386,
-      "contentHash": "2d2bbe1b695d98f7f05cb35c10dfe934",
+      "lastModificationDate": 1761619270148,
+      "contentHash": "6d7f0b61cd2e86145c4a2a812a6db5e3",
       "sourceName": "contracts/GraduationControllerV3.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -340,6 +340,7 @@
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "@openzeppelin/contracts/token/ERC721/IERC721.sol",
         "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
         "./BondingCurvePool.sol"
@@ -1190,6 +1191,45 @@
       ],
       "artifacts": [
         "IERC721Receiver"
+      ]
+    },
+    "/home/runner/workspace/node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol": {
+      "lastModificationDate": 1760071706601,
+      "contentHash": "f62e11dbd302e17a5621a1438f4e054c",
+      "sourceName": "@openzeppelin/contracts/token/ERC721/IERC721.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.2"
+      ],
+      "artifacts": [
+        "IERC721"
       ]
     }
   }
