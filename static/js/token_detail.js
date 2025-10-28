@@ -1361,8 +1361,14 @@
             clearTimeout(this.quoteTimeout);
             
             // Determine which field is input based on lastEditedField (bidirectional support)
+            // Check if token is graduated to route to correct endpoints
+            const tradeButton = document.getElementById('tradeButton');
+            const graduationStatus = tradeButton?.getAttribute('data-graduation-status') || 'active';
+            const isGraduated = graduationStatus === 'graduated';
+            
             let params = {
-                token_address: window.tokenContractAddress
+                token_address: window.tokenContractAddress,
+                is_graduated: isGraduated
             };
             
             let inputField, outputField;
@@ -1826,8 +1832,14 @@
             // Execute via TransactionManager with AUTO-SLIPPAGE retry system
             try {
                 // Build base parameters without slippage (auto-slippage system handles this)
+                // Check if token is graduated to route to correct endpoints
+                const tradeButton = document.getElementById('tradeButton');
+                const graduationStatus = tradeButton?.getAttribute('data-graduation-status') || 'active';
+                const isGraduated = graduationStatus === 'graduated';
+                
                 const baseParams = {
-                    token_address: window.tokenContractAddress
+                    token_address: window.tokenContractAddress,
+                    is_graduated: isGraduated
                 };
                 
                 if (action === 'buy') {
@@ -3771,7 +3783,68 @@
                 dexPoolAddress: data.dexPoolAddress || data.dex_pool_address
             });
             
+            // Update market cap display in token header for graduated tokens
+            if (data.marketCap !== undefined && data.marketCap > 0) {
+                this.updateMarketCapDisplay(data.marketCap);
+            }
+            
             console.log('Graduation progress:', data);
+        },
+        
+        updateMarketCapDisplay: function(marketCapKas) {
+            // Find the market cap stat elements in the token header
+            const statItems = document.querySelectorAll('.stat-item');
+            let marketCapItem = null;
+            
+            for (const item of statItems) {
+                const label = item.querySelector('.stat-label');
+                if (label && label.textContent.trim() === 'MARKET CAP') {
+                    marketCapItem = item;
+                    break;
+                }
+            }
+            
+            if (!marketCapItem) return;
+            
+            // Guard against null/undefined values
+            if (marketCapKas === undefined || marketCapKas === null || !this.kasToUsd) {
+                console.warn('⚠️ Cannot update market cap display - missing data');
+                return;
+            }
+            
+            // Calculate USD value using kasToUsd (not kasPrice)
+            const marketCapUsd = marketCapKas * this.kasToUsd;
+            
+            // Update the display
+            const statValue = marketCapItem.querySelector('.stat-value');
+            const statSub = marketCapItem.querySelector('.stat-sub');
+            
+            if (statValue) {
+                statValue.textContent = `$${this.formatNumber(marketCapUsd, true)}`;
+            }
+            if (statSub) {
+                statSub.textContent = `${this.formatNumber(marketCapKas)} KAS`;
+            }
+            
+            console.log(`💰 Updated market cap display: $${this.formatNumber(marketCapUsd, true)}`);
+        },
+        
+        formatNumber: function(value, isUsd = false) {
+            if (value === undefined || value === null) return '0';
+            
+            const num = parseFloat(value);
+            if (isNaN(num)) return '0';
+            
+            if (isUsd) {
+                // Format USD with K, M, B suffixes
+                if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
+                if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+                if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+                return num.toFixed(2);
+            } else {
+                // Format KAS with commas
+                return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            }
         },
         
         showGraduatedStatus: function(poolAddress) {

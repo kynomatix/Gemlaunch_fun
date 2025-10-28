@@ -40,16 +40,29 @@ class TransactionManager {
     /**
      * Get price quote for buy/sell transactions
      * ⚠️ H-5 FIX: Add signal parameter for AbortController support
+     * ✨ Graduated Token Support: Routes to DEX endpoints for graduated tokens
      * 
      * @param {string} quoteType - 'buy' | 'sell'
-     * @param {Object} params - {token_address, kas_amount} for buy | {token_address, token_amount} for sell
+     * @param {Object} params - {token_address, kas_amount, is_graduated} for buy | {token_address, token_amount, is_graduated} for sell
      * @param {AbortSignal} signal - Optional AbortController signal for canceling requests
      * @returns {Promise<Object>} Quote data with tokens_out, fees, slippage, price_impact
      */
     async getQuote(quoteType, params, signal = null) {
-        const endpoint = quoteType === 'buy' 
-            ? '/api/trade/quote-buy' 
-            : '/api/trade/quote-sell';
+        // Check if token is graduated
+        const isGraduated = params.is_graduated || false;
+        
+        let endpoint;
+        if (isGraduated) {
+            // Use DEX quote endpoint for graduated tokens
+            endpoint = '/api/dex/quote';
+            // Add trade_type to params for DEX endpoint
+            params.trade_type = quoteType;
+        } else {
+            // Use bonding curve endpoints for active tokens
+            endpoint = quoteType === 'buy' 
+                ? '/api/trade/quote-buy' 
+                : '/api/trade/quote-sell';
+        }
         
         const fetchOptions = {
             method: 'POST',
@@ -75,9 +88,10 @@ class TransactionManager {
     // ===== PHASE 2: BUILD UNSIGNED TX =====
     /**
      * Build unsigned transaction data from backend
+     * ✨ Graduated Token Support: Routes to DEX endpoints for graduated tokens
      * 
      * @param {string} txType - 'create_token' | 'buy' | 'sell' | 'claim_fees'
-     * @param {Object} params - Transaction-specific parameters
+     * @param {Object} params - Transaction-specific parameters (includes is_graduated for buy/sell)
      * @returns {Promise<Object>} {success, tx_data: {to, value, data, gas}, estimated_gas}
      */
     async buildTransaction(txType, params) {
@@ -88,7 +102,11 @@ class TransactionManager {
                 throw new Error('token_address is required for claim_fees transaction');
             }
             endpoint = `/api/token/${params.token_address}/claim-creator-fees`;
+        } else if ((txType === 'buy' || txType === 'sell') && params.is_graduated) {
+            // Use DEX endpoints for graduated tokens
+            endpoint = txType === 'buy' ? '/api/dex/buy' : '/api/dex/sell';
         } else {
+            // Use bonding curve endpoints for active tokens or token creation
             const endpoints = {
                 'create_token': '/api/token/create',
                 'buy': '/api/trade/buy',
