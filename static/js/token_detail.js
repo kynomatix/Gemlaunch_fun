@@ -1276,48 +1276,57 @@
             const feeBreakdown = document.getElementById('feeBreakdown');
             if (!feeBreakdown) return;
             
-            // Update Anti-Bot Fee
-            const antiBotFee = fees.antiBotFee || fees.anti_bot || 0;
-            const antiBotFeeDisplay = document.getElementById('antiBotFeeDisplay');
-            if (antiBotFeeDisplay) {
-                antiBotFeeDisplay.textContent = `${antiBotFee.toFixed(4)} KAS`;
+            // Handle DEX vs Bonding Curve quotes
+            if (fees.isDex) {
+                // DEX Trading - Calculate LP fee from KAS amount
+                const kasAmount = parseFloat(document.getElementById('kasAmount').value) || 0;
+                const feeTier = fees.feeTier || 2500; // Default to 0.25%
+                const lpFee = kasAmount * (feeTier / 1000000); // feeTier is in basis points (2500 = 0.25%)
+                
+                const lpFeeDisplay = document.getElementById('lpFeeDisplay');
+                if (lpFeeDisplay) {
+                    lpFeeDisplay.textContent = `${lpFee.toFixed(4)} KAS`;
+                }
+            } else {
+                // Bonding Curve Trading - Update platform fees
+                const antiBotFee = fees.antiBotFee || fees.anti_bot || 0;
+                const antiBotFeeDisplay = document.getElementById('antiBotFeeDisplay');
+                if (antiBotFeeDisplay) {
+                    antiBotFeeDisplay.textContent = `${antiBotFee.toFixed(4)} KAS`;
+                }
+                
+                const platformFee = fees.platformFee || fees.platform || 0;
+                const platformFeeDisplay = document.getElementById('platformFeeDisplay');
+                if (platformFeeDisplay) {
+                    platformFeeDisplay.textContent = `${platformFee.toFixed(4)} KAS`;
+                }
+                
+                const creatorFee = fees.creatorFee || fees.creator || 0;
+                const creatorFeeDisplay = document.getElementById('creatorFeeDisplay');
+                if (creatorFeeDisplay) {
+                    creatorFeeDisplay.textContent = `${creatorFee.toFixed(4)} KAS`;
+                }
+                
+                const totalPlatformFee = platformFee + creatorFee + antiBotFee;
+                const totalPlatformFeeDisplay = document.getElementById('totalPlatformFee');
+                if (totalPlatformFeeDisplay) {
+                    totalPlatformFeeDisplay.textContent = `${totalPlatformFee.toFixed(4)} KAS`;
+                }
+                
+                const slippageBps = fees.auto_slippage_bps || 50;
+                const autoSlippageDisplay = document.getElementById('autoSlippageDisplay');
+                if (autoSlippageDisplay) {
+                    autoSlippageDisplay.textContent = `${(slippageBps / 100).toFixed(2)}%`;
+                }
             }
             
-            // Update Platform Fee (0.9%)
-            const platformFee = fees.platformFee || fees.platform || 0;
-            const platformFeeDisplay = document.getElementById('platformFeeDisplay');
-            if (platformFeeDisplay) {
-                platformFeeDisplay.textContent = `${platformFee.toFixed(4)} KAS`;
-            }
-            
-            // Update Creator Fee (0.1%)
-            const creatorFee = fees.creatorFee || fees.creator || 0;
-            const creatorFeeDisplay = document.getElementById('creatorFeeDisplay');
-            if (creatorFeeDisplay) {
-                creatorFeeDisplay.textContent = `${creatorFee.toFixed(4)} KAS`;
-            }
-            
-            // Calculate and update Total Platform Fee
-            const totalPlatformFee = platformFee + creatorFee + antiBotFee;
-            const totalPlatformFeeDisplay = document.getElementById('totalPlatformFee');
-            if (totalPlatformFeeDisplay) {
-                totalPlatformFeeDisplay.textContent = `${totalPlatformFee.toFixed(4)} KAS`;
-            }
-            
-            // Update Price Impact with color coding
-            const priceImpact = fees.priceImpact || fees.price_impact_percent || 0;
+            // Update Price Impact with color coding (both DEX and bonding curve)
+            const priceImpact = fees.priceImpact || fees.price_impact_percent || fees.price_impact_pct || 0;
             const impactColor = priceImpact > 5 ? '#FF5252' : 
                                priceImpact > 2 ? '#FFA500' : '#4CAF50';
             const priceImpactDisplay = document.getElementById('priceImpactDisplay');
             if (priceImpactDisplay) {
                 priceImpactDisplay.innerHTML = `<span style="color: ${impactColor}">${priceImpact.toFixed(2)}%</span>`;
-            }
-            
-            // Update Auto Slippage
-            const slippageBps = fees.auto_slippage_bps || 50;
-            const autoSlippageDisplay = document.getElementById('autoSlippageDisplay');
-            if (autoSlippageDisplay) {
-                autoSlippageDisplay.textContent = `${(slippageBps / 100).toFixed(2)}%`;
             }
             
             // Show breakdown
@@ -1504,13 +1513,26 @@
                             this._updatingProgrammatically = false;
                         }
                         
-                        // Display fee breakdown
-                        this.displayFeeBreakdown({
-                            antiBotFee: quote.fees?.anti_bot || 0,
-                            platformFee: quote.fees?.platform || 0,
-                            creatorFee: quote.fees?.creator || 0,
-                            priceImpact: quote.price_impact_percent || 0
-                        });
+                        // Display fee breakdown (handle both bonding curve and DEX quotes)
+                        const isGraduated = params.is_graduated || false;
+                        if (isGraduated) {
+                            // DEX quote response format
+                            this.displayFeeBreakdown({
+                                priceImpact: quote.price_impact_pct || 0,
+                                executionPrice: quote.execution_price || 0,
+                                feeTier: quote.fee_tier || 2500,
+                                isDex: true
+                            });
+                        } else {
+                            // Bonding curve quote response format  
+                            this.displayFeeBreakdown({
+                                antiBotFee: quote.fees?.anti_bot || 0,
+                                platformFee: quote.fees?.platform || 0,
+                                creatorFee: quote.fees?.creator || 0,
+                                priceImpact: quote.price_impact_percent || 0,
+                                isDex: false
+                            });
+                        }
                         
                         // CD-1 + M-8 FIX: Store quote with flat structure INSIDE function
                         window.lastQuote = {
@@ -1519,8 +1541,21 @@
                             mode: action           // 'buy' or 'sell'
                         };
                         
-                        // Update USD value display
-                        const kasValue = quote.kas_amount || quote.kas_out;
+                        // Update USD value display - handle different field names for DEX vs bonding curve
+                        let kasValue;
+                        if (isGraduated) {
+                            // DEX: Calculate KAS value based on action and which field is populated
+                            if (action === 'buy') {
+                                // Buy with KAS: input is KAS (amount_in or user input)
+                                kasValue = parseFloat(document.getElementById('kasAmount').value) || 0;
+                            } else {
+                                // Sell for KAS: output is KAS (amount_out)
+                                kasValue = parseFloat(quote.amount_out || quote.amount_in || 0);
+                            }
+                        } else {
+                            // Bonding curve
+                            kasValue = quote.kas_amount || quote.kas_out || 0;
+                        }
                         const usdAmount = kasValue * this.kasToUsd;
                         const kasUsdValue = document.getElementById('kasUsdValue');
                         if (kasUsdValue) {

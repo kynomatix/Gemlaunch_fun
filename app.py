@@ -5342,7 +5342,7 @@ def api_dex_quote():
         
         # Parse optional parameters
         slippage_bps = data.get('slippage_bps', 50)
-        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
+        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 2500)
         
         # Validate slippage
         if not isinstance(slippage_bps, (int, float)) or slippage_bps < 0 or slippage_bps > 10000:
@@ -5494,7 +5494,7 @@ def api_dex_buy():
             return jsonify({'success': False, 'error': 'Invalid amount or deadline format'}), 400
         
         # Get fee tier from token
-        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
+        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 2500)
         
         # Build transaction
         web3_service = get_web3_service()
@@ -5607,7 +5607,7 @@ def api_dex_sell():
             return jsonify({'success': False, 'error': 'Invalid amount or deadline format'}), 400
         
         # Get fee tier from token
-        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 3000)
+        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 2500)
         
         # Build transaction
         web3_service = get_web3_service()
