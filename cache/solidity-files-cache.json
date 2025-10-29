@@ -1046,8 +1046,8 @@
       ]
     },
     "/home/runner/workspace/contracts/interfaces/IQuoterV2.sol": {
-      "lastModificationDate": 1761115526602,
-      "contentHash": "15e1f47a3801150cd541ac4acf97aed5",
+      "lastModificationDate": 1761735699666,
+      "contentHash": "a1ab92aa1fde1d03f8098d950648749d",
       "sourceName": "contracts/interfaces/IQuoterV2.sol",
       "solcConfig": {
         "version": "0.8.20",
