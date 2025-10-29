@@ -1888,7 +1888,9 @@
                 
                 const baseParams = {
                     token_address: window.tokenContractAddress,
-                    is_graduated: isGraduated
+                    is_graduated: isGraduated,
+                    deadline: Math.floor(Date.now() / 1000) + 300,  // 5 minutes from now
+                    user_address: window.walletManager.getConnectedWallet().address
                 };
                 
                 if (action === 'buy') {
