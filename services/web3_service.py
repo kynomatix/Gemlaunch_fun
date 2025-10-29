@@ -1876,17 +1876,16 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
-            # CRITICAL: Let MetaMask handle gasPrice and nonce automatically
+            # CRITICAL: Let MetaMask handle gas, gasPrice and nonce automatically
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': encoded_data,
-                'gas': hex(300000),  # Fixed gas limit for V3 swap (safe upper bound)
                 'chainId': hex(166244)  # Kasplex Testnet chain ID
             }
             
-            logging.info(f"DEX buy tx built - Gas: {tx_data['gas']} (fixed limit)")
+            logging.info(f"DEX buy tx built - MetaMask will estimate gas")
             return tx_data
             
         except Exception as e:
@@ -1933,17 +1932,16 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
-            # CRITICAL: Let MetaMask handle gasPrice and nonce automatically
+            # CRITICAL: Let MetaMask handle gas, gasPrice and nonce automatically
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(300000),  # Fixed gas limit for V3 swap
                 'chainId': hex(166244)  # Kasplex Testnet chain ID
             }
             
-            logging.info(f"DEX sell tx built - Gas: {tx_data['gas']} (fixed limit)")
+            logging.info(f"DEX sell tx built - MetaMask will estimate gas")
             return tx_data
             
         except Exception as e:
@@ -1972,17 +1970,16 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
-            # CRITICAL: Let MetaMask handle gasPrice and nonce automatically
+            # CRITICAL: Let MetaMask handle gas, gasPrice and nonce automatically
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(50000),  # Fixed gas limit for WKAS unwrap (cheap operation)
                 'chainId': hex(166244)  # Kasplex Testnet chain ID
             }
             
-            logging.info(f"WKAS unwrap tx built - Gas: {tx_data['gas']} (fixed limit)")
+            logging.info(f"WKAS unwrap tx built - MetaMask will estimate gas")
             return tx_data
             
         except Exception as e:
