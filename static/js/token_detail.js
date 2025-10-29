@@ -1541,21 +1541,9 @@
                             mode: action           // 'buy' or 'sell'
                         };
                         
-                        // Update USD value display - handle different field names for DEX vs bonding curve
-                        let kasValue;
-                        if (isGraduated) {
-                            // DEX: Calculate KAS value based on action and which field is populated
-                            if (action === 'buy') {
-                                // Buy with KAS: input is KAS (amount_in or user input)
-                                kasValue = parseFloat(document.getElementById('kasAmount').value) || 0;
-                            } else {
-                                // Sell for KAS: output is KAS (amount_out)
-                                kasValue = parseFloat(quote.amount_out || quote.amount_in || 0);
-                            }
-                        } else {
-                            // Bonding curve
-                            kasValue = quote.kas_amount || quote.kas_out || 0;
-                        }
+                        // Update USD value display
+                        // For all trades, the KAS amount is always in the kasAmount field after quote
+                        const kasValue = parseFloat(document.getElementById('kasAmount').value) || 0;
                         const usdAmount = kasValue * this.kasToUsd;
                         const kasUsdValue = document.getElementById('kasUsdValue');
                         if (kasUsdValue) {
