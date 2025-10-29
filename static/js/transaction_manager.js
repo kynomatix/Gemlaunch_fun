@@ -241,9 +241,16 @@ class TransactionManager {
             from: accounts[0],
             to: txData.to,
             value: txData.value || '0x0',
-            data: txData.data,
-            gas: txData.gas
+            data: txData.data
         };
+        
+        // Only include gas, chainId if provided by backend
+        if (txData.gas) {
+            txParams.gas = txData.gas;
+        }
+        if (txData.chainId) {
+            txParams.chainId = txData.chainId;
+        }
         
         // eth_sendTransaction signs AND submits to blockchain
         const txHash = await provider.request({
