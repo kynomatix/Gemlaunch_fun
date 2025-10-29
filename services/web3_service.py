@@ -1720,9 +1720,10 @@ class Web3Service:
     
     def get_dex_buy_quote(self, token_address, pool_address, kas_amount, fee_tier=FEE_TIER_025):
         """
-        Get quote for buying tokens via Kaspa Finance DEX using QuoterV2
+        Get quote for buying tokens via Kaspa Finance DEX using pool state + V3 math
         
-        Uses QuoterV2.quoteExactInput with encoded path for accurate quotes.
+        Bypasses QuoterV2 due to ABI compatibility issues with Kaspa Finance.
+        Reads pool reserves and calculates quotes using Uniswap V3 formulas.
         
         Args:
             token_address (str): Token contract address
@@ -1739,39 +1740,25 @@ class Web3Service:
             }
         """
         try:
-            logging.info(f"Getting DEX buy quote via QuoterV2: {kas_amount} wei KAS for fee tier {fee_tier}")
+            logging.info(f"Getting DEX buy quote via pool state: {kas_amount} wei KAS for fee tier {fee_tier}")
             
             # Normalize addresses
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Encode path: tokenIn (WKAS) -> fee -> tokenOut (Token)
-            # Path format: abi.encodePacked(tokenIn, fee, tokenOut)
-            path = b''.join([
-                bytes.fromhex(wkas_address[2:]),      # Remove 0x prefix, convert to bytes
-                fee_tier.to_bytes(3, 'big'),           # uint24 fee (3 bytes)
-                bytes.fromhex(token_address[2:])       # Remove 0x prefix, convert to bytes
-            ])
+            # Use V3 quoter to calculate quote from pool reserves
+            result = v3_quoter.calculate_exact_input_quote(
+                self.w3,
+                pool_address,
+                wkas_address,
+                token_address,
+                kas_amount,
+                fee_tier
+            )
             
-            # Call QuoterV2.quoteExactInput
-            quoter = self.contracts['QuoterV2']
-            
-            try:
-                result = quoter.functions.quoteExactInput(path, kas_amount).call()
-                
-                tokens_out = result[0]        # amountOut
-                sqrt_prices = result[1]       # sqrtPriceX96AfterList
-                ticks_crossed = result[2]     # initializedTicksCrossedList
-                gas_estimate = result[3]      # gasEstimate
-                
-                logging.info(f"✅ QuoterV2 result: {kas_amount} wei → {tokens_out} tokens (gas: {gas_estimate})")
-                
-            except Exception as e:
-                logging.error(f"QuoterV2.quoteExactInput failed: {str(e)}")
-                raise ValueError(f"Quote failed: {str(e)}")
-            
-            # Calculate price impact (simplified)
-            price_impact_percent = 0.0  # Can calculate from sqrt_prices if needed
+            tokens_out = result['amount_out']
+            gas_estimate = result['gas_estimate']
+            price_impact_percent = result['price_impact_percent']
             
             # Calculate execution price
             execution_price = kas_amount / tokens_out if tokens_out > 0 else 0
@@ -1782,7 +1769,7 @@ class Web3Service:
                 'tokens_out': tokens_out,
                 'price_impact_percent': price_impact_percent,
                 'execution_price': execution_price,
-                'gas_estimate': int(gas_estimate)
+                'gas_estimate': gas_estimate
             }
             
         except Exception as e:
@@ -1791,9 +1778,10 @@ class Web3Service:
     
     def get_dex_sell_quote(self, token_address, pool_address, token_amount, fee_tier=FEE_TIER_025):
         """
-        Get quote for selling tokens via Kaspa Finance DEX using QuoterV2
+        Get quote for selling tokens via Kaspa Finance DEX using pool state + V3 math
         
-        Uses QuoterV2.quoteExactInput with encoded path for accurate quotes.
+        Bypasses QuoterV2 due to ABI compatibility issues with Kaspa Finance.
+        Reads pool reserves and calculates quotes using Uniswap V3 formulas.
         
         Args:
             token_address (str): Token contract address
@@ -1810,39 +1798,25 @@ class Web3Service:
             }
         """
         try:
-            logging.info(f"Getting DEX sell quote via QuoterV2: {token_amount} wei tokens for fee tier {fee_tier}")
+            logging.info(f"Getting DEX sell quote via pool state: {token_amount} wei tokens for fee tier {fee_tier}")
             
             # Normalize addresses
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Encode path: tokenIn (Token) -> fee -> tokenOut (WKAS)
-            # Path format: abi.encodePacked(tokenIn, fee, tokenOut)
-            path = b''.join([
-                bytes.fromhex(token_address[2:]),      # Remove 0x prefix, convert to bytes
-                fee_tier.to_bytes(3, 'big'),           # uint24 fee (3 bytes)
-                bytes.fromhex(wkas_address[2:])        # Remove 0x prefix, convert to bytes
-            ])
+            # Use V3 quoter to calculate quote from pool reserves
+            result = v3_quoter.calculate_exact_input_quote(
+                self.w3,
+                pool_address,
+                token_address,
+                wkas_address,
+                token_amount,
+                fee_tier
+            )
             
-            # Call QuoterV2.quoteExactInput
-            quoter = self.contracts['QuoterV2']
-            
-            try:
-                result = quoter.functions.quoteExactInput(path, token_amount).call()
-                
-                kas_out = result[0]           # amountOut
-                sqrt_prices = result[1]       # sqrtPriceX96AfterList
-                ticks_crossed = result[2]     # initializedTicksCrossedList
-                gas_estimate = result[3]      # gasEstimate
-                
-                logging.info(f"✅ QuoterV2 result: {token_amount} tokens → {kas_out} wei WKAS (gas: {gas_estimate})")
-                
-            except Exception as e:
-                logging.error(f"QuoterV2.quoteExactInput failed: {str(e)}")
-                raise ValueError(f"Quote failed: {str(e)}")
-            
-            # Calculate price impact (simplified)
-            price_impact_percent = 0.0  # Can calculate from sqrt_prices if needed
+            kas_out = result['amount_out']
+            gas_estimate = result['gas_estimate']
+            price_impact_percent = result['price_impact_percent']
             
             # Calculate execution price
             execution_price = kas_out / token_amount if token_amount > 0 else 0
