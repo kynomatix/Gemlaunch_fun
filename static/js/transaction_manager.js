@@ -237,6 +237,7 @@ class TransactionManager {
         const provider = this.walletManager.getMetaMaskProvider();
         const accounts = await provider.request({method: 'eth_accounts'});
         
+        // Build minimal transaction params - let MetaMask handle gas, gasPrice, nonce, chainId
         const txParams = {
             from: accounts[0],
             to: txData.to,
@@ -244,12 +245,9 @@ class TransactionManager {
             data: txData.data
         };
         
-        // Only include gas, chainId if provided by backend
+        // Only include gas if explicitly provided by backend (for oracle transactions)
         if (txData.gas) {
             txParams.gas = txData.gas;
-        }
-        if (txData.chainId) {
-            txParams.chainId = txData.chainId;
         }
         
         // eth_sendTransaction signs AND submits to blockchain
