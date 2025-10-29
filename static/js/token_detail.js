@@ -1942,8 +1942,25 @@
                     }
                     txHash = relayData.tx_hash;
                 } else {
-                    // MetaMask already submitted
+                    // MetaMask already submitted - register for monitoring
                     txHash = result.tx_hash;
+                    
+                    // Register transaction in database for monitoring
+                    try {
+                        const txType = isGraduated ? `dex_${action}` : action;
+                        await fetch('/api/tx/register', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                tx_hash: txHash,
+                                tx_type: txType,
+                                user_address: baseParams.user_address
+                            })
+                        });
+                    } catch (error) {
+                        console.warn('Failed to register transaction:', error);
+                        // Don't fail the trade if registration fails
+                    }
                 }
                 
                 // Show success message with slippage used
