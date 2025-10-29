@@ -1876,14 +1876,15 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
+            # CRITICAL: MetaMask requires hex strings for all numeric parameters
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
-                'value': kas_amount,
+                'value': hex(kas_amount),
                 'data': encoded_data,
-                'gas': 300000,  # Fixed gas limit for V3 swap (safe upper bound)
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+                'gas': hex(300000),  # Fixed gas limit for V3 swap (safe upper bound)
+                'gasPrice': hex(self.w3.eth.gas_price),
+                'nonce': hex(self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address)))
             }
             
             logging.info(f"DEX buy tx built - Gas: {tx_data['gas']} (fixed limit)")
@@ -1933,14 +1934,15 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
+            # CRITICAL: MetaMask requires hex strings for all numeric parameters
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
-                'value': 0,
+                'value': '0x0',
                 'data': encoded_data,
-                'gas': 300000,  # Fixed gas limit for V3 swap
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+                'gas': hex(300000),  # Fixed gas limit for V3 swap
+                'gasPrice': hex(self.w3.eth.gas_price),
+                'nonce': hex(self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address)))
             }
             
             logging.info(f"DEX sell tx built - Gas: {tx_data['gas']} (fixed limit)")
@@ -1972,14 +1974,15 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
+            # CRITICAL: MetaMask requires hex strings for all numeric parameters
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
-                'value': 0,
+                'value': '0x0',
                 'data': encoded_data,
-                'gas': 50000,  # Fixed gas limit for WKAS unwrap (cheap operation)
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+                'gas': hex(50000),  # Fixed gas limit for WKAS unwrap (cheap operation)
+                'gasPrice': hex(self.w3.eth.gas_price),
+                'nonce': hex(self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address)))
             }
             
             logging.info(f"WKAS unwrap tx built - Gas: {tx_data['gas']} (fixed limit)")

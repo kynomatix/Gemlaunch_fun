@@ -5614,7 +5614,7 @@ def api_dex_sell():
         tx_data = web3_service.build_dex_sell_tx(
             token_address=token_address,
             token_amount=token_amount_wei,
-            min_kas_out_wei=min_kas_out_wei,
+            min_kas_out=min_kas_out_wei,
             user_address=user_address,
             deadline=deadline_int,
             fee_tier=fee_tier
