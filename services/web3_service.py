@@ -1870,8 +1870,9 @@ class Web3Service:
             }
             
             # CRITICAL FIX: Kasplex RPC has broken gas estimation that causes 'execution reverted' 
-            # when using build_transaction(). Manually encode the call to bypass simulation.
-            encoded_data = swap_router.functions.exactInputSingle(params).encode_abi()
+            # when using build_transaction(). Build with minimal params to get encoded data only.
+            function_call = swap_router.functions.exactInputSingle(params)
+            encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
             tx_data = {
@@ -1926,7 +1927,8 @@ class Web3Service:
             }
             
             # CRITICAL FIX: Kasplex RPC has broken gas estimation - manually encode to bypass simulation
-            encoded_data = swap_router.functions.exactInputSingle(params).encode_abi()
+            function_call = swap_router.functions.exactInputSingle(params)
+            encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
             tx_data = {
@@ -1964,7 +1966,8 @@ class Web3Service:
             
             # WKAS.withdraw(amount) - unwraps to native KAS
             # CRITICAL FIX: Kasplex RPC has broken gas estimation - manually encode to bypass simulation
-            encoded_data = wkas_contract.functions.withdraw(wkas_amount).encode_abi()
+            function_call = wkas_contract.functions.withdraw(wkas_amount)
+            encoded_data = function_call._encode_transaction_data()
             
             # Manually build transaction dict without simulation
             tx_data = {
