@@ -1836,7 +1836,10 @@ class Web3Service:
     
     def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
         """
-        Build transaction for buying tokens via Kaspa Finance DEX
+        Build transaction for buying tokens via Kaspa Finance DEX using native KAS
+        
+        The SwapRouter's exactInputSingle is payable and accepts native KAS,
+        automatically wrapping to WKAS internally before swapping.
         
         Args:
             user_address (str): User's wallet address
@@ -1844,17 +1847,17 @@ class Web3Service:
             kas_amount (int): KAS amount to spend (in wei)
             min_tokens_out (int): Minimum tokens to receive (slippage protection)
             deadline (int): Transaction deadline (unix timestamp)
-            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+            fee_tier (int): Pool fee tier (2500 for 0.25%)
         
         Returns:
             dict: Unsigned transaction dict {from, to, data, value, gas}
         """
         try:
-            logging.info(f"Building DEX buy tx for user {user_address} - Token: {token_address}, KAS: {kas_amount}")
+            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}, Min out: {min_tokens_out}, Fee tier: {fee_tier}")
             
             swap_router = self.contracts['SwapRouter']
             
-            # SwapRouter.exactInputSingle params
+            # SwapRouter.exactInputSingle params (standard Uniswap V3)
             params = {
                 'tokenIn': Web3.to_checksum_address(KASPA_FINANCE_WKAS),
                 'tokenOut': Web3.to_checksum_address(token_address),
@@ -1866,10 +1869,10 @@ class Web3Service:
                 'sqrtPriceLimitX96': 0
             }
             
-            # Build transaction
+            # Build transaction with native KAS (payable function auto-wraps)
             tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
                 'from': Web3.to_checksum_address(user_address),
-                'value': kas_amount,  # Send KAS (will be wrapped to WKAS automatically)
+                'value': kas_amount,
                 'gas': 0,
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
@@ -1885,7 +1888,7 @@ class Web3Service:
             
             tx_data['gas'] = gas_estimate['gas']
             
-            logging.info(f"DEX buy tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            logging.info(f"DEX buy tx built - Gas: {gas_estimate['gas']}")
             return tx_data
             
         except Exception as e:

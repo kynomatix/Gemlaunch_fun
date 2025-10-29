@@ -155,6 +155,8 @@ class UniswapV3Quoter:
             gas_estimate = 150000
             
             logging.info(f"V3 Quote (Exact Input): {amount_in} in → {amount_out} out (fee: {fee_amount})")
+            logging.info(f"V3 Quote Details - Current price: {sqrt_price_current_x96}, Target price: {sqrt_price_limit_x96}, Liquidity: {liquidity}, Fee tier: {self.fee}")
+            logging.info(f"V3 Quote Result - Price after: {sqrt_ratio_next_x96}, Amount in calculated: {amount_in_calc}")
             return (amount_out, sqrt_ratio_next_x96, gas_estimate)
             
         except Exception as e:
