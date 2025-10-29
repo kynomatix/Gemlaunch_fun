@@ -5499,10 +5499,10 @@ def api_dex_buy():
         # Build transaction
         web3_service = get_web3_service()
         tx_data = web3_service.build_dex_buy_tx(
-            token_address=token_address,
-            kas_amount_wei=kas_amount_wei,
-            min_tokens_out=min_tokens_out_wei,
             user_address=user_address,
+            token_address=token_address,
+            kas_amount=kas_amount_wei,
+            min_tokens_out=min_tokens_out_wei,
             deadline=deadline_int,
             fee_tier=fee_tier
         )
