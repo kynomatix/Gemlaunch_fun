@@ -5655,6 +5655,56 @@ def api_dex_sell():
         
         return jsonify({'success': False, 'error': f'Failed to build DEX sell transaction: {error_msg}'}), 500
 
+@app.route('/api/tx/register', methods=['POST'])
+@csrf.exempt
+def api_register_transaction():
+    """
+    Register a MetaMask transaction in the monitoring system
+    
+    MetaMask submits transactions directly to blockchain (doesn't need relay),
+    but we still need to track them in our database for monitoring.
+    
+    Frontend sends:
+    {
+        "tx_hash": "0x...",
+        "tx_type": "buy" | "sell" | "dex_buy" | "dex_sell" (optional),
+        "user_address": "0x..." (optional),
+        "token_id": 123 (optional)
+    }
+    
+    Returns:
+    {
+        "success": true
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
+        
+        tx_hash = data.get('tx_hash', '').strip()
+        
+        if not tx_hash:
+            return jsonify({'success': False, 'error': 'tx_hash is required'}), 400
+        
+        if not isinstance(tx_hash, str) or not tx_hash.startswith('0x'):
+            return jsonify({'success': False, 'error': 'tx_hash must be a hex string starting with 0x'}), 400
+        
+        # Add to monitoring queue
+        tx_monitor = get_tx_monitor()
+        tx_monitor.add_pending_transaction(
+            tx_hash=tx_hash,
+            tx_type=data.get('tx_type', 'unknown'),
+            user_address=data.get('user_address'),
+            token_id=data.get('token_id')
+        )
+        
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        logging.error(f"Error registering transaction: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/relay/transaction', methods=['POST'])
 @csrf.exempt
 def api_relay_transaction():

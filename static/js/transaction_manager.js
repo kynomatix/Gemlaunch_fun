@@ -520,8 +520,25 @@ class TransactionManager {
                 }
                 txHash = relayResult.tx_hash;
             } else {
-                // MetaMask already submitted - go straight to monitoring
+                // MetaMask already submitted - register it for monitoring
                 txHash = signResult.tx_hash;
+                
+                // Register MetaMask transaction in database for monitoring
+                try {
+                    await fetch('/api/tx/register', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            tx_hash: txHash,
+                            tx_type: txType,
+                            user_address: params.user_address || this.walletManager.getConnectedAddress(),
+                            token_id: params.token_id
+                        })
+                    });
+                } catch (error) {
+                    console.warn('Failed to register transaction:', error);
+                    // Don't fail the transaction if registration fails
+                }
             }
             
             // Phase 5: Monitor confirmation
