@@ -44,4 +44,33 @@ interface IUniswapV3Pool {
      * @return The fee
      */
     function fee() external view returns (uint24);
+    
+    /**
+     * @notice The currently in-range liquidity available to the pool
+     * @return The liquidity at the current price of the pool
+     */
+    function liquidity() external view returns (uint128);
+    
+    /**
+     * @notice The 0th storage slot in the pool stores many values
+     * @return sqrtPriceX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
+     * @return tick The current tick of the pool
+     * @return observationIndex The index of the last oracle observation that was written
+     * @return observationCardinality The current maximum number of observations stored in the pool
+     * @return observationCardinalityNext The next maximum number of observations, to be updated when the observation
+     * @return feeProtocol The protocol fee for both tokens of the pool
+     * @return unlocked Whether the pool is currently locked to reentrancy
+     */
+    function slot0()
+        external
+        view
+        returns (
+            uint160 sqrtPriceX96,
+            int24 tick,
+            uint16 observationIndex,
+            uint16 observationCardinality,
+            uint16 observationCardinalityNext,
+            uint8 feeProtocol,
+            bool unlocked
+        );
 }
