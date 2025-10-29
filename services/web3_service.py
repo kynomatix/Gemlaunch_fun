@@ -1882,7 +1882,7 @@ class Web3Service:
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': encoded_data,
-                'chainId': hex(166244)  # Kasplex Testnet chain ID
+                'chainId': hex(167012)  # Kasplex Testnet chain ID
             }
             
             logging.info(f"DEX buy tx built - MetaMask will estimate gas")
@@ -1938,7 +1938,7 @@ class Web3Service:
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'chainId': hex(166244)  # Kasplex Testnet chain ID
+                'chainId': hex(167012)  # Kasplex Testnet chain ID
             }
             
             logging.info(f"DEX sell tx built - MetaMask will estimate gas")
@@ -1976,7 +1976,7 @@ class Web3Service:
                 'to': wkas_contract.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'chainId': hex(166244)  # Kasplex Testnet chain ID
+                'chainId': hex(167012)  # Kasplex Testnet chain ID
             }
             
             logging.info(f"WKAS unwrap tx built - MetaMask will estimate gas")

@@ -92,6 +92,8 @@ Includes hardware-accelerated CSS animations, efficient asset caching, and JavaS
 ## Blockchain Integration Foundation
 The system includes a Web3 Service Layer for RPC connection to Kasplex zkEVM L2 (Testnet), an Oracle Wallet for automated operations, and contract loading. Transaction utilities handle gas estimation, signing, relay, and status polling, with POA middleware for Kasplex compatibility.
 
+**CRITICAL: Kasplex Testnet Chain ID is 167012 (0x28c64)** - All MetaMask transactions must use this chainId or they will fail to broadcast.
+
 ## Transaction Flow Architecture
 Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool. The `static/js/transaction_manager.js` module orchestrates all transaction types.
 
