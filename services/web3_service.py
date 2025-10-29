@@ -1873,7 +1873,6 @@ class Web3Service:
             tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
                 'from': Web3.to_checksum_address(user_address),
                 'value': kas_amount,
-                'gas': 0,
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
             })
@@ -1933,7 +1932,6 @@ class Web3Service:
             tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
                 'from': Web3.to_checksum_address(user_address),
                 'value': 0,
-                'gas': 0,
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
             })
@@ -1975,7 +1973,6 @@ class Web3Service:
             tx_data = wkas_contract.functions.withdraw(wkas_amount).build_transaction({
                 'from': Web3.to_checksum_address(user_address),
                 'value': 0,
-                'gas': 0,
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
             })
