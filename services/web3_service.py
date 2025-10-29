@@ -1858,16 +1858,17 @@ class Web3Service:
             swap_router = self.contracts['SwapRouter']
             
             # SwapRouter.exactInputSingle params (standard Uniswap V3)
-            params = {
-                'tokenIn': Web3.to_checksum_address(KASPA_FINANCE_WKAS),
-                'tokenOut': Web3.to_checksum_address(token_address),
-                'fee': fee_tier,
-                'recipient': Web3.to_checksum_address(user_address),
-                'deadline': deadline,
-                'amountIn': kas_amount,
-                'amountOutMinimum': min_tokens_out,
-                'sqrtPriceLimitX96': 0
-            }
+            # MUST be a tuple in exact order: tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
+            params = (
+                Web3.to_checksum_address(KASPA_FINANCE_WKAS),  # tokenIn
+                Web3.to_checksum_address(token_address),        # tokenOut
+                fee_tier,                                       # fee
+                Web3.to_checksum_address(user_address),         # recipient
+                deadline,                                       # deadline
+                kas_amount,                                     # amountIn
+                min_tokens_out,                                 # amountOutMinimum
+                0                                               # sqrtPriceLimitX96
+            )
             
             # CRITICAL FIX: Kasplex RPC has broken gas estimation that causes 'execution reverted' 
             # when using build_transaction(). Build with minimal params to get encoded data only.
@@ -1915,16 +1916,17 @@ class Web3Service:
             swap_router = self.contracts['SwapRouter']
             
             # SwapRouter.exactInputSingle params
-            params = {
-                'tokenIn': Web3.to_checksum_address(token_address),
-                'tokenOut': Web3.to_checksum_address(KASPA_FINANCE_WKAS),
-                'fee': fee_tier,
-                'recipient': Web3.to_checksum_address(user_address),
-                'deadline': deadline,
-                'amountIn': token_amount,
-                'amountOutMinimum': min_kas_out,
-                'sqrtPriceLimitX96': 0
-            }
+            # MUST be a tuple in exact order: tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
+            params = (
+                Web3.to_checksum_address(token_address),        # tokenIn
+                Web3.to_checksum_address(KASPA_FINANCE_WKAS),   # tokenOut
+                fee_tier,                                       # fee
+                Web3.to_checksum_address(user_address),         # recipient
+                deadline,                                       # deadline
+                token_amount,                                   # amountIn
+                min_kas_out,                                    # amountOutMinimum
+                0                                               # sqrtPriceLimitX96
+            )
             
             # CRITICAL FIX: Kasplex RPC has broken gas estimation - manually encode to bypass simulation
             function_call = swap_router.functions.exactInputSingle(params)
