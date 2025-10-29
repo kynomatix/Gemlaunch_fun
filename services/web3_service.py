@@ -1875,17 +1875,21 @@ class Web3Service:
             function_call = swap_router.functions.exactInputSingle(params)
             encoded_data = function_call._encode_transaction_data()
             
+            # Get current gas price from network
+            # CRITICAL: MetaMask's gas estimation is broken on Kasplex - it uses 2001 wei instead of 2001 Gwei
+            gas_price = self.w3.eth.gas_price  # Returns correct Gwei value from RPC
+            
             # Manually build transaction dict without simulation
-            # CRITICAL: Let MetaMask handle gas, gasPrice, nonce and chainId automatically
-            # MetaMask already knows chainId from network config - including it can prevent broadcast
+            # Must include gasPrice because MetaMask's estimation is 1 billion times too low
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': encoded_data
+                'data': encoded_data,
+                'gasPrice': hex(gas_price)  # CRITICAL: Fix MetaMask's broken gas estimation
             }
             
-            logging.info(f"DEX buy tx built - MetaMask will handle all parameters")
+            logging.info(f"DEX buy tx built - gasPrice: {gas_price} wei ({self.w3.from_wei(gas_price, 'gwei')} Gwei)")
             return tx_data
             
         except Exception as e:
@@ -1931,17 +1935,21 @@ class Web3Service:
             function_call = swap_router.functions.exactInputSingle(params)
             encoded_data = function_call._encode_transaction_data()
             
+            # Get current gas price from network
+            # CRITICAL: MetaMask's gas estimation is broken on Kasplex - it uses 2001 wei instead of 2001 Gwei
+            gas_price = self.w3.eth.gas_price  # Returns correct Gwei value from RPC
+            
             # Manually build transaction dict without simulation
-            # CRITICAL: Let MetaMask handle gas, gasPrice, nonce and chainId automatically
-            # MetaMask already knows chainId from network config - including it can prevent broadcast
+            # Must include gasPrice because MetaMask's estimation is 1 billion times too low
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data
+                'data': encoded_data,
+                'gasPrice': hex(gas_price)  # CRITICAL: Fix MetaMask's broken gas estimation
             }
             
-            logging.info(f"DEX sell tx built - MetaMask will handle all parameters")
+            logging.info(f"DEX sell tx built - gasPrice: {gas_price} wei ({self.w3.from_wei(gas_price, 'gwei')} Gwei)")
             return tx_data
             
         except Exception as e:
@@ -1969,17 +1977,21 @@ class Web3Service:
             function_call = wkas_contract.functions.withdraw(wkas_amount)
             encoded_data = function_call._encode_transaction_data()
             
+            # Get current gas price from network
+            # CRITICAL: MetaMask's gas estimation is broken on Kasplex - it uses 2001 wei instead of 2001 Gwei
+            gas_price = self.w3.eth.gas_price  # Returns correct Gwei value from RPC
+            
             # Manually build transaction dict without simulation
-            # CRITICAL: Let MetaMask handle gas, gasPrice, nonce and chainId automatically
-            # MetaMask already knows chainId from network config - including it can prevent broadcast
+            # Must include gasPrice because MetaMask's estimation is 1 billion times too low
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
                 'value': '0x0',
-                'data': encoded_data
+                'data': encoded_data,
+                'gasPrice': hex(gas_price)  # CRITICAL: Fix MetaMask's broken gas estimation
             }
             
-            logging.info(f"WKAS unwrap tx built - MetaMask will handle all parameters")
+            logging.info(f"WKAS unwrap tx built - gasPrice: {gas_price} wei ({self.w3.from_wei(gas_price, 'gwei')} Gwei)")
             return tx_data
             
         except Exception as e:

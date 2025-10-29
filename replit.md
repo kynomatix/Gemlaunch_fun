@@ -94,6 +94,8 @@ The system includes a Web3 Service Layer for RPC connection to Kasplex zkEVM L2 
 
 **CRITICAL: Kasplex Testnet Chain ID is 167012 (0x28c64)** - All MetaMask transactions must use this chainId or they will fail to broadcast.
 
+**CRITICAL: MetaMask Gas Price Bug on Kasplex** - MetaMask's gas estimation is broken on Kasplex Testnet. It interprets the RPC's gasPrice response of 2001 Gwei as 2001 wei (1 billion times too low), causing transactions to sign but never broadcast. All MetaMask transactions must explicitly include `gasPrice: hex(w3.eth.gas_price)` to override MetaMask's broken estimation.
+
 ## Transaction Flow Architecture
 Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool. The `static/js/transaction_manager.js` module orchestrates all transaction types.
 
