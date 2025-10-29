@@ -1869,25 +1869,22 @@ class Web3Service:
                 'sqrtPriceLimitX96': 0
             }
             
-            # Build transaction with native KAS (payable function auto-wraps)
-            tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
+            # CRITICAL FIX: Kasplex RPC has broken gas estimation that causes 'execution reverted' 
+            # when using build_transaction(). Manually encode the call to bypass simulation.
+            encoded_data = swap_router.functions.exactInputSingle(params).encode_abi()
+            
+            # Manually build transaction dict without simulation
+            tx_data = {
                 'from': Web3.to_checksum_address(user_address),
+                'to': swap_router.address,
                 'value': kas_amount,
+                'data': encoded_data,
+                'gas': 300000,  # Fixed gas limit for V3 swap (safe upper bound)
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
-            })
+            }
             
-            # Estimate gas
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"DEX buy tx built - Gas: {gas_estimate['gas']}")
+            logging.info(f"DEX buy tx built - Gas: {tx_data['gas']} (fixed limit)")
             return tx_data
             
         except Exception as e:
@@ -1928,25 +1925,21 @@ class Web3Service:
                 'sqrtPriceLimitX96': 0
             }
             
-            # Build transaction (no value, tokens are transferred via approval)
-            tx_data = swap_router.functions.exactInputSingle(params).build_transaction({
+            # CRITICAL FIX: Kasplex RPC has broken gas estimation - manually encode to bypass simulation
+            encoded_data = swap_router.functions.exactInputSingle(params).encode_abi()
+            
+            # Manually build transaction dict without simulation
+            tx_data = {
                 'from': Web3.to_checksum_address(user_address),
+                'to': swap_router.address,
                 'value': 0,
+                'data': encoded_data,
+                'gas': 300000,  # Fixed gas limit for V3 swap
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
-            })
+            }
             
-            # Estimate gas
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"DEX sell tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            logging.info(f"DEX sell tx built - Gas: {tx_data['gas']} (fixed limit)")
             return tx_data
             
         except Exception as e:
@@ -1970,24 +1963,21 @@ class Web3Service:
             wkas_contract = self.contracts['WKAS']
             
             # WKAS.withdraw(amount) - unwraps to native KAS
-            tx_data = wkas_contract.functions.withdraw(wkas_amount).build_transaction({
+            # CRITICAL FIX: Kasplex RPC has broken gas estimation - manually encode to bypass simulation
+            encoded_data = wkas_contract.functions.withdraw(wkas_amount).encode_abi()
+            
+            # Manually build transaction dict without simulation
+            tx_data = {
                 'from': Web3.to_checksum_address(user_address),
+                'to': wkas_contract.address,
                 'value': 0,
+                'data': encoded_data,
+                'gas': 50000,  # Fixed gas limit for WKAS unwrap (cheap operation)
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
-            })
+            }
             
-            # Estimate gas (unwrap is cheap, ~30k gas)
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"WKAS unwrap tx built - Gas: {gas_estimate['gas']}")
+            logging.info(f"WKAS unwrap tx built - Gas: {tx_data['gas']} (fixed limit)")
             return tx_data
             
         except Exception as e:
