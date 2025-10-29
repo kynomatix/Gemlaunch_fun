@@ -554,7 +554,19 @@ class TransactionManager {
     _isSlippageError(error) {
         if (!error) return false;
         
-        const errorMsg = (error.message || error.toString()).toLowerCase();
+        // Safely convert error to string message
+        let errorMsg = '';
+        if (typeof error === 'string') {
+            errorMsg = error;
+        } else if (error.message && typeof error.message === 'string') {
+            errorMsg = error.message;
+        } else if (typeof error.toString === 'function') {
+            errorMsg = error.toString();
+        } else if (typeof error === 'object') {
+            errorMsg = JSON.stringify(error);
+        }
+        errorMsg = errorMsg.toLowerCase();
+        
         const errorData = error.data?.message?.toLowerCase() || '';
         
         // Known slippage error patterns
@@ -701,13 +713,29 @@ class TransactionManager {
                 };
                 
             } catch (error) {
-                console.error(`[AutoSlippage] Attempt ${attempt + 1} failed:`, error.message || error.toString());
-                console.error('Full error:', error.stack);
+                // Safely extract error message
+                let errorMessage = 'Unknown error';
+                if (typeof error === 'string') {
+                    errorMessage = error;
+                } else if (error.message && typeof error.message === 'string') {
+                    errorMessage = error.message;
+                } else if (typeof error.toString === 'function') {
+                    try {
+                        errorMessage = error.toString();
+                    } catch (e) {
+                        errorMessage = JSON.stringify(error);
+                    }
+                } else if (typeof error === 'object') {
+                    errorMessage = JSON.stringify(error);
+                }
+                
+                console.error(`[AutoSlippage] Attempt ${attempt + 1} failed:`, errorMessage);
+                console.error('Full error:', error.stack || error);
                 
                 // ✅ FIX: NEVER retry after wallet popup was shown to prevent double transactions
                 if (walletPopupShown) {
                     console.warn('[AutoSlippage] Wallet popup was shown - cannot retry to avoid double transaction');
-                    throw new Error(`Transaction failed: ${error.message}`);
+                    throw new Error(`Transaction failed: ${errorMessage}`);
                 }
                 
                 // Check if this is a slippage error and we have retries left
@@ -720,8 +748,8 @@ class TransactionManager {
                 // Non-slippage error or max retries reached - fail immediately
                 throw new Error(
                     attempt === maxAttempts - 1 
-                        ? `Transaction failed after ${maxAttempts} attempts. Last error: ${error.message}`
-                        : error.message
+                        ? `Transaction failed after ${maxAttempts} attempts. Last error: ${errorMessage}`
+                        : errorMessage
                 );
             }
         }
