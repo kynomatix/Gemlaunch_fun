@@ -644,11 +644,29 @@ class TransactionManager {
                     ...params
                 };
                 
+                // Calculate slippage-adjusted minimums
+                // For DEX quotes: need to calculate from amount_out + slippage_bps
+                // For bonding curve: use provided min_tokens_out_wei / min_kas_out_wei
                 if (tradeType === 'buy') {
-                    buildParams.min_tokens_out = quote.min_tokens_out_wei;
+                    if (quote.min_tokens_out_wei) {
+                        // Bonding curve format
+                        buildParams.min_tokens_out = quote.min_tokens_out_wei;
+                    } else if (quote.amount_out) {
+                        // DEX format - calculate min from amount_out and slippage
+                        const amountOutWei = window.ethers.utils.parseEther(quote.amount_out.toString());
+                        const minTokensOut = amountOutWei.mul(10000 - slippage_bps).div(10000);
+                        buildParams.min_tokens_out = minTokensOut.toString();
+                    }
                 } else {
-                    // Send wei value to avoid float precision loss
-                    buildParams.min_kas_out = quote.min_kas_out_wei;
+                    if (quote.min_kas_out_wei) {
+                        // Bonding curve format
+                        buildParams.min_kas_out = quote.min_kas_out_wei;
+                    } else if (quote.amount_out) {
+                        // DEX format - calculate min from amount_out and slippage
+                        const amountOutWei = window.ethers.utils.parseEther(quote.amount_out.toString());
+                        const minKasOut = amountOutWei.mul(10000 - slippage_bps).div(10000);
+                        buildParams.min_kas_out = minKasOut.toString();
+                    }
                 }
                 
                 const buildResult = await this.buildTransaction(tradeType, buildParams);
