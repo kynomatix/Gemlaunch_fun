@@ -1754,19 +1754,31 @@
                     deadline: Math.floor(Date.now() / 1000) + 300 // 5 minutes
                 };
                 
-                // H-4 FIX: Get gas estimate for display (use correct parameter name)
-                // Copy params but rename user_address → from_address for gas estimation endpoint
-                const gasEstParams = {
-                    ...params,
-                    from_address: wallet.address  // ✅ FIX: Backend expects 'from_address', not 'user_address'
-                };
-                delete gasEstParams.user_address;  // Remove the incorrect field name
-                const gasEstimate = await this.estimateTradeGas(action, gasEstParams);
-                const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
-                const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
+                // H-4 FIX: Get gas estimate for display
+                // Check if token is graduated - DEX quotes already include gas estimate
+                const tradeButton = document.getElementById('tradeButton');
+                const graduationStatus = tradeButton?.getAttribute('data-graduation-status') || 'active';
+                const isGraduated = graduationStatus === 'graduated';
                 
-                // Show gas estimate in status
-                this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
+                let gasEstimate;
+                if (isGraduated && window.lastQuote?.gas_estimate) {
+                    // For graduated tokens, use gas estimate from DEX quote
+                    gasEstimate = window.lastQuote.gas_estimate;
+                } else if (!isGraduated) {
+                    // For bonding curve trades, call gas estimation endpoint
+                    const gasEstParams = {
+                        ...params,
+                        from_address: wallet.address  // Backend expects 'from_address', not 'user_address'
+                    };
+                    delete gasEstParams.user_address;
+                    gasEstimate = await this.estimateTradeGas(action, gasEstParams);
+                }
+                
+                if (gasEstimate) {
+                    const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
+                    const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
+                    this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
+                }
                 
             } else { // sell
                 // SELL FLOW
@@ -1842,17 +1854,29 @@
                 };
                 
                 // H-4 FIX: Get gas estimate for display
-                // Gas estimation needs token_amount in wei as integer
-                const gasEstParams = {
-                    ...params,
-                    token_amount: tokenAmountWei.toString()
-                };
-                const gasEstimate = await this.estimateTradeGas(action, gasEstParams);
-                const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
-                const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
+                // Check if token is graduated - DEX quotes already include gas estimate
+                const tradeButton = document.getElementById('tradeButton');
+                const graduationStatus = tradeButton?.getAttribute('data-graduation-status') || 'active';
+                const isGraduated = graduationStatus === 'graduated';
                 
-                // Show gas estimate in status
-                this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
+                let gasEstimate;
+                if (isGraduated && window.lastQuote?.gas_estimate) {
+                    // For graduated tokens, use gas estimate from DEX quote
+                    gasEstimate = window.lastQuote.gas_estimate;
+                } else if (!isGraduated) {
+                    // For bonding curve trades, call gas estimation endpoint
+                    const gasEstParams = {
+                        ...params,
+                        token_amount: tokenAmountWei.toString()
+                    };
+                    gasEstimate = await this.estimateTradeGas(action, gasEstParams);
+                }
+                
+                if (gasEstimate) {
+                    const gasCostKAS = ethers.utils.formatEther(gasEstimate.toString());
+                    const gasCostUSD = (parseFloat(gasCostKAS) * this.kasToUsd).toFixed(2);
+                    this.showTradeStatus(`Estimated gas: ~${parseFloat(gasCostKAS).toFixed(4)} KAS ($${gasCostUSD})`);
+                }
             }
             
             // ========== CAPTURE PRE-TRADE BASELINE ==========
