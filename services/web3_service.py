@@ -1720,9 +1720,10 @@ class Web3Service:
     
     def get_dex_buy_quote(self, token_address, pool_address, kas_amount, fee_tier=FEE_TIER_025):
         """
-        Get quote for buying tokens via Kaspa Finance DEX using on-chain QuoterV2
+        Get quote for buying tokens via Kaspa Finance DEX using pool state + V3 math
         
-        Calls the actual QuoterV2 contract to get exact quotes that match DEX execution.
+        Reads pool reserves and calculates quote deterministically using Uniswap V3 math.
+        This bypasses QuoterV2 which has compatibility issues with Kaspa Finance.
         
         Args:
             token_address (str): Token contract address
@@ -1739,63 +1740,36 @@ class Web3Service:
             }
         """
         try:
-            logging.info(f"Getting DEX buy quote via QuoterV2: {kas_amount} wei KAS for fee tier {fee_tier}")
+            logging.info(f"Getting DEX buy quote via pool state: {kas_amount} wei KAS for fee tier {fee_tier}")
             
             # Normalize addresses
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Call QuoterV2.quoteExactInputSingle
-            quoter = self.contracts['QuoterV2']
+            # Use V3 quoter to calculate quote from pool state
+            result = v3_quoter.calculate_exact_input_quote(
+                self.w3,
+                pool_address,
+                wkas_address,
+                token_address,
+                kas_amount,
+                fee_tier
+            )
             
-            try:
-                result = quoter.functions.quoteExactInputSingle((
-                    wkas_address,           # tokenIn
-                    token_address,          # tokenOut
-                    kas_amount,             # amountIn
-                    fee_tier,               # fee
-                    0                       # sqrtPriceLimitX96 (0 = no limit)
-                )).call()
-                
-                tokens_out = result[0]  # amountOut
-                sqrt_price_after = result[1]  # sqrtPriceX96After
-                # result[2] is initializedTicksCrossed
-                gas_used = result[3]  # gasEstimate
-                
-                logging.info(f"✅ QuoterV2 result: {kas_amount} wei → {tokens_out} tokens (gas: {gas_used})")
-                
-            except Exception as e:
-                logging.error(f"QuoterV2 call failed: {str(e)}")
-                raise ValueError(f"Quote failed - pool may not exist or have insufficient liquidity: {str(e)}")
-            
-            # Calculate price impact (simplified - compare to spot price from pool)
-            try:
-                pool_contract = self.w3.eth.contract(
-                    address=Web3.to_checksum_address(pool_address),
-                    abi=self.get_pool_abi()
-                )
-                slot0 = pool_contract.functions.slot0().call()
-                current_sqrt_price = slot0[0]
-                
-                # Calculate price impact
-                if current_sqrt_price > 0:
-                    price_change = abs(sqrt_price_after - current_sqrt_price) / current_sqrt_price
-                    price_impact_percent = price_change * 100
-                else:
-                    price_impact_percent = 0
-            except:
-                price_impact_percent = 0
+            tokens_out = result['amount_out']
+            gas_estimate = result['gas_estimate']
+            price_impact_percent = result['price_impact_percent']
             
             # Calculate execution price
             execution_price = kas_amount / tokens_out if tokens_out > 0 else 0
             
-            logging.info(f"DEX buy quote: {kas_amount} KAS → {tokens_out} tokens (impact: {price_impact_percent:.2f}%, gas: {gas_used})")
+            logging.info(f"DEX buy quote: {kas_amount} KAS → {tokens_out} tokens (gas: {gas_estimate}, impact: {price_impact_percent:.2f}%)")
             
             return {
                 'tokens_out': tokens_out,
                 'price_impact_percent': price_impact_percent,
                 'execution_price': execution_price,
-                'gas_estimate': int(gas_used)
+                'gas_estimate': gas_estimate
             }
             
         except Exception as e:
@@ -1804,9 +1778,10 @@ class Web3Service:
     
     def get_dex_sell_quote(self, token_address, pool_address, token_amount, fee_tier=FEE_TIER_025):
         """
-        Get quote for selling tokens via Kaspa Finance DEX using on-chain QuoterV2
+        Get quote for selling tokens via Kaspa Finance DEX using pool state + V3 math
         
-        Calls the actual QuoterV2 contract to get exact quotes that match DEX execution.
+        Reads pool reserves and calculates quote deterministically using Uniswap V3 math.
+        This bypasses QuoterV2 which has compatibility issues with Kaspa Finance.
         
         Args:
             token_address (str): Token contract address
@@ -1823,62 +1798,36 @@ class Web3Service:
             }
         """
         try:
-            logging.info(f"Getting DEX sell quote via QuoterV2: {token_amount} wei tokens for fee tier {fee_tier}")
+            logging.info(f"Getting DEX sell quote via pool state: {token_amount} wei tokens for fee tier {fee_tier}")
             
             # Normalize addresses
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Call QuoterV2.quoteExactInputSingle
-            quoter = self.contracts['QuoterV2']
+            # Use V3 quoter to calculate quote from pool state
+            result = v3_quoter.calculate_exact_input_quote(
+                self.w3,
+                pool_address,
+                token_address,
+                wkas_address,
+                token_amount,
+                fee_tier
+            )
             
-            try:
-                result = quoter.functions.quoteExactInputSingle((
-                    token_address,          # tokenIn
-                    wkas_address,           # tokenOut
-                    token_amount,           # amountIn
-                    fee_tier,               # fee
-                    0                       # sqrtPriceLimitX96 (0 = no limit)
-                )).call()
-                
-                kas_out = result[0]  # amountOut
-                sqrt_price_after = result[1]  # sqrtPriceX96After
-                gas_used = result[3]  # gasEstimate
-                
-                logging.info(f"✅ QuoterV2 result: {token_amount} tokens → {kas_out} wei WKAS (gas: {gas_used})")
-                
-            except Exception as e:
-                logging.error(f"QuoterV2 call failed: {str(e)}")
-                raise ValueError(f"Quote failed - pool may not exist or have insufficient liquidity: {str(e)}")
-            
-            # Calculate price impact (simplified - compare to spot price from pool)
-            try:
-                pool_contract = self.w3.eth.contract(
-                    address=Web3.to_checksum_address(pool_address),
-                    abi=self.get_pool_abi()
-                )
-                slot0 = pool_contract.functions.slot0().call()
-                current_sqrt_price = slot0[0]
-                
-                # Calculate price impact
-                if current_sqrt_price > 0:
-                    price_change = abs(sqrt_price_after - current_sqrt_price) / current_sqrt_price
-                    price_impact_percent = price_change * 100
-                else:
-                    price_impact_percent = 0
-            except:
-                price_impact_percent = 0
+            kas_out = result['amount_out']
+            gas_estimate = result['gas_estimate']
+            price_impact_percent = result['price_impact_percent']
             
             # Calculate execution price
             execution_price = kas_out / token_amount if token_amount > 0 else 0
             
-            logging.info(f"DEX sell quote: {token_amount} tokens → {kas_out} WKAS (impact: {price_impact_percent:.2f}%, gas: {gas_used})")
+            logging.info(f"DEX sell quote: {token_amount} tokens → {kas_out} WKAS (gas: {gas_estimate}, impact: {price_impact_percent:.2f}%)")
             
             return {
                 'kas_out': kas_out,
                 'price_impact_percent': price_impact_percent,
                 'execution_price': execution_price,
-                'gas_estimate': int(gas_used)
+                'gas_estimate': int(gas_estimate)
             }
             
         except Exception as e:
