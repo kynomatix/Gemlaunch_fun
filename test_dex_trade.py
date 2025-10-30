@@ -71,7 +71,6 @@ def test_dex_buy():
         tx_unsigned = w3_service.build_dex_buy_tx(
             oracle_address,
             token_address,
-            pool_address,
             kas_amount,
             min_tokens_out,
             deadline,

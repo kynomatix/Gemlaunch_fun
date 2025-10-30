@@ -1834,18 +1834,16 @@ class Web3Service:
             logging.error(f"Failed to get DEX sell quote: {str(e)}")
             raise
     
-    def build_dex_buy_tx(self, user_address, token_address, pool_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
+    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
         """
-        Build transaction for buying tokens via Kaspa Finance DEX
+        Build transaction for buying tokens via Kaspa Finance DEX using native KAS
         
-        CRITICAL: Kaspa Finance uses a CUSTOM router, not standard Uniswap V3!
-        Their method is `exactInputSingleFromWKAS` (selector 0x70bdb930) which includes
-        additional `pool` and `payer` fields. Value must be 0x0 - WKAS wrapping happens separately.
+        Uses standard Uniswap V3 exactInputSingle (PAYABLE) with native KAS.
+        SwapRouter wraps KAS → WKAS internally before swapping.
         
         Args:
             user_address (str): User's wallet address
             token_address (str): Token contract address
-            pool_address (str): DEX pool address
             kas_amount (int): KAS amount to spend (in wei)
             min_tokens_out (int): Minimum tokens to receive (slippage protection)
             deadline (int): Transaction deadline (unix timestamp)
@@ -1855,55 +1853,36 @@ class Web3Service:
             dict: Unsigned transaction dict {from, to, data, value}
         """
         try:
-            logging.info(f"Building DEX buy tx - Token: {token_address}, Pool: {pool_address}, KAS: {kas_amount}")
+            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}, Min out: {min_tokens_out}")
             
-            # CRITICAL FIX: Use Kasplex custom method `exactInputSingleFromWKAS` (0x70bdb930)
-            # NOT standard Uniswap V3 `exactInputSingle` (0x414bf389)
-            # Params: (tokenIn, tokenOut, pool, fee, recipient, payer, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96)
+            swap_router = self.contracts['SwapRouter']
             
-            method_selector = '0x70bdb930'  # exactInputSingleFromWKAS
-            
-            # Encode parameters manually using web3's abi encoder
-            param_types = [
-                'address',  # tokenIn (WKAS)
-                'address',  # tokenOut (token)
-                'address',  # pool
-                'uint24',   # fee
-                'address',  # recipient
-                'address',  # payer
-                'uint256',  # deadline
-                'uint256',  # amountIn
-                'uint256',  # amountOutMinimum
-                'uint160'   # sqrtPriceLimitX96
-            ]
-            
-            param_values = [
+            # SwapRouter.exactInputSingle params (standard Uniswap V3)
+            # MUST be a tuple in exact order: tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
+            params = (
                 Web3.to_checksum_address(KASPA_FINANCE_WKAS),  # tokenIn
                 Web3.to_checksum_address(token_address),        # tokenOut
-                Web3.to_checksum_address(pool_address),         # pool (required by Kasplex!)
                 fee_tier,                                       # fee
                 Web3.to_checksum_address(user_address),         # recipient
-                Web3.to_checksum_address(user_address),         # payer (required by Kasplex!)
                 deadline,                                       # deadline
                 kas_amount,                                     # amountIn
                 min_tokens_out,                                 # amountOutMinimum
                 0                                               # sqrtPriceLimitX96
-            ]
+            )
             
-            # Manually encode the call data
-            encoded_params = self.w3.codec.encode(param_types, param_values)
-            encoded_data = method_selector + encoded_params.hex()
+            # Use standard exactInputSingle (it's PAYABLE and accepts native KAS)
+            function_call = swap_router.functions.exactInputSingle(params)
+            encoded_data = function_call._encode_transaction_data()
             
-            # CRITICAL: value MUST be 0x0 for Kasplex router (not payable)
-            # WKAS wrapping happens via separate call or router's internal logic
+            # Send native KAS as value - router wraps to WKAS internally
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
-                'to': Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
-                'value': '0x0',  # NOT payable - WKAS transfer handled separately
+                'to': swap_router.address,
+                'value': hex(kas_amount),  # Native KAS sent with transaction
                 'data': encoded_data
             }
             
-            logging.info(f"DEX buy tx built using Kasplex custom method 0x70bdb930")
+            logging.info(f"DEX buy tx built using standard exactInputSingle with native KAS")
             return tx_data
             
         except Exception as e:
