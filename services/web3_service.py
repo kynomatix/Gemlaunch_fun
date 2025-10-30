@@ -1834,59 +1834,76 @@ class Web3Service:
             logging.error(f"Failed to get DEX sell quote: {str(e)}")
             raise
     
-    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
+    def build_dex_buy_tx(self, user_address, token_address, pool_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
         """
-        Build transaction for buying tokens via Kaspa Finance DEX using native KAS
+        Build transaction for buying tokens via Kaspa Finance DEX
         
-        The SwapRouter's exactInputSingle is payable and accepts native KAS,
-        automatically wrapping to WKAS internally before swapping.
+        CRITICAL: Kaspa Finance uses a CUSTOM router, not standard Uniswap V3!
+        Their method is `exactInputSingleFromWKAS` (selector 0x70bdb930) which includes
+        additional `pool` and `payer` fields. Value must be 0x0 - WKAS wrapping happens separately.
         
         Args:
             user_address (str): User's wallet address
             token_address (str): Token contract address
+            pool_address (str): DEX pool address
             kas_amount (int): KAS amount to spend (in wei)
             min_tokens_out (int): Minimum tokens to receive (slippage protection)
             deadline (int): Transaction deadline (unix timestamp)
             fee_tier (int): Pool fee tier (2500 for 0.25%)
         
         Returns:
-            dict: Unsigned transaction dict {from, to, data, value, gas}
+            dict: Unsigned transaction dict {from, to, data, value}
         """
         try:
-            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}, Min out: {min_tokens_out}, Fee tier: {fee_tier}")
+            logging.info(f"Building DEX buy tx - Token: {token_address}, Pool: {pool_address}, KAS: {kas_amount}")
             
-            swap_router = self.contracts['SwapRouter']
+            # CRITICAL FIX: Use Kasplex custom method `exactInputSingleFromWKAS` (0x70bdb930)
+            # NOT standard Uniswap V3 `exactInputSingle` (0x414bf389)
+            # Params: (tokenIn, tokenOut, pool, fee, recipient, payer, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96)
             
-            # SwapRouter.exactInputSingle params (standard Uniswap V3)
-            # MUST be a tuple in exact order: tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
-            params = (
+            method_selector = '0x70bdb930'  # exactInputSingleFromWKAS
+            
+            # Encode parameters manually using web3's abi encoder
+            param_types = [
+                'address',  # tokenIn (WKAS)
+                'address',  # tokenOut (token)
+                'address',  # pool
+                'uint24',   # fee
+                'address',  # recipient
+                'address',  # payer
+                'uint256',  # deadline
+                'uint256',  # amountIn
+                'uint256',  # amountOutMinimum
+                'uint160'   # sqrtPriceLimitX96
+            ]
+            
+            param_values = [
                 Web3.to_checksum_address(KASPA_FINANCE_WKAS),  # tokenIn
                 Web3.to_checksum_address(token_address),        # tokenOut
+                Web3.to_checksum_address(pool_address),         # pool (required by Kasplex!)
                 fee_tier,                                       # fee
                 Web3.to_checksum_address(user_address),         # recipient
+                Web3.to_checksum_address(user_address),         # payer (required by Kasplex!)
                 deadline,                                       # deadline
                 kas_amount,                                     # amountIn
                 min_tokens_out,                                 # amountOutMinimum
                 0                                               # sqrtPriceLimitX96
-            )
+            ]
             
-            # CRITICAL FIX: Kasplex RPC has broken gas estimation that causes 'execution reverted' 
-            # when using build_transaction(). Build with minimal params to get encoded data only.
-            function_call = swap_router.functions.exactInputSingle(params)
-            encoded_data = function_call._encode_transaction_data()
+            # Manually encode the call data
+            encoded_params = self.w3.codec.encode(param_types, param_values)
+            encoded_data = method_selector + encoded_params.hex()
             
-            # Following Uniswap V3 + MetaMask best practice:
-            # Send ONLY required params (from, to, value, data)
-            # Let MetaMask auto-fill: nonce, chainId, gas, gasPrice
-            # This is the "recommended for most dApps" approach per MetaMask docs
+            # CRITICAL: value MUST be 0x0 for Kasplex router (not payable)
+            # WKAS wrapping happens via separate call or router's internal logic
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
-                'to': swap_router.address,
-                'value': hex(kas_amount),
+                'to': Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
+                'value': '0x0',  # NOT payable - WKAS transfer handled separately
                 'data': encoded_data
             }
             
-            logging.info(f"DEX buy tx built - letting MetaMask handle gas estimation")
+            logging.info(f"DEX buy tx built using Kasplex custom method 0x70bdb930")
             return tx_data
             
         except Exception as e:
