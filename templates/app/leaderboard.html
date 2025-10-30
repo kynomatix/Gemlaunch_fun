@@ -184,21 +184,18 @@ function displayUserProfile(profile) {
         ? `<img src="${profile.profile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; object-fit: cover;">`
         : `<i class="fas fa-user" style="font-size: 3rem; color: #20B2AA;"></i>`;
     
-    // Build achievements HTML with escaped data
+    // Build achievements HTML with custom SVG icons
     let achievementsHTML = '';
     if (profile.achievements && profile.achievements.length > 0) {
         achievementsHTML = '<div style="margin-top: 1.5rem;"><h4 style="color: #20B2AA; margin-bottom: 1rem; font-size: 1rem;"><i class="fas fa-trophy"></i> Achievements</h4><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;">';
         profile.achievements.forEach(achievement => {
-            const safeIcon = escapeHtml(achievement.icon || 'fa-trophy');
             const safeName = escapeHtml(achievement.name || '');
             const safeCategory = escapeHtml(achievement.category || '');
-            // Check if icon is a Font Awesome class or emoji
-            const iconHTML = safeIcon.startsWith('fa-') 
-                ? `<i class="fas ${safeIcon}" style="font-size: 1.5rem; color: #20B2AA;"></i>`
-                : `<div style="font-size: 1.5rem;">${safeIcon}</div>`;
+            // Generate custom SVG icon based on achievement name
+            const iconHTML = generateAchievementIcon(safeName);
             achievementsHTML += `
                 <div style="background: rgba(32, 178, 170, 0.1); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 8px; padding: 0.75rem; text-align: center;">
-                    <div style="margin-bottom: 0.5rem;">${iconHTML}</div>
+                    <div style="margin-bottom: 0.5rem; height: 48px; display: flex; align-items: center; justify-content: center;">${iconHTML}</div>
                     <div style="color: #FFF; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">${safeName}</div>
                     <div style="color: #888; font-size: 0.75rem;">${safeCategory}</div>
                 </div>
@@ -304,6 +301,24 @@ function displayUserProfile(profile) {
             <i class="fas fa-calendar"></i> Member since ${safeMemberSince}
         </div>
     `;
+}
+
+function generateAchievementIcon(achievementName) {
+    // Generate custom SVG icons matching templates/icons/achievement_icon.html
+    const iconStyle = 'width: 48px; height: 48px; stroke: #20B2AA; fill: none;';
+    
+    const icons = {
+        'First Launch': `<svg viewBox="0 0 100 100" style="${iconStyle}"><path d="M50 10 L40 30 L20 35 L35 50 L30 70 L50 60 L70 70 L65 50 L80 35 L60 30 Z" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="35" r="3" fill="#20B2AA"/><line x1="50" y1="60" x2="50" y2="90" stroke-width="3"/><line x1="40" y1="80" x2="50" y2="90" stroke-width="3" stroke-linecap="round"/><line x1="60" y1="80" x2="50" y2="90" stroke-width="3" stroke-linecap="round"/></svg>`,
+        'Token Creator': `<svg viewBox="0 0 100 100" style="${iconStyle}"><circle cx="30" cy="30" r="15" stroke-width="4"/><circle cx="70" cy="30" r="15" stroke-width="4"/><circle cx="50" cy="65" r="15" stroke-width="4"/><path d="M35,35 L45,55" stroke-width="3"/><path d="M65,35 L55,55" stroke-width="3"/></svg>`,
+        'Volume Contributor': `<svg viewBox="0 0 100 100" style="${iconStyle}"><rect x="25" y="60" width="15" height="25" rx="2" stroke-width="3"/><rect x="43" y="45" width="15" height="40" rx="2" stroke-width="3"/><rect x="61" y="30" width="15" height="55" rx="2" stroke-width="3"/><path d="M85,35 L85,20 L70,25" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        'High Volume': `<svg viewBox="0 0 100 100" style="${iconStyle}"><path d="M50,15 L60,35 L82,35 L65,48 L72,70 L50,55 L28,70 L35,48 L18,35 L40,35 Z" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="40" r="8" stroke-width="3"/></svg>`,
+        'First Message': `<svg viewBox="0 0 100 100" style="${iconStyle}"><rect x="20" y="30" width="60" height="40" rx="8" stroke-width="4"/><path d="M45,70 L40,85 L50,75 L60,75" stroke-width="3" stroke-linejoin="round"/><line x1="30" y1="45" x2="70" y2="45" stroke-width="3" stroke-linecap="round"/><line x1="30" y1="55" x2="60" y2="55" stroke-width="3" stroke-linecap="round"/></svg>`,
+        'Community Voice': `<svg viewBox="0 0 100 100" style="${iconStyle}"><rect x="25" y="25" width="50" height="50" rx="5" stroke-width="4"/><rect x="35" y="40" width="10" height="25" rx="2" stroke-width="3"/><rect x="48" y="35" width="10" height="30" rx="2" stroke-width="3"/><rect x="61" y="45" width="10" height="20" rx="2" stroke-width="3"/></svg>`,
+        'Community Leader': `<svg viewBox="0 0 100 100" style="${iconStyle}"><circle cx="50" cy="30" r="15" stroke-width="4"/><path d="M30,55 Q35,48 50,48 Q65,48 70,55" stroke-width="3"/><path d="M25,55 L25,75 Q25,80 30,80 L70,80 Q75,80 75,75 L75,55" stroke-width="4"/><path d="M40,20 L50,10 L60,20" stroke-width="3" stroke-linejoin="round"/></svg>`,
+        'KASPERS NFT Holder': `<svg viewBox="0 0 100 100" style="${iconStyle}"><path d="M30,45 Q30,20 50,20 Q70,20 70,45 L70,75 L65,70 L60,75 L55,70 L50,75 L45,70 L40,75 L35,70 L30,75 Z" stroke-width="4" stroke-linejoin="round"/><circle cx="42" cy="42" r="5" fill="#20B2AA"/><circle cx="58" cy="42" r="5" fill="#20B2AA"/><path d="M45,55 Q50,58 55,55" stroke-width="3" stroke-linecap="round"/></svg>`
+    };
+    
+    return icons[achievementName] || `<svg viewBox="0 0 100 100" style="${iconStyle}"><circle cx="50" cy="50" r="30" stroke-width="4"/><path d="M45,45 L50,50 L58,38" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 function closeUserProfileModal() {
