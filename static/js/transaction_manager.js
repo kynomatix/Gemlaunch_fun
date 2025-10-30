@@ -229,6 +229,8 @@ class TransactionManager {
      * Sign and submit transaction with MetaMask
      * MetaMask signs AND broadcasts in one step - no relay needed
      * 
+     * Following Uniswap V3 pattern: send ONLY required params, let MetaMask handle gas/chainId/nonce
+     * 
      * @private
      * @param {Object} txData - {to, value, data, gas}
      * @returns {Promise<Object>} {tx_hash, needs_relay: false}
@@ -237,8 +239,9 @@ class TransactionManager {
         const provider = this.walletManager.getMetaMaskProvider();
         const accounts = await provider.request({method: 'eth_accounts'});
         
-        // Build minimal transaction params - let MetaMask handle nonce, chainId
-        // BUT we MUST include gasPrice because MetaMask's gas estimation is broken on Kasplex
+        // CRITICAL: Send ONLY required parameters (Uniswap V3 pattern)
+        // Let MetaMask auto-fill: nonce, chainId, gas, gasPrice
+        // This is "recommended for most dApps" per MetaMask docs
         const txParams = {
             from: accounts[0],
             to: txData.to,
@@ -246,15 +249,7 @@ class TransactionManager {
             data: txData.data
         };
         
-        // Include gas if explicitly provided by backend
-        if (txData.gas) {
-            txParams.gas = txData.gas;
-        }
-        
-        // CRITICAL: Include gasPrice if provided by backend to fix MetaMask's broken estimation
-        if (txData.gasPrice) {
-            txParams.gasPrice = txData.gasPrice;
-        }
+        // DO NOT include gas, gasPrice, chainId - MetaMask handles these
         
         // eth_sendTransaction signs AND submits to blockchain
         const txHash = await provider.request({
