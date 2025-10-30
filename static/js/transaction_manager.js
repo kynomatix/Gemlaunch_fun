@@ -237,7 +237,8 @@ class TransactionManager {
         const provider = this.walletManager.getMetaMaskProvider();
         const accounts = await provider.request({method: 'eth_accounts'});
         
-        // Build minimal transaction params - let MetaMask handle gas, gasPrice, nonce, chainId
+        // Build minimal transaction params - let MetaMask handle nonce, chainId
+        // BUT we MUST include gasPrice because MetaMask's gas estimation is broken on Kasplex
         const txParams = {
             from: accounts[0],
             to: txData.to,
@@ -245,9 +246,14 @@ class TransactionManager {
             data: txData.data
         };
         
-        // Only include gas if explicitly provided by backend (for oracle transactions)
+        // Include gas if explicitly provided by backend
         if (txData.gas) {
             txParams.gas = txData.gas;
+        }
+        
+        // CRITICAL: Include gasPrice if provided by backend to fix MetaMask's broken estimation
+        if (txData.gasPrice) {
+            txParams.gasPrice = txData.gasPrice;
         }
         
         // eth_sendTransaction signs AND submits to blockchain
