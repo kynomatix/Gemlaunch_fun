@@ -1866,17 +1866,28 @@ class Web3Service:
                 bytes.fromhex(token_address[2:])         # Remove 0x prefix
             ])
             
-            # exactInput params: (bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)
-            # Manually encode since our ABI doesn't have this function
-            exact_input_selector = '0xb858183f'  # exactInput((bytes,address,uint256,uint256))
+            # exactInput params: struct ExactInputParams { bytes path; address recipient; uint256 deadline; uint256 amountIn; uint256 amountOutMinimum; }
+            # Manually construct ABI encoding to match working Kaspa Finance transactions
+            exact_input_selector = '0xb858183f'
             
-            # Encode parameters
-            encoded_params = self.w3.codec.encode(
-                ['bytes', 'address', 'uint256', 'uint256', 'uint256'],
-                [path, Web3.to_checksum_address(user_address), deadline, kas_amount, min_tokens_out]
-            )
+            # Manual ABI encoding for struct with dynamic bytes field
+            # Structure: selector + offset_to_struct + [offset_to_path + recipient + deadline + amountIn + amountOutMin] + [path_length + path_data]
             
-            exact_input_encoded = bytes.fromhex(exact_input_selector[2:]) + encoded_params
+            path_length = len(path)
+            path_padded = path + b'\x00' * ((32 - (path_length % 32)) % 32)  # Pad to 32-byte boundary
+            
+            # Build the encoding manually
+            encoding = bytes.fromhex(exact_input_selector[2:])
+            encoding += (32).to_bytes(32, 'big')  # Offset to struct start (0x20)
+            encoding += (128).to_bytes(32, 'big')  # Offset to path within struct (0x80 = 4*32 bytes for offset+recipient+deadline+amountIn+amountOutMin headers)
+            encoding += bytes.fromhex(user_address[2:].lower().zfill(64))  # recipient (padded to 32 bytes)
+            encoding += deadline.to_bytes(32, 'big')  # deadline
+            encoding += kas_amount.to_bytes(32, 'big')  # amountIn
+            encoding += min_tokens_out.to_bytes(32, 'big')  # amountOutMinimum
+            encoding += path_length.to_bytes(32, 'big')  # path length
+            encoding += path_padded  # path data (padded)
+            
+            exact_input_encoded = encoding
             
             # Step 2: Build multicall with single exactInput call
             # NOTE: Working transactions only have 1 call, no refundETH
