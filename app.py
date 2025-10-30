@@ -3208,8 +3208,8 @@ def leaderboard():
     """Main leaderboard page with rankings and points - accessible without wallet"""
     user = get_current_user()  # Will be None if not connected
     
-    # Get top users by GEM points with eager loading of related data
-    top_users = User.query.options(
+    # Get top users by GEM points with eager loading of related data (exclude archived test users)
+    top_users = User.query.filter_by(archived=False).options(
         selectinload(User.earned_achievements).joinedload(UserAchievement.achievement),
         joinedload(User.profile)
     ).order_by(User.gem_points.desc()).limit(50).all()
@@ -3222,9 +3222,12 @@ def leaderboard():
                 user_rank = i
                 break
         
-        # If user not in top 50, calculate their actual rank
+        # If user not in top 50, calculate their actual rank (exclude archived users)
         if user_rank is None:
-            users_above = User.query.filter(User.gem_points > user.gem_points).count()
+            users_above = User.query.filter(
+                User.gem_points > user.gem_points,
+                User.archived == False
+            ).count()
             user_rank = users_above + 1
     
     return render_template('app/leaderboard.html', 
