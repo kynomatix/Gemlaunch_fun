@@ -47,17 +47,8 @@ body::-webkit-scrollbar { /* WebKit */
     box-sizing: border-box;
 }
 
-/* Hide all scrollbars globally */
-* {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* Internet Explorer 10+ */
-}
-
-*::-webkit-scrollbar { /* WebKit */
-    width: 0;
-    height: 0;
-    display: none;
-}
+/* Hide scrollbars only on body/html for clean main page */
+/* Modal content will use custom scrollbar defined below */
 
 /* Authentication Form Styles */
 .auth-form-container {
@@ -1346,22 +1337,54 @@ header nav > div:last-child {
 }
 
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
+/* Custom scrollbar for modal content and scrollable popups */
+.modal-body::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar,
+.scrollable-popup::-webkit-scrollbar,
+.token-description::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar,
+.activities-list::-webkit-scrollbar {
     width: 8px;
 }
 
-::-webkit-scrollbar-track {
+.modal-body::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track,
+.scrollable-popup::-webkit-scrollbar-track,
+.token-description::-webkit-scrollbar-track,
+.chat-messages::-webkit-scrollbar-track,
+.activities-list::-webkit-scrollbar-track {
     background: #1a1a1a;
+    border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb {
+.modal-body::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb,
+.scrollable-popup::-webkit-scrollbar-thumb,
+.token-description::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb,
+.activities-list::-webkit-scrollbar-thumb {
     background: linear-gradient(135deg, #20B2AA, #00CED1);
     border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
+.modal-body::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover,
+.scrollable-popup::-webkit-scrollbar-thumb:hover,
+.token-description::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.activities-list::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #00CED1, #20B2AA);
+}
+
+/* Firefox scrollbar styling for modal content */
+.modal-body,
+.modal-content,
+.scrollable-popup,
+.token-description,
+.chat-messages,
+.activities-list {
+    scrollbar-width: thin;
+    scrollbar-color: #20B2AA #1a1a1a;
 }
 
 /* ============================================================================
