@@ -1838,8 +1838,8 @@ class Web3Service:
         """
         Build transaction for buying tokens via Kaspa Finance DEX using native KAS
         
-        Uses standard Uniswap V3 exactInputSingle (PAYABLE) with native KAS.
-        SwapRouter wraps KAS → WKAS internally before swapping.
+        CRITICAL: Kaspa Finance requires using multicall() for payable swaps, not direct exactInputSingle.
+        Pattern: multicall(deadline, [exactInputSingle(...), refundETH()])
         
         Args:
             user_address (str): User's wallet address
@@ -1853,36 +1853,56 @@ class Web3Service:
             dict: Unsigned transaction dict {from, to, data, value}
         """
         try:
-            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}, Min out: {min_tokens_out}")
+            logging.info(f"Building DEX buy tx via multicall - Token: {token_address}, KAS: {kas_amount}")
             
             swap_router = self.contracts['SwapRouter']
             
-            # SwapRouter.exactInputSingle params (standard Uniswap V3)
-            # MUST be a tuple in exact order: tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
-            params = (
-                Web3.to_checksum_address(KASPA_FINANCE_WKAS),  # tokenIn
-                Web3.to_checksum_address(token_address),        # tokenOut
-                fee_tier,                                       # fee
-                Web3.to_checksum_address(user_address),         # recipient
-                deadline,                                       # deadline
-                kas_amount,                                     # amountIn
-                min_tokens_out,                                 # amountOutMinimum
-                0                                               # sqrtPriceLimitX96
+            # Step 1: Encode path for exactInput (multi-hop method)
+            # Path format: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
+            # Even for single-hop swaps, Kaspa Finance uses exactInput with path
+            path = b''.join([
+                bytes.fromhex(KASPA_FINANCE_WKAS[2:]),  # Remove 0x prefix
+                fee_tier.to_bytes(3, 'big'),             # Fee as 3 bytes
+                bytes.fromhex(token_address[2:])         # Remove 0x prefix
+            ])
+            
+            # exactInput params: (bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)
+            # Manually encode since our ABI doesn't have this function
+            exact_input_selector = '0xb858183f'  # exactInput((bytes,address,uint256,uint256))
+            
+            # Encode parameters
+            encoded_params = self.w3.codec.encode(
+                ['bytes', 'address', 'uint256', 'uint256', 'uint256'],
+                [path, Web3.to_checksum_address(user_address), deadline, kas_amount, min_tokens_out]
             )
             
-            # Use standard exactInputSingle (it's PAYABLE and accepts native KAS)
-            function_call = swap_router.functions.exactInputSingle(params)
-            encoded_data = function_call._encode_transaction_data()
+            exact_input_encoded = bytes.fromhex(exact_input_selector[2:]) + encoded_params
             
-            # Send native KAS as value - router wraps to WKAS internally
+            # Step 2: Build multicall with single exactInput call
+            # NOTE: Working transactions only have 1 call, no refundETH
+            multicall_data = [exact_input_encoded]
+            
+            # Manually encode multicall call
+            # Selector for multicall(uint256,bytes[])
+            multicall_selector = '0x5ae401dc'
+            
+            # Encode parameters: (uint256 deadline, bytes[] data)
+            encoded_params = self.w3.codec.encode(
+                ['uint256', 'bytes[]'],
+                [deadline, multicall_data]
+            )
+            
+            multicall_encoded = multicall_selector + encoded_params.hex()
+            
+            # Build final transaction with native KAS
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': swap_router.address,
                 'value': hex(kas_amount),  # Native KAS sent with transaction
-                'data': encoded_data
+                'data': multicall_encoded
             }
             
-            logging.info(f"DEX buy tx built using standard exactInputSingle with native KAS")
+            logging.info(f"DEX buy tx built using multicall with exactInputSingle + refundETH")
             return tx_data
             
         except Exception as e:
