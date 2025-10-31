@@ -713,6 +713,15 @@
                 
                 console.log(`📍 Chart interval: ${chartInterval} (${intervalSeconds} seconds)`);
                 
+                // DEBUG: Log first few candle timestamps to compare with markers
+                if (this.chartData && this.chartData.length > 0) {
+                    console.log('🕐 First 5 candle timestamps:');
+                    this.chartData.slice(0, 5).forEach((candle, idx) => {
+                        const candleDate = new Date(candle.time * 1000).toISOString();
+                        console.log(`  Candle ${idx}: ${candleDate} (${candle.time})`);
+                    });
+                }
+                
                 // Convert trades to chart markers using ROUNDED timestamps to match candle buckets
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
@@ -722,11 +731,16 @@
                     // bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
                     const bucketTimestamp = Math.floor(tradeTimestamp / intervalSeconds) * intervalSeconds;
                     
-                    // Debug: Log first few trades
+                    // Debug: Log first few trades and verify candle exists
                     if (index < 5) {
                         const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
                         const bucketDate = new Date(bucketTimestamp * 1000).toISOString();
-                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} → bucket ${bucketDate} (${bucketTimestamp})`);
+                        
+                        // Check if there's a candle at this timestamp
+                        const matchingCandle = this.chartData ? this.chartData.find(c => c.time === bucketTimestamp) : null;
+                        const candleStatus = matchingCandle ? '✅ CANDLE EXISTS' : '❌ NO CANDLE';
+                        
+                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} → bucket ${bucketDate} (${bucketTimestamp}) ${candleStatus}`);
                     }
                     
                     // Determine marker style based on trade type
