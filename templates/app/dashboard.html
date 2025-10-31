@@ -3261,7 +3261,18 @@
             height: 100%;
             display: block;
             color: rgba(32, 178, 170, 0.8);
+            stroke: currentColor;
+            fill: currentColor;
             transition: all 0.3s ease;
+        }
+        
+        .achievement-svg path,
+        .achievement-svg circle,
+        .achievement-svg rect,
+        .achievement-svg line,
+        .achievement-svg polyline,
+        .achievement-svg polygon {
+            stroke: currentColor;
         }
         
         .accolade-item.completed .achievement-svg {
