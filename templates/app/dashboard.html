@@ -1996,17 +1996,236 @@
             document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
             document.getElementById(`${tabName}-tab`).classList.add('active');
             
-            // If switching to achievements tab, update the carousel header
-            if (tabName === 'achievements' && window.updateCategoryHeader) {
-                setTimeout(() => {
-                    window.updateCategoryHeader(window.currentCategoryIndex || 0);
-                }, 10);
+            // PERFORMANCE: Lazy-load achievements when tab is clicked (only once)
+            if (tabName === 'achievements') {
+                if (!window.achievementsLoaded) {
+                    window.achievementsLoaded = true;
+                    loadAchievements();
+                } else if (window.updateCategoryHeader) {
+                    // If already loaded, just update the carousel header
+                    setTimeout(() => {
+                        window.updateCategoryHeader(window.currentCategoryIndex || 0);
+                    }, 10);
+                }
             }
             
             // CRITICAL: Recalculate grids when switching to tokens tab
             if (tabName === 'tokens') {
                 setTimeout(recalculateTokenGrids, 100);
             }
+        }
+        
+        // Load achievements via AJAX (called when Accolades tab is first opened)
+        async function loadAchievements() {
+            try {
+                const response = await fetch('/api/evaluate_achievements');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store achievement progress globally
+                    window.achievementProgress = data.achievement_progress;
+                    
+                    // Show celebration popup for newly-awarded achievements
+                    if (data.newly_awarded && data.newly_awarded.length > 0) {
+                        showAchievementCelebration(data.newly_awarded);
+                    }
+                    
+                    // Render the achievement carousel with the loaded data
+                    renderAchievementCarousel(data.achievement_progress);
+                }
+            } catch (error) {
+                console.error('Failed to load achievements:', error);
+            }
+        }
+        
+        // Render achievement carousel from AJAX data
+        function renderAchievementCarousel(achievementProgress) {
+            console.log('Rendering achievement carousel with data:', achievementProgress);
+            
+            // Define category structure
+            const categories = [
+                { id: 'creator', name: 'Creator Accolades', icon: 'fa-rocket' },
+                { id: 'trader', name: 'Trading Accolades', icon: 'fa-chart-line' },
+                { id: 'holder', name: 'Holder Accolades', icon: 'fa-gem' },
+                { id: 'social', name: 'Social Accolades', icon: 'fa-users' },
+                { id: 'special', name: 'Special Accolades', icon: 'fa-trophy' }
+            ];
+            
+            // Group achievements by category
+            const categorizedAchievements = {};
+            categories.forEach(cat => {
+                categorizedAchievements[cat.id] = [];
+            });
+            
+            // Populate categories with achievements
+            for (const [achId, achData] of Object.entries(achievementProgress)) {
+                if (categorizedAchievements[achData.category]) {
+                    categorizedAchievements[achData.category].push({
+                        id: achId,
+                        ...achData
+                    });
+                }
+            }
+            
+            // Sort achievements within each category (completed first, then by progress)
+            Object.keys(categorizedAchievements).forEach(catId => {
+                categorizedAchievements[catId].sort((a, b) => {
+                    const aCompleted = a.is_completed ? 0 : 1;
+                    const bCompleted = b.is_completed ? 0 : 1;
+                    if (aCompleted !== bCompleted) return aCompleted - bCompleted;
+                    return b.progress_pct - a.progress_pct;
+                });
+            });
+            
+            // Generate carousel slides HTML
+            let slidesHTML = '';
+            let indicatorsHTML = '';
+            let slideIndex = 0;
+            
+            categories.forEach((category, catIndex) => {
+                const achievements = categorizedAchievements[category.id];
+                
+                // Only create slide if category has achievements
+                if (achievements.length > 0) {
+                    const completedCount = achievements.filter(a => a.is_completed).length;
+                    const totalCount = achievements.length;
+                    
+                    const achievementsHTML = achievements.map((ach, achIndex) => {
+                        const progressText = `${ach.progress}/${ach.requirement}`;
+                        const showProgress = !ach.is_completed && ach.requirement_type !== 'user_number' && ach.requirement > 0;
+                        
+                        return `
+                            <div class="accolade-item ${ach.is_completed ? 'completed' : 'locked'}" 
+                                 data-progress="${ach.progress_pct}"
+                                 style="--item-index: ${achIndex}">
+                                <div class="accolade-icon ${ach.is_completed ? 'icon-glow' : ''}">
+                                    <i class="${ach.icon}" style="font-size: 1.5rem; color: ${ach.is_completed ? '#20B2AA' : '#666'};"></i>
+                                </div>
+                                
+                                <div class="accolade-details">
+                                    <h4>${ach.name}</h4>
+                                    <p>${ach.description}</p>
+                                    ${showProgress ? `
+                                        <div class="accolade-progress">
+                                            <div class="progress-bar-wrapper">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" 
+                                                         style="width: ${ach.progress_pct}%; 
+                                                                opacity: ${ach.progress_pct < 10 ? 0.3 : (ach.progress_pct < 50 ? 0.6 : 1)}">
+                                                        ${ach.progress_pct > 0 ? `<span class="progress-percentage">${ach.progress_pct}%</span>` : ''}
+                                                    </div>
+                                                </div>
+                                                <span class="progress-text">${progressText}</span>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                
+                                <div class="accolade-reward ${ach.is_completed ? 'reward-completed' : ''}">
+                                    <span class="points">+${ach.reward || 0}</span>
+                                    <span class="label">Points</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    slidesHTML += `
+                        <div class="carousel-slide${slideIndex === 0 ? ' active' : ''}" 
+                             data-category="${category.id}" 
+                             data-category-name="${category.name}"
+                             data-category-icon="${category.icon}"
+                             data-completed="${completedCount}"
+                             data-total="${totalCount}">
+                            <div class="category-accolades-grid">
+                                ${achievementsHTML}
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add indicator dot
+                    indicatorsHTML += `
+                        <div class="carousel-dot${slideIndex === 0 ? ' active' : ''}" 
+                             onclick="window.goToCategory(${slideIndex})"
+                             aria-label="Go to ${category.name}">
+                            <span class="dot-inner"></span>
+                        </div>
+                    `;
+                    
+                    slideIndex++;
+                }
+            });
+            
+            // Update the DOM
+            const trackContainer = document.querySelector('.carousel-categories-track');
+            const indicatorsContainer = document.querySelector('.carousel-indicators');
+            
+            if (trackContainer) {
+                trackContainer.innerHTML = slidesHTML;
+            }
+            
+            if (indicatorsContainer) {
+                indicatorsContainer.innerHTML = indicatorsHTML;
+            }
+            
+            // Reset carousel to first slide
+            window.currentCategoryIndex = 0;
+            
+            // Update carousel position and header
+            setTimeout(() => {
+                if (window.updateCarouselPosition) {
+                    window.updateCarouselPosition();
+                }
+                if (window.updateCategoryHeader) {
+                    window.updateCategoryHeader(0);
+                }
+            }, 50);
+            
+            console.log(`Rendered ${slideIndex} category slides`);
+        }
+        
+        // Show achievement celebration popup
+        function showAchievementCelebration(achievements) {
+            // Create popup HTML
+            const achievementCards = achievements.map(ach => `
+                <div class="achievement-celebration-card">
+                    <div class="achievement-icon-wrapper">
+                        <i class="${ach.icon}"></i>
+                    </div>
+                    <div class="achievement-info">
+                        <h3 class="achievement-name">${ach.name}</h3>
+                        <p class="achievement-description">${ach.description}</p>
+                        <div class="achievement-reward">
+                            <i class="fas fa-gem"></i> +${ach.reward} GEM Points
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            const popup = document.createElement('div');
+            popup.className = 'achievement-celebration-popup';
+            popup.innerHTML = `
+                <div class="celebration-overlay"></div>
+                <div class="celebration-content">
+                    <div class="celebration-header">
+                        <i class="fas fa-trophy celebration-trophy"></i>
+                        <h2>Achievement${achievements.length > 1 ? 's' : ''} Unlocked!</h2>
+                    </div>
+                    <div class="celebration-achievements">
+                        ${achievementCards}
+                    </div>
+                    <button class="celebration-close-btn" onclick="this.closest('.achievement-celebration-popup').remove()">
+                        <i class="fas fa-check"></i> Awesome!
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(popup);
+            
+            // Auto-remove after 8 seconds
+            setTimeout(() => {
+                popup.classList.add('fade-out');
+                setTimeout(() => popup.remove(), 500);
+            }, 8000);
         }
 
         // Toggle activity details (only for accolades)
@@ -2356,6 +2575,184 @@
     </script>
     
     <style>
+        /* Achievement Celebration Popup Styles */
+        .achievement-celebration-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .celebration-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .celebration-content {
+            position: relative;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 2px solid #FFD700;
+            border-radius: 20px;
+            padding: 2.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(255, 215, 0, 0.3);
+            animation: celebrationBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        .celebration-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .celebration-trophy {
+            font-size: 4rem;
+            color: #FFD700;
+            animation: trophySpin 1s ease;
+            display: block;
+            margin-bottom: 1rem;
+        }
+        
+        .celebration-header h2 {
+            color: #FFD700;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .celebration-achievements {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .achievement-celebration-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(32, 178, 170, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            animation: slideInRight 0.5s ease;
+        }
+        
+        .achievement-icon-wrapper {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .achievement-icon-wrapper i {
+            font-size: 2rem;
+            color: #000;
+        }
+        
+        .achievement-info {
+            flex: 1;
+        }
+        
+        .achievement-name {
+            color: #20B2AA;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem 0;
+        }
+        
+        .achievement-description {
+            color: #AAA;
+            font-size: 0.9rem;
+            margin: 0 0 0.75rem 0;
+        }
+        
+        .achievement-reward {
+            color: #FFD700;
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .celebration-close-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            border: none;
+            color: #000;
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .celebration-close-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.4);
+        }
+        
+        .achievement-celebration-popup.fade-out {
+            animation: fadeOut 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        @keyframes celebrationBounce {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.95); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes trophySpin {
+            0% { transform: rotate(0deg) scale(0); }
+            60% { transform: rotate(360deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
         /* Scope dashboard wallet info styles to not affect topbar */
         .dashboard-section .wallet-info-nav {
             display: flex;

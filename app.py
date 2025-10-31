@@ -1134,6 +1134,56 @@ def decline_transfer():
         logging.error(f"Error declining transfer request: {str(e)}")
         return jsonify({'error': f'Failed to decline transfer request: {str(e)}'}), 500
 
+@app.route('/api/evaluate_achievements', methods=['GET'])
+def api_evaluate_achievements():
+    """
+    AJAX endpoint to evaluate and award achievements for the current user.
+    Called when user opens the Accolades tab for lazy-loading performance optimization.
+    Returns achievement progress data and any newly-awarded achievements.
+    """
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        # Get achievements user already had before evaluation
+        existing_achievement_ids = {
+            ua.achievement_id 
+            for ua in UserAchievement.query.filter_by(user_id=user.id).all()
+        }
+        
+        # Evaluate achievements (this will auto-award any new ones)
+        achievement_progress = evaluate_user_achievements(user.id)
+        
+        # Get newly-awarded achievements after evaluation
+        current_achievements = UserAchievement.query.options(
+            joinedload(UserAchievement.achievement)
+        ).filter_by(user_id=user.id).all()
+        
+        # Find achievements that were just awarded
+        newly_awarded = []
+        for ua in current_achievements:
+            if ua.achievement_id not in existing_achievement_ids:
+                newly_awarded.append({
+                    'id': ua.achievement.id,
+                    'name': ua.achievement.name,
+                    'description': ua.achievement.description,
+                    'icon': ua.achievement.icon,
+                    'reward': ua.achievement.gem_points_reward
+                })
+        
+        # Return achievement progress and newly-awarded achievements
+        return jsonify({
+            'success': True,
+            'achievement_progress': achievement_progress,
+            'newly_awarded': newly_awarded,
+            'total_points': user.gem_points
+        })
+        
+    except Exception as e:
+        logging.error(f"Error evaluating achievements: {str(e)}")
+        return jsonify({'error': 'Failed to evaluate achievements'}), 500
+
 # App routes
 @app.route('/app')
 def app_home():
@@ -1148,14 +1198,15 @@ def app_dashboard():
     if not user:
         return redirect(url_for('token_marketplace'))
     
-    # Evaluate and award achievements
-    achievement_progress = evaluate_user_achievements(user.id)
+    # PERFORMANCE: Achievement evaluation moved to lazy-load via AJAX
+    # Only evaluate when Accolades tab is clicked (see /api/evaluate_achievements endpoint)
+    achievement_progress = {}  # Empty dict for initial page load
     
     # Get sorting parameter
     sort_by = request.args.get('sort', 'newest')  # Default: newest first
     
-    # Get user's created tokens with sorting
-    query = Token.query.filter_by(creator_id=user.id)
+    # Get user's created tokens with sorting (with eager loading to avoid N+1)
+    query = Token.query.options(joinedload(Token.creator)).filter_by(creator_id=user.id)
     
     if sort_by == 'market_cap':
         query = query.order_by(Token.current_market_cap.desc().nulls_last())
