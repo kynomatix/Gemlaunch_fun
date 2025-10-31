@@ -133,7 +133,7 @@ class Token(db.Model):
     symbol = db.Column(db.String(16), nullable=False, index=True)
     description = db.Column(db.Text)
     image_url = db.Column(db.String(512))
-    category = db.Column(db.String(64), default='Community')  # AI-categorized: Animals, Holidays, Tech, Finance, PopCulture, Food, Sports, Nature, Abstract, Community
+    categories = db.Column(db.Text, default='["Community"]')  # AI-categorized JSON array: Animals, Holidays, Tech, Finance, PopCulture, Food, Sports, Nature, Abstract, Community
     
     # Social links (based on Pump.sol contract)
     website = db.Column(db.String(512))
