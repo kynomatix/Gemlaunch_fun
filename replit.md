@@ -6,9 +6,9 @@ Preferred communication style: Simple, everyday language.
 
 ## Design Preferences
 - **Button Style**: Sleek rectangular buttons with rounded corners (border-radius: 10px). NEVER use oval/pill-shaped buttons (border-radius: 25px+)
-- **UI Consistency**: Token creation mode names match marketplace filters:
-  - Basic Mode (cog icon) - Quick launch
-  - Pro Mode (star icon) - Advanced features
+- **UI Consistency**: Token type icons are semantically meaningful:
+  - BASIC tokens: ⚡ (fa-bolt) - Quick/simple launch
+  - PRO tokens: 💎 (fa-gem) - Premium/advanced features
 
 # System Architecture
 
