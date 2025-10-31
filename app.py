@@ -7881,7 +7881,7 @@ def build_marketing_vesting_withdraw(token_id):
         if 'exceeds max wallet' in error_msg.lower():
             return jsonify({
                 'success': False,
-                'error': 'Token Limit Reached: Your wallet already holds the maximum allowed amount (10% of total supply). This is a rug protection mechanism to protect other users. Please claim to a different wallet or reduce your holdings first.'
+                'error': 'Wallet limit reached (10% max). Claim to different wallet or reduce holdings first.'
             }), 400
         
         # Return generic error for other cases
@@ -7996,7 +7996,7 @@ def build_team_vesting_withdraw(token_id):
         if 'exceeds max wallet' in error_msg.lower():
             return jsonify({
                 'success': False,
-                'error': 'Token Limit Reached: Your wallet already holds the maximum allowed amount (10% of total supply). This is a rug protection mechanism to protect other users. Please claim to a different wallet or reduce your holdings first.'
+                'error': 'Wallet limit reached (10% max). Claim to different wallet or reduce holdings first.'
             }), 400
         
         # Return generic error for other cases
