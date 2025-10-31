@@ -723,59 +723,67 @@
                 }
                 
                 // Convert trades to chart markers using ROUNDED timestamps to match candle buckets
-                const allMarkers = result.trades.map((trade, index) => {
-                    // Convert ISO timestamp to Unix timestamp (seconds)
-                    const tradeTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
-                    
-                    // CRITICAL: Round timestamp to candle bucket (same formula as backend)
-                    // bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
-                    const bucketTimestamp = Math.floor(tradeTimestamp / intervalSeconds) * intervalSeconds;
-                    
-                    // Debug: Log first few trades and verify candle exists
-                    if (index < 5) {
-                        const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
-                        const bucketDate = new Date(bucketTimestamp * 1000).toISOString();
+                const allMarkers = result.trades
+                    .map((trade, index) => {
+                        // Convert ISO timestamp to Unix timestamp (seconds)
+                        const tradeTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
+                        
+                        // CRITICAL: Round timestamp to candle bucket (same formula as backend)
+                        // bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
+                        const bucketTimestamp = Math.floor(tradeTimestamp / intervalSeconds) * intervalSeconds;
                         
                         // Check if there's a candle at this timestamp
                         const matchingCandle = this.chartData ? this.chartData.find(c => c.time === bucketTimestamp) : null;
-                        const candleStatus = matchingCandle ? '✅ CANDLE EXISTS' : '❌ NO CANDLE';
                         
-                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} → bucket ${bucketDate} (${bucketTimestamp}) ${candleStatus}`);
-                    }
-                    
-                    // Determine marker style based on trade type
-                    let position, color, text, shape;
-                    
-                    if (trade.type === 'buy') {
-                        position = 'belowBar';
-                        color = '#20B2AA';  // Teal
-                        text = 'B';
-                        shape = 'circle';
-                    } else if (trade.type === 'sell') {
-                        position = 'aboveBar';
-                        color = '#FF4444';  // Red
-                        text = 'S';
-                        shape = 'circle';
-                    } else if (trade.type === 'airdrop') {
-                        position = 'belowBar';
-                        color = '#FFD700';  // Gold - signifies reward/gift
-                        text = 'A';  // Airdrop
-                        shape = 'arrowUp';  // Different shape for visual distinction
-                    }
-                    
-                    return {
-                        time: bucketTimestamp,  // Use ROUNDED timestamp to match candle buckets
-                        position: position,
-                        color: color,
-                        shape: shape,
-                        text: text,
-                        size: 1
-                    };
-                });
+                        // Debug: Log first few trades
+                        if (index < 5) {
+                            const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
+                            const bucketDate = new Date(bucketTimestamp * 1000).toISOString();
+                            const candleStatus = matchingCandle ? '✅ CANDLE EXISTS' : '❌ NO CANDLE (filtered)';
+                            
+                            console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} → bucket ${bucketDate} (${bucketTimestamp}) ${candleStatus}`);
+                        }
+                        
+                        // CRITICAL: Skip trades that don't have matching candles
+                        // This prevents misaligned markers on wrong candles
+                        if (!matchingCandle) {
+                            return null;
+                        }
+                        
+                        // Determine marker style based on trade type
+                        let position, color, text, shape;
+                        
+                        if (trade.type === 'buy') {
+                            position = 'belowBar';
+                            color = '#20B2AA';  // Teal
+                            text = 'B';
+                            shape = 'circle';
+                        } else if (trade.type === 'sell') {
+                            position = 'aboveBar';
+                            color = '#FF4444';  // Red
+                            text = 'S';
+                            shape = 'circle';
+                        } else if (trade.type === 'airdrop') {
+                            position = 'belowBar';
+                            color = '#FFD700';  // Gold - signifies reward/gift
+                            text = 'A';  // Airdrop
+                            shape = 'arrowUp';  // Different shape for visual distinction
+                        }
+                        
+                        return {
+                            time: bucketTimestamp,  // Use ROUNDED timestamp to match candle buckets
+                            position: position,
+                            color: color,
+                            shape: shape,
+                            text: text,
+                            size: 1
+                        };
+                    })
+                    .filter(marker => marker !== null);  // Remove trades without matching candles
                 
-                // Add markers to the series (no filtering - TradingView shows/hides based on visible range)
+                // Add markers to the series
                 this.currentSeries.setMarkers(allMarkers);
-                console.log(`✅ Added ${allMarkers.length} trade markers with exact timestamps`);
+                console.log(`✅ Added ${allMarkers.length}/${result.trades.length} trade markers (filtered to visible candles)`);
                 
                 // ✨ FTX-STYLE POSITION TRACKING: Fetch weighted average entry price
                 await this.fetchAndDisplayPosition(wallet.address);
