@@ -1343,7 +1343,8 @@ header nav > div:last-child {
 .scrollable-popup::-webkit-scrollbar,
 .token-description::-webkit-scrollbar,
 .chat-messages::-webkit-scrollbar,
-.activities-list::-webkit-scrollbar {
+.activities-list::-webkit-scrollbar,
+.activities-timeline::-webkit-scrollbar {
     width: 8px;
 }
 
@@ -1352,7 +1353,8 @@ header nav > div:last-child {
 .scrollable-popup::-webkit-scrollbar-track,
 .token-description::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track,
-.activities-list::-webkit-scrollbar-track {
+.activities-list::-webkit-scrollbar-track,
+.activities-timeline::-webkit-scrollbar-track {
     background: #1a1a1a;
     border-radius: 4px;
 }
@@ -1362,7 +1364,8 @@ header nav > div:last-child {
 .scrollable-popup::-webkit-scrollbar-thumb,
 .token-description::-webkit-scrollbar-thumb,
 .chat-messages::-webkit-scrollbar-thumb,
-.activities-list::-webkit-scrollbar-thumb {
+.activities-list::-webkit-scrollbar-thumb,
+.activities-timeline::-webkit-scrollbar-thumb {
     background: linear-gradient(135deg, #20B2AA, #00CED1);
     border-radius: 4px;
 }
@@ -1372,7 +1375,8 @@ header nav > div:last-child {
 .scrollable-popup::-webkit-scrollbar-thumb:hover,
 .token-description::-webkit-scrollbar-thumb:hover,
 .chat-messages::-webkit-scrollbar-thumb:hover,
-.activities-list::-webkit-scrollbar-thumb:hover {
+.activities-list::-webkit-scrollbar-thumb:hover,
+.activities-timeline::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #00CED1, #20B2AA);
 }
 
@@ -1382,7 +1386,8 @@ header nav > div:last-child {
 .scrollable-popup,
 .token-description,
 .chat-messages,
-.activities-list {
+.activities-list,
+.activities-timeline {
     scrollbar-width: thin;
     scrollbar-color: #20B2AA #1a1a1a;
 }
