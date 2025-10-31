@@ -1326,8 +1326,33 @@
                 <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <h2 class="section-title">Your Created Tokens</h2>
                     
-                    <!-- Sort Dropdown -->
-                    <div class="sort-controls" style="position: relative;">
+                    <!-- Search and Sort Controls -->
+                    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                        <!-- Search Input -->
+                        <div style="position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #20B2AA; pointer-events: none;"></i>
+                            <input 
+                                type="text" 
+                                id="tokenSearchInput" 
+                                placeholder="Search tokens..."
+                                onkeyup="filterTokens()"
+                                style="
+                                    background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
+                                    border: 1px solid rgba(32, 178, 170, 0.3);
+                                    border-radius: 10px;
+                                    padding: 0.6rem 1rem 0.6rem 2.5rem;
+                                    color: #FFFFFF;
+                                    font-size: 0.9rem;
+                                    width: 200px;
+                                    transition: all 0.3s ease;
+                                "
+                                onfocus="this.style.borderColor='rgba(32, 178, 170, 0.5)'; this.style.background='linear-gradient(135deg, rgba(32, 178, 170, 0.2), rgba(0, 206, 209, 0.1))'"
+                                onblur="this.style.borderColor='rgba(32, 178, 170, 0.3)'; this.style.background='linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05))'"
+                            >
+                        </div>
+                        
+                        <!-- Sort Dropdown -->
+                        <div class="sort-controls" style="position: relative;">
                         <button class="sort-toggle" onclick="toggleDashboardSort(event)" style="
                             background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
                             border: 1px solid rgba(32, 178, 170, 0.3);
@@ -1415,10 +1440,11 @@
                             </a>
                         </div>
                     </div>
+                    </div>
                 </div>
 
                 {% if created_tokens %}
-                    <div class="token-grid">
+                    <div class="token-grid" id="tokenGrid">
                         {% for token in created_tokens %}
                             <div class="token-card">
                                 <div class="token-header">
@@ -1494,6 +1520,13 @@
                                 </div>
                             </div>
                         {% endfor %}
+                    </div>
+                    
+                    <!-- No Results Message (hidden by default) -->
+                    <div id="noTokenResults" style="display: none; text-align: center; padding: 3rem; color: #888;">
+                        <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <h3 style="color: #AAA; margin-bottom: 0.5rem;">No tokens found</h3>
+                        <p>Try adjusting your search</p>
                     </div>
                 {% else %}
                     <div class="empty-state">
@@ -3516,6 +3549,40 @@ document.addEventListener('click', function(event) {
         }
     });
 });
+
+// Token Search Filter
+function filterTokens() {
+    const searchInput = document.getElementById('tokenSearchInput');
+    const filter = searchInput.value.toLowerCase().trim();
+    const tokenGrid = document.getElementById('tokenGrid');
+    const tokenCards = tokenGrid.querySelectorAll('.token-card');
+    const noResults = document.getElementById('noTokenResults');
+    
+    let visibleCount = 0;
+    
+    tokenCards.forEach(card => {
+        // Get token name and symbol from the card
+        const tokenName = card.querySelector('.token-info h3').textContent.toLowerCase();
+        const tokenSymbol = card.querySelector('.token-symbol').textContent.toLowerCase();
+        
+        // Check if search matches name or symbol
+        if (tokenName.includes(filter) || tokenSymbol.includes(filter)) {
+            card.style.display = '';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Show/hide no results message
+    if (visibleCount === 0 && filter !== '') {
+        noResults.style.display = 'block';
+        tokenGrid.style.display = 'none';
+    } else {
+        noResults.style.display = 'none';
+        tokenGrid.style.display = 'grid';
+    }
+}
 
 // Creator Fee Modal Functions
 var currentTokenData = {};
