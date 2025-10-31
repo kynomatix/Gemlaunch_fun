@@ -1372,6 +1372,7 @@
                                 {% if sort_by == 'market_cap' %}Market Cap
                                 {% elif sort_by == 'oldest' %}Oldest First
                                 {% elif sort_by == 'most_active' %}Most Active
+                                {% elif sort_by == 'claims' %}Claims Available
                                 {% else %}Newest First{% endif %}
                             </span>
                             <i class="fas fa-chevron-down" style="font-size: 0.8rem;"></i>
@@ -1437,6 +1438,18 @@
                             ">
                                 <i class="fas fa-fire" style="width: 1.2rem; color: #20B2AA;"></i>
                                 Most Active
+                            </a>
+                            <a href="?sort=claims" class="sort-option {% if sort_by == 'claims' %}active{% endif %}" style="
+                                display: flex;
+                                align-items: center;
+                                gap: 0.75rem;
+                                padding: 0.75rem 1rem;
+                                color: #FFFFFF;
+                                text-decoration: none;
+                                transition: all 0.2s ease;
+                            ">
+                                <i class="fas fa-hand-holding-usd" style="width: 1.2rem; color: #20B2AA;"></i>
+                                Claims Available
                             </a>
                         </div>
                     </div>
@@ -2006,6 +2019,16 @@
             
             // PERFORMANCE: Lazy-load achievements when tab is clicked (only once)
             if (tabName === 'achievements') {
+                // Check if carousel container exists and has content
+                const carouselContainer = document.querySelector('.carousel-categories-track');
+                const hasContent = carouselContainer && carouselContainer.children.length > 0;
+                
+                // If flag says loaded but carousel is empty, reset the flag (happens after sort redirect)
+                if (window.achievementsLoaded && !hasContent) {
+                    console.log('Carousel empty after page reload, resetting flag');
+                    window.achievementsLoaded = false;
+                }
+                
                 if (!window.achievementsLoaded) {
                     window.achievementsLoaded = true;
                     loadAchievements();
@@ -4005,6 +4028,28 @@ function toggleDashboardSort(event) {
     const dropdown = event.currentTarget.nextElementSibling;
     dropdown.classList.toggle('open');
 }
+
+// Add loading indicator when clicking sort options
+document.addEventListener('DOMContentLoaded', function() {
+    const sortLinks = document.querySelectorAll('.sort-option');
+    sortLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Show loading indicator
+            const tokenGrid = document.getElementById('tokenGrid');
+            if (tokenGrid) {
+                tokenGrid.style.opacity = '0.5';
+                tokenGrid.style.transition = 'opacity 0.2s ease';
+                tokenGrid.style.pointerEvents = 'none';
+            }
+            
+            // Update button text
+            const sortToggle = document.querySelector('.sort-toggle');
+            if (sortToggle) {
+                sortToggle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Loading...</span>';
+            }
+        });
+    });
+});
 
 // Close dropdown when clicking outside
 document.addEventListener('click', function(event) {
