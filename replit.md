@@ -84,7 +84,7 @@ A hybrid approach is used:
 - **Database retained for**: User profiles, token metadata, trade history (charts), and social features.
 This approach ensures real-time accuracy while providing comprehensive historical data for charting.
 
-**Chart Timezone**: All trading charts use UTC timezone explicitly to ensure buy/sell markers align correctly with candlesticks regardless of user's local timezone. Chart labels display "UTC" suffix for clarity.
+**Chart Timezone & Display**: Trading charts display times in the user's local timezone for improved UX. Backend stores all timestamps in UTC and sends them with explicit `+00:00` timezone suffix (via `timestamp.replace(tzinfo=timezone.utc)` in Python). Frontend uses JavaScript's automatic timezone conversion to display local times while maintaining alignment accuracy - trade markers use Unix timestamps (timezone-agnostic) which align correctly with candle buckets regardless of display timezone. This architecture ensures perfect marker alignment across all timezones while providing an intuitive local time display.
 
 ## Design Patterns
 The project adheres to an MVC pattern.
