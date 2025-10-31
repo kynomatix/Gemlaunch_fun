@@ -2223,12 +2223,14 @@ def get_token_leaderboard(contract_address):
     limit = min(limit, 100)  # Cap at 100
     
     # Get top users by community points with joined user profiles
+    # CRITICAL: Exclude the token creator from leaderboard
     from sqlalchemy.orm import joinedload
     top_engagements = TokenEngagement.query.options(
         joinedload(TokenEngagement.user).joinedload(User.profile)
     ).filter(
         TokenEngagement.token_id == token.id,
-        TokenEngagement.community_points > 0
+        TokenEngagement.community_points > 0,
+        TokenEngagement.user_id != token.creator_id  # Exclude creator
     ).order_by(
         TokenEngagement.community_points.desc()
     ).limit(limit).all()
@@ -2329,11 +2331,12 @@ def get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters
     recipients = []
     
     if airdrop_type == 'active_chatters':
-        # Get users with messages in this token's community
+        # Get users with messages in this token's community (exclude creator)
         min_messages = parameters.get('min_messages', 5)
         engagements = TokenEngagement.query.filter(
             TokenEngagement.token_id == token.id,
-            TokenEngagement.messages_sent >= min_messages
+            TokenEngagement.messages_sent >= min_messages,
+            TokenEngagement.user_id != token.creator_id  # Exclude creator
         ).order_by(TokenEngagement.messages_sent.desc()).all()
         
         recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
@@ -2349,11 +2352,12 @@ def get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters
         recipients = [h.user.wallet_address for h in holdings if h.user and h.user.wallet_address]
     
     elif airdrop_type == 'top_contributors':
-        # Get top traders by volume
+        # Get top traders by volume (exclude creator)
         limit = parameters.get('limit', 20)
         engagements = TokenEngagement.query.filter(
             TokenEngagement.token_id == token.id,
-            TokenEngagement.trades_count > 0
+            TokenEngagement.trades_count > 0,
+            TokenEngagement.user_id != token.creator_id  # Exclude creator
         ).order_by(TokenEngagement.total_traded_volume.desc()).limit(limit).all()
         
         recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
@@ -2368,24 +2372,26 @@ def get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters
         recipients = [h.user.wallet_address for h in holdings if h.user and h.user.wallet_address]
     
     elif airdrop_type == 'top_by_points':
-        # Get users with highest community points (rewards most engaged)
+        # Get users with highest community points (rewards most engaged, exclude creator)
         min_points = parameters.get('min_points', 10)
         limit = parameters.get('limit', 50)
         engagements = TokenEngagement.query.filter(
             TokenEngagement.token_id == token.id,
-            TokenEngagement.community_points >= min_points
+            TokenEngagement.community_points >= min_points,
+            TokenEngagement.user_id != token.creator_id  # Exclude creator
         ).order_by(TokenEngagement.community_points.desc()).limit(limit).all()
         
         recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
     
     elif airdrop_type == 'diamond_holders':
-        # Get users who've been holding for 90+ days (true believers)
+        # Get users who've been holding for 90+ days (true believers, exclude creator)
         min_holding_days = parameters.get('min_holding_days', 90)
         limit = parameters.get('limit', 50)  # Cap at 50 to prevent huge recipient lists
         engagements = TokenEngagement.query.filter(
             TokenEngagement.token_id == token.id,
             TokenEngagement.holding_days >= min_holding_days,
-            TokenEngagement.first_acquired_at.isnot(None)
+            TokenEngagement.first_acquired_at.isnot(None),
+            TokenEngagement.user_id != token.creator_id  # Exclude creator
         ).order_by(TokenEngagement.holding_days.desc()).limit(limit).all()
         
         recipients = [eng.user.wallet_address for eng in engagements if eng.user and eng.user.wallet_address]
