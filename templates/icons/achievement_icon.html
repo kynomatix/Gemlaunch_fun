@@ -261,8 +261,14 @@
 
 {# Default fallback - use Font Awesome icon from database if no custom SVG defined #}
 {% else %}
-    {% if item.icon and item.icon.startswith('fa-') %}
-        <i class="fas {{ item.icon }}"></i>
+    {% if item.icon and ('fa-' in item.icon or 'fas ' in item.icon or 'far ' in item.icon or 'fab ' in item.icon) %}
+        {# Check if icon already has FA family class (fas, far, fab, fa), otherwise prepend 'fas' #}
+        {% if 'fas ' in item.icon or 'far ' in item.icon or 'fab ' in item.icon or item.icon.startswith('fa ') %}
+            <i class="{{ item.icon }}"></i>
+        {% else %}
+            {# Legacy format: single class like "fa-trophy" - add default 'fas' family #}
+            <i class="fas {{ item.icon }}"></i>
+        {% endif %}
     {% else %}
         {# Generic achievement icon as last resort #}
         <svg viewBox="0 0 100 100" class="achievement-svg {{ icon_completed_class }}">

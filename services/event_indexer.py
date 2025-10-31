@@ -567,12 +567,18 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
                 # Get or create engagement record
                 engagement = TokenEngagement.get_or_create(user.id, token.id)
                 
+                # Check if user is the token creator
+                is_creator = (user.id == token.creator_id)
+                
                 # Update based on trade type
                 if trade_event.trade_type == 'buy':
                     engagement.buy_count = (engagement.buy_count or 0) + 1
                     engagement.trades_count = (engagement.trades_count or 0) + 1
                     engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
-                    engagement.community_points = (engagement.community_points or 0) + 10  # 10 points per buy
+                    
+                    # Award token-specific leaderboard points (but NOT to the creator)
+                    if not is_creator:
+                        engagement.community_points = (engagement.community_points or 0) + 10  # 10 points per buy
                     
                     # Update first acquired timestamp if this is their first purchase
                     if not engagement.first_acquired_at:
@@ -582,7 +588,10 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
                     engagement.sell_count = (engagement.sell_count or 0) + 1
                     engagement.trades_count = (engagement.trades_count or 0) + 1
                     engagement.total_traded_volume = (engagement.total_traded_volume or 0) + kas_amount
-                    engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per sell
+                    
+                    # Award token-specific leaderboard points (but NOT to the creator)
+                    if not is_creator:
+                        engagement.community_points = (engagement.community_points or 0) + 5  # 5 points per sell
                 
                 elif trade_event.trade_type == 'airdrop':
                     # Airdrops: Update first acquired timestamp but don't add to trade count
