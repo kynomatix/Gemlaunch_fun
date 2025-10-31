@@ -1652,7 +1652,9 @@
                         {% set categories = [
                             ('creator', 'Creator Accolades', 'fa-rocket'),
                             ('trader', 'Trading Accolades', 'fa-chart-line'),
-                            ('social', 'Social Accolades', 'fa-users')
+                            ('holder', 'Holder Accolades', 'fa-gem'),
+                            ('social', 'Social Accolades', 'fa-users'),
+                            ('special', 'Special Accolades', 'fa-trophy')
                         ] %}
                         
                         <!-- Game-style Carousel Container -->
@@ -2159,7 +2161,9 @@
             const categories = [
                 { id: 'creator', name: 'Creator Accolades', icon: 'fa-rocket' },
                 { id: 'trader', name: 'Trading Accolades', icon: 'fa-chart-line' },
-                { id: 'social', name: 'Social Accolades', icon: 'fa-users' }
+                { id: 'holder', name: 'Holder Accolades', icon: 'fa-gem' },
+                { id: 'social', name: 'Social Accolades', icon: 'fa-users' },
+                { id: 'special', name: 'Special Accolades', icon: 'fa-trophy' }
             ];
             
             // Group achievements by category
@@ -2276,12 +2280,6 @@
             
             if (indicatorsContainer) {
                 indicatorsContainer.innerHTML = indicatorsHTML;
-            }
-            
-            // Update quick jump hint text with actual slide count
-            const quickJumpHint = document.querySelector('.quick-jump-hint');
-            if (quickJumpHint && slideIndex > 0) {
-                quickJumpHint.textContent = `Press 1-${slideIndex} to jump to category`;
             }
             
             // Reset carousel to first slide

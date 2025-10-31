@@ -3701,7 +3701,7 @@ def init_database():
                 achievement5.name = "Community Builder"
                 achievement5.description = "Refer 10 qualified users"
                 achievement5.icon = "👥"
-                achievement5.category = "creator"
+                achievement5.category = "social"
                 achievement5.requirement_type = "referrals_made"
                 achievement5.requirement_value = 10
                 achievement5.gem_points_reward = 500
@@ -3734,7 +3734,7 @@ def init_database():
                 achievement8.name = "Early Adopter"
                 achievement8.description = "Join the first 1000 users on Gemlaunch"
                 achievement8.icon = "🌟"
-                achievement8.category = "trader"
+                achievement8.category = "special"
                 achievement8.requirement_type = "user_number"
                 achievement8.requirement_value = 1000
                 achievement8.gem_points_reward = 200
@@ -3756,7 +3756,7 @@ def init_database():
                 achievement10.name = "Chat Champion"
                 achievement10.description = "Send 50+ messages in token chats"
                 achievement10.icon = "💬"
-                achievement10.category = "creator"
+                achievement10.category = "social"
                 achievement10.requirement_type = "chat_messages_sent"
                 achievement10.requirement_value = 50
                 achievement10.gem_points_reward = 100
@@ -3767,7 +3767,7 @@ def init_database():
                 achievement11.name = "Memecoin Veteran"
                 achievement11.description = "Complete 100+ transactions on the platform"
                 achievement11.icon = "🎖️"
-                achievement11.category = "trader"
+                achievement11.category = "special"
                 achievement11.requirement_type = "total_transactions"
                 achievement11.requirement_value = 100
                 achievement11.gem_points_reward = 600
