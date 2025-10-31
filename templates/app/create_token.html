@@ -2252,7 +2252,7 @@
 
         // Poll token endpoint until it's ready, then redirect
         async function waitForTokenAndRedirect(contractAddress, maxAttempts = 15) {
-            updateDeploymentStatus('Waiting for token to be ready...', 'Database sync in progress');
+            updateDeploymentStatus('🤖 Gemmy analyzing your token...', 'AI categorization complete');
             
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 try {
@@ -2377,10 +2377,6 @@
             let resumingTokenId = window.resumingTokenId || null; // Check if we're resuming
             
             try {
-                // Step 0: AI Categorization (visual indicator for UX)
-                updateDeploymentStatus('🤖 Gemmy analyzing your token...', 'AI categorization in progress');
-                await new Promise(resolve => setTimeout(resolve, 1200)); // 1.2 second delay for effect
-                
                 let imageBase64;
                 let existingIPFSUrl = null;
                 
