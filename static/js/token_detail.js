@@ -479,24 +479,28 @@
                     timeVisible: true,
                     secondsVisible: false,
                     tickMarkFormatter: (timestamp) => {
-                        // CRITICAL: Format axis labels in local timezone
+                        // CRITICAL: Show date only at day boundaries, otherwise just time
                         const date = new Date(timestamp * 1000);
-                        const now = new Date();
-                        const isToday = date.toDateString() === now.toDateString();
+                        const hour = date.getHours();
                         
-                        if (isToday) {
-                            // Today: show time only (e.g., "2:30 PM")
-                            return date.toLocaleTimeString([], { 
+                        // Show date only at midnight or first hour of day (when day changes)
+                        // For 1h/4h candles: hour 0 is midnight
+                        // For 5m/15m candles: any time in the midnight hour (00:00-00:59)
+                        const isStartOfDay = hour === 0;
+                        
+                        if (isStartOfDay) {
+                            // Day boundary: show date + time (e.g., "Oct 31 12:00 AM")
+                            return date.toLocaleDateString([], { 
+                                month: 'short', 
+                                day: 'numeric'
+                            }) + ' ' + date.toLocaleTimeString([], { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
                                 hour12: true
                             });
                         } else {
-                            // Other days: show date + time (e.g., "Oct 31 12:30")
-                            return date.toLocaleDateString([], { 
-                                month: 'short', 
-                                day: 'numeric'
-                            }) + ' ' + date.toLocaleTimeString([], { 
+                            // Same day: show time only (e.g., "2:30 PM")
+                            return date.toLocaleTimeString([], { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
                                 hour12: true
