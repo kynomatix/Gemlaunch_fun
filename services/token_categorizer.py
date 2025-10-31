@@ -49,7 +49,7 @@ Available Categories:
 - Holidays (Halloween, Christmas, Easter, seasonal, spooky, festive)
 - Tech (AI, robots, cyberpunk, space, sci-fi, technology, futuristic)
 - Finance (ONLY for: banks, stocks, Wall Street, vaults, DeFi, yield, savings, actual financial products - NOT for generic "gains", "wealth", "market" mentions)
-- PopCulture (memes, movies, gaming, TV, celebrities, internet culture, references)
+- PopCulture (ONLY for SPECIFIC cultural references: famous memes like Grumpy Cat/NPC, real celebrities like Bezos/Trump/Sheen, specific movies/shows like LOTR/Ghibli/Mad Max, actual game franchises. NOT for generic robots/ghosts/fantasy themes)
 - Food (food, drinks, restaurants, cooking, edibles)
 - Sports (sports, athletics, teams, competitions, games)
 - Nature (nature, environment, plants, weather, earth)
@@ -60,7 +60,7 @@ CRITICAL RULES:
 - Animals: If token has CLEAR animal references (wolf, dog, cat, frog, bull, owl, etc.), ALWAYS include "Animals"
 - Holidays: If token has Halloween/holiday themes (ghost, pumpkin, haunted, spooky, zombie, santa), ALWAYS include "Holidays"
 - Finance: EXTREMELY RESTRICTIVE - Only use if token is EXPLICITLY a financial product/service (crypto vault, banking service, stock platform, DeFi protocol, lending/yield platform). DO NOT use Finance if token merely mentions "financial freedom", "market", "economy", "gains", "wealth" in its theme
-- PopCulture: Use only if primarily about memes/movies/games and doesn't fit other categories better
+- PopCulture: EXTREMELY RESTRICTIVE - Only use if token directly references a SPECIFIC, IDENTIFIABLE piece of pop culture (Grumpy Cat meme, Jeff Bezos, Donald Trump, Lord of the Rings, Studio Ghibli, Charlie Sheen, Mad Max, NPC meme, etc.). DO NOT use for generic robots, ghosts, fantasy creatures, or vague sci-fi themes - those belong in Tech or Abstract
 
 Respond with a JSON array of 1-3 category names, ordered by relevance.
 Example: ["Animals", "Holidays"] or ["Tech", "Finance"] or ["Community"]"""
@@ -162,7 +162,8 @@ def categorize_token_with_fallback(name, symbol, description=''):
         # Finance: VERY restrictive - only actual finance products
         if any(word in combined_text for word in ['vault', 'bank', 'stock', 'wall street', 'defi', 'yield', 'savings', 'staking', 'lending']):
             fallback_categories.append('Finance')
-        if any(word in combined_text for word in ['meme', 'movie', 'game', 'gaming', 'celebrity', 'pop', 'culture', 'tv', 'film', 'entertainment', 'bezos', 'rebel', 'dump']):
+        # PopCulture: Very restrictive - only specific cultural references
+        if any(word in combined_text for word in ['grumpy cat', 'bezos', 'trump', 'sheen', 'ghibli', 'lotr', 'lord of the rings', 'mad max', 'npc', 'samurai', 'ronin']):
             fallback_categories.append('PopCulture')
         if any(word in combined_text for word in ['food', 'drink', 'pizza', 'burger', 'coffee', 'restaurant', 'meal', 'snack', 'beverage', 'crunch', 'flavor']):
             fallback_categories.append('Food')
