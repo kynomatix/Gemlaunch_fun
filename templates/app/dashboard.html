@@ -3310,6 +3310,21 @@
                            0 0 30px rgba(32, 178, 170, 0.3);
             }
         }
+        
+        /* Font Awesome icon fallback styling */
+        .accolade-icon i.fas {
+            font-size: 1.4rem;
+            color: inherit;
+        }
+        
+        .accolade-item.completed .accolade-icon i.fas {
+            color: rgba(255, 255, 255, 0.95);
+        }
+        
+        .accolade-item.locked .accolade-icon i.fas {
+            color: rgba(32, 178, 170, 0.4);
+            opacity: 0.6;
+        }
 
         .accolade-details {
             flex: 1;
