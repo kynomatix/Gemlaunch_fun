@@ -3500,8 +3500,8 @@ def profile():
     if request.method == 'POST':
         # Handle profile update in a single transaction
         try:
-            # Handle profile picture upload with compression
-            if 'profile_picture' in request.files:
+            # Handle profile picture upload with compression (only if file was selected)
+            if 'profile_picture' in request.files and request.files['profile_picture'].filename:
                 file = request.files['profile_picture']
                 
                 # Validate file
