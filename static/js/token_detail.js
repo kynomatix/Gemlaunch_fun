@@ -478,20 +478,41 @@
                     borderColor: 'rgba(255, 255, 255, 0.1)',
                     timeVisible: true,
                     secondsVisible: false,
+                    tickMarkFormatter: (timestamp) => {
+                        // CRITICAL: Format axis labels in local timezone
+                        const date = new Date(timestamp * 1000);
+                        const now = new Date();
+                        const isToday = date.toDateString() === now.toDateString();
+                        
+                        if (isToday) {
+                            // Today: show time only (e.g., "2:30 PM")
+                            return date.toLocaleTimeString([], { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true
+                            });
+                        } else {
+                            // Other days: show date + time (e.g., "Oct 31 12:30")
+                            return date.toLocaleDateString([], { 
+                                month: 'short', 
+                                day: 'numeric'
+                            }) + ' ' + date.toLocaleTimeString([], { 
+                                hour: 'numeric', 
+                                minute: '2-digit',
+                                hour12: true
+                            });
+                        }
+                    }
                 },
                 localization: {
                     // Use user's locale and display times in local timezone
                     locale: navigator.language || 'en-US',
                     timeFormatter: (timestamp) => {
-                        // Convert Unix timestamp to local time
+                        // Convert Unix timestamp to local time (for tooltips/crosshair)
                         // Markers use Unix timestamps (timezone-agnostic) so alignment remains perfect
                         const date = new Date(timestamp * 1000);
                         const now = new Date();
                         const isToday = date.toDateString() === now.toDateString();
-                        
-                        // Get local timezone abbreviation (e.g., "PST", "EST", "CET")
-                        const tzAbbr = date.toLocaleTimeString('en-US', { timeZoneName: 'short' })
-                            .split(' ').pop();
                         
                         // Format based on proximity to now (using local time)
                         if (isToday) {
