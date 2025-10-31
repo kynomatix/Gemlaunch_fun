@@ -2315,11 +2315,17 @@
             const indicatorsContainer = document.querySelector('.carousel-indicators');
             
             if (trackContainer) {
+                console.log(`Before replacement: ${trackContainer.querySelectorAll('.carousel-slide').length} slides`);
                 trackContainer.innerHTML = slidesHTML;
+                console.log(`After replacement: ${trackContainer.querySelectorAll('.carousel-slide').length} slides`);
+            } else {
+                console.error('Could not find .carousel-categories-track container');
             }
             
             if (indicatorsContainer) {
                 indicatorsContainer.innerHTML = indicatorsHTML;
+            } else {
+                console.error('Could not find .carousel-indicators container');
             }
             
             // Reset carousel to first slide
