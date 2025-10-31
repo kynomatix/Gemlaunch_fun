@@ -936,7 +936,7 @@
                            data-volume="{{ token.volume_24h or 0 }}"
                            data-contract="{{ token.contract_address or '' }}"
                            data-creator="{% if token.creator %}{{ token.creator.display_name or token.creator.wallet_address[-6:] }}{% endif %}"
-                           data-category="{{ token.category or 'Community' }}">
+                           data-categories="{{ token.categories or '[\"Community\"]' }}">
                             
                             <!-- Left Column - Image -->
                             <div class="token-image-column">
@@ -1108,7 +1108,17 @@
             const progress = parseFloat(card.getAttribute('data-progress')) || 0;
             const type = card.getAttribute('data-type');
             const graduated = card.getAttribute('data-graduated') === 'true';
-            const category = card.getAttribute('data-category') || 'Community';
+            
+            // Parse categories JSON array
+            let categories = ['Community'];
+            try {
+                const categoriesAttr = card.getAttribute('data-categories');
+                if (categoriesAttr) {
+                    categories = JSON.parse(categoriesAttr);
+                }
+            } catch (e) {
+                console.warn('Failed to parse categories:', e);
+            }
             
             const socialScore = trades * 3 + views + holders * 2;
             const trendingScore = socialScore + (1 / (currentTime - created + 1)) * 1000;
@@ -1123,7 +1133,7 @@
                 progress,
                 type,
                 graduated,
-                category,
+                categories,
                 socialScore,
                 trendingScore,
                 ageInHours
@@ -1136,7 +1146,8 @@
         // Check if filter is a category filter
         if (filter.startsWith('category:')) {
             const categoryName = filter.replace('category:', '');
-            visibleTokens = visibleTokens.filter(t => t.category === categoryName);
+            // Filter tokens that include this category in their categories array
+            visibleTokens = visibleTokens.filter(t => t.categories.includes(categoryName));
             visibleTokens.sort((a, b) => b.trendingScore - a.trendingScore);
         } else {
             switch(filter) {
