@@ -1515,11 +1515,11 @@ def index_all_events(from_block=None, to_block='latest', max_blocks_per_run=2000
             
             logger.info(f"📊 Processing {len(deployed_tokens)} active tokens out of {all_deployed} total (cycle #{index_all_events._cycle_counter})")
         
-        # STEP 2: Process tokens in parallel (10 workers)
-        # This dramatically improves performance by making concurrent RPC calls
+        # STEP 2: Process tokens in parallel (5 workers)
+        # Reduced from 10 to 5 to prevent network congestion and RPC rate limiting
         token_ids = [token.id for token in deployed_tokens]
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             # Submit all token processing jobs
             future_to_token = {
                 executor.submit(process_single_token, token_id, from_block, to_block): token_id 

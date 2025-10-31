@@ -230,11 +230,11 @@ scheduler.add_job(
     replace_existing=True
 )
 
-# Add event indexer job - runs every 30 seconds (optimized for performance)
+# Add event indexer job - runs every 60 seconds (reduced frequency to prevent network congestion)
 scheduler.add_job(
     func=run_event_indexer_with_context,
     trigger='interval',
-    seconds=30,
+    seconds=60,
     id='event_indexer',
     name='Index blockchain events',
     replace_existing=True
@@ -261,7 +261,7 @@ atexit.register(lambda: scheduler.shutdown())
 atexit.register(lambda: stop_graduation_completion_service())
 
 logging.info("Transaction monitor scheduler started - checking every 10 seconds")
-logging.info("Event indexer scheduler started - checking every 30 seconds (active tokens only)")
+logging.info("Event indexer scheduler started - checking every 60 seconds (active tokens only)")
 logging.info("Graduation monitor scheduler started - checking every 60 seconds")
 logging.info("Graduation completion service started - monitoring for pending graduations")
 
