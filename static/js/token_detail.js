@@ -480,32 +480,36 @@
                     secondsVisible: false,
                 },
                 localization: {
-                    // Automatically detect and use the user's browser timezone
+                    // Use user's locale but keep times in UTC for consistency with markers
                     locale: navigator.language || 'en-US',
                     timeFormatter: (timestamp) => {
-                        // Convert Unix timestamp to local time
+                        // Convert Unix timestamp to UTC time (not local time)
+                        // This ensures chart labels match the UTC timestamps used by trade markers
                         const date = new Date(timestamp * 1000);
                         const now = new Date();
                         const isToday = date.toDateString() === now.toDateString();
                         
-                        // Format based on proximity to now
+                        // Format based on proximity to now (using UTC)
                         if (isToday) {
-                            // Today: show time only (e.g., "2:30 PM")
+                            // Today: show time only in UTC (e.g., "2:30 PM UTC")
                             return date.toLocaleTimeString([], { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
-                                hour12: true 
-                            });
+                                hour12: true,
+                                timeZone: 'UTC'
+                            }) + ' UTC';
                         } else {
-                            // Other days: show date + time (e.g., "Oct 16, 2:30 PM")
+                            // Other days: show date + time in UTC (e.g., "Oct 16, 2:30 PM UTC")
                             return date.toLocaleDateString([], { 
                                 month: 'short', 
-                                day: 'numeric' 
+                                day: 'numeric',
+                                timeZone: 'UTC'
                             }) + ', ' + date.toLocaleTimeString([], { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
-                                hour12: true 
-                            });
+                                hour12: true,
+                                timeZone: 'UTC'
+                            }) + ' UTC';
                         }
                     }
                 },
@@ -696,12 +700,15 @@
                 // TradingView will automatically place them on the correct bars regardless of timeframe
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
+                    // CRITICAL: Ensure we're treating the timestamp as UTC
+                    // The backend sends ISO format like "2025-10-31T10:30:00+00:00"
+                    // new Date() parses this correctly as UTC, getTime() returns UTC milliseconds
                     const tradeTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
-                    // Debug: Log first few trades
+                    // Debug: Log first few trades with UTC time for verification
                     if (index < 5) {
                         const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
-                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} (${tradeTimestamp})`);
+                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} UTC (unix: ${tradeTimestamp})`);
                     }
                     
                     // Determine marker style based on trade type

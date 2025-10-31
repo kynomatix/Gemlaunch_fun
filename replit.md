@@ -25,7 +25,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 
 ### Core Features
 - **Anti-Bot System (GEM System)**: An optional premium feature for PRO tokens using time-based KAS fee decay to prevent bot sniping.
-- **Token-Specific Community Points System**: Allows PRO token creators to configure and track engagement points.
+- **Token-Specific Community Points System**: Allows PRO token creators to configure and track engagement points. **CRITICAL**: Token creators are excluded from earning points in their own token's leaderboard (enforced in both `event_indexer.py` and `engagement_calculator.py`).
 - **Multi-Wallet Linking System**: Securely links multiple wallets via challenge-response authentication.
 - **Wallet Connection System**: A modal-based system supporting Kastle, KasWare, and MetaMask using challenge-response authentication.
 - **Enhanced Marketplace Search**: Provides comprehensive search across token name, symbol, contract address, and creator information.
@@ -83,6 +83,8 @@ A hybrid approach is used:
 - **Historical data**: `TradeEvent` database replay for chart data and blockchain reserves for accurate quotes.
 - **Database retained for**: User profiles, token metadata, trade history (charts), and social features.
 This approach ensures real-time accuracy while providing comprehensive historical data for charting.
+
+**Chart Timezone**: All trading charts use UTC timezone explicitly to ensure buy/sell markers align correctly with candlesticks regardless of user's local timezone. Chart labels display "UTC" suffix for clarity.
 
 ## Design Patterns
 The project adheres to an MVC pattern.
