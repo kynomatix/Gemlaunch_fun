@@ -48,7 +48,7 @@ Available Categories:
 - Animals (dogs, cats, frogs, wildlife, pets, creatures)
 - Holidays (Halloween, Christmas, Easter, seasonal, spooky, festive)
 - Tech (AI, robots, cyberpunk, space, sci-fi, technology, futuristic)
-- Finance (money, stocks, banks, wall street, trading, wealth)
+- Finance (ONLY for: banks, stocks, Wall Street, vaults, DeFi, yield, savings, actual financial products - NOT for generic "gains", "wealth", "market" mentions)
 - PopCulture (memes, movies, gaming, TV, celebrities, internet culture, references)
 - Food (food, drinks, restaurants, cooking, edibles)
 - Sports (sports, athletics, teams, competitions, games)
@@ -56,10 +56,11 @@ Available Categories:
 - Abstract (philosophy, concepts, ideas, spirituality, mystical)
 - Community (general community, social, people)
 
-IMPORTANT PRIORITIZATION:
-- If token has CLEAR animal references (wolf, dog, cat, frog, etc.), ALWAYS include "Animals"
-- If token has Halloween/holiday themes (ghost, pumpkin, haunted, spooky), ALWAYS include "Holidays"
-- Only use "PopCulture" if it's primarily about memes/movies/games and doesn't fit other categories better
+CRITICAL RULES:
+- Animals: If token has CLEAR animal references (wolf, dog, cat, frog, bull, owl, etc.), ALWAYS include "Animals"
+- Holidays: If token has Halloween/holiday themes (ghost, pumpkin, haunted, spooky, zombie, santa), ALWAYS include "Holidays"
+- Finance: EXTREMELY RESTRICTIVE - Only use if token is EXPLICITLY a financial product/service (crypto vault, banking service, stock platform, DeFi protocol, lending/yield platform). DO NOT use Finance if token merely mentions "financial freedom", "market", "economy", "gains", "wealth" in its theme
+- PopCulture: Use only if primarily about memes/movies/games and doesn't fit other categories better
 
 Respond with a JSON array of 1-3 category names, ordered by relevance.
 Example: ["Animals", "Holidays"] or ["Tech", "Finance"] or ["Community"]"""
@@ -152,23 +153,24 @@ def categorize_token_with_fallback(name, symbol, description=''):
         fallback_categories = []
         
         # Keyword-based categorization (can match multiple)
-        if any(word in combined_text for word in ['dog', 'cat', 'frog', 'animal', 'pet', 'paw', 'puppy', 'kitten', 'wolf', 'fox', 'bear', 'tiger', 'lion', 'monkey', 'penguin', 'owl', 'eagle', 'hawk', 'creature', 'beast']):
+        if any(word in combined_text for word in ['dog', 'cat', 'frog', 'animal', 'pet', 'paw', 'puppy', 'kitten', 'wolf', 'fox', 'bear', 'tiger', 'lion', 'monkey', 'penguin', 'owl', 'eagle', 'hawk', 'creature', 'beast', 'bull', 'krab', 'chimera']):
             fallback_categories.append('Animals')
-        if any(word in combined_text for word in ['halloween', 'christmas', 'easter', 'holiday', 'santa', 'pumpkin', 'ghost', 'haunt', 'spooky', 'scary', 'festive', 'seasonal']):
+        if any(word in combined_text for word in ['halloween', 'christmas', 'easter', 'holiday', 'santa', 'pumpkin', 'ghost', 'haunt', 'spooky', 'scary', 'festive', 'seasonal', 'zombie', 'undead']):
             fallback_categories.append('Holidays')
-        if any(word in combined_text for word in ['ai', 'robot', 'cyber', 'space', 'tech', 'sci-fi', 'alien', 'future', 'digital', 'virtual', 'quantum', 'blockchain']):
+        if any(word in combined_text for word in ['ai', 'robot', 'cyber', 'space', 'tech', 'sci-fi', 'alien', 'future', 'digital', 'virtual', 'quantum', 'blockchain', 'forge', 'clockwork']):
             fallback_categories.append('Tech')
-        if any(word in combined_text for word in ['money', 'finance', 'stock', 'bank', 'wall street', 'trading', 'cash', 'wealth', 'invest', 'profit']):
+        # Finance: VERY restrictive - only actual finance products
+        if any(word in combined_text for word in ['vault', 'bank', 'stock', 'wall street', 'defi', 'yield', 'savings', 'staking', 'lending']):
             fallback_categories.append('Finance')
-        if any(word in combined_text for word in ['meme', 'movie', 'game', 'gaming', 'celebrity', 'pop', 'culture', 'tv', 'film', 'entertainment']):
+        if any(word in combined_text for word in ['meme', 'movie', 'game', 'gaming', 'celebrity', 'pop', 'culture', 'tv', 'film', 'entertainment', 'bezos', 'rebel', 'dump']):
             fallback_categories.append('PopCulture')
-        if any(word in combined_text for word in ['food', 'drink', 'pizza', 'burger', 'coffee', 'restaurant', 'meal', 'snack', 'beverage']):
+        if any(word in combined_text for word in ['food', 'drink', 'pizza', 'burger', 'coffee', 'restaurant', 'meal', 'snack', 'beverage', 'crunch', 'flavor']):
             fallback_categories.append('Food')
-        if any(word in combined_text for word in ['sport', 'football', 'basketball', 'soccer', 'team', 'athlete', 'competition', 'championship']):
+        if any(word in combined_text for word in ['sport', 'football', 'basketball', 'soccer', 'team', 'athlete', 'competition', 'championship', 'race', 'racing']):
             fallback_categories.append('Sports')
-        if any(word in combined_text for word in ['nature', 'tree', 'forest', 'ocean', 'environment', 'green', 'earth', 'plant', 'leaf']):
+        if any(word in combined_text for word in ['nature', 'tree', 'forest', 'ocean', 'environment', 'green', 'earth', 'plant', 'leaf', 'acorn', 'nut']):
             fallback_categories.append('Nature')
-        if any(word in combined_text for word in ['philosophy', 'mind', 'soul', 'spirit', 'abstract', 'concept', 'mystic', 'mystical', 'ancient']):
+        if any(word in combined_text for word in ['philosophy', 'mind', 'soul', 'spirit', 'abstract', 'concept', 'mystic', 'mystical', 'ancient', 'shadows', 'darkness']):
             fallback_categories.append('Abstract')
         
         if fallback_categories:

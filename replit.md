@@ -21,6 +21,7 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 ### AI Features
 - **Gemmy Zeroday Memification Engine**: An AI-powered trend discovery system using OpenRouter API for multi-source cultural trend detection and Kaspa Tech analysis.
 - **AI Token Image Generation**: A two-stage AI pipeline uses OpenRouter Llama 3.1 70B for prompt enhancement and Replicate FLUX.1 Schnell for 1024x1024 WebP image generation.
+- **AI Multi-Category Token Classification**: Automatic token categorization using Llama 3.1 8B via OpenRouter. Each token can have up to 3 categories from: Animals, Holidays, Tech, Finance, PopCulture, Food, Sports, Nature, Abstract, Community. Categories are stored as JSON arrays. Finance category is highly restrictive (only actual financial products like vaults/DeFi).
 
 ### Core Features
 - **Anti-Bot System (GEM System)**: An optional premium feature for PRO tokens using time-based KAS fee decay to prevent bot sniping.
