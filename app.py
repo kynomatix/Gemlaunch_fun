@@ -1215,11 +1215,8 @@ def app_dashboard():
     elif sort_by == 'most_active':
         query = query.order_by(Token.trade_count.desc().nulls_last())
     elif sort_by == 'claims':
-        # Sort by total claimable fees (bonding_pool_fees + unclaimed_graduation_fees)
-        # Use SQL expression to calculate total
-        query = query.order_by(
-            (Token.bonding_pool_fees + Token.unclaimed_graduation_fees).desc().nulls_last()
-        )
+        # Sort by creator fees accumulated (claimable fees)
+        query = query.order_by(Token.creator_fees_accumulated.desc().nulls_last())
     else:  # 'newest' (default)
         query = query.order_by(Token.created_at.desc())
     
