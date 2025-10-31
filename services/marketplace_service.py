@@ -224,8 +224,11 @@ class MarketplaceService:
             if not latest_trade:
                 return {'volume_24h': round(volume_usd, 2), 'price_change_24h': 0}
             
-            # Calculate current price
-            current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount) * 1e18
+            # Calculate current price (price per token in KAS)
+            if float(latest_trade.token_amount) > 0:
+                current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount)
+            else:
+                return {'volume_24h': round(volume_usd, 2), 'price_change_24h': 0}
             
             # Get oldest trade beyond 24h for comparison
             old_trade = TradeEvent.query.filter(
@@ -235,16 +238,17 @@ class MarketplaceService:
             
             # Calculate price change
             price_change = 0
-            if old_trade:
-                old_price = float(old_trade.kas_amount) / float(old_trade.token_amount) * 1e18
+            if old_trade and float(old_trade.token_amount) > 0:
+                old_price = float(old_trade.kas_amount) / float(old_trade.token_amount)
                 if old_price > 0:
                     price_change = ((current_price - old_price) / old_price) * 100
             elif len(recent_trades) > 1:
                 # If no data beyond 24h, compare to oldest recent trade
                 oldest_recent = min(recent_trades, key=lambda t: t.timestamp)
-                old_price = float(oldest_recent.kas_amount) / float(oldest_recent.token_amount) * 1e18
-                if old_price > 0:
-                    price_change = ((current_price - old_price) / old_price) * 100
+                if float(oldest_recent.token_amount) > 0:
+                    old_price = float(oldest_recent.kas_amount) / float(oldest_recent.token_amount)
+                    if old_price > 0:
+                        price_change = ((current_price - old_price) / old_price) * 100
             
             return {
                 'volume_24h': round(volume_usd, 2),
