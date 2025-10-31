@@ -1209,14 +1209,14 @@ def app_dashboard():
     query = Token.query.options(joinedload(Token.creator)).filter_by(creator_id=user.id)
     
     if sort_by == 'market_cap':
-        query = query.order_by(Token.current_market_cap.desc().nulls_last())
+        query = query.order_by(Token.current_market_cap.desc().nulls_last(), Token.created_at.desc())
     elif sort_by == 'oldest':
         query = query.order_by(Token.created_at.asc())
     elif sort_by == 'most_active':
-        query = query.order_by(Token.trade_count.desc().nulls_last())
+        query = query.order_by(Token.trade_count.desc().nulls_last(), Token.created_at.desc())
     elif sort_by == 'claims':
-        # Sort by creator fees accumulated (claimable fees)
-        query = query.order_by(Token.creator_fees_accumulated.desc().nulls_last())
+        # Sort by creator fees accumulated (claimable fees), then by newest
+        query = query.order_by(Token.creator_fees_accumulated.desc().nulls_last(), Token.created_at.desc())
     else:  # 'newest' (default)
         query = query.order_by(Token.created_at.desc())
     
