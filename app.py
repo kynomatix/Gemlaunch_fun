@@ -1202,9 +1202,9 @@ def app_dashboard():
     # Only evaluate when Accolades tab is clicked (see /api/evaluate_achievements endpoint)
     achievement_progress = {}  # Empty dict for initial page load
     
-    # Get pagination parameters
-    page = request.args.get('page', 1, type=int)
-    page_size = request.args.get('page_size', 10, type=int)
+    # Get pagination parameters with validation
+    page = max(request.args.get('page', 1, type=int), 1)  # Ensure page >= 1
+    page_size = max(1, min(request.args.get('page_size', 10, type=int), 50))  # Clamp to [1, 50]
     
     # Get sorting parameter
     sort_by = request.args.get('sort', 'newest')  # Default: newest first
@@ -1212,9 +1212,41 @@ def app_dashboard():
     # Get search parameter
     search_query = request.args.get('search', '').strip()
     
-    # Get user's created tokens with sorting (with eager loading to avoid N+1)
-    query = Token.query.options(joinedload(Token.creator)).filter_by(creator_id=user.id)
+    # Build database query with filters applied at SQL level
+    # Start with base query - filter visible tokens only
+    query = Token.query.options(joinedload(Token.creator)).filter_by(
+        creator_id=user.id, 
+        is_visible=True
+    )
     
+    # Apply search filter at database level (case-insensitive, NULL-safe)
+    if search_query:
+        search_pattern = f'%{search_query}%'
+        query = query.filter(
+            db.or_(
+                Token.name.ilike(search_pattern),
+                Token.symbol.ilike(search_pattern),
+                db.func.coalesce(Token.contract_address, '').ilike(search_pattern)
+            )
+        )
+    
+    # Get total count BEFORE applying LIMIT (optimized separate query without eager loading)
+    count_query = db.session.query(db.func.count(Token.id)).filter_by(
+        creator_id=user.id,
+        is_visible=True
+    )
+    if search_query:
+        search_pattern = f'%{search_query}%'
+        count_query = count_query.filter(
+            db.or_(
+                Token.name.ilike(search_pattern),
+                Token.symbol.ilike(search_pattern),
+                db.func.coalesce(Token.contract_address, '').ilike(search_pattern)
+            )
+        )
+    total_tokens = count_query.scalar()
+    
+    # Apply sorting at database level
     if sort_by == 'market_cap':
         query = query.order_by(Token.current_market_cap.desc().nulls_last(), Token.created_at.desc())
     elif sort_by == 'oldest':
@@ -1227,26 +1259,12 @@ def app_dashboard():
     else:  # 'newest' (default)
         query = query.order_by(Token.created_at.desc())
     
-    # Get all tokens (after filtering/sorting) to calculate total
-    all_tokens = query.all()
-    
-    # Apply search filter server-side BEFORE pagination
-    if search_query:
-        search_lower = search_query.lower()
-        all_tokens = [t for t in all_tokens if 
-                     search_lower in t.name.lower() or 
-                     search_lower in t.symbol.lower() or
-                     (t.contract_address and search_lower in t.contract_address.lower())]
-    
-    total_tokens = len(all_tokens)
-    
-    # Slice to visible tokens for current page
-    start_idx = (page - 1) * page_size
-    end_idx = start_idx + page_size
-    created_tokens = all_tokens[start_idx:end_idx]
+    # Apply pagination at database level with LIMIT/OFFSET
+    offset = (page - 1) * page_size
+    created_tokens = query.limit(page_size).offset(offset).all()
     
     # Calculate pagination metadata
-    has_more = end_idx < total_tokens
+    has_more = offset + len(created_tokens) < total_tokens
     
     # TODO: Replace with HolderService to fetch holdings from blockchain
     # For now, return empty list to remove database dependency
