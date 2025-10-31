@@ -1396,6 +1396,7 @@
                                 type="text" 
                                 id="tokenSearchInput" 
                                 placeholder="Search tokens..."
+                                value="{{ search|default('') }}"
                                 onkeyup="filterTokens()"
                                 style="
                                     background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
@@ -1452,7 +1453,7 @@
                             z-index: 100;
                             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
                         ">
-                            <a href="?sort=newest" class="sort-option {% if sort_by == 'newest' or not sort_by %}active{% endif %}" style="
+                            <a href="?sort=newest{% if search %}&search={{ search }}{% endif %}" class="sort-option {% if sort_by == 'newest' or not sort_by %}active{% endif %}" style="
                                 display: flex;
                                 align-items: center;
                                 gap: 0.75rem;
@@ -1464,7 +1465,7 @@
                                 <i class="fas fa-clock" style="width: 1.2rem; color: #20B2AA;"></i>
                                 Newest First
                             </a>
-                            <a href="?sort=oldest" class="sort-option {% if sort_by == 'oldest' %}active{% endif %}" style="
+                            <a href="?sort=oldest{% if search %}&search={{ search }}{% endif %}" class="sort-option {% if sort_by == 'oldest' %}active{% endif %}" style="
                                 display: flex;
                                 align-items: center;
                                 gap: 0.75rem;
@@ -1476,7 +1477,7 @@
                                 <i class="fas fa-history" style="width: 1.2rem; color: #20B2AA;"></i>
                                 Oldest First
                             </a>
-                            <a href="?sort=market_cap" class="sort-option {% if sort_by == 'market_cap' %}active{% endif %}" style="
+                            <a href="?sort=market_cap{% if search %}&search={{ search }}{% endif %}" class="sort-option {% if sort_by == 'market_cap' %}active{% endif %}" style="
                                 display: flex;
                                 align-items: center;
                                 gap: 0.75rem;
@@ -1488,7 +1489,7 @@
                                 <i class="fas fa-chart-line" style="width: 1.2rem; color: #20B2AA;"></i>
                                 Market Cap
                             </a>
-                            <a href="?sort=most_active" class="sort-option {% if sort_by == 'most_active' %}active{% endif %}" style="
+                            <a href="?sort=most_active{% if search %}&search={{ search }}{% endif %}" class="sort-option {% if sort_by == 'most_active' %}active{% endif %}" style="
                                 display: flex;
                                 align-items: center;
                                 gap: 0.75rem;
@@ -1500,7 +1501,7 @@
                                 <i class="fas fa-fire" style="width: 1.2rem; color: #20B2AA;"></i>
                                 Most Active
                             </a>
-                            <a href="?sort=claims" class="sort-option {% if sort_by == 'claims' %}active{% endif %}" style="
+                            <a href="?sort=claims{% if search %}&search={{ search }}{% endif %}" class="sort-option {% if sort_by == 'claims' %}active{% endif %}" style="
                                 display: flex;
                                 align-items: center;
                                 gap: 0.75rem;
@@ -4134,38 +4135,25 @@ document.addEventListener('click', function(event) {
     });
 });
 
-// Token Search Filter
+// Token Search Filter with server-side filtering and debouncing
+let searchTimeout;
 function filterTokens() {
+    clearTimeout(searchTimeout);
     const searchInput = document.getElementById('tokenSearchInput');
-    const filter = searchInput.value.toLowerCase().trim();
-    const tokenGrid = document.getElementById('tokenGrid');
-    const tokenCards = tokenGrid.querySelectorAll('.token-card');
-    const noResults = document.getElementById('noTokenResults');
+    const searchTerm = searchInput.value.trim();
     
-    let visibleCount = 0;
-    
-    tokenCards.forEach(card => {
-        // Get token name and symbol from the card
-        const tokenName = card.querySelector('.token-info h3').textContent.toLowerCase();
-        const tokenSymbol = card.querySelector('.token-symbol').textContent.toLowerCase();
-        
-        // Check if search matches name or symbol
-        if (tokenName.includes(filter) || tokenSymbol.includes(filter)) {
-            card.style.display = '';
-            visibleCount++;
+    // Debounce: wait 300ms after user stops typing before reloading
+    searchTimeout = setTimeout(() => {
+        const url = new URL(window.location.href);
+        if (searchTerm) {
+            url.searchParams.set('search', searchTerm);
         } else {
-            card.style.display = 'none';
+            url.searchParams.delete('search');
         }
-    });
-    
-    // Show/hide no results message
-    if (visibleCount === 0 && filter !== '') {
-        noResults.style.display = 'block';
-        tokenGrid.style.display = 'none';
-    } else {
-        noResults.style.display = 'none';
-        tokenGrid.style.display = 'grid';
-    }
+        // Reset to page 1 when searching
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
+    }, 300);
 }
 
 // Pagination State
@@ -4173,6 +4161,7 @@ let currentPage = {{ page }};
 let isLoading = false;
 let hasMore = {{ 'true' if has_more else 'false' }};
 const currentSort = '{{ sort_by }}';
+const searchParam = '{{ search|default("") }}';
 
 // Infinite Scroll - Load More Tokens (AJAX Pagination)
 async function loadMoreTokens() {
@@ -4190,9 +4179,9 @@ async function loadMoreTokens() {
     }
     
     try {
-        // Fetch next page
+        // Fetch next page with search parameter
         const nextPage = currentPage + 1;
-        const response = await fetch(`/app/dashboard?page=${nextPage}&sort=${currentSort}&ajax=1`);
+        const response = await fetch(`/app/dashboard?page=${nextPage}&sort=${currentSort}&search=${encodeURIComponent(searchParam)}&ajax=1`);
         
         if (!response.ok) {
             throw new Error('Failed to load more tokens');

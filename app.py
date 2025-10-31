@@ -1209,6 +1209,9 @@ def app_dashboard():
     # Get sorting parameter
     sort_by = request.args.get('sort', 'newest')  # Default: newest first
     
+    # Get search parameter
+    search_query = request.args.get('search', '').strip()
+    
     # Get user's created tokens with sorting (with eager loading to avoid N+1)
     query = Token.query.options(joinedload(Token.creator)).filter_by(creator_id=user.id)
     
@@ -1226,6 +1229,15 @@ def app_dashboard():
     
     # Get all tokens (after filtering/sorting) to calculate total
     all_tokens = query.all()
+    
+    # Apply search filter server-side BEFORE pagination
+    if search_query:
+        search_lower = search_query.lower()
+        all_tokens = [t for t in all_tokens if 
+                     search_lower in t.name.lower() or 
+                     search_lower in t.symbol.lower() or
+                     (t.contract_address and search_lower in t.contract_address.lower())]
+    
     total_tokens = len(all_tokens)
     
     # Slice to visible tokens for current page
@@ -1278,6 +1290,7 @@ def app_dashboard():
                          page_size=page_size,
                          has_more=has_more,
                          sort_by=sort_by,  # Pass sort parameter to template
+                         search=search_query,  # Pass search parameter to template
                          holdings=holdings,
                          activities=activities,
                          user_achievements=user_achievements,
