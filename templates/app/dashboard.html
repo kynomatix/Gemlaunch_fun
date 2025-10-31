@@ -2328,8 +2328,9 @@
                 console.error('Could not find .carousel-indicators container');
             }
             
-            // Reset carousel to first slide
+            // Reset carousel to first slide and update total count
             window.currentCategoryIndex = 0;
+            window.totalCategories = slideIndex; // CRITICAL: Update total to match actual rendered slides
             
             // Update carousel position and header
             setTimeout(() => {
