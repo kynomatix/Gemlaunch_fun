@@ -2377,6 +2377,10 @@
             let resumingTokenId = window.resumingTokenId || null; // Check if we're resuming
             
             try {
+                // Step 0: AI Categorization (visual indicator for UX)
+                updateDeploymentStatus('🤖 Gemmy analyzing your token...', 'AI categorization in progress');
+                await new Promise(resolve => setTimeout(resolve, 1200)); // 1.2 second delay for effect
+                
                 let imageBase64;
                 let existingIPFSUrl = null;
                 
