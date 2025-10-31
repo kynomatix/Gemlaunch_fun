@@ -3146,7 +3146,7 @@ def api_token_user_trades(address):
                 total_tokens_sold += token_amount
             
             formatted_trades.append({
-                'timestamp': trade.timestamp.isoformat() if trade.timestamp else None,
+                'timestamp': (trade.timestamp.isoformat() + 'Z') if trade.timestamp else None,
                 'type': trade.trade_type,
                 'price_usd': price_usd,
                 'price_kas': price_kas,
