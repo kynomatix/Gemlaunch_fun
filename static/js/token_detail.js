@@ -4649,13 +4649,29 @@ window.displayLeaderboard = function(leaderboard) {
 // Load user's current points for a token
 window.loadUserPoints = async function(contractAddress) {
     try {
+        // CRITICAL: Hide points display for token creators (they don't earn points)
+        const userWallet = window.currentUserWallet || localStorage.getItem('connectedWallet');
+        const creatorAddress = window.tokenCreatorAddress;
+        const isCreator = userWallet && creatorAddress && 
+                         userWallet.toLowerCase() === creatorAddress.toLowerCase();
+        
+        const pointsDisplay = document.getElementById('userPointsDisplay');
+        
+        // Hide points for creators, show for everyone else
+        if (isCreator) {
+            if (pointsDisplay) {
+                pointsDisplay.style.display = 'none';
+            }
+            console.log('🔒 Points hidden for token creator');
+            return;  // Don't load points for creator
+        }
+        
         const response = await fetch(`/api/token/${contractAddress}/leaderboard?limit=100`);
         if (!response.ok) return;
         
         const data = await response.json();
         if (data.success && data.leaderboard) {
             // Find current user in leaderboard
-            const userWallet = window.currentUserWallet; // Assuming this is set globally
             if (userWallet) {
                 const userEntry = data.leaderboard.find(entry => 
                     entry.wallet_address.toLowerCase() === userWallet.toLowerCase()
@@ -4663,7 +4679,6 @@ window.loadUserPoints = async function(contractAddress) {
                 
                 if (userEntry && userEntry.community_points > 0) {
                     // Display user points
-                    const pointsDisplay = document.getElementById('userPointsDisplay');
                     const pointsValue = document.getElementById('userPointsValue');
                     if (pointsDisplay && pointsValue) {
                         pointsValue.textContent = userEntry.community_points;
