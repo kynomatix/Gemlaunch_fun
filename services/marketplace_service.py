@@ -225,8 +225,9 @@ class MarketplaceService:
                 return {'volume_24h': round(volume_usd, 2), 'price_change_24h': 0}
             
             # Calculate current price (price per token in KAS)
+            # NOTE: token_amount is stored in wei (integer with 18 decimals), so multiply by 1e18
             if float(latest_trade.token_amount) > 0:
-                current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount)
+                current_price = float(latest_trade.kas_amount) / float(latest_trade.token_amount) * 1e18
             else:
                 return {'volume_24h': round(volume_usd, 2), 'price_change_24h': 0}
             
@@ -239,14 +240,14 @@ class MarketplaceService:
             # Calculate price change
             price_change = 0
             if old_trade and float(old_trade.token_amount) > 0:
-                old_price = float(old_trade.kas_amount) / float(old_trade.token_amount)
+                old_price = float(old_trade.kas_amount) / float(old_trade.token_amount) * 1e18
                 if old_price > 0:
                     price_change = ((current_price - old_price) / old_price) * 100
             elif len(recent_trades) > 1:
                 # If no data beyond 24h, compare to oldest recent trade
                 oldest_recent = min(recent_trades, key=lambda t: t.timestamp)
                 if float(oldest_recent.token_amount) > 0:
-                    old_price = float(oldest_recent.kas_amount) / float(oldest_recent.token_amount)
+                    old_price = float(oldest_recent.kas_amount) / float(oldest_recent.token_amount) * 1e18
                     if old_price > 0:
                         price_change = ((current_price - old_price) / old_price) * 100
             
