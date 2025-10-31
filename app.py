@@ -1202,6 +1202,10 @@ def app_dashboard():
     # Only evaluate when Accolades tab is clicked (see /api/evaluate_achievements endpoint)
     achievement_progress = {}  # Empty dict for initial page load
     
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    page_size = request.args.get('page_size', 10, type=int)
+    
     # Get sorting parameter
     sort_by = request.args.get('sort', 'newest')  # Default: newest first
     
@@ -1220,7 +1224,17 @@ def app_dashboard():
     else:  # 'newest' (default)
         query = query.order_by(Token.created_at.desc())
     
-    created_tokens = query.all()
+    # Get all tokens (after filtering/sorting) to calculate total
+    all_tokens = query.all()
+    total_tokens = len(all_tokens)
+    
+    # Slice to visible tokens for current page
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    created_tokens = all_tokens[start_idx:end_idx]
+    
+    # Calculate pagination metadata
+    has_more = end_idx < total_tokens
     
     # TODO: Replace with HolderService to fetch holdings from blockchain
     # For now, return empty list to remove database dependency
@@ -1259,6 +1273,10 @@ def app_dashboard():
                          user=user,
                          achievement_progress=achievement_progress,
                          created_tokens=created_tokens,
+                         total_tokens=total_tokens,
+                         page=page,
+                         page_size=page_size,
+                         has_more=has_more,
                          sort_by=sort_by,  # Pass sort parameter to template
                          holdings=holdings,
                          activities=activities,

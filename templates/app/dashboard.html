@@ -342,6 +342,67 @@
             color: #20B2AA;
         }
         
+        /* Load More Button */
+        .load-more-container {
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+        
+        .load-more-btn {
+            background: linear-gradient(135deg, #20B2AA, #00CED1);
+            color: #000;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .load-more-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 178, 170, 0.4);
+        }
+        
+        .load-more-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .load-more-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Fly-in animation for new tokens */
+        @keyframes flyIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .token-card.fly-in {
+            animation: flyIn 0.5s ease-out forwards;
+        }
+        
         @media (max-width: 768px) {
             /* Disable heavy animations on mobile for better performance */
             .shimmer::after,
@@ -1534,6 +1595,16 @@
                             </div>
                         {% endfor %}
                     </div>
+                    
+                    <!-- Load More Button -->
+                    {% if has_more %}
+                    <div class="load-more-container" id="loadMoreContainer">
+                        <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreTokens()">
+                            <span id="loadMoreText">Load More Tokens</span>
+                            <i class="fas fa-chevron-down" id="loadMoreIcon"></i>
+                        </button>
+                    </div>
+                    {% endif %}
                     
                     <!-- No Results Message (hidden by default) -->
                     <div id="noTokenResults" style="display: none; text-align: center; padding: 3rem; color: #888;">
@@ -4092,6 +4163,101 @@ function filterTokens() {
     } else {
         noResults.style.display = 'none';
         tokenGrid.style.display = 'grid';
+    }
+}
+
+// Pagination State
+let currentPage = {{ page }};
+let isLoading = false;
+const currentSort = '{{ sort_by }}';
+
+// Load More Tokens (AJAX Pagination)
+async function loadMoreTokens() {
+    if (isLoading) return;
+    
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const loadMoreText = document.getElementById('loadMoreText');
+    const loadMoreIcon = document.getElementById('loadMoreIcon');
+    const tokenGrid = document.getElementById('tokenGrid');
+    
+    if (!loadMoreBtn || !tokenGrid) return;
+    
+    // Set loading state
+    isLoading = true;
+    loadMoreBtn.disabled = true;
+    loadMoreIcon.className = 'load-more-spinner';
+    loadMoreText.textContent = 'Loading...';
+    
+    try {
+        // Fetch next page
+        const nextPage = currentPage + 1;
+        const response = await fetch(`/app/dashboard?page=${nextPage}&sort=${currentSort}&ajax=1`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to load more tokens');
+        }
+        
+        const html = await response.text();
+        
+        // Parse the HTML response
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Extract token cards from response
+        const newTokenGrid = doc.getElementById('tokenGrid');
+        if (!newTokenGrid) {
+            throw new Error('Invalid response format');
+        }
+        
+        const newCards = newTokenGrid.querySelectorAll('.token-card');
+        
+        // Append new cards with fly-in animation
+        newCards.forEach((card, index) => {
+            // Clone the card to avoid reference issues
+            const clonedCard = card.cloneNode(true);
+            
+            // Add fly-in animation class
+            clonedCard.classList.add('fly-in');
+            
+            // Stagger animation slightly for better effect
+            clonedCard.style.animationDelay = `${index * 0.05}s`;
+            
+            tokenGrid.appendChild(clonedCard);
+        });
+        
+        // Update pagination state
+        currentPage = nextPage;
+        
+        // Check if there are more pages
+        const loadMoreContainer = doc.getElementById('loadMoreContainer');
+        if (!loadMoreContainer) {
+            // No more pages, hide the button
+            const currentLoadMoreContainer = document.getElementById('loadMoreContainer');
+            if (currentLoadMoreContainer) {
+                currentLoadMoreContainer.style.display = 'none';
+            }
+        }
+        
+        // Reset loading state
+        isLoading = false;
+        loadMoreBtn.disabled = false;
+        loadMoreIcon.className = 'fas fa-chevron-down';
+        loadMoreText.textContent = 'Load More Tokens';
+        
+    } catch (error) {
+        console.error('Error loading more tokens:', error);
+        
+        // Reset button state
+        isLoading = false;
+        loadMoreBtn.disabled = false;
+        loadMoreIcon.className = 'fas fa-exclamation-circle';
+        loadMoreText.textContent = 'Error - Try Again';
+        
+        // Reset to normal state after 3 seconds
+        setTimeout(() => {
+            loadMoreIcon.className = 'fas fa-chevron-down';
+            loadMoreText.textContent = 'Load More Tokens';
+        }, 3000);
     }
 }
 
