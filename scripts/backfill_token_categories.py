@@ -2,6 +2,7 @@
 Backfill Token Categories Script
 
 This script automatically categorizes all existing tokens using AI.
+Returns multiple categories per token (up to 3).
 Categories: Animals, Holidays, Tech, Finance, PopCulture, Food, Sports, Nature, Abstract, Community
 
 Usage:
@@ -10,6 +11,7 @@ Usage:
 
 import sys
 import os
+import json
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + '/..'))
 
 from app import app, db
@@ -47,22 +49,27 @@ def backfill_token_categories():
             
             print(f"[{idx}/{len(tokens)}] ${symbol} - {name[:30]}...")
             
-            # Get AI categorization
-            old_category = token.category or 'Community'
-            new_category = categorize_token_with_fallback(name, symbol, description)
+            # Get AI categorization (returns list)
+            try:
+                old_categories = json.loads(token.categories) if token.categories else ['Community']
+            except:
+                old_categories = ['Community']
+                
+            new_categories = categorize_token_with_fallback(name, symbol, description)
             
             # Update token
-            token.category = new_category
+            token.categories = json.dumps(new_categories)
             
-            # Track statistics
-            category_stats[new_category] = category_stats.get(new_category, 0) + 1
+            # Track statistics (each category counted separately)
+            for category in new_categories:
+                category_stats[category] = category_stats.get(category, 0) + 1
             
             # Show result
-            if old_category != new_category:
-                print(f"   ✅ {old_category} → {new_category}")
+            if set(old_categories) != set(new_categories):
+                print(f"   ✅ {old_categories} → {new_categories}")
                 updated_count += 1
             else:
-                print(f"   ⚪ Kept: {new_category}")
+                print(f"   ⚪ Kept: {new_categories}")
         
         # Commit all changes
         db.session.commit()
@@ -91,16 +98,32 @@ def backfill_token_categories():
         print("-" * 70)
         
         for category in sorted(category_stats.keys()):
-            category_tokens = Token.query.filter_by(
-                category=category,
+            # Find tokens that include this category
+            all_tokens = Token.query.filter_by(
                 is_visible=True,
                 deployment_status='deployed'
-            ).limit(3).all()
+            ).all()
+            
+            category_tokens = []
+            for t in all_tokens:
+                try:
+                    token_cats = json.loads(t.categories) if t.categories else []
+                    if category in token_cats:
+                        category_tokens.append(t)
+                        if len(category_tokens) >= 3:
+                            break
+                except:
+                    continue
             
             if category_tokens:
                 print(f"\n{category}:")
                 for t in category_tokens:
-                    print(f"  • ${t.symbol} - {t.name}")
+                    try:
+                        all_cats = json.loads(t.categories)
+                        cats_str = ', '.join(all_cats)
+                        print(f"  • ${t.symbol} - {t.name} [{cats_str}]")
+                    except:
+                        print(f"  • ${t.symbol} - {t.name}")
         
         print("\n" + "=" * 70)
 
