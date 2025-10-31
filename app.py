@@ -2190,12 +2190,16 @@ def get_recent_trades(contract_address):
     # Transform to API format
     trades_data = []
     for trade in recent_trades:
+        # CRITICAL: Ensure timestamp is timezone-aware (UTC) before sending to frontend
+        # Database stores as naive datetime, but it's in UTC
+        timestamp_utc = trade.timestamp.replace(tzinfo=timezone.utc) if trade.timestamp else None
+        
         trades_data.append({
             'trade_type': trade.trade_type,
             'token_amount': str(trade.token_amount),  # Keep as string to preserve precision
             'kas_amount': float(trade.kas_amount),
             'user_wallet_address': trade.user_wallet_address,
-            'timestamp': trade.timestamp.isoformat() if trade.timestamp else None,
+            'timestamp': timestamp_utc.isoformat() if timestamp_utc else None,  # Now includes +00:00 UTC suffix
             'tx_hash': trade.tx_hash
         })
     
