@@ -47,6 +47,14 @@ class TokenService:
             new_token.symbol = token_data.get('symbol', '').upper()
             new_token.description = token_data.get('description', '')
             
+            # AI-powered categorization
+            from services.token_categorizer import categorize_token_with_fallback
+            new_token.category = categorize_token_with_fallback(
+                new_token.name,
+                new_token.symbol,
+                new_token.description
+            )
+            
             # Set social links
             new_token.website = token_data.get('website', '')
             new_token.twitter = token_data.get('twitter', '')
