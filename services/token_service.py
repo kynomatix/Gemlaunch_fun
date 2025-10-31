@@ -47,13 +47,15 @@ class TokenService:
             new_token.symbol = token_data.get('symbol', '').upper()
             new_token.description = token_data.get('description', '')
             
-            # AI-powered categorization
+            # AI-powered categorization (returns list of categories)
             from services.token_categorizer import categorize_token_with_fallback
-            new_token.category = categorize_token_with_fallback(
+            import json
+            categories_list = categorize_token_with_fallback(
                 new_token.name,
                 new_token.symbol,
                 new_token.description
             )
+            new_token.categories = json.dumps(categories_list)  # Store as JSON string
             
             # Set social links
             new_token.website = token_data.get('website', '')
