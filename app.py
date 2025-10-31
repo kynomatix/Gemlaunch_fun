@@ -1151,8 +1151,22 @@ def app_dashboard():
     # Evaluate and award achievements
     achievement_progress = evaluate_user_achievements(user.id)
     
-    # Get user's created tokens
-    created_tokens = Token.query.filter_by(creator_id=user.id).all()
+    # Get sorting parameter
+    sort_by = request.args.get('sort', 'newest')  # Default: newest first
+    
+    # Get user's created tokens with sorting
+    query = Token.query.filter_by(creator_id=user.id)
+    
+    if sort_by == 'market_cap':
+        query = query.order_by(Token.current_market_cap.desc().nulls_last())
+    elif sort_by == 'oldest':
+        query = query.order_by(Token.created_at.asc())
+    elif sort_by == 'most_active':
+        query = query.order_by(Token.trade_count.desc().nulls_last())
+    else:  # 'newest' (default)
+        query = query.order_by(Token.created_at.desc())
+    
+    created_tokens = query.all()
     
     # TODO: Replace with HolderService to fetch holdings from blockchain
     # For now, return empty list to remove database dependency
@@ -1190,7 +1204,8 @@ def app_dashboard():
     return render_template('app/dashboard.html', 
                          user=user,
                          achievement_progress=achievement_progress,
-                         created_tokens=created_tokens, 
+                         created_tokens=created_tokens,
+                         sort_by=sort_by,  # Pass sort parameter to template
                          holdings=holdings,
                          activities=activities,
                          user_achievements=user_achievements,
