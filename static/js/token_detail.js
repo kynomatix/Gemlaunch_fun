@@ -480,36 +480,37 @@
                     secondsVisible: false,
                 },
                 localization: {
-                    // Use user's locale but keep times in UTC for consistency with markers
+                    // Use user's locale and display times in local timezone
                     locale: navigator.language || 'en-US',
                     timeFormatter: (timestamp) => {
-                        // Convert Unix timestamp to UTC time (not local time)
-                        // This ensures chart labels match the UTC timestamps used by trade markers
+                        // Convert Unix timestamp to local time
+                        // Markers use Unix timestamps (timezone-agnostic) so alignment remains perfect
                         const date = new Date(timestamp * 1000);
                         const now = new Date();
                         const isToday = date.toDateString() === now.toDateString();
                         
-                        // Format based on proximity to now (using UTC)
+                        // Get local timezone abbreviation (e.g., "PST", "EST", "CET")
+                        const tzAbbr = date.toLocaleTimeString('en-US', { timeZoneName: 'short' })
+                            .split(' ').pop();
+                        
+                        // Format based on proximity to now (using local time)
                         if (isToday) {
-                            // Today: show time only in UTC (e.g., "2:30 PM UTC")
+                            // Today: show time only in local timezone (e.g., "2:30 PM")
                             return date.toLocaleTimeString([], { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
-                                hour12: true,
-                                timeZone: 'UTC'
-                            }) + ' UTC';
+                                hour12: true
+                            });
                         } else {
-                            // Other days: show date + time in UTC (e.g., "Oct 16, 2:30 PM UTC")
+                            // Other days: show date + time in local timezone (e.g., "Oct 31 12:30")
                             return date.toLocaleDateString([], { 
                                 month: 'short', 
-                                day: 'numeric',
-                                timeZone: 'UTC'
-                            }) + ', ' + date.toLocaleTimeString([], { 
+                                day: 'numeric'
+                            }) + ' ' + date.toLocaleTimeString([], { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
-                                hour12: true,
-                                timeZone: 'UTC'
-                            }) + ' UTC';
+                                hour12: true
+                            });
                         }
                     }
                 },
