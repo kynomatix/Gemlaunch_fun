@@ -1785,7 +1785,7 @@
                                     {% endif %}
                                 {% endfor %}
                                 
-                                {% for i in range(slide_count.value if slide_count.value > 0 else 5) %}
+                                {% for i in range(slide_count.value if slide_count.value > 0 else 1) %}
                                 <button class="carousel-dot {{ 'active' if i == 0 else '' }}" 
                                         onclick="window.goToCategory({{ i }})" 
                                         aria-label="Go to category {{ i + 1 }}">
@@ -1796,7 +1796,7 @@
 
                             <!-- Category Quick Jump -->
                             <div class="category-quick-jump">
-                                <span class="quick-jump-hint">Press 1-{{ slide_count.value if slide_count.value > 0 else 5 }} to jump to category</span>
+                                <span class="quick-jump-hint">Press 1-{{ slide_count.value if slide_count.value > 0 else 1 }} to jump to category</span>
                             </div>
                         </div>
                     </div>
@@ -3258,6 +3258,7 @@
         .achievement-svg {
             width: 100%;
             height: 100%;
+            display: block;
             color: rgba(32, 178, 170, 0.6);
             transition: all 0.3s ease;
         }
