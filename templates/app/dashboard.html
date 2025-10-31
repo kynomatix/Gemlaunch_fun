@@ -1596,15 +1596,16 @@
                         {% endfor %}
                     </div>
                     
-                    <!-- Load More Button -->
-                    {% if has_more %}
-                    <div class="load-more-container" id="loadMoreContainer">
-                        <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreTokens()">
-                            <span id="loadMoreText">Load More Tokens</span>
-                            <i class="fas fa-chevron-down" id="loadMoreIcon"></i>
-                        </button>
+                    <!-- Infinite Scroll Sentinel -->
+                    <div id="scroll-sentinel" style="height: 1px;"></div>
+                    
+                    <!-- Loading Indicator -->
+                    <div id="loading-indicator" class="load-more-container" style="display: none;">
+                        <div style="display: inline-flex; align-items: center; gap: 0.5rem; color: #20B2AA; font-weight: 600;">
+                            <div class="load-more-spinner"></div>
+                            <span>Loading more tokens...</span>
+                        </div>
                     </div>
-                    {% endif %}
                     
                     <!-- No Results Message (hidden by default) -->
                     <div id="noTokenResults" style="display: none; text-align: center; padding: 3rem; color: #888;">
@@ -4169,24 +4170,23 @@ function filterTokens() {
 // Pagination State
 let currentPage = {{ page }};
 let isLoading = false;
+let hasMore = {{ 'true' if has_more else 'false' }};
 const currentSort = '{{ sort_by }}';
 
-// Load More Tokens (AJAX Pagination)
+// Infinite Scroll - Load More Tokens (AJAX Pagination)
 async function loadMoreTokens() {
-    if (isLoading) return;
+    if (isLoading || !hasMore) return;
     
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    const loadMoreText = document.getElementById('loadMoreText');
-    const loadMoreIcon = document.getElementById('loadMoreIcon');
+    const loadingIndicator = document.getElementById('loading-indicator');
     const tokenGrid = document.getElementById('tokenGrid');
     
-    if (!loadMoreBtn || !tokenGrid) return;
+    if (!tokenGrid) return;
     
     // Set loading state
     isLoading = true;
-    loadMoreBtn.disabled = true;
-    loadMoreIcon.className = 'load-more-spinner';
-    loadMoreText.textContent = 'Loading...';
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'block';
+    }
     
     try {
         // Fetch next page
@@ -4228,38 +4228,58 @@ async function loadMoreTokens() {
         // Update pagination state
         currentPage = nextPage;
         
-        // Check if there are more pages
-        const loadMoreContainer = doc.getElementById('loadMoreContainer');
-        if (!loadMoreContainer) {
-            // No more pages, hide the button
-            const currentLoadMoreContainer = document.getElementById('loadMoreContainer');
-            if (currentLoadMoreContainer) {
-                currentLoadMoreContainer.style.display = 'none';
+        // Check if there are more pages by looking for the sentinel in the response
+        const newSentinel = doc.getElementById('scroll-sentinel');
+        if (!newSentinel) {
+            // No sentinel means no more pages
+            hasMore = false;
+            // Disconnect observer when no more pages
+            if (typeof scrollObserver !== 'undefined') {
+                scrollObserver.disconnect();
             }
         }
         
         // Reset loading state
         isLoading = false;
-        loadMoreBtn.disabled = false;
-        loadMoreIcon.className = 'fas fa-chevron-down';
-        loadMoreText.textContent = 'Load More Tokens';
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
         
     } catch (error) {
-        console.error('Error loading more tokens:', error);
+        console.warn('Error loading more tokens:', error);
         
-        // Reset button state
+        // Reset loading state
         isLoading = false;
-        loadMoreBtn.disabled = false;
-        loadMoreIcon.className = 'fas fa-exclamation-circle';
-        loadMoreText.textContent = 'Error - Try Again';
-        
-        // Reset to normal state after 3 seconds
-        setTimeout(() => {
-            loadMoreIcon.className = 'fas fa-chevron-down';
-            loadMoreText.textContent = 'Load More Tokens';
-        }, 3000);
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
     }
 }
+
+// Intersection Observer for Infinite Scroll
+let scrollObserver;
+
+// Initialize observer when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const sentinel = document.getElementById('scroll-sentinel');
+    
+    if (!sentinel) return;
+    
+    // Create Intersection Observer with 200px rootMargin to trigger before reaching bottom
+    scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && hasMore && !isLoading) {
+                loadMoreTokens();
+            }
+        });
+    }, { 
+        rootMargin: '200px',
+        threshold: 0.1
+    });
+    
+    // Start observing the sentinel
+    scrollObserver.observe(sentinel);
+});
 
 // Creator Fee Modal Functions
 var currentTokenData = {};
