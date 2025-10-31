@@ -3151,8 +3151,12 @@ def api_token_user_trades(address):
             elif trade.trade_type == 'sell':
                 total_tokens_sold += token_amount
             
+            # CRITICAL: Ensure timestamp is timezone-aware (UTC) before sending to frontend
+            # Database stores as naive datetime, but it's in UTC
+            timestamp_utc = trade.timestamp.replace(tzinfo=timezone.utc) if trade.timestamp else None
+            
             formatted_trades.append({
-                'timestamp': trade.timestamp.isoformat() if trade.timestamp else None,
+                'timestamp': timestamp_utc.isoformat() if timestamp_utc else None,  # Now includes +00:00 UTC suffix
                 'type': trade.trade_type,
                 'price_usd': price_usd,
                 'price_kas': price_kas,
