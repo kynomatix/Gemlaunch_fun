@@ -4426,8 +4426,8 @@ function getClaimButton(basicId, proId) {
 
 // Cooldown Timer Helper Functions
 
-// Global object to store active countdown intervals
-const activeCountdowns = {};
+// Global object to store active countdown intervals (use window to avoid Turbo redeclaration errors)
+window.activeCountdowns = window.activeCountdowns || {};
 
 // Format seconds to "Xh Ym" display
 function formatCooldownTime(seconds) {
@@ -4516,7 +4516,7 @@ function startCountdown(vestingType, seconds) {
         remaining--;
         if (remaining <= 0) {
             clearInterval(interval);
-            delete activeCountdowns[vestingType];
+            delete window.activeCountdowns[vestingType];
             // Refresh cooldown status to show claim button
             if (currentTokenData && currentTokenData.id) {
                 checkCooldownStatus(currentTokenData.id);
@@ -4529,7 +4529,7 @@ function startCountdown(vestingType, seconds) {
     }, 1000);
     
     // Store interval reference for cleanup
-    activeCountdowns[vestingType] = interval;
+    window.activeCountdowns[vestingType] = interval;
 }
 
 async function claimMarketingVesting() {
