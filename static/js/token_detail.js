@@ -584,6 +584,7 @@
                 this.currentSeries = series;
                 this.currentSeriesType = 'candlestick';
                 this.chartData = chartResult.data;  // Store for marker filtering
+                this.currentChartInterval = chartResult.interval;  // Store interval for marker alignment
                 
             } else {
                 // Area chart (fallback for low trade count)
@@ -623,6 +624,7 @@
                 this.currentSeries = series;
                 this.currentSeriesType = 'area';
                 this.chartData = chartResult.data;  // Store for marker filtering
+                this.currentChartInterval = chartResult.interval;  // Store interval for marker alignment
             }
             
             // Fit content to view
@@ -696,19 +698,35 @@
                 
                 console.log(`📍 Found ${result.trades.length} user trades`);
                 
-                // Convert trades to chart markers using EXACT timestamps (no snapping)
-                // TradingView will automatically place them on the correct bars regardless of timeframe
+                // CRITICAL: Get interval from chart data to round marker timestamps
+                // Markers must use the SAME bucket timestamps as candles for proper alignment
+                const intervalMap = {
+                    '1m': 60,
+                    '5m': 300,
+                    '15m': 900,
+                    '1h': 3600,
+                    '4h': 14400,
+                    '1d': 86400
+                };
+                const chartInterval = this.chartData && this.chartData.length > 0 ? (this.currentChartInterval || '1h') : '1h';
+                const intervalSeconds = intervalMap[chartInterval] || 3600;  // Default to 1 hour
+                
+                console.log(`📍 Chart interval: ${chartInterval} (${intervalSeconds} seconds)`);
+                
+                // Convert trades to chart markers using ROUNDED timestamps to match candle buckets
                 const allMarkers = result.trades.map((trade, index) => {
                     // Convert ISO timestamp to Unix timestamp (seconds)
-                    // CRITICAL: Ensure we're treating the timestamp as UTC
-                    // The backend sends ISO format like "2025-10-31T10:30:00+00:00"
-                    // new Date() parses this correctly as UTC, getTime() returns UTC milliseconds
                     const tradeTimestamp = Math.floor(new Date(trade.timestamp).getTime() / 1000);
                     
-                    // Debug: Log first few trades with UTC time for verification
+                    // CRITICAL: Round timestamp to candle bucket (same formula as backend)
+                    // bucket_key = (unix_timestamp // interval_seconds) * interval_seconds
+                    const bucketTimestamp = Math.floor(tradeTimestamp / intervalSeconds) * intervalSeconds;
+                    
+                    // Debug: Log first few trades
                     if (index < 5) {
                         const tradeDate = new Date(tradeTimestamp * 1000).toISOString();
-                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} UTC (unix: ${tradeTimestamp})`);
+                        const bucketDate = new Date(bucketTimestamp * 1000).toISOString();
+                        console.log(`📍 Trade ${index}: ${trade.type} at ${tradeDate} → bucket ${bucketDate} (${bucketTimestamp})`);
                     }
                     
                     // Determine marker style based on trade type
@@ -732,7 +750,7 @@
                     }
                     
                     return {
-                        time: tradeTimestamp,  // Use EXACT trade time - TradingView handles placement automatically
+                        time: bucketTimestamp,  // Use ROUNDED timestamp to match candle buckets
                         position: position,
                         color: color,
                         shape: shape,
@@ -1005,6 +1023,7 @@
                     }));
                     this.currentSeries.setData(tvData);
                     this.chartData = chartResult.data;  // Store for marker filtering
+                    this.currentChartInterval = chartResult.interval;  // Store interval for marker alignment
                     console.log(`[UpdateChart] ✅ Refreshed ${tvData.length} candlesticks`);
                 } else {
                     // Area chart
