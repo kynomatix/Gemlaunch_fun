@@ -1433,53 +1433,9 @@ def token_detail(contract_address):
     # Get graduation threshold from platform settings
     graduation_threshold_usd = token.graduation_threshold  # Uses property that pulls from PlatformSettings
     
-    # Calculate real-time price and market cap from blockchain (for non-graduated tokens)
-    if not token.is_graduated and token.contract_address:
-        try:
-            from services.web3_service import get_web3_service
-            web3_service = get_web3_service()
-            
-            # Check if contract exists on blockchain
-            contract_code = web3_service.w3.eth.get_code(
-                web3_service.w3.to_checksum_address(token.contract_address)
-            )
-            
-            if len(contract_code) > 2:  # Contract exists ('0x' means no contract)
-                # Get bonding pool contract to read both reserves
-                pool = web3_service.get_bonding_pool_contract(token.contract_address)
-                
-                # Read both reserves
-                kas_reserve_wei = pool.functions.virtualKasReserve().call()
-                token_reserve_wei = pool.functions.virtualTokenReserve().call()
-                
-                kas_amount = kas_reserve_wei / 10**18
-                token_amount = token_reserve_wei / 10**18
-                
-                # Calculate price per token (in KAS)
-                if token_amount > 0:
-                    price_in_kas = kas_amount / token_amount
-                    token.current_price = price_in_kas
-                else:
-                    token.current_price = 0
-                
-                # Calculate real-time market cap for bonding curve
-                # For constant product bonding curves (k = x * y), market cap = KAS reserve
-                # This represents total value locked in pool (what users actually paid)
-                # NOTE: Do NOT use price × circulating_supply - that overestimates because
-                # it assumes all tokens were bought at current (high) price, but early
-                # buyers paid much less due to the curve
-                market_cap_kas = kas_amount  # Market cap in KAS = KAS reserve
-                token.current_market_cap = market_cap_kas  # Store in KAS (will convert to USD in template using kas_price)
-                
-                app.logger.debug(
-                    f"Real-time data for {token.symbol}: "
-                    f"Price=${price_in_kas * kas_price:.8f}, "
-                    f"Market Cap=${token.current_market_cap:.2f} "
-                    f"(KAS reserve: {kas_amount:.8f}, Token reserve: {token_amount:.2f})"
-                )
-        except Exception as e:
-            app.logger.debug(f"Could not fetch real-time data for {token.symbol}: {e}")
-            # Keep existing database values as fallback
+    # NOTE: Real-time price and market cap are fetched client-side via /api/token/<address>/stats
+    # This prevents blocking the page render while waiting for slow blockchain RPC calls
+    # Database values are used as initial display, then updated via AJAX
     
     # Calculate 24h price change percentage
     price_change_24h = TokenService.calculate_24h_price_change(token)
