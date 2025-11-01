@@ -2573,13 +2573,13 @@ function toggleEditMode() {
         // Show edit mode
         viewMode.style.display = 'none';
         editMode.style.display = 'block';
-        editBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+        editBtn.innerHTML = '<i class="fas fa-times"></i>';
         editBtn.classList.add('editing');
     } else {
         // Show view mode
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
-        editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
         editBtn.classList.remove('editing');
     }
 }
