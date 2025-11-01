@@ -7662,17 +7662,11 @@ def aggregate_ohlc_data(trade_points, interval, start_time, end_time, chart_type
             # Sum volume in bucket
             total_volume = sum(t['volume'] for t in bucket_trades)
         else:
-            # Empty bucket - fill with flat candle (previous close)
-            if previous_close is not None:
-                open_value = previous_close
-                high_value = previous_close
-                low_value = previous_close
-                close_value = previous_close
-                total_volume = 0
-            else:
-                # Skip empty buckets before first trade
-                current_bucket += interval_seconds
-                continue
+            # Empty bucket - skip candles with no activity
+            # Update previous_close to maintain continuity, but don't create a candle
+            # This makes the chart cleaner by only showing periods with actual trading
+            current_bucket += interval_seconds
+            continue
         
         candle = {
             'time': current_bucket,  # Unix timestamp (seconds)
