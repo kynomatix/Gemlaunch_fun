@@ -3,6 +3,24 @@
 {% block title %}Token Marketplace - Gemlaunch.fun{% endblock %}
 
 {% block extra_head %}
+<!-- SEO Meta Tags -->
+<meta name="description" content="Explore and trade memecoins on Kaspa's fastest blockchain. Discover trending tokens, fair launches, and community-driven projects on gemlaunch.fun marketplace.">
+<meta name="keywords" content="Kaspa tokens, memecoin marketplace, crypto trading, token explorer, DeFi marketplace">
+
+<!-- Open Graph Meta Tags -->
+<meta property="og:title" content="Token Marketplace - gemlaunch.fun">
+<meta property="og:description" content="Explore and trade memecoins on Kaspa's fastest blockchain. Discover trending tokens and fair launches.">
+<meta property="og:image" content="{{ url_for('static', filename='images/logo.png', _external=True) }}">
+<meta property="og:url" content="{{ request.url }}">
+<meta property="og:type" content="website">
+
+<!-- Twitter Card Meta Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Gemlaunch_fun">
+<meta name="twitter:title" content="Token Marketplace - gemlaunch.fun">
+<meta name="twitter:description" content="Explore and trade memecoins on Kaspa's fastest blockchain. Discover trending tokens and fair launches.">
+<meta name="twitter:image" content="{{ url_for('static', filename='images/logo.png', _external=True) }}">
+
 <style>
         .marketplace-main {
             padding-top: 100px;
