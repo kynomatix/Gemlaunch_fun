@@ -281,9 +281,10 @@ class Token(db.Model):
         self.current_market_cap = kas_reserve
         self.updated_at = datetime.now(timezone.utc)
         
-        # Check for graduation
-        if not self.is_graduated and self.current_market_cap >= self.graduation_threshold:
-            self.graduate_token()
+        # Legacy auto-graduation disabled - graduation is now handled by graduation_monitor.py
+        # The old logic had a bug: it compared KAS reserves to USD threshold (528 KAS >= $50 USD)
+        # if not self.is_graduated and self.current_market_cap >= self.graduation_threshold:
+        #     self.graduate_token()
     
     def graduate_token(self):
         """Mark token as graduated and update creator stats"""
