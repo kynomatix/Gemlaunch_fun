@@ -3,6 +3,24 @@
 {% block title %}Create Token - Gemlaunch.fun{% endblock %}
 
 {% block extra_head %}
+<!-- SEO Meta Tags -->
+<meta name="description" content="Create your own memecoin on Kaspa in minutes. No coding required. Choose between BASIC and PRO token launches with fair distribution and bonding curve mechanics.">
+<meta name="keywords" content="create token, launch memecoin, token creator, Kaspa token, no-code token, fair launch">
+
+<!-- Open Graph Meta Tags -->
+<meta property="og:title" content="Create Token - gemlaunch.fun">
+<meta property="og:description" content="Create your own memecoin on Kaspa in minutes. No coding required. Fair launches with bonding curve mechanics.">
+<meta property="og:image" content="{{ url_for('static', filename='images/logo.png', _external=True) }}">
+<meta property="og:url" content="{{ request.url }}">
+<meta property="og:type" content="website">
+
+<!-- Twitter Card Meta Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Gemlaunch_fun">
+<meta name="twitter:title" content="Create Token - gemlaunch.fun">
+<meta name="twitter:description" content="Create your own memecoin on Kaspa in minutes. No coding required.">
+<meta name="twitter:image" content="{{ url_for('static', filename='images/logo.png', _external=True) }}">
+
 <style>
         .create-main {
             padding-top: 100px;
