@@ -5,13 +5,13 @@
 <div class="bonding-curve-frame" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(32, 178, 170, 0.02)); border: 1px solid rgba(32, 178, 170, 0.3); border-radius: 15px; padding: 1.5rem; backdrop-filter: blur(20px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);">
     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
         <span style="color: #CCCCCC; font-size: 0.9rem;">DEX Graduation Progress</span>
-        <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;" id="graduationProgressText">{{ "%.1f"|format(token.progress_to_graduation or 0) }}%</span>
+        <span style="color: #20B2AA; font-size: 0.9rem; font-weight: 600;" id="graduationProgressText">--.--%</span>
     </div>
     <div class="progress-bar" style="width: 100%;">
-        <div class="progress-fill" id="graduationProgressBar" style="width: {{ (token.progress_to_graduation or 0) }}%"></div>
+        <div class="progress-fill" id="graduationProgressBar" style="width: 0%"></div>
     </div>
     <p style="color: #CCCCCC; font-size: 0.8rem; margin: 0.5rem 0 0 0; text-align: center;">
-        Market Cap: <span id="marketCapValue">${{ "%.0f"|format(token.current_market_cap|float * kas_price) }}</span> / ${{ "{:,.0f}".format(graduation_threshold_usd) }}
+        Market Cap: <span id="marketCapValue">Loading...</span> / ${{ "{:,.0f}".format(graduation_threshold_usd) }}
     </p>
     <div id="graduationStatus" style="margin-top: 1rem;"></div>
 </div>
