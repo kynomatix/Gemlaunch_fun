@@ -9,7 +9,7 @@
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="{{ token.name }} ({{ token.symbol }}) - gemlaunch.fun">
-    <meta property="og:description" content="{{ token.description[:200] if token.description else 'Trade ' + token.symbol + ' on gemlaunch.fun. View charts, market data, and join the community.' }}">
+    <meta property="og:description" content="{{ token.description[:200] if token.description else 'Trade ' ~ token.symbol ~ ' on gemlaunch.fun. View charts, market data, and join the community.' }}">
     <meta property="og:image" content="{{ token.image_url if token.image_url else url_for('static', filename='images/logo.png', _external=True) }}">
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:type" content="website">
@@ -18,7 +18,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@Gemlaunch_fun">
     <meta name="twitter:title" content="{{ token.name }} ({{ token.symbol }}) - gemlaunch.fun">
-    <meta name="twitter:description" content="{{ token.description[:200] if token.description else 'Trade ' + token.symbol + ' on gemlaunch.fun' }}">
+    <meta name="twitter:description" content="{{ token.description[:200] if token.description else 'Trade ' ~ token.symbol ~ ' on gemlaunch.fun' }}">
     <meta name="twitter:image" content="{{ token.image_url if token.image_url else url_for('static', filename='images/logo.png', _external=True) }}">
     
     <!-- Token Detail Page CSS -->
