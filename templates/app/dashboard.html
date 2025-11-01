@@ -4213,16 +4213,32 @@ document.addEventListener('click', function(event) {
 
 // Token Search Filter with AJAX (searches ALL tokens in database)
 let searchTimeout;
+let searchController; // AbortController for canceling in-flight requests
+let searchRequestId = 0; // Monotonic counter to track latest request
+
 async function filterTokens() {
     clearTimeout(searchTimeout);
     const searchInput = document.getElementById('tokenSearchInput');
     const searchTerm = searchInput.value.trim();
+    
+    // CRITICAL: Increment request ID IMMEDIATELY on input change (before debounce)
+    // This invalidates any in-flight requests as soon as user types
+    searchRequestId++;
+    const thisRequestId = searchRequestId;
+    
+    // Cancel any in-flight search request immediately
+    if (searchController) {
+        searchController.abort();
+    }
     
     // Debounce: wait 300ms after user stops typing
     searchTimeout = setTimeout(async () => {
         const tokenGrid = document.getElementById('tokenGrid');
         const noResults = document.getElementById('noTokenResults');
         const loadingIndicator = document.getElementById('loading-indicator');
+        
+        // Create new AbortController for this request
+        searchController = new AbortController();
         
         // Show loading state
         if (loadingIndicator) {
@@ -4232,9 +4248,15 @@ async function filterTokens() {
         try {
             // AJAX request instead of page reload - searches ALL tokens in database
             const url = `/app/dashboard?page=1&sort=${currentSort}&search=${encodeURIComponent(searchTerm)}&ajax=1`;
-            const response = await fetch(url);
+            const response = await fetch(url, { signal: searchController.signal });
             
             if (!response.ok) throw new Error('Search failed');
+            
+            // CRITICAL: Check if this response is still relevant (not superseded by newer search)
+            if (thisRequestId !== searchRequestId) {
+                console.log(`⏭️  Ignoring stale response (request ${thisRequestId}, current ${searchRequestId})`);
+                return;
+            }
             
             const html = await response.text();
             const parser = new DOMParser();
@@ -4243,6 +4265,12 @@ async function filterTokens() {
             // Extract new token cards
             const newTokenGrid = doc.getElementById('tokenGrid');
             if (newTokenGrid) {
+                // Double-check we're still on the latest request before mutating DOM
+                if (thisRequestId !== searchRequestId) {
+                    console.log(`⏭️  Stale response detected before DOM update, skipping`);
+                    return;
+                }
+                
                 tokenGrid.innerHTML = newTokenGrid.innerHTML;
                 
                 // Update pagination state
@@ -4266,9 +4294,15 @@ async function filterTokens() {
             }
             
         } catch (error) {
+            // Ignore abort errors (expected when canceling previous requests)
+            if (error.name === 'AbortError') {
+                console.log('⏭️  Search request canceled (newer search in progress)');
+                return;
+            }
             console.error('❌ Search error:', error);
         } finally {
-            if (loadingIndicator) {
+            // Only hide loading if this is still the latest request
+            if (thisRequestId === searchRequestId && loadingIndicator) {
                 loadingIndicator.style.display = 'none';
             }
         }
