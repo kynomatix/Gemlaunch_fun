@@ -26,7 +26,50 @@ logger = logging.getLogger(__name__)
 
 INDEXER_STATE_FILE = Path("config/indexer_state.json")
 BATCH_SIZE = 250  # Configurable batch size for event processing (100-500 recommended)
-AIRDROP_DISTRIBUTOR_ADDRESS = "0x86b83FE03cDa7456980364c929BB17CFA67E8495"  # AirdropDistributor contract
+
+def _load_airdrop_distributor_address():
+    """
+    Load AirdropDistributor contract address from deployed_addresses.json
+    
+    Returns:
+        str: AirdropDistributor contract address
+    
+    Raises:
+        FileNotFoundError: If deployed_addresses.json is not found
+        KeyError: If AirdropDistributor address is missing from config
+        ValueError: If address format is invalid
+    """
+    config_path = Path("contracts/deployed_addresses.json")
+    
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        address = config['contracts']['AirdropDistributor']['address']
+        
+        if not address or not isinstance(address, str):
+            raise ValueError(f"Invalid AirdropDistributor address in config: {address}")
+        
+        logger.debug(f"Loaded AirdropDistributor address from config: {address}")
+        return address
+        
+    except FileNotFoundError:
+        logger.error(f"Config file not found: {config_path}")
+        raise FileNotFoundError(
+            f"Deployed addresses config file not found at {config_path}. "
+            "Please ensure contracts/deployed_addresses.json exists."
+        )
+    except KeyError as e:
+        logger.error(f"AirdropDistributor address not found in config: {e}")
+        raise KeyError(
+            "AirdropDistributor address not found in deployed_addresses.json. "
+            f"Expected path: contracts.AirdropDistributor.address. Missing key: {e}"
+        )
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in config file: {e}")
+        raise ValueError(f"Invalid JSON in {config_path}: {e}")
+
+AIRDROP_DISTRIBUTOR_ADDRESS = _load_airdrop_distributor_address()
 
 def get_web3_service():
     """Get or create Web3Service instance"""

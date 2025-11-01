@@ -792,3 +792,96 @@
         transform: none !important;
     }
 }
+
+/* Wallet Connect Banner */
+.wallet-connect-banner {
+    background: rgba(32, 178, 170, 0.1);
+    border: 1px solid rgba(32, 178, 170, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin: 0 auto 2rem auto;
+    max-width: 800px;
+    text-align: center;
+}
+
+.wallet-connect-title {
+    color: #20B2AA;
+    margin-bottom: 0.5rem;
+}
+
+.wallet-connect-text {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 1rem;
+}
+
+.wallet-connect-btn {
+    background: linear-gradient(135deg, #20B2AA, #00CED1);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    color: #000000;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.wallet-connect-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
+}
+
+/* Link inherit styling */
+.link-inherit {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Token avatar fallback states */
+.hidden-flex-center {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* Graduated token badge */
+.graduated-badge-container {
+    margin-top: 0.5rem;
+}
+
+.graduated-badge-bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 8px;
+    border-radius: 8px;
+}
+
+.graduated-badge-text {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 0.3rem;
+}
+
+.graduated-icon {
+    color: #764ba2;
+    margin-right: 0.25rem;
+}
+
+/* Button utility classes */
+.btn-margin-top {
+    margin-top: 1rem;
+}
