@@ -3926,6 +3926,19 @@
                 dexPoolAddress: data.dexPoolAddress || data.dex_pool_address
             });
             
+            // Update graduation progress bar in token header (if not graduated)
+            if (!data.isGraduated && data.progressPercent !== undefined) {
+                const progressBar = document.getElementById('graduationProgressBar');
+                const progressText = document.getElementById('graduationProgressText');
+                
+                if (progressBar) {
+                    progressBar.style.width = `${data.progressPercent}%`;
+                }
+                if (progressText) {
+                    progressText.textContent = `${data.progressPercent.toFixed(1)}%`;
+                }
+            }
+            
             // Update market cap display in token header for graduated tokens
             if (data.marketCap !== undefined && data.marketCap > 0) {
                 this.updateMarketCapDisplay(data.marketCap);
