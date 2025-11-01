@@ -664,6 +664,33 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
     if token.id in holder_counts:
         token.holder_count = holder_counts[token.id]
     
+    # Step 6: Sync reserves from blockchain (CRITICAL FIX)
+    # After processing trades OR if reserves are stale, read actual blockchain reserves
+    should_sync = (new_trade_count > 0) or (not token.kas_reserve or token.kas_reserve == 0)
+    
+    if should_sync and not token.is_graduated:
+        try:
+            web3_service = get_web3_service()
+            pool_address = token.liquidity_pool_address or token.contract_address
+            pool_contract = web3_service.get_bonding_pool_contract(pool_address)
+            
+            # Read current reserves from blockchain
+            kas_reserve_wei = pool_contract.functions.virtualKasReserve().call()
+            token_reserve_wei = pool_contract.functions.virtualTokenReserve().call()
+            
+            kas_reserve = float(w3.from_wei(kas_reserve_wei, 'ether'))
+            token_reserve = float(token_reserve_wei) / 1e18
+            
+            # Calculate price
+            new_price = kas_reserve / token_reserve if token_reserve > 0 else 0
+            
+            # Update token with blockchain values
+            token.update_market_data(new_price, kas_reserve, token_reserve_wei)
+            
+            logger.info(f"✅ Synced reserves for {token.symbol}: {kas_reserve:.2f} KAS, price={new_price:.8f} KAS")
+        except Exception as e:
+            logger.error(f"Error syncing reserves for {token.symbol}: {str(e)}")
+    
     stats['batch_duration'] = time.time() - batch_start
     logger.debug(f"📊 Batch metrics: {len(new_trade_events)} events in {stats['batch_duration']:.2f}s ({len(new_trade_events)/stats['batch_duration']:.1f} events/sec)")
     
@@ -808,6 +835,26 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
                     continue
         except Exception as e:
             logger.error(f"Error fetching CreatorFeesWithdrawn events: {str(e)}")
+        
+        # Sync reserves from blockchain if token is not graduated and reserves are stale
+        if not token.is_graduated and (not token.kas_reserve or token.kas_reserve == 0):
+            try:
+                # Read current reserves from blockchain
+                kas_reserve_wei = pool_contract.functions.virtualKasReserve().call()
+                token_reserve_wei = pool_contract.functions.virtualTokenReserve().call()
+                
+                kas_reserve = float(w3.from_wei(kas_reserve_wei, 'ether'))
+                token_reserve = float(token_reserve_wei) / 1e18
+                
+                # Calculate price
+                new_price = kas_reserve / token_reserve if token_reserve > 0 else 0
+                
+                # Update token with blockchain values
+                token.update_market_data(new_price, kas_reserve, token_reserve_wei)
+                
+                logger.info(f"✅ Synced reserves for {token.symbol}: {kas_reserve:.2f} KAS, price={new_price:.8f} KAS")
+            except Exception as e:
+                logger.error(f"Error syncing reserves for {token.symbol}: {str(e)}")
         
         db.session.commit()
         
