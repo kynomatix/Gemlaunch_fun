@@ -30,7 +30,17 @@ from utils.validators import validate_eth_wallet_address, is_valid_eth_address
 from web3 import Web3
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:%(name)s:%(message)s'
+)
+
+# Reduce noise from third-party libraries
+logging.getLogger('web3').setLevel(logging.WARNING)
+logging.getLogger('web3.RequestManager').setLevel(logging.WARNING)
+logging.getLogger('web3.providers').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('apscheduler.scheduler').setLevel(logging.INFO)
 
 # Image processing utility functions
 def process_profile_image(image_file, user_id):
