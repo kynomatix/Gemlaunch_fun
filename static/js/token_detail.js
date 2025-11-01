@@ -3926,16 +3926,23 @@
                 dexPoolAddress: data.dexPoolAddress || data.dex_pool_address
             });
             
-            // Update graduation progress bar in token header (if not graduated)
+            // Update graduation progress bar and market cap (if not graduated)
             if (!data.isGraduated && data.progressPercent !== undefined) {
                 const progressBar = document.getElementById('graduationProgressBar');
                 const progressText = document.getElementById('graduationProgressText');
+                const marketCapValueEl = document.getElementById('marketCapValue');
                 
                 if (progressBar) {
                     progressBar.style.width = `${data.progressPercent}%`;
                 }
                 if (progressText) {
                     progressText.textContent = `${data.progressPercent.toFixed(1)}%`;
+                }
+                
+                // Update market cap value in the progress container
+                if (marketCapValueEl && data.marketCap !== undefined) {
+                    const formattedMC = `$${data.marketCap.toFixed(2)}`;
+                    marketCapValueEl.textContent = formattedMC;
                 }
             }
             
