@@ -3014,6 +3014,7 @@
             overflow-x: hidden;
         }
 
+        /* FOUC FIX: Hide tabs until fonts are fully loaded */
         .tab-navigation {
             display: flex;
             gap: 0.5rem;
@@ -3022,6 +3023,15 @@
             border-radius: 15px;
             padding: 0.5rem;
             border: 1px solid rgba(32, 178, 170, 0.2);
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        /* Reveal tabs only after fonts are confirmed loaded */
+        .tab-navigation.fonts-loaded {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .tab-btn {
@@ -5517,6 +5527,38 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+/**
+ * FOUC Fix: Wait for fonts to load before revealing tabs
+ * Prevents flash of unstyled content on dashboard
+ */
+(function() {
+    function revealTabs() {
+        const tabNav = document.querySelector('.tab-navigation');
+        if (tabNav && !tabNav.classList.contains('fonts-loaded')) {
+            tabNav.classList.add('fonts-loaded');
+            console.log('✅ Dashboard tabs revealed - fonts loaded');
+        }
+    }
+    
+    // Wait for Font Awesome and other fonts to load
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            revealTabs();
+        }).catch((error) => {
+            console.warn('Font loading check failed, revealing tabs anyway:', error);
+            revealTabs();
+        });
+    } else {
+        // Fallback for browsers that don't support Font Loading API
+        revealTabs();
+    }
+    
+    // Safety fallback: Always reveal tabs after 3 seconds max
+    setTimeout(() => {
+        revealTabs();
+    }, 3000);
+})();
 
 </script>
 {% endblock %}
