@@ -278,7 +278,7 @@ class Token(db.Model):
         self.current_price = new_price
         self.kas_reserve = kas_reserve
         self.token_reserve = token_reserve
-        self.current_market_cap = new_price * self.circulating_supply if self.circulating_supply else 0
+        self.current_market_cap = kas_reserve
         self.updated_at = datetime.now(timezone.utc)
         
         # Check for graduation
