@@ -113,27 +113,3 @@
         </div>
     </div>
 </div>
-
-<!-- Graduation Progress Section (Outside of token-header flex container) -->
-{% if token.graduation_status != 'graduated' %}
-<div style="width: 100%; margin-top: 1rem; padding: 0 1rem;">
-    <div class="progress-bar-compact">
-        <div class="progress-fill-compact" id="graduationProgressBar" style="width: {{ (token.progress_to_graduation or 0)|round(1) }}%"></div>
-    </div>
-    <div class="progress-label-compact">
-        <span>DEX Graduation Progress</span>
-        <span class="token-grad-progress" id="graduationProgressText">{{ "%.1f"|format(token.progress_to_graduation or 0) }}%</span>
-    </div>
-</div>
-{% else %}
-<!-- Graduated Badge -->
-<div style="width: 100%; margin-top: 1rem; padding: 0 1rem;">
-    <div class="graduated-badge-container">
-        <div class="graduated-badge-bar"></div>
-        <div class="graduated-badge-text">
-            <i class="fas fa-graduation-cap graduated-icon"></i>
-            Graduated - Trading on DEX
-        </div>
-    </div>
-</div>
-{% endif %}
