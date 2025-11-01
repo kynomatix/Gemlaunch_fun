@@ -4211,24 +4211,67 @@ document.addEventListener('click', function(event) {
     });
 });
 
-// Token Search Filter with server-side filtering and debouncing
+// Token Search Filter with AJAX (searches ALL tokens in database)
 let searchTimeout;
-function filterTokens() {
+async function filterTokens() {
     clearTimeout(searchTimeout);
     const searchInput = document.getElementById('tokenSearchInput');
     const searchTerm = searchInput.value.trim();
     
-    // Debounce: wait 300ms after user stops typing before reloading
-    searchTimeout = setTimeout(() => {
-        const url = new URL(window.location.href);
-        if (searchTerm) {
-            url.searchParams.set('search', searchTerm);
-        } else {
-            url.searchParams.delete('search');
+    // Debounce: wait 300ms after user stops typing
+    searchTimeout = setTimeout(async () => {
+        const tokenGrid = document.getElementById('tokenGrid');
+        const noResults = document.getElementById('noTokenResults');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        
+        // Show loading state
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'block';
         }
-        // Reset to page 1 when searching
-        url.searchParams.set('page', '1');
-        window.location.href = url.toString();
+        
+        try {
+            // AJAX request instead of page reload - searches ALL tokens in database
+            const url = `/app/dashboard?page=1&sort=${currentSort}&search=${encodeURIComponent(searchTerm)}&ajax=1`;
+            const response = await fetch(url);
+            
+            if (!response.ok) throw new Error('Search failed');
+            
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Extract new token cards
+            const newTokenGrid = doc.getElementById('tokenGrid');
+            if (newTokenGrid) {
+                tokenGrid.innerHTML = newTokenGrid.innerHTML;
+                
+                // Update pagination state
+                currentPage = 1;
+                const newCards = tokenGrid.querySelectorAll('.token-card');
+                hasMore = newCards.length >= 10; // Assume more if full page
+                
+                // Update global searchParam so Load More works correctly
+                searchParam = searchTerm;
+                
+                // Show/hide no results message
+                if (newCards.length === 0) {
+                    if (noResults) noResults.style.display = 'block';
+                    if (tokenGrid) tokenGrid.style.display = 'none';
+                } else {
+                    if (noResults) noResults.style.display = 'none';
+                    if (tokenGrid) tokenGrid.style.display = 'grid';
+                }
+                
+                console.log(`✅ Search complete: Found ${newCards.length} tokens matching "${searchTerm}"`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Search error:', error);
+        } finally {
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
+        }
     }, 300);
 }
 
@@ -4237,7 +4280,7 @@ let currentPage = {{ page }};
 let isLoading = false;
 let hasMore = {{ 'true' if has_more else 'false' }};
 const currentSort = '{{ sort_by }}';
-const searchParam = '{{ search|default("") }}';
+let searchParam = '{{ search|default("") }}';  // Changed to 'let' so it can be updated after search
 
 // Infinite Scroll - Load More Tokens (AJAX Pagination)
 async function loadMoreTokens() {
