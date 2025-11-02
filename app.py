@@ -7482,8 +7482,9 @@ def get_token_chart_data(contract_address):
             
             if is_dex_trade:
                 # POST-GRADUATION DEX TRADE: Use actual execution price
+                # token_amt is in wei (18 decimals), kas_amt is in KAS
                 if token_amt > 0:
-                    price_per_token_kas = kas_amt / token_amt
+                    price_per_token_kas = kas_amt / (token_amt / 1e18)
                 else:
                     price_per_token_kas = 0
                 
