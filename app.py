@@ -2395,7 +2395,7 @@ def create_airdrop(contract_address):
     # Get request data
     data = request.get_json()
     airdrop_type = data.get('type')  # active_chatters, token_holders, top_contributors, early_supporters
-    amount_per_recipient = int(data.get('amount_per_recipient', 0))
+    amount_per_recipient_human = int(data.get('amount_per_recipient', 0))
     parameters = data.get('parameters', {})
     
     # Validate airdrop type
@@ -2404,8 +2404,13 @@ def create_airdrop(contract_address):
         return jsonify({'error': f'Invalid airdrop type. Valid types: {", ".join(valid_types)}'}), 400
     
     # Validate amount
-    if amount_per_recipient <= 0:
+    if amount_per_recipient_human <= 0:
         return jsonify({'error': 'Amount per recipient must be positive'}), 400
+    
+    # CRITICAL: Convert human-readable amount to wei (18 decimals)
+    # Frontend sends: 1000 tokens
+    # Contract needs: 1000000000000000000000 wei (1000 * 10^18)
+    amount_per_recipient = amount_per_recipient_human * (10 ** 18)
     
     try:
         # Get recipients based on type
