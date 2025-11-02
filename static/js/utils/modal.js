@@ -199,6 +199,75 @@
         },
         
         /**
+         * Show a confirm modal with trusted HTML content (Promise-based for async/await)
+         * @param {string} title - Modal title (supports HTML)
+         * @param {string} htmlMessage - HTML message content (NOT escaped - must be trusted)
+         * @param {string|function} onConfirm - Confirm button text (string) or legacy callback (function)
+         * @param {string|function} onCancel - Cancel button text (string) or legacy callback (function)
+         * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
+         * 
+         * WARNING: Only use this for internally-generated HTML content. NEVER pass user input directly.
+         */
+        confirmHtml: function(title, htmlMessage, onConfirm, onCancel) {
+            return new Promise((resolve) => {
+                const confirmText = typeof onConfirm === 'string' ? onConfirm : 'Confirm';
+                const cancelText = typeof onCancel === 'string' ? onCancel : 'Cancel';
+                const confirmCallback = typeof onConfirm === 'function' ? onConfirm : null;
+                const cancelCallback = typeof onCancel === 'function' ? onCancel : null;
+                
+                // Handler for all cancellation paths
+                const handleCancel = function() {
+                    ModalManager.closeModal('customConfirmModal');
+                    if (cancelCallback) cancelCallback();
+                    resolve(false);
+                };
+                
+                const modalHTML = `
+                    <div id="customConfirmModal" class="modal" style="display: flex;">
+                        <div class="modal-content" style="max-width: 550px;">
+                            <div class="modal-header">
+                                <h3>${title}</h3>
+                                <button class="modal-close" id="confirmCloseBtn">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div style="color: #CCC; line-height: 1.5;">${htmlMessage}</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
+                                    <i class="fas fa-times"></i> ${escapeHtml(cancelText)}
+                                </button>
+                                <button type="button" class="btn btn-primary" id="confirmOkBtn">
+                                    <i class="fas fa-check"></i> ${escapeHtml(confirmText)}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('customConfirmModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                document.getElementById('confirmOkBtn').onclick = function() {
+                    ModalManager.closeModal('customConfirmModal');
+                    if (confirmCallback) confirmCallback();
+                    resolve(true);
+                };
+                
+                document.getElementById('confirmCancelBtn').onclick = handleCancel;
+                document.getElementById('confirmCloseBtn').onclick = handleCancel;
+                
+                const modal = document.getElementById('customConfirmModal');
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        handleCancel();
+                    }
+                };
+            });
+        },
+        
+        /**
          * Show a prompt modal
          * @param {string} title - Modal title
          * @param {string} message - Modal message
