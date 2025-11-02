@@ -132,49 +132,68 @@
         },
         
         /**
-         * Show a confirm modal
+         * Show a confirm modal (Promise-based for async/await)
          * @param {string} title - Modal title
          * @param {string} message - Modal message
-         * @param {function} onConfirm - Callback function when confirmed
-         * @param {function} onCancel - Optional callback function when cancelled
+         * @param {string|function} onConfirm - Confirm button text (string) or legacy callback (function)
+         * @param {string|function} onCancel - Cancel button text (string) or legacy callback (function)
+         * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
          */
         confirm: function(title, message, onConfirm, onCancel) {
-            const modalHTML = `
-                <div id="customConfirmModal" class="modal" style="display: flex;">
-                    <div class="modal-content" style="max-width: 450px;">
-                        <div class="modal-header">
-                            <h3>${title}</h3>
-                            <button class="modal-close" onclick="ModalManager.closeModal('customConfirmModal')">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <div style="color: #CCC; line-height: 1.5;">${message}</div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
-                                <i class="fas fa-times"></i> Cancel
-                            </button>
-                            <button type="button" class="btn btn-primary" id="confirmOkBtn">
-                                <i class="fas fa-check"></i> Confirm
-                            </button>
+            return new Promise((resolve) => {
+                const confirmText = typeof onConfirm === 'string' ? onConfirm : 'Confirm';
+                const cancelText = typeof onCancel === 'string' ? onCancel : 'Cancel';
+                const confirmCallback = typeof onConfirm === 'function' ? onConfirm : null;
+                const cancelCallback = typeof onCancel === 'function' ? onCancel : null;
+                
+                const modalHTML = `
+                    <div id="customConfirmModal" class="modal" style="display: flex;">
+                        <div class="modal-content" style="max-width: 450px;">
+                            <div class="modal-header">
+                                <h3>${escapeHtml(title)}</h3>
+                                <button class="modal-close" onclick="ModalManager.closeModal('customConfirmModal')">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div style="color: #CCC; line-height: 1.5;">${escapeHtml(message)}</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="confirmCancelBtn">
+                                    <i class="fas fa-times"></i> ${escapeHtml(cancelText)}
+                                </button>
+                                <button type="button" class="btn btn-primary" id="confirmOkBtn">
+                                    <i class="fas fa-check"></i> ${escapeHtml(confirmText)}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-            
-            const existingModal = document.getElementById('customConfirmModal');
-            if (existingModal) existingModal.remove();
-            
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-            
-            document.getElementById('confirmOkBtn').onclick = function() {
-                ModalManager.closeModal('customConfirmModal');
-                if (onConfirm) onConfirm();
-            };
-            
-            document.getElementById('confirmCancelBtn').onclick = function() {
-                ModalManager.closeModal('customConfirmModal');
-                if (onCancel) onCancel();
-            };
+                `;
+                
+                const existingModal = document.getElementById('customConfirmModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                document.getElementById('confirmOkBtn').onclick = function() {
+                    ModalManager.closeModal('customConfirmModal');
+                    if (confirmCallback) confirmCallback();
+                    resolve(true);
+                };
+                
+                document.getElementById('confirmCancelBtn').onclick = function() {
+                    ModalManager.closeModal('customConfirmModal');
+                    if (cancelCallback) cancelCallback();
+                    resolve(false);
+                };
+                
+                const modal = document.getElementById('customConfirmModal');
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        ModalManager.closeModal('customConfirmModal');
+                        if (cancelCallback) cancelCallback();
+                        resolve(false);
+                    }
+                };
+            });
         },
         
         /**
