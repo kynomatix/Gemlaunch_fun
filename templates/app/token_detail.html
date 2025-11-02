@@ -827,9 +827,10 @@
                         }
                         
                         // All transactions signed successfully
+                        const txList = txHashes.map((t, idx) => `<div style="margin: 0.5rem 0; font-family: monospace; font-size: 0.85rem;"><strong>${t.type}:</strong> <a href="https://explorer.kasplextest.xyz/tx/${t.hash}" target="_blank" style="color: #00d4aa; text-decoration: none;">${t.hash}</a></div>`).join('');
                         ModalManager.alert(
                             'Airdrop Distributed!',
-                            `Successfully distributed ${result.total_amount} ${{ token.symbol }} to ${result.recipient_count} recipients! Transactions: ${txHashes.map(t => t.hash.substring(0, 10) + '...').join(', ')}`,
+                            `Successfully distributed ${result.total_amount} ${{ token.symbol }} to ${result.recipient_count} recipients!<div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">${txList}</div>`,
                             'success'
                         );
                         
