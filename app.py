@@ -7477,9 +7477,11 @@ def get_token_chart_data(contract_address):
             kas_amt = float(trade['kas_amount'])
             token_amt = float(trade['token_amount'])
             
-            if token.is_graduated and token.dex_pool_address and trade['trade_type'] in ['dex_buy', 'dex_sell']:
-                # GRADUATED TOKEN - DEX TRADE: Use actual execution price from trade
-                # DEX trades have exact prices (kas swapped / tokens swapped)
+            # Determine if this is a DEX trade (post-graduation) or bonding curve trade (pre-graduation)
+            is_dex_trade = trade['trade_type'] in ['dex_buy', 'dex_sell']
+            
+            if is_dex_trade:
+                # POST-GRADUATION DEX TRADE: Use actual execution price
                 if token_amt > 0:
                     price_per_token_kas = kas_amt / token_amt
                 else:
@@ -7487,16 +7489,16 @@ def get_token_chart_data(contract_address):
                 
                 price_per_token_usd = price_per_token_kas * kas_to_usd
                 
-                # Market cap = price × total supply (for graduated tokens)
+                # Market cap = price × total supply (standard for traded tokens)
                 total_supply = float(token.total_supply or 1000000000)  # Default 1B
                 market_cap_usd = price_per_token_usd * total_supply
             else:
-                # BONDING CURVE: Use reserve-based calculation
+                # PRE-GRADUATION BONDING CURVE TRADE: Use reserve simulation
                 # Update reserves based on trade type
-                if trade['trade_type'] in ['buy', 'dex_buy']:
+                if trade['trade_type'] == 'buy':
                     current_kas_reserve += kas_amt
                     current_token_reserve -= token_amt
-                else:  # 'sell' or 'dex_sell'
+                else:  # 'sell'
                     current_kas_reserve -= kas_amt
                     current_token_reserve += token_amt
                 
@@ -7510,8 +7512,7 @@ def get_token_chart_data(contract_address):
                 price_per_token_usd = price_per_token_kas * kas_to_usd
                 
                 # Market cap for bonding curve = KAS reserve (total value locked)
-                # NOTE: Do NOT use price × circulating_supply - that overestimates
-                # because it assumes all tokens were bought at current price
+                # This represents the actual capital in the bonding curve pool
                 market_cap_usd = current_kas_reserve * kas_to_usd
             
             trade_points.append({
