@@ -3424,6 +3424,12 @@
                 return;
             }
             
+            // Check if user has already voted BEFORE asking them to sign transaction
+            if (poll.user_has_voted) {
+                ModalManager.alert('Already Voted', 'You have already voted on this poll.', 'info');
+                return;
+            }
+            
             const voteCost = poll.vote_cost || 0;
             
             // If vote cost is 0, just record the vote without burning tokens
