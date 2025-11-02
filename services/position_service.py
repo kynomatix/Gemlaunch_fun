@@ -105,8 +105,8 @@ class PositionService:
             # Price per token for this trade (in KAS)
             price_kas = kas_amount / token_amount if token_amount > 0 else Decimal('0')
             
-            if event.trade_type == 'buy':
-                # BUY: Add to position with weighted average
+            if event.trade_type in ('buy', 'dex_buy'):
+                # BUY (bonding curve or DEX): Add to position with weighted average
                 cost_basis += kas_amount  # Total KAS spent
                 position_qty += token_amount
                 
@@ -114,7 +114,8 @@ class PositionService:
                 if position_qty > 0:
                     avg_entry = cost_basis / position_qty
                 
-                logging.debug(f"BUY: +{token_amount} @ {price_kas:.12f} KAS | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
+                trade_label = "DEX_BUY" if event.trade_type == 'dex_buy' else "BUY"
+                logging.debug(f"{trade_label}: +{token_amount} @ {price_kas:.12f} KAS | Position: {position_qty}, Avg Entry: {avg_entry:.12f}")
             
             elif event.trade_type == 'airdrop':
                 # AIRDROP: Add to position with $0 cost basis (reduces average entry price)
@@ -131,8 +132,8 @@ class PositionService:
                 
                 logging.debug(f"AIRDROP: +{token_amount} @ $0 | Position: {position_qty}, Avg Entry: {avg_entry:.12f} (reduced by airdrop)")
             
-            elif event.trade_type == 'sell':
-                # SELL: Reduce position with REBASING cost basis (FTX-style de-risking)
+            elif event.trade_type in ('sell', 'dex_sell'):
+                # SELL (bonding curve or DEX): Reduce position with REBASING cost basis (FTX-style de-risking)
                 sell_qty = min(token_amount, position_qty)  # Can't sell more than we have
                 
                 if position_qty > 0:
@@ -169,9 +170,11 @@ class PositionService:
                         cost_basis = Decimal('0')
                         avg_entry = Decimal('0')
                     
-                    logging.debug(f"SELL: -{sell_qty} @ {price_kas:.12f} KAS (P&L: {pnl_this_sale:+.8f}) | Position: {position_qty}, Rebased Avg Entry: {avg_entry:.12f}")
+                    trade_label = "DEX_SELL" if event.trade_type == 'dex_sell' else "SELL"
+                    logging.debug(f"{trade_label}: -{sell_qty} @ {price_kas:.12f} KAS (P&L: {pnl_this_sale:+.8f}) | Position: {position_qty}, Rebased Avg Entry: {avg_entry:.12f}")
                 else:
-                    logging.warning(f"SELL without position: {event.id} - Skipping")
+                    trade_label = "DEX_SELL" if event.trade_type == 'dex_sell' else "SELL"
+                    logging.warning(f"{trade_label} without position: {event.id} - Skipping")
             
             last_event_id = event.id
         
