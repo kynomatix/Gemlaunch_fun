@@ -2416,8 +2416,24 @@
             
             const tradesHTML = trades.slice(0, 10).map(trade => {
                 const tradeType = trade.trade_type;
-                const badgeBg = tradeType === 'buy' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
-                const badgeColor = tradeType === 'buy' ? '#22c55e' : '#ef4444';
+                
+                // Determine badge colors based on trade type
+                let badgeBg, badgeColor;
+                if (tradeType === 'buy' || tradeType === 'dex_buy') {
+                    badgeBg = 'rgba(34, 197, 94, 0.2)';  // Green background
+                    badgeColor = '#22c55e';  // Green text
+                } else if (tradeType === 'sell' || tradeType === 'dex_sell') {
+                    badgeBg = 'rgba(239, 68, 68, 0.2)';  // Red background
+                    badgeColor = '#ef4444';  // Red text
+                } else if (tradeType === 'airdrop') {
+                    badgeBg = 'rgba(255, 215, 0, 0.2)';  // Gold background
+                    badgeColor = '#FFD700';  // Gold text
+                } else {
+                    // Default fallback for unknown types
+                    badgeBg = 'rgba(128, 128, 128, 0.2)';  // Gray background
+                    badgeColor = '#888';  // Gray text
+                }
+                
                 const tokenAmount = (parseFloat(trade.token_amount) / 1e18).toFixed(2);
                 const kasAmount = parseFloat(trade.kas_amount).toFixed(2);
                 const walletAddress = trade.user_wallet_address || 'Unknown';
