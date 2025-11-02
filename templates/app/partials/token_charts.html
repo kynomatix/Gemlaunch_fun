@@ -24,7 +24,7 @@
             <h3 style="margin: 0; color: #20B2AA;">Chart</h3>
             <!-- Toggle Switch for Price/MCap -->
             <div class="chart-type-toggle" style="display: inline-flex; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 0.15rem; gap: 0.15rem;">
-                <button class="chart-type-btn" data-type="price" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 0.35rem 0.8rem; transition: all 0.25s; font-size: 0.9rem; border-radius: 6px; font-weight: 500;">Price</button>
+                <button class="chart-type-btn" data-type="price" id="priceChartBtn" style="background: transparent; border: none; color: #888; cursor: pointer; padding: 0.35rem 0.8rem; transition: all 0.25s; font-size: 0.9rem; border-radius: 6px; font-weight: 500; {% if token.graduation_status != 'graduated' %}display: none;{% endif %}">Price</button>
                 <button class="chart-type-btn active" data-type="marketcap" style="background: rgba(32, 178, 170, 0.25); border: none; color: #20B2AA; cursor: pointer; padding: 0.35rem 0.8rem; transition: all 0.25s; font-size: 0.9rem; border-radius: 6px; font-weight: 600;">MCap</button>
             </div>
         </div>
