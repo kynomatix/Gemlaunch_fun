@@ -176,3 +176,137 @@ def is_valid_kaspa_address(address: Optional[str]) -> bool:
         return True
     except (ValueError, TypeError, AttributeError):
         return False
+
+
+def validate_positive_integer(value: any, field_name: str = "Value", min_value: int = 1, max_value: Optional[int] = None) -> int:
+    """
+    Validate that a value is a positive integer within optional bounds.
+    
+    Args:
+        value: The value to validate (can be int, str, or float)
+        field_name: Name of the field for error messages
+        min_value: Minimum allowed value (default: 1)
+        max_value: Maximum allowed value (optional)
+    
+    Returns:
+        int: The validated integer value
+    
+    Raises:
+        ValueError: If value is not a valid positive integer or out of bounds
+    
+    Examples:
+        >>> validate_positive_integer("100", "Token Amount")
+        100
+        
+        >>> validate_positive_integer(-5, "Amount")
+        ValueError: Amount must be a positive integer
+    """
+    try:
+        # Convert to int
+        int_value = int(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"{field_name} must be a valid integer")
+    
+    # Check if positive
+    if int_value < min_value:
+        raise ValueError(f"{field_name} must be at least {min_value}")
+    
+    # Check max bound if provided
+    if max_value is not None and int_value > max_value:
+        raise ValueError(f"{field_name} must not exceed {max_value}")
+    
+    return int_value
+
+
+def validate_percentage(value: any, field_name: str = "Percentage") -> float:
+    """
+    Validate that a value is a valid percentage between 0 and 100.
+    
+    Args:
+        value: The percentage to validate (can be int, str, or float)
+        field_name: Name of the field for error messages
+    
+    Returns:
+        float: The validated percentage value
+    
+    Raises:
+        ValueError: If value is not a valid percentage or out of range [0, 100]
+    
+    Examples:
+        >>> validate_percentage("50.5")
+        50.5
+        
+        >>> validate_percentage(150)
+        ValueError: Percentage must be between 0 and 100
+    """
+    try:
+        # Convert to float
+        float_value = float(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"{field_name} must be a valid number")
+    
+    # Check range [0, 100]
+    if float_value < 0 or float_value > 100:
+        raise ValueError(f"{field_name} must be between 0 and 100")
+    
+    return float_value
+
+
+def sanitize_text_input(text: str, max_length: Optional[int] = None, field_name: str = "Text") -> str:
+    """
+    Sanitize user text input to prevent XSS attacks.
+    
+    This function:
+    1. Strips leading/trailing whitespace
+    2. Removes dangerous HTML/script tags
+    3. Limits length if specified
+    4. Preserves safe formatting (newlines, basic punctuation)
+    
+    Args:
+        text: The text to sanitize
+        max_length: Maximum allowed length (optional)
+        field_name: Name of the field for error messages
+    
+    Returns:
+        str: The sanitized text
+    
+    Raises:
+        ValueError: If text is empty after sanitization or exceeds max_length
+    
+    Examples:
+        >>> sanitize_text_input("Hello <script>alert('xss')</script>")
+        "Hello alert('xss')"
+        
+        >>> sanitize_text_input("Normal text")
+        "Normal text"
+    """
+    if not text or not isinstance(text, str):
+        raise ValueError(f"{field_name} must be a non-empty string")
+    
+    # Strip whitespace
+    text = text.strip()
+    
+    if not text:
+        raise ValueError(f"{field_name} cannot be empty or whitespace only")
+    
+    # Remove dangerous HTML tags (basic XSS prevention)
+    # Remove script tags and their content
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Remove style tags and their content
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Remove iframe tags
+    text = re.sub(r'<iframe[^>]*>.*?</iframe>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Remove event handlers (onclick, onerror, etc.)
+    text = re.sub(r'\s*on\w+\s*=\s*["\']?[^"\']*["\']?', '', text, flags=re.IGNORECASE)
+    
+    # Remove javascript: protocol
+    text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
+    
+    # Check max length
+    if max_length and len(text) > max_length:
+        raise ValueError(f"{field_name} must not exceed {max_length} characters")
+    
+    return text

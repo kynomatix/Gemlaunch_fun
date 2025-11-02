@@ -119,10 +119,11 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Configure session cookies for CORS
+# Configure session cookies with enhanced security
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+# Enable secure cookies only in production (HTTPS) - prevents breaking local dev
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('REPLIT_DEPLOYMENT') == '1'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 # Custom Jinja2 filter for formatting large numbers
@@ -182,22 +183,54 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+# Helper function for wallet-based rate limiting
+def get_wallet_for_ratelimit():
+    """Get wallet address for rate limiting (falls back to IP if no wallet connected)"""
+    user = get_current_user()
+    if user and user.wallet_address:
+        return user.wallet_address.lower()
+    return get_remote_address()
+
 # Custom rate limit error handler
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({
-        'error': 'Too many authentication attempts. Please wait a moment before trying again.',
+        'error': 'Rate limit exceeded. Please wait before trying again.',
         'retry_after': getattr(e.description, 'retry_after', 60)
     }), 429
 
-# Prevent aggressive browser caching
+# Security headers and cache control
 @app.after_request
-def add_cache_control_headers(response):
-    """Add Cache-Control headers to prevent browser caching of dynamic content"""
+def add_security_headers(response):
+    """Add security headers and cache control to all responses"""
+    
+    # Prevent aggressive browser caching of HTML
     if response.content_type and 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+    
+    # Security headers
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
+    # Content Security Policy - allow self, CDNs, and external APIs
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.ethers.io; "
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+        "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https://explorer.kasplextest.xyz https://rpc.kasplextest.xyz https://api.coingecko.com wss://explorer.kasplextest.xyz; "
+        "frame-src 'none'; "
+        "object-src 'none'; "
+        "base-uri 'self';"
+    )
+    response.headers['Content-Security-Policy'] = csp
+    
     return response
 
 # Initialize transaction monitor and scheduler
@@ -1484,6 +1517,7 @@ def token_detail_legacy(token_id):
 # Chat API endpoints
 @app.route('/api/token/<contract_address>/messages', methods=['GET', 'POST'])
 @require_wallet_connection
+@limiter.limit("30 per minute", key_func=get_wallet_for_ratelimit, methods=['POST'])
 def token_messages(contract_address):
     """Get or send chat messages for a token"""
     token = Token.query.filter_by(contract_address=contract_address).first_or_404()
@@ -1538,14 +1572,16 @@ def token_messages(contract_address):
         return jsonify({'messages': message_list})
     
     elif request.method == 'POST':
+        from utils.validators import sanitize_text_input
+        
         data = request.get_json()
-        message_text = data.get('message', '').strip()
+        message_text = data.get('message', '')
         
-        if not message_text:
-            return jsonify({'error': 'Message cannot be empty'}), 400
-        
-        if len(message_text) > 500:
-            return jsonify({'error': 'Message too long (max 500 characters)'}), 400
+        # Sanitize and validate message text
+        try:
+            message_text = sanitize_text_input(message_text, max_length=500, field_name="Message")
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
         
         # Create new message
         message = ChatMessage(
@@ -1635,6 +1671,7 @@ def delete_message(contract_address, message_id):
 @app.route('/api/token/<contract_address>/polls', methods=['GET', 'POST'])
 @csrf.exempt
 @require_wallet_connection
+@limiter.limit("5 per day", key_func=get_wallet_for_ratelimit, methods=['POST'])
 def token_polls(contract_address):
     """Get or create polls for a token"""
     from datetime import datetime, timedelta, timezone
@@ -1682,18 +1719,29 @@ def token_polls(contract_address):
         return jsonify({'polls': poll_list})
     
     elif request.method == 'POST':
+        from utils.validators import sanitize_text_input, validate_positive_integer
+        
         data = request.get_json()
         
-        question = data.get('question', '').strip()
-        options_text = data.get('options', [])
-        vote_cost = data.get('vote_cost', 100)
-        duration_hours = data.get('duration_hours', 24)
-        
-        if not question:
-            return jsonify({'error': 'Question is required'}), 400
-        
-        if len(options_text) < 2:
-            return jsonify({'error': 'At least 2 options required'}), 400
+        # Validate and sanitize inputs
+        try:
+            question = sanitize_text_input(data.get('question', ''), max_length=200, field_name="Poll question")
+            
+            options_text = data.get('options', [])
+            if not isinstance(options_text, list) or len(options_text) < 2:
+                return jsonify({'error': 'At least 2 poll options are required'}), 400
+            
+            # Sanitize each option
+            sanitized_options = []
+            for i, opt in enumerate(options_text):
+                sanitized_opt = sanitize_text_input(opt, max_length=100, field_name=f"Option {i+1}")
+                sanitized_options.append(sanitized_opt)
+            
+            vote_cost = validate_positive_integer(data.get('vote_cost', 100), "Vote cost", min_value=0, max_value=1000000000)
+            duration_hours = validate_positive_integer(data.get('duration_hours', 24), "Duration", min_value=1, max_value=720)
+            
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
         
         try:
             # Create poll
@@ -1708,7 +1756,7 @@ def token_polls(contract_address):
             db.session.flush()  # Get poll ID
             
             # Create options
-            for opt_text in options_text:
+            for opt_text in sanitized_options:
                 option = PollOption(
                     poll_id=poll.id,
                     option_text=opt_text
@@ -2449,6 +2497,7 @@ def get_airdrop_recipients(token, airdrop_type, amount_per_recipient, parameters
 
 @app.route('/api/token/<contract_address>/airdrop/create', methods=['POST'])
 @require_wallet_connection
+@limiter.limit("10 per day", key_func=get_wallet_for_ratelimit)
 def create_airdrop(contract_address):
     """Build transaction bundle for batch airdrop distribution"""
     from datetime import datetime, timezone
@@ -6636,6 +6685,7 @@ def generate_token_image_api():
 
 @app.route('/api/token/create', methods=['POST'])
 @csrf.exempt
+@limiter.limit("3 per hour", key_func=get_wallet_for_ratelimit)
 def api_create_token():
     """
     Create token with wallet signing (decentralized approach)
