@@ -880,13 +880,11 @@
                     const typeLabel = trade.type.toUpperCase().replace('_', ' ');
                     const amount = parseFloat(trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2});
                     const date = new Date(trade.timestamp).toLocaleString();
-                    const txShort = trade.tx_hash ? trade.tx_hash.substring(0, 10) + '...' : '';
                     
                     return `<div style="margin: 2px 0;">
                         <strong style="color: ${trade.type.includes('buy') || trade.type === 'airdrop' ? '#20B2AA' : '#FF4444'}">${typeLabel}</strong><br/>
                         Amount: ${amount} ${this.tokenSymbol}<br/>
-                        ${date}<br/>
-                        ${txShort ? `TX: ${txShort}` : ''}
+                        ${date}
                     </div>`;
                 }).join('<hr style="margin: 6px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">');
                 
