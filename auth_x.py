@@ -35,7 +35,6 @@ def init_oauth(app):
             'scope': 'tweet.read users.read',
             'token_endpoint_auth_method': 'client_secret_post',
         },
-        server_metadata_url='https://api.twitter.com/.well-known/oauth-authorization-server',
     )
     
     return oauth.twitter
