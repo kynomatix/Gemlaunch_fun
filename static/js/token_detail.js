@@ -3523,8 +3523,49 @@
                     return;
                 }
                 
+                // Wait for transaction to be mined before submitting vote
+                this.showNotification('⏳ Confirming Transaction', 'Waiting for burn transaction to be mined...', 'info');
+                
+                // Use Web3 provider to wait for transaction receipt
+                const provider = window.ethereum;
+                if (!provider) {
+                    throw new Error('Web3 provider not available');
+                }
+                
+                // Poll for transaction receipt (wait up to 60 seconds)
+                let receipt = null;
+                const maxAttempts = 60;
+                for (let i = 0; i < maxAttempts; i++) {
+                    try {
+                        receipt = await provider.request({
+                            method: 'eth_getTransactionReceipt',
+                            params: [txHash]
+                        });
+                        
+                        if (receipt) {
+                            // Transaction mined!
+                            if (receipt.status === '0x0') {
+                                throw new Error('Burn transaction failed on blockchain');
+                            }
+                            break;
+                        }
+                    } catch (error) {
+                        if (error.message.includes('failed on blockchain')) {
+                            throw error;
+                        }
+                        // Otherwise continue polling
+                    }
+                    
+                    // Wait 1 second before next attempt
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                if (!receipt) {
+                    throw new Error('Transaction confirmation timeout - please try voting again');
+                }
+                
                 // Show pending state
-                this.showNotification('⏳ Recording Vote', 'Waiting for transaction confirmation...', 'info');
+                this.showNotification('⏳ Recording Vote', 'Transaction confirmed! Recording your vote...', 'info');
                 
                 // Submit vote with transaction hash
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/polls/${pollId}/vote`, {
