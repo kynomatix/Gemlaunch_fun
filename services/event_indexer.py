@@ -27,6 +27,18 @@ logger = logging.getLogger(__name__)
 INDEXER_STATE_FILE = Path("config/indexer_state.json")
 BATCH_SIZE = 250  # Configurable batch size for event processing (100-500 recommended)
 
+# Generic ERC20 Transfer event ABI for decoding token transfer logs
+ERC20_TRANSFER_ABI = {
+    'anonymous': False,
+    'inputs': [
+        {'indexed': True, 'name': 'from', 'type': 'address'},
+        {'indexed': True, 'name': 'to', 'type': 'address'},
+        {'indexed': False, 'name': 'value', 'type': 'uint256'}
+    ],
+    'name': 'Transfer',
+    'type': 'event'
+}
+
 def _load_airdrop_distributor_address():
     """
     Load AirdropDistributor contract address from deployed_addresses.json
@@ -76,6 +88,27 @@ def get_web3_service():
     if not hasattr(get_web3_service, '_instance'):
         get_web3_service._instance = Web3Service()
     return get_web3_service._instance
+
+
+def get_erc20_transfer_decoder(w3, token_address):
+    """
+    Create a generic ERC20 contract instance for decoding Transfer events
+    
+    This uses only the Transfer event ABI, making it compatible with any ERC20 token
+    regardless of the specific token contract implementation.
+    
+    Args:
+        w3: Web3 instance
+        token_address: Address of the ERC20 token contract
+    
+    Returns:
+        Contract instance with Transfer event decoder
+    """
+    contract = w3.eth.contract(
+        address=w3.to_checksum_address(token_address),
+        abi=[ERC20_TRANSFER_ABI]
+    )
+    return contract
 
 
 def bulk_fetch_blocks(w3, block_numbers):
@@ -754,19 +787,46 @@ def process_bonding_pool_events(pool_address, from_block, to_block):
         except Exception as e:
             logger.error(f"Error fetching TokensSold events: {str(e)}")
         
-        # Fetch Transfer events from AirdropDistributor (airdrops)
+        # Fetch AirdropDistributed events and extract Transfer events from those transactions
         try:
-            # BondingCurvePool is an ERC20 token - use Transfer event with from filter
-            airdrop_filter = pool_contract.events.Transfer.create_filter(
+            # Get AirdropDistributor contract from web3_service
+            w3_service = get_web3_service()
+            airdrop_distributor_contract = w3_service.contracts['AirdropDistributor']
+            
+            # Listen for AirdropDistributed events for this token
+            airdrop_distributed_filter = airdrop_distributor_contract.events.AirdropDistributed.create_filter(
                 from_block=from_block,
                 to_block=to_block,
-                argument_filters={'from': w3.to_checksum_address(AIRDROP_DISTRIBUTOR_ADDRESS)}
+                argument_filters={'token': w3.to_checksum_address(token.contract_address)}
             )
-            airdrop_events = airdrop_filter.get_all_entries()
-            if airdrop_events:
-                logger.debug(f"Found {len(airdrop_events)} airdrop events for {token.symbol}")
+            airdrop_distributed_events = airdrop_distributed_filter.get_all_entries()
+            
+            if airdrop_distributed_events:
+                logger.debug(f"Found {len(airdrop_distributed_events)} AirdropDistributed events for {token.symbol}")
+                
+                # Create generic ERC20 contract instance for decoding Transfer events
+                erc20_contract = get_erc20_transfer_decoder(w3, token.contract_address)
+                
+                # For each AirdropDistributed event, extract Transfer events from the transaction
+                for airdrop_event in airdrop_distributed_events:
+                    tx_hash = airdrop_event['transactionHash']
+                    receipt = w3.eth.get_transaction_receipt(tx_hash)
+                    
+                    # Parse Transfer events from this transaction using generic ERC20 ABI
+                    for log in receipt['logs']:
+                        # Check if this is a Transfer event from the token contract
+                        if log['address'].lower() == token.contract_address.lower():
+                            try:
+                                # Decode Transfer event using generic ERC20 ABI
+                                transfer_event = erc20_contract.events.Transfer().process_log(log)
+                                airdrop_events.append(transfer_event)
+                            except Exception:
+                                # Not a Transfer event or failed to decode - skip
+                                pass
+                
+                logger.debug(f"Extracted {len(airdrop_events)} Transfer events from {len(airdrop_distributed_events)} airdrops for {token.symbol}")
         except Exception as e:
-            logger.error(f"Error fetching Transfer (airdrop) events: {str(e)}")
+            logger.error(f"Error fetching AirdropDistributed events: {str(e)}")
         
         # Process trade events in optimized batches
         if purchase_events or sell_events or airdrop_events:
