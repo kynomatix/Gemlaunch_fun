@@ -779,12 +779,12 @@
                         // Determine marker style based on trade type
                         let position, color, text, shape;
                         
-                        if (trade.type === 'buy') {
+                        if (trade.type === 'buy' || trade.type === 'dex_buy') {
                             position = 'belowBar';
                             color = '#20B2AA';  // Teal
                             text = 'B';
                             shape = 'circle';
-                        } else if (trade.type === 'sell') {
+                        } else if (trade.type === 'sell' || trade.type === 'dex_sell') {
                             position = 'aboveBar';
                             color = '#FF4444';  // Red
                             text = 'S';
