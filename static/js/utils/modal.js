@@ -146,12 +146,19 @@
                 const confirmCallback = typeof onConfirm === 'function' ? onConfirm : null;
                 const cancelCallback = typeof onCancel === 'function' ? onCancel : null;
                 
+                // Handler for all cancellation paths
+                const handleCancel = function() {
+                    ModalManager.closeModal('customConfirmModal');
+                    if (cancelCallback) cancelCallback();
+                    resolve(false);
+                };
+                
                 const modalHTML = `
                     <div id="customConfirmModal" class="modal" style="display: flex;">
                         <div class="modal-content" style="max-width: 450px;">
                             <div class="modal-header">
                                 <h3>${escapeHtml(title)}</h3>
-                                <button class="modal-close" onclick="ModalManager.closeModal('customConfirmModal')">&times;</button>
+                                <button class="modal-close" id="confirmCloseBtn">&times;</button>
                             </div>
                             <div class="modal-body">
                                 <div style="color: #CCC; line-height: 1.5;">${escapeHtml(message)}</div>
@@ -179,18 +186,13 @@
                     resolve(true);
                 };
                 
-                document.getElementById('confirmCancelBtn').onclick = function() {
-                    ModalManager.closeModal('customConfirmModal');
-                    if (cancelCallback) cancelCallback();
-                    resolve(false);
-                };
+                document.getElementById('confirmCancelBtn').onclick = handleCancel;
+                document.getElementById('confirmCloseBtn').onclick = handleCancel;
                 
                 const modal = document.getElementById('customConfirmModal');
                 modal.onclick = function(e) {
                     if (e.target === modal) {
-                        ModalManager.closeModal('customConfirmModal');
-                        if (cancelCallback) cancelCallback();
-                        resolve(false);
+                        handleCancel();
                     }
                 };
             });
