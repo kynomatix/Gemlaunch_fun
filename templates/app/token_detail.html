@@ -887,8 +887,13 @@
                         // All transactions signed successfully - only show distribution TX
                         const distributionTx = txHashes.find(t => t.type === 'distribution');
                         
+                        // Convert wei to human-readable (divide by 10^18)
+                        const humanReadableAmount = (result.total_amount / 1e18).toLocaleString('en-US', {
+                            maximumFractionDigits: 2
+                        });
+                        
                         const htmlMessage = `
-                            <p style="margin-bottom: 1.5rem;">Successfully distributed <strong>${result.total_amount} ${{ token.symbol }}</strong> to <strong>${result.recipient_count}</strong> recipient(s)!</p>
+                            <p style="margin-bottom: 1.5rem;">Successfully distributed <strong>${humanReadableAmount} ${{ token.symbol }}</strong> to <strong>${result.recipient_count}</strong> recipient(s)!</p>
                             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 1rem;">
                                 <p style="margin-bottom: 0.75rem; color: #AAA; font-size: 0.9rem;">Transaction Hash:</p>
                                 <div style="font-family: monospace; font-size: 0.9rem; word-break: break-all;">
