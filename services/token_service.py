@@ -385,9 +385,10 @@ class TokenService:
                    Returns 0.0 if insufficient data
         """
         try:
-            # Get most recent trade for current price
+            # Get most recent trade for current price (exclude airdrops)
             latest_trade = TradeEvent.query.filter(
-                TradeEvent.token_id == token.id
+                TradeEvent.token_id == token.id,
+                TradeEvent.trade_type != 'airdrop'
             ).order_by(TradeEvent.timestamp.desc()).first()
             
             if not latest_trade:
@@ -399,9 +400,10 @@ class TokenService:
             # Find price 24 hours ago
             twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
             
-            # Get oldest trade beyond 24h for comparison
+            # Get oldest trade beyond 24h for comparison (exclude airdrops)
             old_trade = TradeEvent.query.filter(
                 TradeEvent.token_id == token.id,
+                TradeEvent.trade_type != 'airdrop',
                 TradeEvent.timestamp < twenty_four_hours_ago
             ).order_by(TradeEvent.timestamp.desc()).first()
             
@@ -412,9 +414,10 @@ class TokenService:
                 if old_price > 0:
                     price_change = ((current_price - old_price) / old_price) * 100
             else:
-                # If no data beyond 24h, compare to oldest trade we have
+                # If no data beyond 24h, compare to oldest trade we have (exclude airdrops)
                 recent_trades = TradeEvent.query.filter(
                     TradeEvent.token_id == token.id,
+                    TradeEvent.trade_type != 'airdrop',
                     TradeEvent.timestamp >= twenty_four_hours_ago
                 ).order_by(TradeEvent.timestamp.asc()).all()
                 

@@ -201,11 +201,12 @@ class MarketplaceService:
             if not token:
                 return {'volume_24h': 0, 'price_change_24h': 0}
             
-            # Get trades from last 24h for volume
+            # Get trades from last 24h for volume (exclude airdrops from volume)
             cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
             
             recent_trades = TradeEvent.query.filter(
                 TradeEvent.token_id == token.id,
+                TradeEvent.trade_type != 'airdrop',
                 TradeEvent.timestamp >= cutoff_time
             ).all()
             
@@ -216,9 +217,10 @@ class MarketplaceService:
             kas_price = oracle.get_kas_price()
             volume_usd = volume_kas * kas_price
             
-            # Get most recent trade for current price
+            # Get most recent trade for current price (exclude airdrops)
             latest_trade = TradeEvent.query.filter(
-                TradeEvent.token_id == token.id
+                TradeEvent.token_id == token.id,
+                TradeEvent.trade_type != 'airdrop'
             ).order_by(TradeEvent.timestamp.desc()).first()
             
             if not latest_trade:
@@ -230,9 +232,10 @@ class MarketplaceService:
             else:
                 return {'volume_24h': round(volume_usd, 2), 'price_change_24h': 0}
             
-            # Get oldest trade beyond 24h for comparison
+            # Get oldest trade beyond 24h for comparison (exclude airdrops)
             old_trade = TradeEvent.query.filter(
                 TradeEvent.token_id == token.id,
+                TradeEvent.trade_type != 'airdrop',
                 TradeEvent.timestamp < cutoff_time
             ).order_by(TradeEvent.timestamp.desc()).first()
             
