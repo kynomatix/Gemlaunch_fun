@@ -122,6 +122,7 @@ class PollVote(db.Model):
     
     # Vote metadata
     vote_weight = db.Column(db.Numeric(precision=20, scale=8), default=1)  # For weighted voting
+    burn_tx_hash = db.Column(db.String(128), nullable=True, unique=True, index=True)  # Transaction hash for burn verification (prevents replay attacks)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Unique constraint - one vote per user per poll

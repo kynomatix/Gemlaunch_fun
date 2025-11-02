@@ -1782,6 +1782,11 @@ def vote_on_poll(contract_address, poll_id):
         if not burn_tx_hash:
             return jsonify({'error': 'Burn transaction required for this poll'}), 400
         
+        # SECURITY FIX #3: Check for transaction replay - prevent same burn_tx_hash from being reused
+        existing_vote_with_tx = PollVote.query.filter_by(burn_tx_hash=burn_tx_hash).first()
+        if existing_vote_with_tx:
+            return jsonify({'error': 'This burn transaction has already been used for a vote'}), 400
+        
         # Verify burn transaction on-chain
         from services.web3_service import web3_service
         w3 = web3_service.w3
@@ -1811,36 +1816,42 @@ def vote_on_poll(contract_address, poll_id):
             
             # Check for Transfer event to burn address
             transfer_found = False
-            vote_cost_wei = vote_cost * (10 ** 18)  # Convert to wei
+            vote_cost_wei = int(vote_cost * (10 ** 18))  # Convert to wei (integer)
             
             for log in tx_receipt['logs']:
+                # SECURITY FIX #1: Verify correct token contract BEFORE attempting to decode
+                # This prevents users from burning cheap/fake tokens instead of the poll's token
+                if log['address'].lower() != poll.token.contract_address.lower():
+                    continue  # Skip logs from other contracts
+                
                 try:
-                    # Try to decode as Transfer event
-                    if log['address'].lower() == poll.token.contract_address.lower():
-                        decoded = token_contract.events.Transfer().process_log(log)
-                        
-                        # Check if transfer to burn address with correct amount
-                        if (decoded['args']['to'].lower() == burn_address.lower() and
-                            decoded['args']['from'].lower() == user.wallet_address.lower() and
-                            decoded['args']['value'] == vote_cost_wei):
-                            transfer_found = True
-                            break
+                    # Decode Transfer event from the correct token contract
+                    decoded = token_contract.events.Transfer().process_log(log)
+                    
+                    # SECURITY FIX #2: Verify exact burn amount matches vote_cost
+                    # Check if transfer to burn address with EXACT required amount
+                    if (decoded['args']['to'].lower() == burn_address.lower() and
+                        decoded['args']['from'].lower() == user.wallet_address.lower() and
+                        decoded['args']['value'] == vote_cost_wei):
+                        transfer_found = True
+                        break
                 except Exception as e:
                     # Not a Transfer event or different format, skip
                     continue
             
             if not transfer_found:
-                return jsonify({'error': f'Transaction does not burn {vote_cost} {poll.token.symbol} tokens'}), 400
+                return jsonify({'error': f'Transaction does not burn exactly {vote_cost} {poll.token.symbol} tokens to the burn address'}), 400
                 
         except Exception as e:
             logging.error(f"Error verifying burn transaction {burn_tx_hash}: {e}")
             return jsonify({'error': f'Failed to verify burn transaction: {str(e)}'}), 400
     
-    # Create vote
+    # Create vote (store burn_tx_hash to prevent replay attacks)
     vote = PollVote(
         poll_id=poll_id,
         option_id=option_id,
-        user_id=user.id
+        user_id=user.id,
+        burn_tx_hash=burn_tx_hash if vote_cost > 0 else None
     )
     db.session.add(vote)
     
