@@ -3262,6 +3262,46 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(32, 178, 170, 0.5) rgba(255, 255, 255, 0.05);
         }
+        
+        /* Custom scrollbar for all accolades parent containers */
+        .activities-grid::-webkit-scrollbar,
+        .accolades-progress-section::-webkit-scrollbar,
+        .carousel-viewport::-webkit-scrollbar,
+        .category-accolades-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .activities-grid::-webkit-scrollbar-track,
+        .accolades-progress-section::-webkit-scrollbar-track,
+        .carousel-viewport::-webkit-scrollbar-track,
+        .category-accolades-grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .activities-grid::-webkit-scrollbar-thumb,
+        .accolades-progress-section::-webkit-scrollbar-thumb,
+        .carousel-viewport::-webkit-scrollbar-thumb,
+        .category-accolades-grid::-webkit-scrollbar-thumb {
+            background: rgba(32, 178, 170, 0.5);
+            border-radius: 3px;
+        }
+        
+        .activities-grid::-webkit-scrollbar-thumb:hover,
+        .accolades-progress-section::-webkit-scrollbar-thumb:hover,
+        .carousel-viewport::-webkit-scrollbar-thumb:hover,
+        .category-accolades-grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(32, 178, 170, 0.7);
+        }
+        
+        /* Firefox scrollbar for all accolades containers */
+        .activities-grid,
+        .accolades-progress-section,
+        .carousel-viewport,
+        .category-accolades-grid {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(32, 178, 170, 0.5) rgba(255, 255, 255, 0.05);
+        }
 
         .accolade-item {
             background: rgba(255, 255, 255, 0.03);
