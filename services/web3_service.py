@@ -3250,8 +3250,8 @@ class Web3Service:
             else:
                 raise ValueError(f"Invalid vesting type: {vesting_type}")
             
-            # Call releasable() to get unlocked amount
-            unlocked_amount = vesting_contract.functions.releasable().call()
+            # Call getWithdrawableAmount() to get unlocked amount available for withdrawal
+            unlocked_amount = vesting_contract.functions.getWithdrawableAmount().call()
             
             logging.info(f"Vesting contract {vesting_contract_address} has {unlocked_amount} tokens unlocked")
             return unlocked_amount
