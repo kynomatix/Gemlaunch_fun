@@ -827,15 +827,17 @@
                         }
                         
                         // All transactions signed successfully
-                        const txList = txHashes.map((t, idx) => `<div style="margin: 0.5rem 0; font-family: monospace; font-size: 0.85rem;"><strong>${t.type}:</strong> <a href="https://explorer.kasplextest.xyz/tx/${t.hash}" target="_blank" style="color: #00d4aa; text-decoration: none;">${t.hash}</a></div>`).join('');
+                        const txDetails = txHashes.map(t => `${t.type}: ${t.hash}`).join('\n');
+                        
                         ModalManager.alert(
                             'Airdrop Distributed!',
-                            `Successfully distributed ${result.total_amount} ${{ token.symbol }} to ${result.recipient_count} recipients!<div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">${txList}</div>`,
-                            'success'
+                            `Successfully distributed ${result.total_amount} ${{ token.symbol }} to ${result.recipient_count} recipients!\n\nTransactions:\n${txDetails}\n\nVerify on block explorer:\nhttps://explorer.kasplextest.xyz/address/{{ token.contract_address }}?tab=token_transfers`,
+                            'success',
+                            () => {
+                                // Reload after user closes the modal
+                                window.location.reload();
+                            }
                         );
-                        
-                        // Reload to show updated balances
-                        setTimeout(() => window.location.reload(), 3000);
                         
                     } catch (error) {
                         console.error('Airdrop creation error:', error);
