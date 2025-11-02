@@ -884,22 +884,21 @@
                             }
                         }
                         
-                        // All transactions signed successfully
-                        const txListHtml = txHashes.map(t => 
-                            `<div style="margin: 0.5rem 0; font-family: monospace; font-size: 0.85rem; word-break: break-all;">
-                                <strong style="color: #00d4aa;">${t.type}:</strong>
-                                <a href="https://explorer.kasplextest.xyz/tx/${t.hash}" target="_blank" 
-                                   style="color: #20B2AA; text-decoration: underline;">${t.hash}</a>
-                            </div>`
-                        ).join('');
+                        // All transactions signed successfully - only show distribution TX
+                        const distributionTx = txHashes.find(t => t.type === 'distribution');
                         
                         const htmlMessage = `
-                            <p style="margin-bottom: 1rem;">Successfully distributed <strong>${result.total_amount} ${{ token.symbol }}</strong> to <strong>${result.recipient_count}</strong> recipient(s)!</p>
+                            <p style="margin-bottom: 1.5rem;">Successfully distributed <strong>${result.total_amount} ${{ token.symbol }}</strong> to <strong>${result.recipient_count}</strong> recipient(s)!</p>
                             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 1rem;">
-                                <p style="margin-bottom: 0.5rem;"><strong>Transactions:</strong></p>
-                                ${txListHtml}
+                                <p style="margin-bottom: 0.75rem; color: #AAA; font-size: 0.9rem;">Transaction Hash:</p>
+                                <div style="font-family: monospace; font-size: 0.9rem; word-break: break-all;">
+                                    <a href="https://explorer.kasplextest.xyz/tx/${distributionTx.hash}" target="_blank" 
+                                       style="color: #20B2AA; text-decoration: underline; font-weight: 500;">${distributionTx.hash}</a>
+                                </div>
                             </div>
-                            <p style="margin-top: 1rem; font-size: 0.9rem; color: #888;">Click the transaction hashes above to view on block explorer.</p>
+                            <p style="margin-top: 1rem; font-size: 0.85rem; color: #888; text-align: center;">
+                                <i class="fas fa-external-link-alt" style="margin-right: 0.3rem;"></i>Click to view on block explorer
+                            </p>
                         `;
                         
                         ModalManager.alertHtml(
