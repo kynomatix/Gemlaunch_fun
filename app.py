@@ -7562,7 +7562,6 @@ def get_token_chart_data(contract_address):
         # ✅ GRADUATION FIX: For graduated tokens, append current DEX pool data as latest datapoint
         if token.is_graduated and token.dex_pool_address and chart_data:
             try:
-                from services.web3_service import get_web3_service
                 web3_service = get_web3_service()
                 
                 # Get current DEX pool market cap
