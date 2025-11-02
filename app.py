@@ -1812,10 +1812,7 @@ def vote_on_poll(contract_address, poll_id):
             burn_address = '0x000000000000000000000000000000000000dEaD'
             
             # Get token contract (BondingCurvePool is the ERC20 token)
-            token_contract = w3.eth.contract(
-                address=Web3.to_checksum_address(poll.token.contract_address),
-                abi=web3_service.bonding_curve_pool_abi
-            )
+            token_contract = web3_service.get_bonding_pool_contract(poll.token.contract_address)
             
             # Check for Transfer event to burn address
             transfer_found = False
