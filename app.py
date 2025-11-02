@@ -7559,50 +7559,6 @@ def get_token_chart_data(contract_address):
                     'volume': 0
                 })
         
-        # ✅ GRADUATION FIX: For graduated tokens, append current DEX pool data as latest datapoint
-        if token.is_graduated and token.dex_pool_address and chart_data:
-            try:
-                web3_service = get_web3_service()
-                
-                # Get current DEX pool market cap
-                mc_data = web3_service.get_graduated_token_market_cap(
-                    token.contract_address,
-                    token.dex_pool_address,
-                    kas_to_usd
-                )
-                
-                if mc_data and 'market_cap_usd' in mc_data:
-                    dex_mc_usd = mc_data['market_cap_usd']
-                    dex_price_usd = mc_data.get('price_usd', 0)
-                    
-                    # Add as latest datapoint (shows token is active on DEX)
-                    latest_value = dex_mc_usd if chart_type == 'marketcap' else dex_price_usd
-                    
-                    if use_format == 'candlestick' and chart_data:
-                        # For candlestick, append as a new candle
-                        last_candle_time = chart_data[-1]['time'] if chart_data else int(now.timestamp())
-                        chart_data.append({
-                            'time': int(now.timestamp()),
-                            'open': latest_value,
-                            'high': latest_value,
-                            'low': latest_value,
-                            'close': latest_value,
-                            'volume': 0
-                        })
-                    else:
-                        # For area chart, append as latest point
-                        chart_data.append({
-                            'time': int(now.timestamp()),
-                            'value': latest_value,
-                            'volume': 0
-                        })
-                    
-                    logging.info(f"✅ Added DEX pool datapoint for graduated token {token.symbol}: MC=${dex_mc_usd:.2f}")
-                    
-            except Exception as e:
-                logging.warning(f"Failed to fetch DEX pool data for graduated token {token.symbol}: {e}")
-                # Continue without DEX data - chart still shows pre-graduation history
-        
         return jsonify({
             'success': True,
             'data': chart_data,
