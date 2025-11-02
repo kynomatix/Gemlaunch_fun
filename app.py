@@ -7416,36 +7416,46 @@ def get_token_chart_data(contract_address):
             if all_trades:
                 start_time = min(t['timestamp'] for t in all_trades)
         
-        # Get CURRENT blockchain reserves (live state)
+        # Get CURRENT blockchain state (bonding curve OR DEX pool)
         web3_service = get_web3_service()
         try:
-            current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
-            current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
-            current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
-            current_token_reserve = float(current_token_wei)
-            
-            app.logger.info(
-                f"[Chart] Starting from CURRENT blockchain reserves for {token.symbol}: "
-                f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.2f}"
-            )
-            
-            # Work BACKWARDS through trades in window to get starting reserves for the chart
-            for trade in reversed(trades_in_window):
-                kas_amt = float(trade['kas_amount'])
-                token_amt = float(trade['token_amount'])
+            if token.is_graduated and token.dex_pool_address:
+                # GRADUATED TOKEN: Use DEX pool price, not bonding curve reserves
+                # Cannot work backwards through DEX trades - just use trade data as-is
+                app.logger.info(f"[Chart] Graduated token {token.symbol} - using DEX pool data")
+                # For graduated tokens, we'll calculate each candle from trade data directly
+                # Set dummy values - won't be used for calculation
+                current_kas_reserve = 1.0
+                current_token_reserve = 1e18
+            else:
+                # BONDING CURVE TOKEN: Use bonding curve reserves
+                current_kas_wei = web3_service.get_virtual_kas_reserve(token.contract_address)
+                current_token_wei = web3_service.get_virtual_token_reserve(token.contract_address)
+                current_kas_reserve = float(Web3.from_wei(current_kas_wei, 'ether'))
+                current_token_reserve = float(current_token_wei)
                 
-                if trade['trade_type'] in ['buy', 'dex_buy']:
-                    # Undo buy: remove KAS, add back tokens
-                    current_kas_reserve -= kas_amt
-                    current_token_reserve += token_amt
-                else:  # 'sell' or 'dex_sell'
-                    # Undo sell: add back KAS, remove tokens
-                    current_kas_reserve += kas_amt
-                    current_token_reserve -= token_amt
-            
-            # Clamp to prevent negative reserves from incomplete trade history
-            current_kas_reserve = max(0.001, current_kas_reserve)
-            current_token_reserve = max(1e18, current_token_reserve)
+                app.logger.info(
+                    f"[Chart] Starting from CURRENT blockchain reserves for {token.symbol}: "
+                    f"KAS={current_kas_reserve:.2f}, Tokens={current_token_reserve/1e18:.2f}"
+                )
+                
+                # Work BACKWARDS through trades in window to get starting reserves for the chart
+                for trade in reversed(trades_in_window):
+                    kas_amt = float(trade['kas_amount'])
+                    token_amt = float(trade['token_amount'])
+                    
+                    if trade['trade_type'] in ['buy', 'dex_buy']:
+                        # Undo buy: remove KAS, add back tokens
+                        current_kas_reserve -= kas_amt
+                        current_token_reserve += token_amt
+                    else:  # 'sell' or 'dex_sell'
+                        # Undo sell: add back KAS, remove tokens
+                        current_kas_reserve += kas_amt
+                        current_token_reserve -= token_amt
+                
+                # Clamp to prevent negative reserves from incomplete trade history
+                current_kas_reserve = max(0.001, current_kas_reserve)
+                current_token_reserve = max(1e18, current_token_reserve)
             
         except Exception as e:
             app.logger.error(f"Failed to get blockchain reserves for {token.symbol}, using fallback: {e}")
@@ -7467,27 +7477,42 @@ def get_token_chart_data(contract_address):
             kas_amt = float(trade['kas_amount'])
             token_amt = float(trade['token_amount'])
             
-            # Update reserves based on trade type
-            if trade['trade_type'] in ['buy', 'dex_buy']:
-                current_kas_reserve += kas_amt
-                current_token_reserve -= token_amt
-            else:  # 'sell' or 'dex_sell'
-                current_kas_reserve -= kas_amt
-                current_token_reserve += token_amt
-            
-            # Calculate spot price from reserve ratio (bonding curve formula)
-            if current_token_reserve > 0:
-                price_per_token_kas = current_kas_reserve / (current_token_reserve / 1e18)
+            if token.is_graduated and token.dex_pool_address and trade['trade_type'] in ['dex_buy', 'dex_sell']:
+                # GRADUATED TOKEN - DEX TRADE: Use actual execution price from trade
+                # DEX trades have exact prices (kas swapped / tokens swapped)
+                if token_amt > 0:
+                    price_per_token_kas = kas_amt / token_amt
+                else:
+                    price_per_token_kas = 0
+                
+                price_per_token_usd = price_per_token_kas * kas_to_usd
+                
+                # Market cap = price × total supply (for graduated tokens)
+                total_supply = float(token.total_supply or 1000000000)  # Default 1B
+                market_cap_usd = price_per_token_usd * total_supply
             else:
-                price_per_token_kas = 0
-            
-            # Convert to USD using oracle price
-            price_per_token_usd = price_per_token_kas * kas_to_usd
-            
-            # Market cap for bonding curve = KAS reserve (total value locked)
-            # NOTE: Do NOT use price × circulating_supply - that overestimates
-            # because it assumes all tokens were bought at current price
-            market_cap_usd = current_kas_reserve * kas_to_usd
+                # BONDING CURVE: Use reserve-based calculation
+                # Update reserves based on trade type
+                if trade['trade_type'] in ['buy', 'dex_buy']:
+                    current_kas_reserve += kas_amt
+                    current_token_reserve -= token_amt
+                else:  # 'sell' or 'dex_sell'
+                    current_kas_reserve -= kas_amt
+                    current_token_reserve += token_amt
+                
+                # Calculate spot price from reserve ratio (bonding curve formula)
+                if current_token_reserve > 0:
+                    price_per_token_kas = current_kas_reserve / (current_token_reserve / 1e18)
+                else:
+                    price_per_token_kas = 0
+                
+                # Convert to USD using oracle price
+                price_per_token_usd = price_per_token_kas * kas_to_usd
+                
+                # Market cap for bonding curve = KAS reserve (total value locked)
+                # NOTE: Do NOT use price × circulating_supply - that overestimates
+                # because it assumes all tokens were bought at current price
+                market_cap_usd = current_kas_reserve * kas_to_usd
             
             trade_points.append({
                 'timestamp': trade['timestamp'],
