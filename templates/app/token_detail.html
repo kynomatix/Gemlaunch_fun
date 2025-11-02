@@ -741,11 +741,15 @@
                         // Get airdrop type directly (dropdown now uses backend type names)
                         const backendType = selectedType.value;
                         
+                        // Get CSRF token from meta tag
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        
                         // Step 1: Get transaction bundle from backend
                         const response = await fetch(`/api/token/{{ token.contract_address }}/airdrop/create`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
                             },
                             credentials: 'same-origin',
                             body: JSON.stringify({
