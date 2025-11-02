@@ -3256,6 +3256,12 @@
         .accolades-list::-webkit-scrollbar-thumb:hover {
             background: rgba(32, 178, 170, 0.7);
         }
+        
+        /* Firefox scrollbar support */
+        .accolades-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(32, 178, 170, 0.5) rgba(255, 255, 255, 0.05);
+        }
 
         .accolade-item {
             background: rgba(255, 255, 255, 0.03);
