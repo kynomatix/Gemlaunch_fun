@@ -1758,6 +1758,7 @@ def vote_on_poll(contract_address, poll_id):
     user = get_current_user()
     data = request.get_json()
     option_id = data.get('option_id')
+    burn_tx_hash = data.get('burn_tx_hash')
     
     if not option_id:
         return jsonify({'error': 'Option ID required'}), 400
@@ -1766,13 +1767,74 @@ def vote_on_poll(contract_address, poll_id):
     poll = Poll.query.get_or_404(poll_id)
     option = PollOption.query.filter_by(id=option_id, poll_id=poll_id).first_or_404()
     
+    # Verify poll is for this token
+    if poll.token.contract_address.lower() != contract_address.lower():
+        return jsonify({'error': 'Poll does not belong to this token'}), 400
+    
     # Check if already voted
     existing_vote = PollVote.query.filter_by(poll_id=poll_id, user_id=user.id).first()
     if existing_vote:
         return jsonify({'error': 'Already voted on this poll'}), 400
     
-    # Check user has enough tokens (would need holdings check here)
-    # For now, just record the vote
+    # Verify burn transaction if vote cost > 0
+    vote_cost = poll.vote_cost or 0
+    if vote_cost > 0:
+        if not burn_tx_hash:
+            return jsonify({'error': 'Burn transaction required for this poll'}), 400
+        
+        # Verify burn transaction on-chain
+        from services.web3_service import web3_service
+        w3 = web3_service.w3
+        
+        try:
+            # Get transaction receipt
+            tx_receipt = w3.eth.get_transaction_receipt(burn_tx_hash)
+            if not tx_receipt:
+                return jsonify({'error': 'Transaction not found'}), 400
+            
+            # Check transaction was successful
+            if tx_receipt['status'] != 1:
+                return jsonify({'error': 'Transaction failed on blockchain'}), 400
+            
+            # Get transaction details
+            tx = w3.eth.get_transaction(burn_tx_hash)
+            
+            # Verify sender is the user
+            if tx['from'].lower() != user.wallet_address.lower():
+                return jsonify({'error': 'Transaction not from your wallet'}), 400
+            
+            # Burn address
+            burn_address = '0x000000000000000000000000000000000000dEaD'
+            
+            # Get token contract
+            token_contract = web3_service.get_token_contract(poll.token.contract_address)
+            
+            # Check for Transfer event to burn address
+            transfer_found = False
+            vote_cost_wei = vote_cost * (10 ** 18)  # Convert to wei
+            
+            for log in tx_receipt['logs']:
+                try:
+                    # Try to decode as Transfer event
+                    if log['address'].lower() == poll.token.contract_address.lower():
+                        decoded = token_contract.events.Transfer().process_log(log)
+                        
+                        # Check if transfer to burn address with correct amount
+                        if (decoded['args']['to'].lower() == burn_address.lower() and
+                            decoded['args']['from'].lower() == user.wallet_address.lower() and
+                            decoded['args']['value'] == vote_cost_wei):
+                            transfer_found = True
+                            break
+                except Exception as e:
+                    # Not a Transfer event or different format, skip
+                    continue
+            
+            if not transfer_found:
+                return jsonify({'error': f'Transaction does not burn {vote_cost} {poll.token.symbol} tokens'}), 400
+                
+        except Exception as e:
+            logging.error(f"Error verifying burn transaction {burn_tx_hash}: {e}")
+            return jsonify({'error': f'Failed to verify burn transaction: {str(e)}'}), 400
     
     # Create vote
     vote = PollVote(

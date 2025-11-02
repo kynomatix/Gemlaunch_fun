@@ -3417,7 +3417,110 @@
                 return;
             }
             
+            // Find poll in active polls to get vote cost
+            const poll = this.chatState.activePolls.find(p => p.id === pollId);
+            if (!poll) {
+                ModalManager.alert('Error', 'Poll not found', 'error');
+                return;
+            }
+            
+            const voteCost = poll.vote_cost || 0;
+            
+            // If vote cost is 0, just record the vote without burning tokens
+            if (voteCost === 0) {
+                try {
+                    const response = await fetch(`/api/token/${window.tokenContractAddress}/polls/${pollId}/vote`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Wallet-Address': userWallet,
+                            'X-CSRFToken': this.getCsrfToken()
+                        },
+                        body: JSON.stringify({
+                            option_id: optionId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        this.showToast('Vote Recorded', 'Your vote has been successfully recorded!', 'success');
+                        await this.reloadPolls();
+                    } else {
+                        this.showToast('Vote Failed', data.error || 'Failed to vote on poll. Please try again.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Failed to vote on poll:', error);
+                    this.showToast('Vote Failed', 'Failed to vote on poll. Please try again.', 'error');
+                }
+                return;
+            }
+            
+            // Check user has enough tokens
             try {
+                const holdingsResponse = await fetch(`/api/token/${window.tokenContractAddress}/holdings`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                
+                if (!holdingsResponse.ok) {
+                    ModalManager.alert('Error', 'Failed to verify token holdings. Please try again.', 'error');
+                    return;
+                }
+                
+                const holdingsData = await holdingsResponse.json();
+                const balance = holdingsData.balance || 0;
+                
+                if (balance < voteCost) {
+                    ModalManager.alert('Insufficient Tokens', `You need ${voteCost.toLocaleString()} ${this.tokenSymbol} to vote, but you only have ${balance.toLocaleString()} ${this.tokenSymbol}`, 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to check token balance:', error);
+                ModalManager.alert('Error', 'Failed to verify token holdings. Please try again.', 'error');
+                return;
+            }
+            
+            // Show confirmation modal
+            const confirmed = await ModalManager.confirm(
+                'Confirm Vote',
+                `This will burn ${voteCost.toLocaleString()} ${this.tokenSymbol} tokens to cast your vote. Continue?`,
+                'Vote',
+                'Cancel'
+            );
+            
+            if (!confirmed) {
+                return;
+            }
+            
+            // Build and submit burn transaction
+            this.showNotification('🔥 Burning Tokens', `Burning ${voteCost.toLocaleString()} ${this.tokenSymbol}...`, 'info');
+            
+            try {
+                // Burn address
+                const burnAddress = '0x000000000000000000000000000000000000dEaD';
+                
+                // Convert vote cost to wei (18 decimals)
+                const voteCostWei = (BigInt(voteCost) * BigInt(10 ** 18)).toString();
+                
+                // Build transfer transaction via TransactionManager
+                const txHash = await window.TransactionManager.transfer(
+                    window.tokenContractAddress,
+                    burnAddress,
+                    voteCostWei,
+                    `Burn ${voteCost} ${this.tokenSymbol} for poll vote`
+                );
+                
+                if (!txHash) {
+                    ModalManager.alert('Transaction Failed', 'Failed to burn tokens. Please try again.', 'error');
+                    return;
+                }
+                
+                // Show pending state
+                this.showNotification('⏳ Recording Vote', 'Waiting for transaction confirmation...', 'info');
+                
+                // Submit vote with transaction hash
                 const response = await fetch(`/api/token/${window.tokenContractAddress}/polls/${pollId}/vote`, {
                     method: 'POST',
                     headers: {
@@ -3426,25 +3529,22 @@
                         'X-CSRFToken': this.getCsrfToken()
                     },
                     body: JSON.stringify({
-                        option_id: optionId
+                        option_id: optionId,
+                        burn_tx_hash: txHash
                     })
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Show success message
-                    this.showToast('Vote Recorded', 'Your vote has been successfully recorded!', 'success');
-                    
-                    // Reload polls to update the display
+                    this.showNotification('✅ Vote Recorded', `Your vote has been recorded! ${voteCost} ${this.tokenSymbol} burned.`, 'success');
                     await this.reloadPolls();
                 } else {
-                    // Show error message
-                    this.showToast('Vote Failed', data.error || 'Failed to vote on poll. Please try again.', 'error');
+                    this.showNotification('Vote Failed', data.error || 'Failed to record vote. Please try again.', 'error');
                 }
             } catch (error) {
                 console.error('Failed to vote on poll:', error);
-                this.showToast('Vote Failed', 'Failed to vote on poll. Please try again.', 'error');
+                this.showNotification('Vote Failed', error.message || 'Failed to vote on poll. Please try again.', 'error');
             }
         },
         
