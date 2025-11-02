@@ -792,8 +792,8 @@
                         } else if (trade.type === 'airdrop') {
                             position = 'belowBar';
                             color = '#FFD700';  // Gold - signifies reward/gift
-                            text = 'A';  // Airdrop
-                            shape = 'arrowUp';  // Different shape for visual distinction
+                            text = '🪂';  // Parachute emoji
+                            shape = 'circle';  // Circle to frame the parachute
                         }
                         
                         return {
