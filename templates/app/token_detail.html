@@ -445,11 +445,11 @@
                             <div class="form-group">
                                 <label class="airdrop-input-label">Select Airdrop Type</label>
                                 <select id="airdropTypeSelect" class="airdrop-input-field" style="cursor: pointer;">
-                                    <option value="1">🎲 Random Raffle</option>
-                                    <option value="2">🏆 Top Contributors</option>
-                                    <option value="3">💬 Active Chatters</option>
-                                    <option value="4">💎 Token Holders</option>
-                                    <option value="5">🚀 Early Supporters</option>
+                                    <option value="top_by_points">🏆 Top Contributors (by Points)</option>
+                                    <option value="active_chatters">💬 Active Chatters</option>
+                                    <option value="token_holders">💎 Token Holders</option>
+                                    <option value="early_supporters">🚀 Early Supporters</option>
+                                    <option value="diamond_holders">💎 Diamond Hands (90+ day holders)</option>
                                 </select>
                                 <div id="airdropTypeDescription" style="margin-top: 0.75rem; padding: 0.75rem; 
                                     background: rgba(32, 178, 170, 0.1); border-left: 3px solid #20B2AA; 
@@ -532,16 +532,15 @@
             
             // Update description text
             const descriptions = {
-                '1': 'Random selection from eligible participants',
-                '2': 'Based on leaderboard rankings and community points',
-                '3': 'Reward users who were active in chat in the last 24 hours',
-                '4': 'All users who hold a minimum balance of your token',
-                '5': 'Top 100 earliest token holders (first buyers)'
+                'top_by_points': 'Based on leaderboard rankings and community points',
+                'active_chatters': 'Reward users who were active in chat in the last 24 hours',
+                'token_holders': 'All users who hold a minimum balance of your token',
+                'early_supporters': 'Top 100 earliest token holders (first buyers)',
+                'diamond_holders': 'Reward holders who have held for 90+ days without selling'
             };
             document.getElementById('airdropTypeDescription').textContent = descriptions[selectedType];
             
             // Hide all dynamic fields first
-            document.getElementById('airdropField_winners').style.display = 'none';
             document.getElementById('airdropField_topCount').style.display = 'none';
             document.getElementById('airdropField_chatters').style.display = 'none';
             document.getElementById('airdropField_minBalance').style.display = 'none';
@@ -549,19 +548,19 @@
             
             // Show appropriate fields based on type
             switch(selectedType) {
-                case '1': // Random Raffle
-                    document.getElementById('airdropField_winners').style.display = 'block';
-                    break;
-                case '2': // Top Contributors
+                case 'top_by_points': // Top Contributors
                     document.getElementById('airdropField_topCount').style.display = 'block';
                     break;
-                case '3': // Active Chatters
+                case 'active_chatters': // Active Chatters
                     document.getElementById('airdropField_chatters').style.display = 'block';
                     break;
-                case '4': // Token Holders
+                case 'token_holders': // Token Holders
                     document.getElementById('airdropField_minBalance').style.display = 'block';
                     break;
-                case '5': // Early Supporters
+                case 'early_supporters': // Early Supporters
+                    document.getElementById('airdropField_earlyCount').style.display = 'block';
+                    break;
+                case 'diamond_holders': // Diamond Hands
                     document.getElementById('airdropField_earlyCount').style.display = 'block';
                     break;
             }
@@ -606,11 +605,11 @@
             }
             
             const types = {
-                '1': 'Random Raffle',
-                '2': 'Top Contributors',
-                '3': 'Active Chatters',
-                '4': 'Token Holders',
-                '5': 'Early Supporters'
+                'top_by_points': 'Top Contributors (by Points)',
+                'active_chatters': 'Active Chatters',
+                'token_holders': 'Token Holders',
+                'early_supporters': 'Early Supporters',
+                'diamond_holders': 'Diamond Hands (90+ day holders)'
             };
             
             const typeText = types[selectedType.value];
@@ -620,29 +619,13 @@
             
             // Type-specific validation and data collection
             switch(selectedType.value) {
-                case '1': // Random Raffle
-                    const winners = document.getElementById('airdropWinners').value;
-                    if (!winners || winners <= 0) {
-                        ModalManager.alert('Invalid Input', 'Please enter a valid number of winners.', 'error');
-                        return;
-                    }
-                    typeSpecificData.winners = winners;
-                    recipientCount = winners;
-                    confirmationDetails = `
-                        <div>
-                            <div style="color: #999; font-size: 0.85rem;">Winners</div>
-                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">${winners}</div>
-                        </div>
-                    `;
-                    break;
-                    
-                case '2': // Top Contributors
+                case 'top_by_points': // Top Contributors
                     const topCount = document.getElementById('airdropTopCount').value;
                     if (!topCount || topCount <= 0) {
                         ModalManager.alert('Invalid Input', 'Please enter a valid number of top contributors.', 'error');
                         return;
                     }
-                    typeSpecificData.topCount = topCount;
+                    typeSpecificData.limit = parseInt(topCount);
                     recipientCount = topCount;
                     confirmationDetails = `
                         <div>
@@ -652,7 +635,7 @@
                     `;
                     break;
                     
-                case '3': // Active Chatters
+                case 'active_chatters': // Active Chatters
                     const distributeToAll = document.getElementById('airdropAllChatters').checked;
                     if (!distributeToAll) {
                         const chatters = document.getElementById('airdropChatters').value;
@@ -660,7 +643,7 @@
                             ModalManager.alert('Invalid Input', 'Please enter a valid number of active chatters or check "distribute to all".', 'error');
                             return;
                         }
-                        typeSpecificData.chatters = chatters;
+                        typeSpecificData.limit = parseInt(chatters);
                         recipientCount = chatters;
                         confirmationDetails = `
                             <div>
@@ -669,7 +652,6 @@
                             </div>
                         `;
                     } else {
-                        typeSpecificData.distributeToAll = true;
                         recipientCount = 'All';
                         confirmationDetails = `
                             <div>
@@ -680,13 +662,13 @@
                     }
                     break;
                     
-                case '4': // Token Holders
+                case 'token_holders': // Token Holders
                     const minBalance = document.getElementById('airdropMinBalance').value;
                     if (!minBalance || minBalance <= 0) {
                         ModalManager.alert('Invalid Input', 'Please enter a valid minimum token balance.', 'error');
                         return;
                     }
-                    typeSpecificData.minBalance = minBalance;
+                    typeSpecificData.min_balance = parseFloat(minBalance);
                     recipientCount = 'Holders';
                     confirmationDetails = `
                         <div>
@@ -696,18 +678,35 @@
                     `;
                     break;
                     
-                case '5': // Early Supporters
+                case 'early_supporters': // Early Supporters
                     const earlyCount = document.getElementById('airdropEarlyCount').value;
                     if (!earlyCount || earlyCount <= 0) {
                         ModalManager.alert('Invalid Input', 'Please enter a valid number of early holders.', 'error');
                         return;
                     }
-                    typeSpecificData.earlyCount = earlyCount;
+                    typeSpecificData.limit = parseInt(earlyCount);
                     recipientCount = earlyCount;
                     confirmationDetails = `
                         <div>
                             <div style="color: #999; font-size: 0.85rem;">Early Holders</div>
                             <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">Top ${earlyCount}</div>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'diamond_holders': // Diamond Hands
+                    const diamondCount = document.getElementById('airdropEarlyCount').value;
+                    if (!diamondCount || diamondCount <= 0) {
+                        ModalManager.alert('Invalid Input', 'Please enter a valid number of holders.', 'error');
+                        return;
+                    }
+                    typeSpecificData.min_holding_days = 90;
+                    typeSpecificData.limit = parseInt(diamondCount);
+                    recipientCount = diamondCount;
+                    confirmationDetails = `
+                        <div>
+                            <div style="color: #999; font-size: 0.85rem;">Diamond Hands (90+ days)</div>
+                            <div style="color: #20B2AA; font-size: 1.2rem; font-weight: bold;">Top ${diamondCount}</div>
                         </div>
                     `;
                     break;
@@ -743,6 +742,9 @@
                 </div>`,
                 async function() {
                     try {
+                        // Get airdrop type directly (dropdown now uses backend type names)
+                        const backendType = selectedType.value;
+                        
                         // Step 1: Get transaction bundle from backend
                         const response = await fetch(`/api/token/{{ token.contract_address }}/airdrop/create`, {
                             method: 'POST',
@@ -751,11 +753,19 @@
                             },
                             credentials: 'same-origin',
                             body: JSON.stringify({
-                                type: selectedType.value,
+                                type: backendType,
                                 amount_per_recipient: parseInt(amount),
                                 parameters: typeSpecificData
                             })
                         });
+                        
+                        // Check if response is JSON before parsing
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const textResponse = await response.text();
+                            console.error('Server returned non-JSON response:', textResponse.substring(0, 500));
+                            throw new Error(`Server error: Expected JSON but got ${contentType || 'unknown content-type'}`);
+                        }
                         
                         const result = await response.json();
                         
