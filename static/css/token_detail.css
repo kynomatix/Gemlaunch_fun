@@ -747,6 +747,32 @@ select.airdrop-input-field option {
     color: #FFF;
 }
 
+/* Poll Duration Select Dropdown */
+.poll-duration-select {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #FFF;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.poll-duration-select:focus {
+    border-color: #20B2AA;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 10px rgba(32, 178, 170, 0.2);
+}
+
+.poll-duration-select option {
+    background: #1a1a2e;
+    color: #FFF;
+    padding: 0.75rem;
+}
+
 .quick-amounts {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
