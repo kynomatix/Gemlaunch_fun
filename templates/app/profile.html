@@ -119,7 +119,7 @@
                         {% else %}
                             <div class="social-verify-container">
                                 <span>{{ (user_profile.twitter_handle if user_profile else None) or 'Not verified' }}</span>
-                                <a href="{{ url_for('auth_x.connect') }}" class="btn-verify-x">
+                                <a href="{{ url_for('auth_x.connect') }}" class="btn-verify-x" data-turbo="false">
                                     <i class="fab fa-x-twitter"></i> Verify X Account
                                 </a>
                             </div>
