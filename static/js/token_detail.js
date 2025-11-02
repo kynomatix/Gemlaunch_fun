@@ -28,6 +28,7 @@
         currentChartType: 'marketcap',
         currentInterval: '1h',  // Default to 1H candles like trading platforms
         myChart: null,
+        tradeDataByTimestamp: {},  // Store trade data for tooltip display
         
         // Token settings from backend
         tokenSettings: {
@@ -659,6 +660,9 @@
             // ✨ Add user trade markers and average entry line if wallet connected
             await this.addUserTradeMarkers();
             
+            // ✨ Add lightweight tooltip for trade markers
+            this.setupMarkerTooltip(container);
+            
             // Handle window resize
             const resizeObserver = new ResizeObserver(entries => {
                 if (this.myChart && entries.length > 0) {
@@ -748,6 +752,9 @@
                     });
                 }
                 
+                // Clear previous trade data
+                this.tradeDataByTimestamp = {};
+                
                 // Convert trades to chart markers using ROUNDED timestamps to match candle buckets
                 const allMarkers = result.trades
                     .map((trade, index) => {
@@ -796,6 +803,17 @@
                             shape = 'circle';  // Circle to frame the parachute
                         }
                         
+                        // Store trade data for tooltip (multiple trades can exist at same bucket)
+                        if (!this.tradeDataByTimestamp[bucketTimestamp]) {
+                            this.tradeDataByTimestamp[bucketTimestamp] = [];
+                        }
+                        this.tradeDataByTimestamp[bucketTimestamp].push({
+                            type: trade.type,
+                            amount: trade.amount,
+                            timestamp: trade.timestamp,
+                            tx_hash: trade.tx_hash
+                        });
+                        
                         return {
                             time: bucketTimestamp,  // Use ROUNDED timestamp to match candle buckets
                             position: position,
@@ -817,6 +835,70 @@
             } catch (error) {
                 console.error('Error adding user trade markers:', error);
             }
+        },
+        
+        // ✨ Lightweight tooltip for trade markers
+        setupMarkerTooltip: function(container) {
+            // Create tooltip element (reused for performance)
+            let tooltip = document.getElementById('chart-marker-tooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'chart-marker-tooltip';
+                tooltip.style.cssText = `
+                    position: absolute;
+                    display: none;
+                    background: rgba(20, 20, 20, 0.95);
+                    border: 1px solid rgba(32, 178, 170, 0.3);
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    color: #fff;
+                    font-size: 12px;
+                    pointer-events: none;
+                    z-index: 1000;
+                    white-space: nowrap;
+                    line-height: 1.5;
+                `;
+                container.appendChild(tooltip);
+            }
+            
+            // Listen to chart crosshair events (lightweight - event already fires)
+            this.myChart.subscribeCrosshairMove((param) => {
+                if (!param.time || !param.point) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+                
+                // Check if there's trade data at this timestamp (O(1) lookup)
+                const trades = this.tradeDataByTimestamp[param.time];
+                if (!trades || trades.length === 0) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+                
+                // Build tooltip content
+                const lines = trades.map(trade => {
+                    const typeLabel = trade.type.toUpperCase().replace('_', ' ');
+                    const amount = parseFloat(trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2});
+                    const date = new Date(trade.timestamp).toLocaleString();
+                    const txShort = trade.tx_hash ? trade.tx_hash.substring(0, 10) + '...' : '';
+                    
+                    return `<div style="margin: 2px 0;">
+                        <strong style="color: ${trade.type.includes('buy') || trade.type === 'airdrop' ? '#20B2AA' : '#FF4444'}">${typeLabel}</strong><br/>
+                        Amount: ${amount} ${this.tokenSymbol}<br/>
+                        ${date}<br/>
+                        ${txShort ? `TX: ${txShort}` : ''}
+                    </div>`;
+                }).join('<hr style="margin: 6px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">');
+                
+                tooltip.innerHTML = lines;
+                
+                // Position tooltip near cursor
+                const x = param.point.x;
+                const y = param.point.y;
+                tooltip.style.left = (x + 15) + 'px';
+                tooltip.style.top = (y + 15) + 'px';
+                tooltip.style.display = 'block';
+            });
         },
         
         // ✨ FTX-STYLE POSITION TRACKING: Fetch and display weighted average entry price
