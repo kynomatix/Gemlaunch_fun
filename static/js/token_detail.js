@@ -4570,7 +4570,7 @@ function toggleVestingModal() {
                     <div class="vesting-details">
                         <div class="vesting-item-wrapper">
                             <div class="vesting-item" onclick="toggleVestingProgress(this)" style="cursor: pointer;">
-                                <i class="fas fa-gift" style="color:#00D9FF;"></i>
+                                <i class="fas fa-parachute-box" style="color:#FFD700;"></i>
                                 <span class="vesting-category">Airdrops & Rewards</span>
                                 <span class="vesting-percent">${airdropsTotal}% of total</span>
                                 <small>5% daily unlock</small>
