@@ -855,8 +855,32 @@
                             }
                         }
                         
-                        // All transactions signed successfully - only show distribution TX
+                        // All transactions signed successfully - mark as completed
                         const distributionTx = txHashes.find(t => t.type === 'distribution');
+                        
+                        // Step 3: Mark airdrop as completed in backend
+                        try {
+                            const completeResponse = await fetch(`/api/token/{{ token.contract_address }}/airdrop/${result.airdrop_id}/complete`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                credentials: 'same-origin'
+                            });
+                            
+                            const completeResult = await completeResponse.json();
+                            
+                            if (!completeResponse.ok || !completeResult.success) {
+                                console.error('Failed to mark airdrop as completed:', completeResult.error);
+                                // Continue anyway - user completed the distribution
+                            } else {
+                                console.log('✅ Airdrop marked as completed. Total distributed:', completeResult.cumulative_distributed);
+                            }
+                        } catch (completeError) {
+                            console.error('Error marking airdrop as completed:', completeError);
+                            // Continue anyway - user completed the distribution
+                        }
                         
                         // Convert wei to human-readable (divide by 10^18)
                         const humanReadableAmount = (result.total_amount / 1e18).toLocaleString('en-US', {

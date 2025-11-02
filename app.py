@@ -2598,6 +2598,54 @@ def create_airdrop(contract_address):
         logging.error(f"Failed to create airdrop: {str(e)}")
         return jsonify({'error': f'Failed to create airdrop: {str(e)}'}), 500
 
+@app.route('/api/token/<contract_address>/airdrop/<int:airdrop_id>/complete', methods=['POST'])
+@require_wallet_connection
+def complete_airdrop(contract_address, airdrop_id):
+    """Mark airdrop as completed and update token.total_airdropped counter"""
+    user = get_current_user()
+    token = Token.query.filter_by(contract_address=contract_address).first_or_404()
+    
+    # Verify user is the token creator
+    if not token.creator or user.wallet_address.lower() != token.creator.wallet_address.lower():
+        return jsonify({'error': 'Only the token creator can complete airdrops'}), 403
+    
+    # Get airdrop record
+    airdrop = Airdrop.query.filter_by(id=airdrop_id, token_id=token.id).first_or_404()
+    
+    # Verify airdrop is still pending
+    if airdrop.status != 'pending':
+        return jsonify({'error': f'Airdrop already {airdrop.status}'}), 400
+    
+    try:
+        # Mark airdrop as completed
+        airdrop.status = 'completed'
+        airdrop.completed_at = datetime.now(timezone.utc)
+        
+        # Update token.total_airdropped counter
+        # Convert from wei to human-readable for storage
+        total_airdropped_human = airdrop.total_amount / (10 ** 18)
+        
+        if token.total_airdropped is None:
+            token.total_airdropped = 0
+        
+        token.total_airdropped += total_airdropped_human
+        
+        db.session.commit()
+        
+        logging.info(f"✅ Airdrop {airdrop_id} completed: {total_airdropped_human} tokens distributed. Total airdropped: {token.total_airdropped}")
+        
+        return jsonify({
+            'success': True,
+            'airdrop_id': airdrop.id,
+            'total_distributed': total_airdropped_human,
+            'cumulative_distributed': token.total_airdropped
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Failed to complete airdrop: {str(e)}")
+        return jsonify({'error': f'Failed to complete airdrop: {str(e)}'}), 500
+
 # Post-Graduation DEX Integration Endpoints
 @app.route('/api/token/<address>/graduation-status', methods=['GET'])
 @cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
