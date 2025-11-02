@@ -3024,22 +3024,6 @@
                             </div>
                             <div class="modal-body">
                                 <div class="settings-section">
-                                    <div class="section-header" onclick="toggleTreasuryManagement()" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                                        <h4 style="margin: 0;"><i class="fas fa-coins"></i> Treasury Management</h4>
-                                        <i class="fas fa-chevron-down treasury-toggle" style="transition: transform 0.3s; transform: rotate(180deg);"></i>
-                                    </div>
-                                    <div id="treasuryManagementContent">
-                                        <p>Configure treasury distribution settings for your community.</p>
-                                        
-                                        <div class="form-group">
-                                            <label>Airdrop Threshold</label>
-                                            <input type="number" class="form-control" value="100000" placeholder="Market cap for airdrops">
-                                            <small class="setting-hint">Market cap milestone for community airdrops</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="settings-section">
                                     <h4><i class="fas fa-shield-alt"></i> Chat Access Control</h4>
                                     
                                     <div class="form-check" style="margin-bottom: 1.5rem;">
@@ -4399,24 +4383,6 @@
         if (content && toggle) {
             content.classList.toggle('collapsed');
             toggle.style.transform = content.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(180deg)';
-        }
-    };
-    
-    window.toggleTreasuryManagement = function() {
-        const content = document.getElementById('treasuryManagementContent');
-        const toggle = document.querySelector('.treasury-toggle');
-        if (content && toggle) {
-            if (content.classList.contains('collapsed')) {
-                // Expand: remove collapsed class, set maxHeight, rotate chevron up
-                content.classList.remove('collapsed');
-                content.style.maxHeight = content.scrollHeight + 'px';
-                toggle.style.transform = 'rotate(180deg)';
-            } else {
-                // Collapse: add collapsed class, set maxHeight to 0, rotate chevron down
-                content.classList.add('collapsed');
-                content.style.maxHeight = '0';
-                toggle.style.transform = 'rotate(0deg)';
-            }
         }
     };
     
