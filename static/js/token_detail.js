@@ -809,7 +809,7 @@
                         }
                         this.tradeDataByTimestamp[bucketTimestamp].push({
                             type: trade.type,
-                            amount: trade.amount,
+                            token_amount: trade.token_amount,
                             timestamp: trade.timestamp,
                             tx_hash: trade.tx_hash
                         });
@@ -878,7 +878,7 @@
                 // Build tooltip content
                 const lines = trades.map(trade => {
                     const typeLabel = trade.type.toUpperCase().replace('_', ' ');
-                    const amount = parseFloat(trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2});
+                    const amount = parseFloat(trade.token_amount).toLocaleString(undefined, {maximumFractionDigits: 2});
                     const date = new Date(trade.timestamp).toLocaleString();
                     
                     return `<div style="margin: 2px 0;">
