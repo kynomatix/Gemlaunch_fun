@@ -827,11 +827,26 @@
                         }
                         
                         // All transactions signed successfully
-                        const txDetails = txHashes.map(t => `${t.type}: ${t.hash}`).join('\n');
+                        const txListHtml = txHashes.map(t => 
+                            `<div style="margin: 0.5rem 0; font-family: monospace; font-size: 0.85rem; word-break: break-all;">
+                                <strong style="color: #00d4aa;">${t.type}:</strong>
+                                <a href="https://explorer.kasplextest.xyz/tx/${t.hash}" target="_blank" 
+                                   style="color: #20B2AA; text-decoration: underline;">${t.hash}</a>
+                            </div>`
+                        ).join('');
                         
-                        ModalManager.alert(
+                        const htmlMessage = `
+                            <p style="margin-bottom: 1rem;">Successfully distributed <strong>${result.total_amount} ${{ token.symbol }}</strong> to <strong>${result.recipient_count}</strong> recipient(s)!</p>
+                            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 1rem;">
+                                <p style="margin-bottom: 0.5rem;"><strong>Transactions:</strong></p>
+                                ${txListHtml}
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.9rem; color: #888;">Click the transaction hashes above to view on block explorer.</p>
+                        `;
+                        
+                        ModalManager.alertHtml(
                             'Airdrop Distributed!',
-                            `Successfully distributed ${result.total_amount} ${{ token.symbol }} to ${result.recipient_count} recipients!\n\nTransactions:\n${txDetails}\n\nVerify on block explorer:\nhttps://explorer.kasplextest.xyz/address/{{ token.contract_address }}?tab=token_transfers`,
+                            htmlMessage,
                             'success',
                             () => {
                                 // Reload after user closes the modal

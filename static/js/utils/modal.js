@@ -81,6 +81,57 @@
         },
         
         /**
+         * Show an alert modal with trusted HTML content (USE CAREFULLY - only for internal trusted content)
+         * @param {string} title - Modal title (will be escaped)
+         * @param {string} htmlMessage - HTML message content (NOT escaped - must be trusted)
+         * @param {string} type - Modal type: 'success', 'error', or 'info' (default)
+         * @param {function} callback - Optional callback function when OK is clicked
+         * 
+         * WARNING: Only use this for internally-generated HTML content. NEVER pass user input directly.
+         */
+        alertHtml: function(title, htmlMessage, type = 'info', callback) {
+            const iconClass = type === 'success' ? 'fa-check-circle' : 
+                            type === 'error' ? 'fa-exclamation-circle' : 
+                            'fa-info-circle';
+            const iconColor = type === 'success' ? '#4CAF50' : 
+                            type === 'error' ? '#FF5252' : 
+                            '#20B2AA';
+            
+            const modalHTML = `
+                <div id="customAlertModal" class="modal" style="display: flex;">
+                    <div class="modal-content" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <h3><i class="fas ${iconClass}" style="color: ${iconColor};"></i> ${escapeHtml(title)}</h3>
+                            <button class="modal-close" onclick="ModalManager.closeModal('customAlertModal')">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="color: #CCC; line-height: 1.5;">${htmlMessage}</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" onclick="ModalManager.closeModal('customAlertModal')">
+                                <i class="fas fa-check"></i> OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const existingModal = document.getElementById('customAlertModal');
+            if (existingModal) existingModal.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            if (callback) {
+                const modal = document.getElementById('customAlertModal');
+                const okBtn = modal.querySelector('.btn-primary');
+                okBtn.onclick = function() {
+                    ModalManager.closeModal('customAlertModal');
+                    callback();
+                };
+            }
+        },
+        
+        /**
          * Show a confirm modal
          * @param {string} title - Modal title
          * @param {string} message - Modal message
