@@ -198,6 +198,64 @@ class TransactionManager {
         }
     }
     
+    /**
+     * Simple ERC20 token transfer (for poll voting, etc.)
+     * Builds and submits a transfer transaction directly via MetaMask
+     * 
+     * @param {string} tokenAddress - ERC20 token contract address
+     * @param {string} toAddress - Recipient address
+     * @param {string} amount - Amount in wei (as string)
+     * @param {string} description - Optional description for logging
+     * @returns {Promise<string>} Transaction hash
+     */
+    async transfer(tokenAddress, toAddress, amount, description = 'Token transfer') {
+        if (!this.walletManager.isConnected()) {
+            throw new Error('Wallet not connected. Please connect your wallet first.');
+        }
+        
+        const wallet = this.walletManager.getConnectedWallet();
+        if (wallet.wallet_type !== 'metamask') {
+            throw new Error('Token transfers currently only supported with MetaMask');
+        }
+        
+        // Build ERC20 transfer calldata
+        // Function signature: transfer(address,uint256)
+        // Function selector: 0xa9059cbb
+        const methodId = '0xa9059cbb';
+        
+        // Pad address to 32 bytes (remove 0x prefix, pad left with zeros)
+        const addressParam = toAddress.slice(2).padStart(64, '0');
+        
+        // Convert amount to hex and pad to 32 bytes
+        const amountBigInt = BigInt(amount);
+        const amountHex = amountBigInt.toString(16).padStart(64, '0');
+        
+        const data = methodId + addressParam + amountHex;
+        
+        // Build transaction
+        const txData = {
+            to: tokenAddress,
+            value: '0x0',
+            data: data
+        };
+        
+        console.log(`🔄 Submitting ${description}:`, {
+            token: tokenAddress,
+            to: toAddress,
+            amount: amount
+        });
+        
+        // Sign and submit via MetaMask
+        const result = await this._signWithMetaMask(txData);
+        
+        if (!result.tx_hash) {
+            throw new Error('Transaction failed - no hash returned');
+        }
+        
+        console.log(`✅ ${description} submitted:`, result.tx_hash);
+        return result.tx_hash;
+    }
+    
     // ===== PHASE 3: SIGN & SUBMIT WITH WALLET =====
     /**
      * Sign and submit transaction using wallet-specific method
