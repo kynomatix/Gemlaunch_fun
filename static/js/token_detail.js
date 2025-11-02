@@ -3505,7 +3505,7 @@
                 const voteCostWei = (BigInt(voteCost) * BigInt(10 ** 18)).toString();
                 
                 // Build transfer transaction via TransactionManager
-                const txHash = await window.TransactionManager.transfer(
+                const txHash = await window.txManager.transfer(
                     window.tokenContractAddress,
                     burnAddress,
                     voteCostWei,
