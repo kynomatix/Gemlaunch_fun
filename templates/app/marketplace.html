@@ -30,7 +30,6 @@
                 <div class="trending-ticker-track" id="trendingTickerTrack">
                     <!-- Trending tokens will be loaded here -->
                 </div>
-                <button class="trending-ticker-close" onclick="hideTrendingTicker()" title="Hide">×</button>
             </div>
 
             <div class="marketplace-header">
@@ -717,16 +716,7 @@
     
     // Trending Tokens Ticker (Compact)
     (function() {
-        const TRENDING_HIDDEN_KEY = 'gemlaunch_trending_hidden';
-        
-        window.hideTrendingTicker = function() {
-            document.getElementById('trendingTicker').classList.add('hidden');
-            localStorage.setItem(TRENDING_HIDDEN_KEY, 'true');
-        };
-        
         async function loadTrendingTicker() {
-            if (localStorage.getItem(TRENDING_HIDDEN_KEY) === 'true') return;
-            
             try {
                 const response = await fetch('/api/trending-tokens');
                 const data = await response.json();

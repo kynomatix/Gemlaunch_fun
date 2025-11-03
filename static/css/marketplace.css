@@ -1198,24 +1198,7 @@
     color: #ef4444;
 }
 
-.trending-ticker-close {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 1.25rem;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    line-height: 1;
-    transition: color 0.2s;
-}
 
-.trending-ticker-close:hover {
-    color: #ef4444;
-}
 
 @media (max-width: 768px) {
     .trending-ticker {
@@ -1294,24 +1277,7 @@
     color: #ef4444;
 }
 
-.trending-ticker-close {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 1.25rem;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    line-height: 1;
-    transition: color 0.2s;
-}
 
-.trending-ticker-close:hover {
-    color: #ef4444;
-}
 
 @media (max-width: 768px) {
     .trending-ticker {
@@ -1405,24 +1371,7 @@
     color: #ef4444;
 }
 
-.trending-ticker-close {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 1.25rem;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    line-height: 1;
-    transition: color 0.2s;
-}
 
-.trending-ticker-close:hover {
-    color: #ef4444;
-}
 
 /* Adjust marketplace padding when ticker is visible */
 .marketplace-main {
