@@ -508,6 +508,15 @@
             </div>
         </nav>
         
+        <!-- Trending Ticker (Marketplace only - Outside app-main for viewport positioning) -->
+        {% if request.endpoint == 'token_marketplace' %}
+        <div id="trendingTicker" class="trending-ticker hidden">
+            <div class="trending-ticker-track" id="trendingTickerTrack">
+                <!-- Trending tokens will be loaded here -->
+            </div>
+        </div>
+        {% endif %}
+        
         <!-- Main Content -->
         <main class="app-main" id="mainContent">
             <div class="main-content">
