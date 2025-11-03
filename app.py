@@ -1470,7 +1470,7 @@ def api_trending_tokens():
             # Get holder count (unique addresses that have traded)
             holder_count = TradeEvent.query.filter(
                 TradeEvent.token_id == token.id
-            ).with_entities(func.count(func.distinct(TradeEvent.wallet_address))).scalar() or 0
+            ).with_entities(func.count(func.distinct(TradeEvent.user_wallet_address))).scalar() or 0
             
             # Calculate trending score
             # Volume: 40%, Price change: 30%, Trades: 20%, Holders: 10%
