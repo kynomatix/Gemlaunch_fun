@@ -1,5 +1,5 @@
 .marketplace-main {
-    padding-top: 100px;
+    padding-top: 136px;
     min-height: 100vh;
     overflow-x: hidden;
     max-width: 100%;
@@ -1246,11 +1246,13 @@
     border-bottom: 1px solid rgba(32, 178, 170, 0.15);
     height: 36px;
     overflow: hidden;
-    margin: 0 -2rem 1.5rem -2rem;
+    position: fixed;
+    top: 60px;
+    left: 280px;
+    right: 0;
+    z-index: 998;
     opacity: 0.6;
-    transition: opacity 0.3s ease;
-    position: relative;
-    contain: layout size style;
+    transition: opacity 0.3s ease, left 0.3s ease;
 }
 
 .trending-ticker:hover {
@@ -1259,6 +1261,23 @@
 
 .trending-ticker.hidden {
     display: none;
+}
+
+/* Adjust ticker when sidebar collapses */
+.app-main.sidebar-collapsed .trending-ticker {
+    left: 60px;
+}
+
+/* Mobile: full width ticker */
+@media (max-width: 768px) {
+    .trending-ticker {
+        left: 0 !important;
+        height: 32px;
+    }
+    
+    .marketplace-main {
+        padding-top: 128px !important;
+    }
 }
 
 .trending-ticker-track {
