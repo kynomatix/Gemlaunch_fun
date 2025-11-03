@@ -642,6 +642,7 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
         # Evaluate achievements for users who traded (auto-award trading achievements)
         if updated_users > 0:
             from services.achievement_service import evaluate_user_achievements
+            from models import User
             unique_wallets = set(te.user_wallet_address.lower() for te, _ in new_trade_events_with_amounts)
             for wallet in unique_wallets:
                 user = User.query.filter_by(wallet_address=wallet).first()
