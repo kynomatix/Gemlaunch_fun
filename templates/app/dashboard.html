@@ -3012,6 +3012,13 @@
             margin-top: 2rem;
             max-width: 100%;
             overflow-x: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Reveal dashboard after fonts load */
+        .dashboard-tabs.fonts-loaded {
+            opacity: 1;
         }
 
         /* FOUC FIX: Hide tabs until fonts are fully loaded */
@@ -3028,8 +3035,8 @@
             transition: opacity 0.4s ease, transform 0.4s ease;
         }
 
-        /* Reveal tabs only after fonts are confirmed loaded */
-        .tab-navigation.fonts-loaded {
+        /* Tab navigation hidden by default, revealed with parent */
+        .tab-navigation {
             opacity: 1;
             transform: translateY(0);
         }
@@ -5681,35 +5688,35 @@ document.addEventListener('keydown', function(e) {
 });
 
 /**
- * FOUC Fix: Wait for fonts to load before revealing tabs
- * Prevents flash of unstyled content on dashboard
+ * FOUC Fix: Wait for fonts to load before revealing dashboard content
+ * Prevents flash of unstyled content
  */
 (function() {
-    function revealTabs() {
-        const tabNav = document.querySelector('.tab-navigation');
-        if (tabNav && !tabNav.classList.contains('fonts-loaded')) {
-            tabNav.classList.add('fonts-loaded');
-            console.log('✅ Dashboard tabs revealed - fonts loaded');
+    function revealDashboard() {
+        const dashboardTabs = document.querySelector('.dashboard-tabs');
+        if (dashboardTabs && !dashboardTabs.classList.contains('fonts-loaded')) {
+            dashboardTabs.classList.add('fonts-loaded');
+            console.log('✅ Dashboard revealed - fonts loaded');
         }
     }
     
     // Wait for Font Awesome and other fonts to load
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(() => {
-            revealTabs();
+            revealDashboard();
         }).catch((error) => {
-            console.warn('Font loading check failed, revealing tabs anyway:', error);
-            revealTabs();
+            console.warn('Font loading check failed, revealing dashboard anyway:', error);
+            revealDashboard();
         });
     } else {
         // Fallback for browsers that don't support Font Loading API
-        revealTabs();
+        revealDashboard();
     }
     
-    // Safety fallback: Always reveal tabs after 3 seconds max
+    // Safety fallback: Always reveal dashboard after 2 seconds max
     setTimeout(() => {
-        revealTabs();
-    }, 3000);
+        revealDashboard();
+    }, 2000);
 })();
 
 </script>
