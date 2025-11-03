@@ -136,9 +136,11 @@ def check_token_graduation(token):
             progress_pct = (market_cap_usd / graduation_threshold_usd) * 100
             logging.debug(f"Token {token.symbol} not ready for graduation - Progress: {progress_pct:.1f}%")
             
-            # Update market cap in database
-            token.current_market_cap = market_cap_usd
-            db.session.commit()
+            # NOTE: We don't update current_market_cap here because:
+            # - event_indexer.py already updates it via update_market_data() with KAS values
+            # - current_market_cap and market_cap_ath are stored in KAS, not USD
+            # - Overwriting with USD would create unit mismatch and break ATH calculations
+            # - The event_indexer syncs on every trade, so the value is already current
             
             return {
                 'status': 'not_ready',
