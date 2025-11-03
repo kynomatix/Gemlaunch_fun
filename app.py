@@ -7171,8 +7171,8 @@ def api_create_token():
             new_token.creator_id = user.id
             new_token.deployment_status = 'pending'
             new_token.circulating_supply = 0
-            new_token.current_price = 0.001
-            new_token.current_market_cap = 1000
+            new_token.current_price = 0
+            new_token.current_market_cap = 0
             
             # Add to database and flush to get ID
             db.session.add(new_token)
