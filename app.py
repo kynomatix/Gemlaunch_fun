@@ -7484,6 +7484,16 @@ def confirm_token_deployment(token_id):
         
         db.session.commit()
         
+        # Evaluate achievements for the creator (auto-award if criteria met)
+        try:
+            achievement_progress = evaluate_user_achievements(creator.id)
+            newly_awarded = [name for aid, data in achievement_progress.items() 
+                           if data.get('is_completed') and data.get('earned_at')]
+            if newly_awarded:
+                logging.info(f"🎉 Awarded achievements to {creator.display_name}: {', '.join(newly_awarded)}")
+        except Exception as e:
+            logging.error(f"Error evaluating achievements after token deployment: {str(e)}")
+        
         # Log activity for token launch
         activity = Activity()
         activity.user_id = creator.id
