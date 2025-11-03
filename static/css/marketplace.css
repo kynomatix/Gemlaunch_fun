@@ -1246,6 +1246,12 @@
     overflow: hidden;
     margin: -2rem -2rem 1.5rem -2rem;
     max-width: none;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+.trending-ticker:hover {
+    opacity: 1;
 }
 
 .trending-ticker.hidden {
