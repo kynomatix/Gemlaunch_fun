@@ -1138,65 +1138,16 @@
 
 /* ===================================
 
-.trending-ticker.hidden {
-    display: none;
-}
 
-.trending-ticker-track {
-    display: flex;
-    gap: 2rem;
-    animation: ticker-scroll 30s linear infinite;
-    padding: 0 2rem;
-}
 
-.trending-ticker-track:hover {
-    animation-play-state: paused;
-}
 
-@keyframes ticker-scroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-}
 
-.trending-ticker-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-}
 
-.trending-ticker-item:hover {
-    opacity: 0.7;
-}
 
-.trending-ticker-item img {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    object-fit: cover;
-}
 
-.ticker-symbol {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #FFFFFF;
-}
 
-.ticker-perf {
-    font-size: 0.75rem;
-    font-weight: 700;
-}
 
-.ticker-perf.pos {
-    color: #22c55e;
-}
 
-.ticker-perf.neg {
-    color: #ef4444;
-}
 
 
 
@@ -1217,71 +1168,61 @@
 
 /* ===================================
 
-.trending-ticker.hidden {
-    display: none;
-}
 
-.trending-ticker-track {
-    display: flex;
-    gap: 2rem;
-    animation: ticker-scroll 30s linear infinite;
-    padding: 0 2rem;
-}
 
-.trending-ticker-track:hover {
-    animation-play-state: paused;
-}
 
-@keyframes ticker-scroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-}
 
-.trending-ticker-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-}
 
-.trending-ticker-item:hover {
-    opacity: 0.7;
-}
 
-.trending-ticker-item img {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    object-fit: cover;
-}
 
-.ticker-symbol {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #FFFFFF;
-}
 
-.ticker-perf {
-    font-size: 0.75rem;
-    font-weight: 700;
-}
 
-.ticker-perf.pos {
-    color: #22c55e;
-}
 
-.ticker-perf.neg {
-    color: #ef4444;
-}
 
 
 
 @media (max-width: 768px) {
     .trending-ticker {
         height: 32px;
+    }
+    
+    .trending-ticker-item img {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .ticker-symbol {
+        font-size: 0.8rem;
+    }
+}
+
+/* ===================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Adjust marketplace padding when ticker is visible */
+.marketplace-main {
+    padding-top: 136px !important; /* 60px topbar + 36px ticker + 40px spacing */
+}
+
+@media (max-width: 768px) {
+    .trending-ticker {
+        height: 32px;
+    }
+    
+    .marketplace-main {
+        padding-top: 132px !important; /* 60px topbar + 32px ticker + 40px spacing */
     }
     
     .trending-ticker-item img {
@@ -1296,7 +1237,6 @@
 
 /* ===================================
    ULTRA-COMPACT TRENDING TICKER
-   Fixed below 60px top bar
    =================================== */
 
 .trending-ticker {
@@ -1371,11 +1311,9 @@
     color: #ef4444;
 }
 
-
-
 /* Adjust marketplace padding when ticker is visible */
 .marketplace-main {
-    padding-top: 136px !important; /* 60px topbar + 36px ticker + 40px spacing */
+    padding-top: 136px !important;
 }
 
 @media (max-width: 768px) {
@@ -1384,7 +1322,7 @@
     }
     
     .marketplace-main {
-        padding-top: 132px !important; /* 60px topbar + 32px ticker + 40px spacing */
+        padding-top: 132px !important;
     }
     
     .trending-ticker-item img {
