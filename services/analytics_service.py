@@ -121,12 +121,20 @@ def calculate_trade_stats():
         dict: Trade counts and unique traders
     """
     try:
-        # Total trades
-        total_trades = db.session.query(func.count(TradeEvent.id)).scalar() or 0
+        # Total trades (from visible tokens only)
+        total_trades = db.session.query(func.count(TradeEvent.id)).join(
+            Token, TradeEvent.token_id == Token.id
+        ).filter(
+            Token.is_visible == True
+        ).scalar() or 0
         
-        # Unique traders - count distinct user_ids
+        # Unique traders - count distinct wallet addresses (from visible tokens only)
         unique_traders = db.session.query(
-            func.count(distinct(TradeEvent.user_id))
+            func.count(distinct(TradeEvent.user_wallet_address))
+        ).join(
+            Token, TradeEvent.token_id == Token.id
+        ).filter(
+            Token.is_visible == True
         ).scalar() or 0
         
         return {
@@ -207,8 +215,8 @@ def get_recent_trades(limit=20):
         
         trades_data = []
         for trade in recent_trades:
-            # Get user info
-            user = User.query.get(trade.user_id) if trade.user_id else None
+            # Get user info by wallet address
+            user = User.query.filter_by(wallet_address=trade.user_wallet_address).first() if trade.user_wallet_address else None
             
             trades_data.append({
                 'trade_type': trade.trade_type,
@@ -255,6 +263,8 @@ def get_recent_token_creations(limit=10):
             creator = User.query.get(token.creator_id) if token.creator_id else None
             
             market_cap_kas = float(token.current_market_cap) if token.current_market_cap else 0.0
+            # Determine if PRO token by checking if it has vesting contracts
+            is_pro = bool(token.reserved_tokens and token.reserved_tokens > 0)
             
             tokens_data.append({
                 'token_id': token.id,
@@ -270,7 +280,7 @@ def get_recent_token_creations(limit=10):
                 'creator_display_name': creator.display_name if creator and creator.display_name else None,
                 'created_at': token.created_at.isoformat() if token.created_at else None,
                 'graduation_status': token.graduation_status,
-                'is_pro': token.is_pro
+                'is_pro': is_pro
             })
         
         return tokens_data
