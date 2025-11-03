@@ -1239,27 +1239,12 @@
    ULTRA-COMPACT TRENDING TICKER
    =================================== */
 
-/* Fix: Remove transform from app-main to allow ticker to use viewport positioning */
-.app-main {
-    transform: none !important;
-}
-
 .trending-ticker {
-    position: fixed;
-    top: 60px;
-    left: 280px;
-    right: 0;
     background: rgba(32, 178, 170, 0.05);
     border-bottom: 1px solid rgba(32, 178, 170, 0.15);
     height: 36px;
     overflow: hidden;
-    z-index: 999;
-    transition: left 0.3s ease;
-}
-
-/* Adjust when sidebar is collapsed */
-.app-main.sidebar-collapsed ~ .trending-ticker {
-    left: 60px;
+    margin: -2rem -2rem 1.5rem -2rem;
 }
 
 .trending-ticker.hidden {
@@ -1322,19 +1307,9 @@
     color: #ef4444;
 }
 
-/* Adjust marketplace padding when ticker is visible */
-.marketplace-main {
-    padding-top: 136px !important;
-}
-
 @media (max-width: 768px) {
     .trending-ticker {
         height: 32px;
-        left: 0 !important;
-    }
-    
-    .marketplace-main {
-        padding-top: 132px !important;
     }
     
     .trending-ticker-item img {
