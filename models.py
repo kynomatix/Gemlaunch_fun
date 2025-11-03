@@ -281,6 +281,12 @@ class Token(db.Model):
         self.current_market_cap = kas_reserve
         self.updated_at = datetime.now(timezone.utc)
         
+        # Update market cap ATH if current market cap is higher (tracking in KAS terms)
+        # Convert to float for comparison to handle Decimal/float type safely
+        current_ath = float(self.market_cap_ath) if self.market_cap_ath is not None else 0
+        if kas_reserve > current_ath:
+            self.market_cap_ath = kas_reserve
+        
         # Legacy auto-graduation disabled - graduation is now handled by graduation_monitor.py
         # The old logic had a bug: it compared KAS reserves to USD threshold (528 KAS >= $50 USD)
         # if not self.is_graduated and self.current_market_cap >= self.graduation_threshold:

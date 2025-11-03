@@ -78,6 +78,9 @@
             this.chatState.userLoves = JSON.parse(localStorage.getItem(`userLoves_${this.tokenSymbol}`) || '[]');
             this.chatState.userScore = parseInt(localStorage.getItem(`userScore_${this.tokenSymbol}`)) || 0;
             
+            // Update balance displays now that tokenSymbol is available (fixes Turbo navigation bug)
+            this.updateBalanceDisplays();
+            
             // Auto-collapse sidebar and initialize
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
@@ -1324,7 +1327,8 @@
                     kasBalanceEl.style.fontWeight = 'normal';
                 }
             }
-            if (tokenBalanceEl) {
+            if (tokenBalanceEl && this.tokenSymbol) {
+                // Only update if tokenSymbol is available (prevents "null" display on Turbo navigation)
                 tokenBalanceEl.textContent = `Balance: ${this.tokenBalance.toLocaleString()} ${this.tokenSymbol}`;
                 // Highlight token balance in sell mode
                 if (this.currentTradeMode === 'sell') {
