@@ -11,6 +11,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -1377,7 +1378,7 @@ def app_dashboard():
     if search_query:
         search_pattern = f'%{search_query}%'
         query = query.filter(
-            db.or_(
+            or_(
                 Token.name.ilike(search_pattern),
                 Token.symbol.ilike(search_pattern),
                 db.func.coalesce(Token.contract_address, '').ilike(search_pattern)
@@ -1392,7 +1393,7 @@ def app_dashboard():
     if search_query:
         search_pattern = f'%{search_query}%'
         count_query = count_query.filter(
-            db.or_(
+            or_(
                 Token.name.ilike(search_pattern),
                 Token.symbol.ilike(search_pattern),
                 db.func.coalesce(Token.contract_address, '').ilike(search_pattern)
@@ -3791,7 +3792,7 @@ def leaderboard():
         if user_rank is None:
             users_above = User.query.filter(
                 User.gem_points > user.gem_points,
-                db.or_(
+                or_(
                     User.total_tokens_created > 0,
                     User.total_trades_count > 0
                 ),
@@ -3834,7 +3835,7 @@ def get_user_profile(user_id):
         # Calculate user's rank (only count users with real activity)
         users_above = User.query.filter(
             User.gem_points > user.gem_points,
-            db.or_(
+            or_(
                 User.total_tokens_created > 0,
                 User.total_trades_count > 0
             )
