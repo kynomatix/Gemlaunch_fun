@@ -2540,7 +2540,7 @@
                             </span>
                             <div style="display: flex; flex-direction: column;">
                                 <span style="color: #FFF; font-size: 0.9rem;">
-                                    ${tokenAmount} ${this.tokenSymbol}
+                                    ${tokenAmount} ${this.tokenSymbol || 'TOKEN'}
                                 </span>
                                 <span style="color: #999; font-size: 0.75rem;">
                                     ${kasAmount} KAS

@@ -172,8 +172,8 @@
             TokenDetail.init({
                 tokenPrice: {{ token.current_price }},
                 marketCap: {{ ((token.current_market_cap|float) if token.current_market_cap else 0) * (kas_price|float) }},
-                tokenSymbol: '{{ token.symbol }}',
-                tokenName: '{{ token.name }}',
+                tokenSymbol: '{{ token.symbol if token.symbol else "TOKEN" }}',
+                tokenName: '{{ token.name if token.name else "Unknown Token" }}',
                 isProToken: {{ 'true' if is_pro_token else 'false' }},
                 kasPrice: {{ kas_price }},
                 tokenSettings: {
