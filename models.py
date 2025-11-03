@@ -1223,10 +1223,10 @@ class PlatformSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
     # Graduation settings
-    graduation_threshold_usd = db.Column(db.Numeric(precision=20, scale=2), default=200.00)  # $200 for testnet
+    graduation_threshold_usd = db.Column(db.Numeric(precision=20, scale=2), default=50.00)
     
     # Network info (for display purposes)
-    network = db.Column(db.String(32), default='testnet')  # testnet or mainnet
+    network = db.Column(db.String(32), default='testnet')
     
     # Metadata
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
