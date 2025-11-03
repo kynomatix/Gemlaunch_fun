@@ -1060,8 +1060,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Upload profile picture to server
 async function uploadProfilePicture(file) {
+    const uploadButton = document.querySelector('.btn-upload');
+    const originalButtonHTML = uploadButton.innerHTML;
+    
+    uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    uploadButton.disabled = true;
+    
     const formData = new FormData();
     formData.append('profile_picture', file);
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]');
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken.value);
+    }
     
     try {
         const response = await fetch('/app/profile', {
@@ -1070,14 +1081,24 @@ async function uploadProfilePicture(file) {
         });
         
         if (response.ok) {
-            // Show success message
+            const profileImg = document.querySelector('.profile-picture img');
+            if (profileImg) {
+                const timestamp = new Date().getTime();
+                const currentSrc = profileImg.src.split('?')[0];
+                profileImg.src = `${currentSrc}?v=${timestamp}`;
+            }
+            
             showSuccessMessage('Profile picture updated successfully!');
         } else {
-            throw new Error('Upload failed');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Upload failed');
         }
     } catch (error) {
         console.error('Profile picture upload error:', error);
-        ProfileNotification.showAlert('Upload Failed', 'Failed to upload profile picture. Please try again.', 'error');
+        ProfileNotification.showAlert('Upload Failed', error.message || 'Failed to upload profile picture. Please try again.', 'error');
+    } finally {
+        uploadButton.innerHTML = originalButtonHTML;
+        uploadButton.disabled = false;
     }
 }
 
