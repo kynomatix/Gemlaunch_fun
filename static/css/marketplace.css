@@ -1245,7 +1245,7 @@
     height: 36px;
     overflow: hidden;
     margin: -2rem -2rem 1.5rem -2rem;
-    width: calc(100% + 4rem);
+    max-width: none;
 }
 
 .trending-ticker.hidden {
