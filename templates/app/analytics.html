@@ -1,0 +1,299 @@
+{% extends "app/base_layout.html" %}
+
+{% block title %}Analytics - Gemlaunch.fun{% endblock %}
+
+{% block extra_head %}
+<style>
+    .analytics-container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .analytics-header {
+        margin-bottom: 2rem;
+    }
+    
+    .analytics-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #20B2AA, #00CED1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    
+    .analytics-header p {
+        color: #888;
+        font-size: 1.1rem;
+    }
+    
+    /* Tabs */
+    .analytics-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid rgba(32, 178, 170, 0.2);
+    }
+    
+    .tab-btn {
+        padding: 1rem 2rem;
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+    }
+    
+    .tab-btn.active {
+        color: #20B2AA;
+        border-bottom-color: #20B2AA;
+    }
+    
+    .tab-btn:hover {
+        color: #20B2AA;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* Metrics Grid */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+    
+    .metric-card {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(32, 178, 170, 0.2);
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(32, 178, 170, 0.5);
+        box-shadow: 0 10px 30px rgba(32, 178, 170, 0.2);
+    }
+    
+    .metric-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .metric-label {
+        color: #888;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #20B2AA, #00CED1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-subtitle {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    /* Visualization Section */
+    .visualization-section {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(32, 178, 170, 0.2);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .visualization-section h2 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: #20B2AA;
+    }
+    
+    .iframe-container {
+        width: 100%;
+        height: 600px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(32, 178, 170, 0.1);
+    }
+    
+    .iframe-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    
+    /* GraphQL Playground */
+    .graphql-container {
+        width: 100%;
+        height: calc(100vh - 200px);
+        min-height: 600px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(32, 178, 170, 0.2);
+    }
+    
+    .graphql-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: white;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .analytics-container {
+            padding: 1rem;
+        }
+        
+        .analytics-header h1 {
+            font-size: 2rem;
+        }
+        
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .tab-btn {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+        
+        .iframe-container {
+            height: 400px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <div class="analytics-header">
+        <h1>📊 Platform Analytics</h1>
+        <p>Real-time insights into Gemlaunch platform performance</p>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="analytics-tabs">
+        <button class="tab-btn active" onclick="switchTab('overview')">
+            <i class="fas fa-chart-line"></i> Overview
+        </button>
+        <button class="tab-btn" onclick="switchTab('graphql')">
+            <i class="fas fa-code"></i> GraphQL Playground
+        </button>
+    </div>
+    
+    <!-- Overview Tab -->
+    <div id="overview-tab" class="tab-content active">
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">🔒</div>
+                <div class="metric-label">Total Value Locked</div>
+                <div class="metric-value">${{ "%.2f"|format(analytics.tvl_usd) }}</div>
+                <div class="metric-subtitle">{{ "%.2f"|format(analytics.tvl_kas) }} KAS</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">📈</div>
+                <div class="metric-label">Trading Volume (24h)</div>
+                <div class="metric-value">${{ "%.2f"|format(analytics.total_volume_usd) }}</div>
+                <div class="metric-subtitle">{{ "%.2f"|format(analytics.total_volume_kas) }} KAS</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">🪙</div>
+                <div class="metric-label">Total Tokens</div>
+                <div class="metric-value">{{ analytics.total_tokens }}</div>
+                <div class="metric-subtitle">Launched on platform</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">🔄</div>
+                <div class="metric-label">Total Trades</div>
+                <div class="metric-value">{{ analytics.total_trades | format_number }}</div>
+                <div class="metric-subtitle">All-time transactions</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">👥</div>
+                <div class="metric-label">Unique Traders</div>
+                <div class="metric-value">{{ analytics.unique_traders }}</div>
+                <div class="metric-subtitle">Active participants</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">💰</div>
+                <div class="metric-label">Avg Market Cap</div>
+                <div class="metric-value">${{ "%.2f"|format(analytics.average_market_cap_usd) }}</div>
+                <div class="metric-subtitle">{{ "%.2f"|format(analytics.average_market_cap_kas) }} KAS</div>
+            </div>
+        </div>
+        
+        <!-- Bubbles Visualization -->
+        <div class="visualization-section">
+            <h2><i class="fas fa-project-diagram"></i> Token Visualization</h2>
+            <p style="color: #888; margin-bottom: 1rem;">
+                Interactive bubble chart showing all tokens on the platform
+            </p>
+            <div class="iframe-container">
+                <iframe src="https://gemlaunch.fun/analytics/" title="Token Bubbles Visualization"></iframe>
+            </div>
+        </div>
+    </div>
+    
+    <!-- GraphQL Playground Tab -->
+    <div id="graphql-tab" class="tab-content">
+        <div class="visualization-section">
+            <h2><i class="fas fa-terminal"></i> GraphQL API Playground</h2>
+            <p style="color: #888; margin-bottom: 1rem;">
+                Interactive GraphQL playground to query analytics data. Try running queries to get real-time platform metrics.
+            </p>
+            <div class="graphql-container">
+                <iframe src="/graphql" title="GraphQL Playground"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // Activate clicked button
+    event.target.closest('.tab-btn').classList.add('active');
+}
+</script>
+{% endblock %}

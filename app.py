@@ -217,7 +217,7 @@ def add_security_headers(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     
-    # Content Security Policy - allow self, CDNs, and external APIs
+    # Content Security Policy - allow self, CDNs, external APIs, and iframes
     csp = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://cdn.ethers.io; "
@@ -225,7 +225,8 @@ def add_security_headers(response):
         "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
         "img-src 'self' data: https: blob:; "
         "connect-src 'self' https://explorer.kasplextest.xyz https://rpc.kasplextest.xyz https://api.coingecko.com wss://explorer.kasplextest.xyz; "
-        "frame-src 'none'; "
+        "frame-src 'self' https://gemlaunch.fun; "
+        "child-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self';"
     )
@@ -892,6 +893,41 @@ def unlink_wallet(wallet_address):
         db.session.rollback()
         logging.error(f"Error unlinking wallet: {str(e)}")
         return jsonify({'error': f'Failed to unlink wallet: {str(e)}'}), 500
+
+@app.route('/graphql', methods=['GET', 'POST'])
+@limiter.limit("100 per minute")
+@csrf.exempt  # GraphQL endpoints typically use their own auth, not CSRF tokens
+def graphql_endpoint():
+    """GraphQL endpoint with GraphiQL playground support
+    
+    Security:
+    - Rate limited to 100 requests per minute
+    - Public API for analytics data (read-only)
+    - Could add auth token validation here if needed for mutations
+    """
+    from services.graphql_schema import schema
+    
+    # Serve GraphiQL playground for GET requests
+    if request.method == 'GET':
+        return render_template('graphiql.html')
+    
+    # Handle GraphQL queries for POST requests
+    try:
+        data = request.get_json()
+        query = data.get('query')
+        variables = data.get('variables')
+        
+        result = schema.execute(query, variable_values=variables)
+        
+        response_data = {'data': result.data}
+        if result.errors:
+            response_data['errors'] = [str(error) for error in result.errors]
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logging.error(f"GraphQL query error: {str(e)}")
+        return jsonify({'errors': [str(e)]}), 500
 
 # REMOVED: Legacy claim ownership endpoints (/api/wallet/request-claim and /api/wallet/verify-claim)
 # These endpoints have been replaced by the TransferRequest flow which provides cleaner approval process.
@@ -3866,6 +3902,26 @@ def activities():
                          user_activities=user_activities,
                          all_achievements=all_achievements,
                          user_achievements=user_achievements)
+
+@app.route('/app/analytics')
+def analytics():
+    """Platform analytics dashboard"""
+    user = get_current_user()
+    
+    # Fetch analytics data from analytics service
+    from services.analytics_service import get_platform_analytics
+    
+    # Convert dict to object-like structure for template compatibility
+    class AnalyticsData:
+        def __init__(self, data):
+            for key, value in data.items():
+                setattr(self, key, value)
+    
+    analytics_data = AnalyticsData(get_platform_analytics())
+    
+    return render_template('app/analytics.html', 
+                         user=user,
+                         analytics=analytics_data)
 
 def init_database():
     """Initialize database tables and seed data"""

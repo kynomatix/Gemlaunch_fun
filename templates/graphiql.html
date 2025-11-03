@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphiQL - Gemlaunch Analytics API</title>
+    <style>
+        body {
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #graphiql {
+            height: 100vh;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/graphiql/graphiql.min.css" />
+</head>
+<body>
+    <div id="graphiql">Loading...</div>
+    
+    <script crossorigin src="https://unpkg.com/react/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/graphiql/graphiql.min.js"></script>
+    
+    <script>
+        const graphQLFetcher = graphQLParams =>
+            fetch('/graphql', {
+                method: 'post',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(graphQLParams),
+            })
+            .then(response => response.json())
+            .catch(() => response.text());
+
+        const defaultQuery = `# Gemlaunch Analytics API
+# Query platform analytics data
+
+query PlatformAnalytics {
+  platformAnalytics {
+    tvlKas
+    tvlUsd
+    totalVolumeKas
+    totalVolumeUsd
+    totalTokens
+    totalTrades
+    uniqueTraders
+    averageMarketCapKas
+    averageMarketCapUsd
+    kasPriceUsd
+    topTokensByVolume {
+      tokenId
+      name
+      symbol
+      contractAddress
+      imageUrl
+      volume24hKas
+      volume24hUsd
+      marketCapKas
+      marketCapUsd
+      priceKas
+      graduationStatus
+    }
+  }
+}`;
+
+        ReactDOM.render(
+            React.createElement(GraphiQL, {
+                fetcher: graphQLFetcher,
+                defaultQuery: defaultQuery,
+            }),
+            document.getElementById('graphiql'),
+        );
+    </script>
+</body>
+</html>

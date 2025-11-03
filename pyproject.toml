@@ -26,4 +26,6 @@ dependencies = [
     "gql[all,requests]>=4.0.0",
     "flask-caching>=2.3.1",
     "authlib>=1.6.5",
+    "graphene>=3.4.3",
+    "flask-graphql>=2.0.0",
 ]
