@@ -1317,7 +1317,8 @@
                         <div class="stat-label">Holdings</div>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-number">${{ "%.2f"|format(user.total_trading_volume or 0) }}</span>
+                        {% set volume_usd = (user.total_trading_volume or 0) * (kas_price if kas_price > 0 else 0.10) %}
+                        <span class="stat-number">${{ "{:,.2f}".format(volume_usd) }}</span>
                         <div class="stat-label">Trading Volume</div>
                     </div>
                 </div>
