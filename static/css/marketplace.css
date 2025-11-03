@@ -1,6 +1,8 @@
 .marketplace-main {
     padding-top: 100px;
     min-height: 100vh;
+    overflow-x: hidden;
+    max-width: 100%;
 }
 
 .marketplace-header {
@@ -1245,7 +1247,9 @@
     height: 36px;
     overflow: hidden;
     margin: -2rem 0 1.5rem 0;
-    max-width: none;
+    width: 100%;
+    max-width: 100vw;
+    position: relative;
     opacity: 0.6;
     transition: opacity 0.3s ease;
 }
@@ -1263,6 +1267,8 @@
     gap: 2rem;
     animation: ticker-scroll 30s linear infinite;
     padding: 0 2rem;
+    width: max-content;
+    will-change: transform;
 }
 
 .trending-ticker-track:hover {
