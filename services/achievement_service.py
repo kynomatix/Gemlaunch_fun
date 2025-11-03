@@ -10,8 +10,8 @@ except ImportError:
     CHAT_MESSAGES_AVAILABLE = False
 
 
-# KASPERS NFT Contract Address (Placeholder - will be updated when deployed on KRC721)
-KASPERS_NFT_CONTRACT = "0x0000000000000000000000000000000000000000"  # TODO: Update with actual KRC721 contract address
+# KASPERS NFT Contract Address (tKASPERS on Kasplex Testnet)
+KASPERS_NFT_CONTRACT = "0x6a3B498EeD2A9F3498252bced7971FC4f3251322"  # tKASPERS NFT (KRC721)
 
 
 def check_kaspers_nft_ownership(user):
