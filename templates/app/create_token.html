@@ -2468,10 +2468,12 @@
                 // Step 3: Upload to IPFS and get unsigned transaction
                 updateDeploymentStatus('Uploading to IPFS and preparing transaction...');
                 
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 const response = await fetch('/api/token/create', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify(tokenData)
                 });
