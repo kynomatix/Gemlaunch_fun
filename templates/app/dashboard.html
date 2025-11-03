@@ -1567,7 +1567,7 @@
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Accumulated</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #20B2AA;">
-                                                {% set total_volume_kas = token.trading_volume_24h or 0 %}
+                                                {% set total_volume_kas = (token.trading_volume_24h|float) or 0 %}
                                                 {% set fees_kas = total_volume_kas * 0.001 %}
                                                 {{ "{:,.2f}".format(fees_kas) }} KAS
                                             </div>
@@ -1575,7 +1575,7 @@
                                         <div>
                                             <div style="font-size: 0.75rem; color: #AAA;">Volume Traded</div>
                                             <div style="font-size: 1rem; font-weight: 700; color: #FFF;">
-                                                {% set total_volume_kas = token.trading_volume_24h or 0 %}
+                                                {% set total_volume_kas = (token.trading_volume_24h|float) or 0 %}
                                                 {% set volume_usd = total_volume_kas * (kas_price if kas_price > 0 else 0.10) %}
                                                 ${{ "{:,.2f}".format(volume_usd) }}
                                             </div>
