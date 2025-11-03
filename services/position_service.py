@@ -147,12 +147,11 @@ class PositionService:
                     
                     realized_pnl += pnl_this_sale
                     
-                    # REBASING: Subtract actual sale proceeds from cost basis
-                    # This "de-risks" your position by reflecting profits taken
-                    cost_basis -= kas_amount  # Use actual proceeds, not original cost
+                    # REBASING: Subtract ORIGINAL cost of sold tokens (not full proceeds)
+                    # This ensures the weighted average works correctly for subsequent higher-priced buys
+                    cost_basis -= avg_entry * sell_qty  # Subtract original cost, not sale proceeds
                     
-                    # Handle negative cost basis edge case (can happen when selling airdrops)
-                    # Negative cost basis means you've taken out more than you put in (pure profit)
+                    # Handle negative cost basis edge case (can happen due to rounding or airdrop-only positions)
                     if cost_basis < 0:
                         cost_basis = Decimal('0')
                     
