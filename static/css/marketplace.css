@@ -1239,6 +1239,11 @@
    ULTRA-COMPACT TRENDING TICKER
    =================================== */
 
+/* Fix: Remove transform from app-main to allow ticker to use viewport positioning */
+.app-main {
+    transform: none !important;
+}
+
 .trending-ticker {
     position: fixed;
     top: 60px;
