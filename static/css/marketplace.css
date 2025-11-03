@@ -1284,8 +1284,14 @@
     transition: opacity 0.2s;
 }
 
-.trending-ticker-item:hover {
-    opacity: 0.7;
+/* When hovering over track, dim all items */
+.trending-ticker-track:hover .trending-ticker-item {
+    opacity: 0.5;
+}
+
+/* Except the one being hovered - make it bright */
+.trending-ticker-track:hover .trending-ticker-item:hover {
+    opacity: 1;
 }
 
 .trending-ticker-item img {
