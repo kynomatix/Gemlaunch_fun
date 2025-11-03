@@ -1,6 +1,12 @@
 # Overview
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
+# Recent Changes (Nov 3, 2025)
+- **Achievement Auto-Evaluation**: Achievements now automatically evaluate and award after token deployment, in addition to lazy-loading when users click the Accolades tab
+- **Stat Tracking Fixes**: `total_tokens_created` now automatically increments when tokens are deployed (was previously broken)
+- **Trading Volume Display**: Dashboard now correctly converts KAS trading volume to USD for display
+- **User Stats System**: Trading volume tracked automatically via event indexer processing TradeEvents every 30 seconds
+
 # User Preferences
 Preferred communication style: Simple, everyday language.
 
