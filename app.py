@@ -350,6 +350,17 @@ def inject_user():
 @app.route('/')
 def index():
     """Main landing page for Gemlaunch.fun"""
+    # Track referral code if present in URL
+    ref_code = request.args.get('ref')
+    if ref_code:
+        # Find the referrer by referral code
+        referral = Referral.query.filter_by(referral_code=ref_code).first()
+        if referral:
+            # Store referrer ID in session for when user connects wallet
+            session['referrer_id'] = referral.referrer_id
+            session['referral_code'] = ref_code
+            logging.info(f"Referral tracked: code={ref_code}, referrer_id={referral.referrer_id}")
+    
     return render_template('index.html')
 
 @app.route('/docs')
@@ -461,11 +472,50 @@ def verify_signature():
         if session_key:
             session.pop(session_key, None)
         
+        # Save referral data before clearing session
+        referrer_id = session.get('referrer_id')
+        referral_code = session.get('referral_code')
+        
         # Clear all existing session data before creating new session
         session.clear()
         
         # Create or get user with verified wallet address
         user = User.get_or_create_by_wallet(wallet_address, wallet_type)
+        is_new_user = user.created_at and (datetime.now(timezone.utc) - user.created_at).total_seconds() < 10
+        
+        # Process referral if this is a new user signup
+        if referrer_id and is_new_user:
+            # Find the referral record and update it with referee_id
+            referral = Referral.query.filter_by(
+                referrer_id=referrer_id,
+                referral_code=referral_code,
+                referee_id=None  # Only update if not already claimed
+            ).first()
+            
+            if referral:
+                # Set referee and complete the referral
+                referral.referee_id = user.id
+                referral.status = 'completed'
+                referral.completed_at = datetime.now(timezone.utc)
+                referral.qualified_signups = (referral.qualified_signups or 0) + 1
+                referral.points_earned = (referral.points_earned or 0) + 50
+                
+                # Reward the referrer
+                referrer = User.query.get(referrer_id)
+                if referrer:
+                    referrer.gem_points = (referrer.gem_points or 0) + 50
+                    
+                    # Create activity for referrer
+                    activity = Activity()
+                    activity.user_id = referrer_id
+                    activity.activity_type = 'referral_completed'
+                    activity.title = 'Referral Completed'
+                    activity.description = f'User {user.display_name} signed up using your referral link'
+                    activity.points_earned = 50
+                    db.session.add(activity)
+                
+                db.session.commit()
+                logging.info(f"✅ Referral completed: referrer={referrer_id}, referee={user.id}, code={referral_code}")
         
         # Store verified wallet in session
         session.permanent = True  # Make session persist across browser restarts
@@ -1267,6 +1317,15 @@ def api_evaluate_achievements():
 @app.route('/app')
 def app_home():
     """Main app - redirects to marketplace (accessible without wallet)"""
+    # Track referral code if present in URL before redirecting
+    ref_code = request.args.get('ref')
+    if ref_code:
+        referral = Referral.query.filter_by(referral_code=ref_code).first()
+        if referral:
+            session['referrer_id'] = referral.referrer_id
+            session['referral_code'] = ref_code
+            logging.info(f"Referral tracked via /app: code={ref_code}, referrer_id={referral.referrer_id}")
+    
     # Always redirect to marketplace, wallet connection via modal
     return redirect(url_for('token_marketplace'))
 
@@ -1448,6 +1507,15 @@ def create_token():
 @wallet_optional
 def token_marketplace():
     """Token marketplace - main home page (pump.fun style) - accessible without wallet"""
+    # Track referral code if present in URL
+    ref_code = request.args.get('ref')
+    if ref_code:
+        referral = Referral.query.filter_by(referral_code=ref_code).first()
+        if referral:
+            session['referrer_id'] = referral.referrer_id
+            session['referral_code'] = ref_code
+            logging.info(f"Referral tracked via marketplace: code={ref_code}, referrer_id={referral.referrer_id}")
+    
     user = get_current_user()  # Will be None if not connected
     
     # Show only deployed tokens with eager loading of creator information
