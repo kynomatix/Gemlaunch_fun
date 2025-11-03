@@ -253,6 +253,100 @@
                 <div class="metric-subtitle">{{ "%.2f"|format(analytics.average_market_cap_kas) }} KAS</div>
             </div>
         </div>
+        
+        <!-- Recent Activity Sections -->
+        <div class="visualization-section" style="margin-top: 2rem;">
+            <h2><i class="fas fa-exchange-alt"></i> Recent Trades</h2>
+            <p style="color: #888; margin-bottom: 1rem;">Latest trades across all tokens</p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(32, 178, 170, 0.3);">
+                            <th style="padding: 0.75rem; text-align: left; color: #20B2AA; font-weight: 600;">Type</th>
+                            <th style="padding: 0.75rem; text-align: left; color: #20B2AA; font-weight: 600;">Token</th>
+                            <th style="padding: 0.75rem; text-align: right; color: #20B2AA; font-weight: 600;">Amount</th>
+                            <th style="padding: 0.75rem; text-align: right; color: #20B2AA; font-weight: 600;">KAS</th>
+                            <th style="padding: 0.75rem; text-align: left; color: #20B2AA; font-weight: 600;">Trader</th>
+                            <th style="padding: 0.75rem; text-align: right; color: #20B2AA; font-weight: 600;">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trade in analytics.recent_trades %}
+                        <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                            <td style="padding: 0.75rem;">
+                                <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; background: {% if trade.trade_type == 'buy' %}rgba(32, 178, 170, 0.2); color: #20B2AA{% else %}rgba(255, 68, 68, 0.2); color: #FF4444{% endif %};">
+                                    {{ trade.trade_type.upper() }}
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem;">
+                                <a href="/app/token/{{ trade.token_address }}" style="color: #FFF; text-decoration: none; hover: color: #20B2AA;">
+                                    <strong>{{ trade.token_name }}</strong> ({{ trade.token_symbol }})
+                                </a>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: right; color: #CCCCCC;">{{ "%.2f"|format(trade.token_amount) }}</td>
+                            <td style="padding: 0.75rem; text-align: right; color: #CCCCCC;">{{ "%.4f"|format(trade.kas_amount) }} KAS</td>
+                            <td style="padding: 0.75rem; color: #888; font-size: 0.85rem;">
+                                {% if trade.user_display_name %}
+                                    {{ trade.user_display_name }}
+                                {% else %}
+                                    {{ trade.user_wallet[:6] }}...{{ trade.user_wallet[-4:] }}
+                                {% endif %}
+                            </td>
+                            <td style="padding: 0.75rem; text-align: right; color: #888; font-size: 0.85rem;">{{ trade.timestamp[:19] if trade.timestamp else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="visualization-section" style="margin-top: 2rem;">
+            <h2><i class="fas fa-rocket"></i> Recent Token Launches</h2>
+            <p style="color: #888; margin-bottom: 1rem;">Newest tokens launched on the platform</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                {% for token in analytics.recent_token_creations %}
+                <a href="/app/token/{{ token.contract_address }}" style="text-decoration: none; color: inherit;">
+                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(32, 178, 170, 0.2); border-radius: 12px; padding: 1rem; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='rgba(32, 178, 170, 0.5)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='rgba(32, 178, 170, 0.2)'; this.style.transform='translateY(0)';">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            {% if token.image_url %}
+                            <img src="{{ token.image_url }}" alt="{{ token.name }}" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                            {% else %}
+                            <div style="width: 48px; height: 48px; border-radius: 8px; background: linear-gradient(135deg, #20B2AA, #00CED1); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #000;">
+                                {{ token.symbol[0] if token.symbol else '?' }}
+                            </div>
+                            {% endif %}
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0; font-size: 1rem; color: #FFF;">{{ token.name }}</h3>
+                                <div style="font-size: 0.85rem; color: #888; margin-top: 0.25rem;">${{ token.symbol }}</div>
+                            </div>
+                            {% if token.is_pro %}
+                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; background: linear-gradient(135deg, rgba(0, 191, 255, 0.95), rgba(30, 144, 255, 0.9)); color: #FFF;">PRO</span>
+                            {% else %}
+                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; background: linear-gradient(135deg, rgba(0, 229, 204, 0.95), rgba(32, 178, 170, 0.9)); color: #FFF;">BASIC</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #888;">
+                            <div>
+                                <div style="color: #666;">Market Cap</div>
+                                <div style="color: #20B2AA; font-weight: 600;">${{ "%.2f"|format(token.market_cap_usd) }}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #666;">Holders</div>
+                                <div style="color: #CCCCCC; font-weight: 600;">{{ token.holder_count }}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #666;">Trades</div>
+                                <div style="color: #CCCCCC; font-weight: 600;">{{ token.trade_count }}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #666;">
+                            Created {{ token.created_at[:10] if token.created_at else 'N/A' }}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
     </div>
     
     <!-- Token Visualizer Tab -->
@@ -271,12 +365,12 @@
     <!-- GraphQL Playground Tab -->
     <div id="graphql-tab" class="tab-content">
         <div class="visualization-section">
-            <h2><i class="fas fa-terminal"></i> GraphQL API Playground</h2>
+            <h2><i class="fas fa-terminal"></i> Blockscout GraphQL Explorer</h2>
             <p style="color: #888; margin-bottom: 1rem;">
-                Interactive GraphQL playground to query analytics data. Try running queries to get real-time platform metrics.
+                Interactive Blockscout GraphQL explorer for Kasplex zkEVM L2 Testnet. Query blockchain data, transactions, and smart contract events directly from the network.
             </p>
             <div class="graphql-container">
-                <iframe src="/graphql" title="GraphQL Playground"></iframe>
+                <iframe src="https://explorer.kasplextest.xyz/graphiql" title="Blockscout GraphQL Explorer"></iframe>
             </div>
         </div>
     </div>
