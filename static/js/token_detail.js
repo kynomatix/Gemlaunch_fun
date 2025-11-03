@@ -2438,19 +2438,6 @@
                     } else if (labelText === 'MARKET CAP') {
                         if (valueEl) valueEl.textContent = data.market_cap_formatted;
                         if (subEl) subEl.textContent = data.market_cap_kas_formatted;
-                        
-                        // Update or create ATH display
-                        if (data.market_cap_ath && data.market_cap_ath > 0) {
-                            let athEl = item.querySelector('.stat-sub[style*="color: #FFA500"]');
-                            if (!athEl) {
-                                // Create ATH element if it doesn't exist
-                                athEl = document.createElement('div');
-                                athEl.className = 'stat-sub';
-                                athEl.style.cssText = 'color: #FFA500; font-size: 0.75rem; margin-top: 0.25rem;';
-                                item.appendChild(athEl);
-                            }
-                            athEl.textContent = `ATH: ${data.market_cap_ath_formatted}`;
-                        }
                     } else if (labelText.includes('SUPPLY')) {  // ✅ FIX: Match 'SUPPLY', 'CIRCULATING', 'CIRCULATING SUPPLY'
                         if (valueEl) valueEl.textContent = data.circulating_supply_formatted;
                     } else if (labelText === 'HOLDERS') {
@@ -4462,9 +4449,6 @@
         // Initialize wallet balances and quick buttons
         TokenDetail.updateQuickButtons(TokenDetail.currentTradeMode);
         TokenDetail.fetchWalletBalances();
-        
-        // Refresh token stats to get latest ATH and market data
-        TokenDetail.refreshTokenStats();
         
         // Chart type toggle buttons - toggle switch styling
         document.querySelectorAll('.chart-type-btn').forEach(btn => {

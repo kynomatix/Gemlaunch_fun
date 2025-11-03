@@ -3457,10 +3457,6 @@ def api_token_stats(address):
             except Exception as e:
                 logging.debug(f"Could not fetch DEX pool reserves for {token.symbol} (pool: {token.dex_pool_address}): {e}")
         
-        # Calculate ATH values
-        market_cap_ath_kas = float(token.market_cap_ath) if token.market_cap_ath else 0
-        market_cap_ath_usd = market_cap_ath_kas * kas_price_usd
-        
         # Return single response with all data
         response_data = {
             'success': True,
@@ -3475,11 +3471,6 @@ def api_token_stats(address):
             'market_cap_formatted': format_usd(current_market_cap_usd),
             'market_cap_kas': current_market_cap_kas,
             'market_cap_kas_formatted': f"{format_number(current_market_cap_kas)} KAS",
-            
-            # ATH data
-            'market_cap_ath': market_cap_ath_usd,
-            'market_cap_ath_formatted': format_usd(market_cap_ath_usd),
-            'market_cap_ath_kas': market_cap_ath_kas,
             
             # Supply and holders
             'circulating_supply': float(token.circulating_supply if token.circulating_supply else 0),
