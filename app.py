@@ -7043,7 +7043,7 @@ def generate_token_image_api():
 
 @app.route('/api/token/create', methods=['POST'])
 @csrf.exempt
-@limiter.limit("3 per hour", key_func=get_wallet_for_ratelimit)
+@limiter.limit("10 per hour", key_func=get_wallet_for_ratelimit)
 def api_create_token():
     """
     Create token with wallet signing (decentralized approach)
