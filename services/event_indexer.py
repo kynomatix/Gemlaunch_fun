@@ -631,13 +631,25 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
         
         # Step 3.5: Call side effect services (CRITICAL: update user stats, holdings, activities)
         # User stats updater
-        update_user_stats_batch(new_trade_events_with_amounts)
+        updated_users = update_user_stats_batch(new_trade_events_with_amounts)
         
         # Holding updater
         update_holdings_batch(new_trade_events)
         
         # Activity logger
         create_activities_batch(new_trade_events, token)
+        
+        # Evaluate achievements for users who traded (auto-award trading achievements)
+        if updated_users > 0:
+            from services.achievement_service import evaluate_user_achievements
+            unique_wallets = set(te.user_wallet_address.lower() for te, _ in new_trade_events_with_amounts)
+            for wallet in unique_wallets:
+                user = User.query.filter_by(wallet_address=wallet).first()
+                if user:
+                    try:
+                        evaluate_user_achievements(user.id)
+                    except Exception as e:
+                        logger.error(f"Error evaluating achievements for user {wallet[:10]}...: {str(e)}")
         
         # Step 3.6: Track per-token engagement for PRO tokens
         from services.token_service import TokenService
@@ -1077,13 +1089,26 @@ def process_dex_swap_events_batch(swap_events, token, w3, blocks_cache):
         update_engagement_batch(new_trade_events_with_amounts, token)
         
         # User stats updater
-        update_user_stats_batch(new_trade_events_with_amounts)
+        updated_users = update_user_stats_batch(new_trade_events_with_amounts)
         
         # Holding updater
         update_holdings_batch(new_trade_events)
         
         # Activity logger
         create_activities_batch(new_trade_events, token)
+        
+        # Evaluate achievements for users who traded (auto-award trading achievements)
+        if updated_users > 0:
+            from services.achievement_service import evaluate_user_achievements
+            from models import User
+            unique_wallets = set(te.user_wallet_address.lower() for te, _ in new_trade_events_with_amounts)
+            for wallet in unique_wallets:
+                user = User.query.filter_by(wallet_address=wallet).first()
+                if user:
+                    try:
+                        evaluate_user_achievements(user.id)
+                    except Exception as e:
+                        logger.error(f"Error evaluating achievements for user {wallet[:10]}...: {str(e)}")
         
     except IntegrityError as e:
         logger.error(f"Unexpected IntegrityError in DEX batch insert: {str(e)}")

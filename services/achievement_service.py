@@ -80,7 +80,7 @@ def calculate_user_progress(user, requirement_type):
     elif requirement_type == 'tokens_graduated':
         return user.total_graduated_tokens or 0
     
-    elif requirement_type == 'total_trades':
+    elif requirement_type in ['total_trades', 'trades_count']:
         return user.total_trades_count or 0
     
     elif requirement_type in ['chat_messages_sent', 'messages_sent']:
