@@ -6336,6 +6336,33 @@ def api_claim_creator_fees(address):
         logging.error(f"Error in claim-creator-fees: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to claim creator fees'}), 500
 
+@app.route('/api/token/<int:token_id>/contract-address', methods=['GET'])
+def api_token_contract_address(token_id):
+    """
+    Get contract address for a token by ID
+    
+    Response:
+    {
+        "success": true,
+        "token_id": 123,
+        "contract_address": "0x..."
+    }
+    """
+    try:
+        token = Token.query.filter_by(id=token_id).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'token_id': token.id,
+            'contract_address': token.contract_address
+        })
+    
+    except Exception as e:
+        logging.error(f"Error fetching contract address for token {token_id}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch contract address'}), 500
+
 @app.route('/api/token/<address>/fee-stats', methods=['GET'])
 def api_token_fee_stats(address):
     """

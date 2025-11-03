@@ -4503,17 +4503,11 @@ function openCreatorFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeC
     }
 }
 
-function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
-    // Calculate fee stats (placeholder calculations - will be replaced with SC data)
-    // Fees are earned in KAS, then converted to USD for display
-    const avgTradeKAS = 5000; // Average 5000 KAS per trade
-    const totalVolumeKAS = tradeCount * avgTradeKAS;
-    const accumulatedFees = totalVolumeKAS * 0.001; // 0.1% creator fee in KAS
-    
+async function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
     // Get KAS price from template (real-time from oracle)
     const kasPrice = {{ kas_price if kas_price > 0 else 0.10 }};
     
-    // Update modal content
+    // Update modal content immediately
     document.getElementById('feeTokenName').textContent = tokenName;
     document.getElementById('feeTokenSymbol').textContent = '$' + tokenSymbol;
     
@@ -4529,31 +4523,10 @@ function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCou
         imageEl.innerHTML = '💎';
     }
     
-    // Update earnings display
-    document.getElementById('accumulatedFees').textContent = accumulatedFees.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
-    document.getElementById('accumulatedFeesUSD').textContent = '$' + (accumulatedFees * kasPrice).toFixed(2) + ' USD';
+    // Show loading state
+    document.getElementById('accumulatedFees').textContent = 'Loading...';
+    document.getElementById('accumulatedFeesUSD').textContent = 'Loading...';
     document.getElementById('totalTrades').textContent = tradeCount;
-    
-    // Update claim status
-    const claimStatusBadge = document.getElementById('claimStatusBadge');
-    const claimStatusText = document.getElementById('claimStatusText');
-    
-    // Check if graduated (market cap >= $70,000)
-    const isGraduated = marketCap >= 70000;
-    
-    if (isGraduated && accumulatedFees > 0) {
-        claimStatusBadge.className = 'claim-status-badge success';
-        claimStatusText.textContent = '✓ Ready to claim! Token has graduated.';
-        updateClaimFeesButtonState(false);
-    } else if (isGraduated && accumulatedFees === 0) {
-        claimStatusBadge.className = 'claim-status-badge';
-        claimStatusText.textContent = 'No fees to claim yet';
-        updateClaimFeesButtonState(true);
-    } else {
-        claimStatusBadge.className = 'claim-status-badge';
-        claimStatusText.textContent = `Claim available after graduation • Currently at ${progressToGrad.toFixed(1)}%`;
-        updateClaimFeesButtonState(true);
-    }
     
     // Hide vesting section for BASIC tokens
     const vestingSection = document.getElementById('vestingSection');
@@ -4565,6 +4538,62 @@ function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCou
     
     // Show modal
     modal.style.display = 'flex';
+    
+    // Fetch real fee data from smart contract
+    try {
+        const response = await fetch(`/api/token/${tokenId}/contract-address`);
+        if (!response.ok) throw new Error('Failed to fetch token data');
+        
+        const tokenData = await response.json();
+        const contractAddress = tokenData.contract_address;
+        
+        // Fetch real fee stats from smart contract
+        const feeResponse = await fetch(`/api/token/${contractAddress}/fee-stats`);
+        if (!feeResponse.ok) throw new Error('Failed to fetch fee stats');
+        
+        const feeStats = await feeResponse.json();
+        
+        // Extract claimable fees from smart contract
+        const accumulatedFees = parseFloat(feeStats.creator_fees.claimable);
+        const totalAccumulated = parseFloat(feeStats.creator_fees.total_accumulated);
+        
+        // Update earnings display with real data
+        document.getElementById('accumulatedFees').textContent = accumulatedFees.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
+        document.getElementById('accumulatedFeesUSD').textContent = '$' + (accumulatedFees * kasPrice).toFixed(2) + ' USD';
+        
+        // Update claim status
+        const claimStatusBadge = document.getElementById('claimStatusBadge');
+        const claimStatusText = document.getElementById('claimStatusText');
+        
+        // Check graduation status from API
+        const isGraduated = feeStats.graduation_status === 'graduated';
+        
+        if (accumulatedFees > 0) {
+            claimStatusBadge.className = 'claim-status-badge success';
+            claimStatusText.textContent = '✓ Ready to claim!';
+            updateClaimFeesButtonState(false);
+        } else if (isGraduated && accumulatedFees === 0) {
+            claimStatusBadge.className = 'claim-status-badge';
+            claimStatusText.textContent = 'No fees to claim yet';
+            updateClaimFeesButtonState(true);
+        } else {
+            claimStatusBadge.className = 'claim-status-badge';
+            claimStatusText.textContent = `Fees will be claimable once token graduates • Currently at ${progressToGrad.toFixed(1)}%`;
+            updateClaimFeesButtonState(true);
+        }
+        
+    } catch (error) {
+        console.error('Error fetching fee data:', error);
+        // Fallback to placeholder display
+        document.getElementById('accumulatedFees').textContent = '0.00 KAS';
+        document.getElementById('accumulatedFeesUSD').textContent = '$0.00 USD';
+        
+        const claimStatusBadge = document.getElementById('claimStatusBadge');
+        const claimStatusText = document.getElementById('claimStatusText');
+        claimStatusBadge.className = 'claim-status-badge';
+        claimStatusText.textContent = 'Unable to load fee data';
+        updateClaimFeesButtonState(true);
+    }
 }
 
 function openProClaimsModal(tokenId, tokenName, tokenSymbol, tokenImage, tradeCount, marketCap, progressToGrad) {
