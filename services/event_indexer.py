@@ -652,6 +652,19 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
                     except Exception as e:
                         logger.error(f"Error evaluating achievements for user {wallet[:10]}...: {str(e)}")
         
+        # Step 3.5.5: Update Position cache for all affected users (CRITICAL for FTX-style position tracking)
+        from services.position_service import PositionService
+        from models import User
+        unique_wallets = set(te.user_wallet_address.lower() for te, _ in new_trade_events_with_amounts)
+        for wallet in unique_wallets:
+            user = User.query.filter_by(wallet_address=wallet).first()
+            if user:
+                try:
+                    PositionService.upsert_position(user, token)
+                    logger.debug(f"✅ Updated position cache for user {wallet[:10]}... on token {token.symbol}")
+                except Exception as e:
+                    logger.error(f"Error updating position for user {wallet[:10]}... on token {token.symbol}: {str(e)}")
+        
         # Step 3.6: Track per-token engagement for PRO tokens
         from services.token_service import TokenService
         if TokenService.is_pro_token(token):
