@@ -1435,6 +1435,78 @@ def token_marketplace():
     
     return render_template('app/marketplace.html', tokens=tokens, user=user, now=datetime.now(timezone.utc))
 
+@app.route('/api/trending-tokens')
+def api_trending_tokens():
+    """Get trending tokens based on 24h volume, price change, and activity"""
+    from datetime import timedelta
+    from sqlalchemy import func
+    
+    try:
+        # Get tokens with their 24h metrics
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        # Calculate trending score for each visible deployed token
+        tokens = Token.query.filter(
+            Token.deployment_status == 'deployed',
+            Token.is_visible == True,
+            Token.graduation_disabled == False
+        ).all()
+        
+        trending_tokens = []
+        
+        for token in tokens:
+            # Get 24h metrics from TradeEvent
+            trades_24h = TradeEvent.query.filter(
+                TradeEvent.token_id == token.id,
+                TradeEvent.timestamp >= cutoff_time
+            ).all()
+            
+            volume_24h_kas = sum(float(t.kas_amount or 0) / 1e18 for t in trades_24h)
+            trade_count_24h = len(trades_24h)
+            
+            # Calculate 24h price change
+            price_change_24h = TokenService.calculate_24h_price_change(token)
+            
+            # Get holder count (unique addresses that have traded)
+            holder_count = TradeEvent.query.filter(
+                TradeEvent.token_id == token.id
+            ).with_entities(func.count(func.distinct(TradeEvent.wallet_address))).scalar() or 0
+            
+            # Calculate trending score
+            # Volume: 40%, Price change: 30%, Trades: 20%, Holders: 10%
+            volume_score = min(volume_24h_kas / 100, 10) * 4  # Cap at 40 points
+            price_score = min(max(price_change_24h / 10, -3), 3) * 3  # -9 to +9 points
+            trades_score = min(trade_count_24h / 5, 10) * 2  # Cap at 20 points
+            holder_score = min(holder_count / 5, 10)  # Cap at 10 points
+            
+            trending_score = volume_score + price_score + trades_score + holder_score
+            
+            # Only include tokens with some activity
+            if trending_score > 0:
+                trending_tokens.append({
+                    'contract_address': token.contract_address,
+                    'name': token.name,
+                    'symbol': token.symbol,
+                    'image_url': token.ipfs_image_url or url_for('static', filename='images/default-token.png'),
+                    'volume_24h_kas': round(volume_24h_kas, 2),
+                    'price_change_24h': round(price_change_24h, 2),
+                    'trade_count_24h': trade_count_24h,
+                    'holder_count': holder_count,
+                    'trending_score': round(trending_score, 2)
+                })
+        
+        # Sort by trending score and return top 10
+        trending_tokens.sort(key=lambda x: x['trending_score'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'trending': trending_tokens[:10]
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching trending tokens: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/app/token/<contract_address>')
 def token_detail(contract_address):
     """Individual token detail page"""

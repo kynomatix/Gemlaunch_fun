@@ -30,6 +30,32 @@
                 <p>Discover and trade community-driven memecoins on Kaspa</p>
             </div>
 
+            <!-- Trending Tokens Showcase -->
+            <div id="trendingShowcase" class="trending-showcase hidden">
+                <div class="trending-header">
+                    <div class="trending-title">
+                        <i class="fas fa-fire"></i> Trending Now
+                    </div>
+                    <button class="trending-close" onclick="hideTrendingShowcase()" title="Hide trending">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="trending-carousel">
+                    <button class="trending-nav trending-nav-left" onclick="scrollTrendingLeft()">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="trending-track" id="trendingTrack">
+                        <!-- Trending tokens will be loaded here -->
+                        <div class="trending-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading trending tokens...
+                        </div>
+                    </div>
+                    <button class="trending-nav trending-nav-right" onclick="scrollTrendingRight()">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
             <!-- Wallet Connect Banner for Anonymous Users -->
             {% if not user %}
             <div class="wallet-connect-banner">
@@ -704,6 +730,88 @@
         const tokensGrid = document.querySelector('.tokens-grid');
         if (tokensGrid) {
             mutationObserver.observe(tokensGrid, { childList: true });
+        }
+    })();
+    
+    // Trending Tokens Showcase
+    (function() {
+        const TRENDING_HIDDEN_KEY = 'gemlaunch_trending_hidden';
+        let trendingData = [];
+        let currentScroll = 0;
+        
+        // Check if user has hidden the trending showcase
+        function isTrendingHidden() {
+            return localStorage.getItem(TRENDING_HIDDEN_KEY) === 'true';
+        }
+        
+        // Hide trending showcase and remember preference
+        window.hideTrendingShowcase = function() {
+            const showcase = document.getElementById('trendingShowcase');
+            showcase.classList.add('hidden');
+            localStorage.setItem(TRENDING_HIDDEN_KEY, 'true');
+        };
+        
+        // Scroll trending carousel
+        window.scrollTrendingLeft = function() {
+            const track = document.getElementById('trendingTrack');
+            track.scrollBy({ left: -280, behavior: 'smooth' });
+        };
+        
+        window.scrollTrendingRight = function() {
+            const track = document.getElementById('trendingTrack');
+            track.scrollBy({ left: 280, behavior: 'smooth' });
+        };
+        
+        // Load trending tokens
+        async function loadTrendingTokens() {
+            // Don't load if user has hidden it
+            if (isTrendingHidden()) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/trending-tokens');
+                const data = await response.json();
+                
+                if (data.success && data.trending && data.trending.length > 0) {
+                    trendingData = data.trending;
+                    renderTrendingTokens();
+                    
+                    // Show the showcase
+                    const showcase = document.getElementById('trendingShowcase');
+                    showcase.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to load trending tokens:', error);
+            }
+        }
+        
+        // Render trending tokens
+        function renderTrendingTokens() {
+            const track = document.getElementById('trendingTrack');
+            
+            track.innerHTML = trendingData.map(token => `
+                <a href="/app/token/${token.contract_address}" class="trending-card">
+                    <div class="trending-icon">
+                        <img src="${token.image_url}" alt="${token.name}" onerror="this.src='/static/images/default-token.png'">
+                    </div>
+                    <div class="trending-info">
+                        <div class="trending-name">${token.name}</div>
+                        <div class="trending-symbol">$${token.symbol}</div>
+                    </div>
+                    <div class="trending-performance ${token.price_change_24h >= 0 ? 'positive' : 'negative'}">
+                        <i class="fas fa-${token.price_change_24h >= 0 ? 'arrow-up' : 'arrow-down'}"></i>
+                        ${Math.abs(token.price_change_24h).toFixed(2)}%
+                    </div>
+                </a>
+            `).join('');
+        }
+        
+        // Load trending tokens on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadTrendingTokens);
+        } else {
+            loadTrendingTokens();
         }
     })();
 </script>

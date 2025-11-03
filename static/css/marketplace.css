@@ -885,3 +885,269 @@
 .btn-margin-top {
     margin-top: 1rem;
 }
+
+/* ===================================
+   TRENDING TOKENS SHOWCASE
+   Modern, clean design with glassmorphism
+   =================================== */
+
+.trending-showcase {
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.08), rgba(0, 206, 209, 0.05));
+    border: 1px solid rgba(32, 178, 170, 0.2);
+    border-radius: 15px;
+    padding: 1.25rem;
+    margin: 0 auto 2rem auto;
+    max-width: 95vw;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.trending-showcase.hidden {
+    display: none;
+}
+
+.trending-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.trending-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #20B2AA;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.trending-title i {
+    color: #FF6B35;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.trending-close {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 0.9rem;
+}
+
+.trending-close:hover {
+    background: rgba(255, 107, 53, 0.1);
+    border-color: rgba(255, 107, 53, 0.3);
+    color: #FF6B35;
+    transform: rotate(90deg);
+}
+
+.trending-carousel {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.trending-track {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 0.25rem 0;
+}
+
+.trending-track::-webkit-scrollbar {
+    display: none;
+}
+
+.trending-loading {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.trending-loading i {
+    margin-right: 0.5rem;
+}
+
+.trending-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.875rem 1rem;
+    min-width: 260px;
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    transition: all 0.25s ease;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.trending-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(32, 178, 170, 0.1), rgba(0, 206, 209, 0.05));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.trending-card:hover {
+    border-color: rgba(32, 178, 170, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(32, 178, 170, 0.15);
+}
+
+.trending-card:hover::before {
+    opacity: 1;
+}
+
+.trending-icon {
+    position: relative;
+    z-index: 1;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(32, 178, 170, 0.2);
+}
+
+.trending-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.trending-info {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-width: 0;
+}
+
+.trending-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trending-symbol {
+    font-size: 0.8rem;
+    color: #999;
+    margin-top: 0.15rem;
+}
+
+.trending-performance {
+    position: relative;
+    z-index: 1;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+
+.trending-performance.positive {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.trending-performance.negative {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.trending-performance i {
+    font-size: 0.8rem;
+}
+
+.trending-nav {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #999;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+}
+
+.trending-nav:hover {
+    background: rgba(32, 178, 170, 0.2);
+    border-color: rgba(32, 178, 170, 0.4);
+    color: #20B2AA;
+    transform: scale(1.1);
+}
+
+.trending-nav:active {
+    transform: scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .trending-showcase {
+        padding: 1rem;
+    }
+    
+    .trending-card {
+        min-width: 220px;
+        padding: 0.75rem;
+    }
+    
+    .trending-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .trending-name {
+        font-size: 0.85rem;
+    }
+    
+    .trending-performance {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.6rem;
+    }
+    
+    .trending-nav {
+        display: none; /* Hide nav arrows on mobile, use swipe instead */
+    }
+}
+
+@media (max-width: 480px) {
+    .trending-card {
+        min-width: 200px;
+    }
+}
