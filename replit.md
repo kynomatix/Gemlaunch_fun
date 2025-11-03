@@ -95,11 +95,18 @@ The project adheres to an MVC pattern.
 Includes hardware-accelerated CSS animations, efficient asset caching, and JavaScript-enhanced smooth scrolling.
 
 ## Blockchain Integration Foundation
-The system includes a Web3 Service Layer for RPC connection to Kasplex zkEVM L2 (Testnet), an Oracle Wallet for automated operations, and contract loading. Transaction utilities handle gas estimation, signing, relay, and status polling, with POA middleware for Kasplex compatibility.
+The system includes a Web3 Service Layer for RPC connection to **Kasplex zkEVM L2 (Testnet)**, an Oracle Wallet for automated operations, and contract loading. Transaction utilities handle gas estimation, signing, relay, and status polling, with POA middleware for Kasplex compatibility.
+
+**⚠️ IMPORTANT: Kasplex L2 vs Kaspa L1**
+- **This platform uses Kasplex zkEVM L2** (EVM-compatible Layer 2 on Kaspa)
+- **NOT native Kaspa L1** (DAG-based blockchain using wRPC protocol)
+- Uses standard Ethereum JSON-RPC, not Kaspa's native wRPC
 
 **CRITICAL: Kasplex Testnet Chain ID is 167012 (0x28c64)** - All MetaMask transactions must use this chainId or they will fail to broadcast.
 
 **CRITICAL: MetaMask Gas Price Bug on Kasplex** - MetaMask's gas estimation is broken on Kasplex Testnet. It interprets the RPC's gasPrice response of 2001 Gwei as 2001 wei (1 billion times too low), causing transactions to sign but never broadcast. All MetaMask transactions must explicitly include `gasPrice: hex(w3.eth.gas_price)` to override MetaMask's broken estimation.
+
+**RPC Endpoint:** `https://rpc.kasplextest.xyz` (HTTP/HTTPS) - WebSocket availability unverified, see `WEBSOCKET_IMPLEMENTATION_PLAN.md` Phase 0.
 
 ## Transaction Flow Architecture
 Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool. The `static/js/transaction_manager.js` module orchestrates all transaction types.
