@@ -2839,6 +2839,70 @@ def complete_airdrop(contract_address, airdrop_id):
         logging.error(f"Failed to complete airdrop: {str(e)}")
         return jsonify({'error': f'Failed to complete airdrop: {str(e)}'}), 500
 
+@app.route('/api/admin/reconcile-airdrops', methods=['POST'])
+def reconcile_orphaned_airdrops():
+    """
+    Admin endpoint to fix orphaned airdrops - airdrops that were distributed
+    but not marked as completed in the database.
+    
+    Checks for 'pending' airdrops that have corresponding trade events,
+    marks them as completed, and updates token.total_airdropped counters.
+    """
+    try:
+        # Find all pending airdrops
+        pending_airdrops = Airdrop.query.filter_by(status='pending').all()
+        
+        fixed_count = 0
+        fixed_details = []
+        
+        for airdrop in pending_airdrops:
+            # Check if this airdrop has corresponding trade events
+            # Match by token_id and approximate amount (trade events store in wei)
+            trade_events = TradeEvent.query.filter_by(
+                token_id=airdrop.token_id,
+                trade_type='airdrop'
+            ).all()
+            
+            # Check if any trade event matches this airdrop's amount
+            for te in trade_events:
+                if int(te.token_amount) == int(airdrop.total_amount):
+                    # Found matching trade event - this airdrop was distributed
+                    airdrop.status = 'completed'
+                    airdrop.completed_at = te.timestamp
+                    
+                    # Update token.total_airdropped
+                    token = airdrop.token
+                    distributed_amount = float(airdrop.total_amount) / (10 ** 18)
+                    
+                    if token.total_airdropped is None:
+                        token.total_airdropped = 0
+                    
+                    token.total_airdropped += distributed_amount
+                    
+                    fixed_count += 1
+                    fixed_details.append({
+                        'token': token.symbol,
+                        'airdrop_id': airdrop.id,
+                        'amount': distributed_amount,
+                        'tx_hash': te.tx_hash
+                    })
+                    
+                    logging.info(f"✅ Reconciled airdrop {airdrop.id} for {token.symbol}: {distributed_amount} tokens")
+                    break
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'fixed_count': fixed_count,
+            'details': fixed_details
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Failed to reconcile airdrops: {str(e)}")
+        return jsonify({'error': f'Failed to reconcile: {str(e)}'}), 500
+
 # Post-Graduation DEX Integration Endpoints
 @app.route('/api/token/<address>/graduation-status', methods=['GET'])
 @cache.cached(timeout=10, query_string=True)  # Cache for 10 seconds
