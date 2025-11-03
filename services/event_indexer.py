@@ -629,7 +629,17 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
         
         logger.debug(f"✅ Batch inserted {len(new_trade_events)} trade events ({stats['purchases']} buys, {stats['sells']} sells, {stats['airdrops']} airdrops)")
         
-        # Step 3.5: Track per-token engagement for PRO tokens
+        # Step 3.5: Call side effect services (CRITICAL: update user stats, holdings, activities)
+        # User stats updater
+        update_user_stats_batch(new_trade_events_with_amounts)
+        
+        # Holding updater
+        update_holdings_batch(new_trade_events)
+        
+        # Activity logger
+        create_activities_batch(new_trade_events, token)
+        
+        # Step 3.6: Track per-token engagement for PRO tokens
         from services.token_service import TokenService
         if TokenService.is_pro_token(token):
             from models import User, TokenEngagement
