@@ -3787,10 +3787,14 @@ def leaderboard():
                 user_rank = i
                 break
         
-        # If user not in top 50, calculate their actual rank (exclude archived users)
+        # If user not in top 50, calculate their actual rank (exclude archived users and inactive users)
         if user_rank is None:
             users_above = User.query.filter(
                 User.gem_points > user.gem_points,
+                db.or_(
+                    User.total_tokens_created > 0,
+                    User.total_trades_count > 0
+                ),
                 User.archived == False
             ).count()
             user_rank = users_above + 1
@@ -3827,8 +3831,14 @@ def get_user_profile(user_id):
                 'earned_at': ua.earned_at.strftime('%Y-%m-%d') if ua.earned_at else None
             })
         
-        # Calculate user's rank
-        users_above = User.query.filter(User.gem_points > user.gem_points).count()
+        # Calculate user's rank (only count users with real activity)
+        users_above = User.query.filter(
+            User.gem_points > user.gem_points,
+            db.or_(
+                User.total_tokens_created > 0,
+                User.total_trades_count > 0
+            )
+        ).count()
         rank = users_above + 1
         
         # Build avatar URL
