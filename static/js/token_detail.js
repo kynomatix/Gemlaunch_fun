@@ -726,6 +726,15 @@
                 
                 if (!result.success || !result.trades || result.trades.length === 0) {
                     console.log('No user trades found');
+                    // Clear any existing markers from previous token visits
+                    if (this.currentSeries) {
+                        this.currentSeries.setMarkers([]);
+                    }
+                    // Clear any existing position line
+                    if (this.userEntryPriceLine) {
+                        this.currentSeries.removePriceLine(this.userEntryPriceLine);
+                        this.userEntryPriceLine = null;
+                    }
                     return;
                 }
                 
