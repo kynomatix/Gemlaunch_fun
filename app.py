@@ -7478,6 +7478,10 @@ def confirm_token_deployment(token_id):
             token.team_vesting_address = vesting_addresses.get('team_vesting_address')
             logging.info(f"Saved vesting addresses for PRO token {token_id}")
         
+        # Update creator's token creation stats (CRITICAL: for achievement tracking)
+        creator.total_tokens_created = (creator.total_tokens_created or 0) + 1
+        logging.info(f"✅ Incremented {creator.display_name}'s total_tokens_created to {creator.total_tokens_created}")
+        
         db.session.commit()
         
         # Log activity for token launch
