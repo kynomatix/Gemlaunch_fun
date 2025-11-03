@@ -6520,8 +6520,16 @@ def api_token_fee_stats(address):
                 from models import TradeEvent
                 from sqlalchemy import func
                 
-                creator_available_wei = web3_service.get_creator_claimable(pool_address)
-                platform_available_wei = web3_service.get_platform_claimable(pool_address)
+                # For graduated tokens, fees may have been transferred or the contract state changed
+                # We still try to read from the bonding curve pool as fees should remain claimable
+                try:
+                    creator_available_wei = web3_service.get_creator_claimable(pool_address)
+                    platform_available_wei = web3_service.get_platform_claimable(pool_address)
+                except Exception as contract_error:
+                    logging.warning(f"Contract call failed for {pool_address} (graduated={token.is_graduated}): {str(contract_error)}")
+                    # If contract call fails, assume no fees available (might have been claimed already)
+                    creator_available_wei = 0
+                    platform_available_wei = 0
                 
                 creator_total_db = token.creator_fees_accumulated or Decimal('0')
                 creator_total_wei = Web3.to_wei(creator_total_db, 'ether')

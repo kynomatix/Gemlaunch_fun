@@ -4554,8 +4554,8 @@ async function openBasicFeeModal(tokenId, tokenName, tokenSymbol, tokenImage, tr
         const feeStats = await feeResponse.json();
         
         // Extract claimable fees from smart contract
-        const accumulatedFees = parseFloat(feeStats.creator_fees.claimable);
-        const totalAccumulated = parseFloat(feeStats.creator_fees.total_accumulated);
+        const accumulatedFees = parseFloat(feeStats.creator_fees.available) || 0;
+        const totalAccumulated = parseFloat(feeStats.creator_fees.total_accumulated) || 0;
         
         // Update earnings display with real data
         document.getElementById('accumulatedFees').textContent = accumulatedFees.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KAS';
