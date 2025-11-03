@@ -234,6 +234,19 @@ class PositionService:
             if not metrics:
                 return None
         
+        # CRITICAL VALIDATION: Prevent writing avg_entry_price_kas=0 when cost_basis>0
+        # This can happen when trades are processed during errors (e.g., User import bug)
+        # If cost_basis > 0 and qty_remaining > 0, then avg_entry MUST be cost_basis / qty
+        if (metrics['avg_entry_price_kas'] == 0 and 
+            metrics['cost_basis_kas'] > 0 and 
+            metrics['qty_remaining'] > 0):
+            
+            metrics['avg_entry_price_kas'] = metrics['cost_basis_kas'] / (metrics['qty_remaining'] / Decimal('1000000000000000000'))
+            logging.warning(
+                f"⚠️ Corrected zero avg_entry_price_kas: cost_basis={metrics['cost_basis_kas']} KAS, "
+                f"qty={metrics['qty_remaining']} → avg_entry={metrics['avg_entry_price_kas']:.12f} KAS"
+            )
+        
         # Find existing position or create new
         position = Position.query.filter_by(
             user_id=user_id,
