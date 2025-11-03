@@ -481,7 +481,23 @@ def verify_signature():
         
         # Create or get user with verified wallet address
         user = User.get_or_create_by_wallet(wallet_address, wallet_type)
-        is_new_user = user.created_at and (datetime.now(timezone.utc) - user.created_at).total_seconds() < 10
+        
+        # Check if this is a new user (created in last 10 seconds)
+        # Handle both timezone-aware and naive datetimes
+        is_new_user = False
+        if user.created_at:
+            try:
+                # Ensure both datetimes are timezone-aware for comparison
+                user_created = user.created_at
+                if user_created.tzinfo is None:
+                    # If naive, assume UTC
+                    user_created = user_created.replace(tzinfo=timezone.utc)
+                
+                time_since_creation = (datetime.now(timezone.utc) - user_created).total_seconds()
+                is_new_user = time_since_creation < 10
+            except Exception as e:
+                logging.warning(f"Error checking user age: {e}")
+                is_new_user = False
         
         # Process referral if this is a new user signup
         if referrer_id and is_new_user:
