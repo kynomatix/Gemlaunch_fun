@@ -1906,6 +1906,42 @@ def token_polls(contract_address):
             db.session.rollback()
             return jsonify({'error': 'Failed to create poll'}), 500
 
+@app.route('/api/token/<contract_address>/polls/<int:poll_id>/check-eligibility', methods=['GET'])
+@require_wallet_connection
+def check_poll_voting_eligibility(contract_address, poll_id):
+    """
+    Check if user can vote on a poll BEFORE burning any tokens
+    CRITICAL: This prevents users from losing tokens if they've already voted
+    """
+    user = get_current_user()
+    
+    # Get poll
+    poll = Poll.query.get_or_404(poll_id)
+    
+    # Verify poll is for this token
+    if poll.token.contract_address.lower() != contract_address.lower():
+        return jsonify({'error': 'Poll does not belong to this token'}), 400
+    
+    # Check if already voted
+    existing_vote = PollVote.query.filter_by(poll_id=poll_id, user_id=user.id).first()
+    if existing_vote:
+        return jsonify({
+            'can_vote': False,
+            'reason': 'You have already voted on this poll'
+        }), 200
+    
+    # Check if poll has ended
+    if poll.ends_at and datetime.now(timezone.utc) > poll.ends_at:
+        return jsonify({
+            'can_vote': False,
+            'reason': 'This poll has ended'
+        }), 200
+    
+    # User is eligible to vote
+    return jsonify({
+        'can_vote': True
+    }), 200
+
 @app.route('/api/token/<contract_address>/polls/<int:poll_id>/vote', methods=['POST'])
 @csrf.exempt
 @require_wallet_connection

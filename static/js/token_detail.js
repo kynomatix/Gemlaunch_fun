@@ -3508,9 +3508,29 @@
                 return;
             }
             
-            // Check if user has already voted BEFORE asking them to sign transaction
-            if (poll.user_has_voted) {
-                ModalManager.alert('Already Voted', 'You have already voted on this poll.', 'info');
+            // CRITICAL: Check server-side if user has already voted BEFORE burning any tokens
+            // This prevents users from losing tokens if they've already voted
+            try {
+                const eligibilityResponse = await fetch(`/api/token/${window.tokenContractAddress}/polls/${pollId}/check-eligibility`, {
+                    headers: {
+                        'X-Wallet-Address': userWallet
+                    }
+                });
+                
+                if (!eligibilityResponse.ok) {
+                    const eligibilityData = await eligibilityResponse.json();
+                    ModalManager.alert('Cannot Vote', eligibilityData.error || 'You are not eligible to vote on this poll.', 'error');
+                    return;
+                }
+                
+                const eligibilityData = await eligibilityResponse.json();
+                if (!eligibilityData.can_vote) {
+                    ModalManager.alert('Already Voted', eligibilityData.reason || 'You have already voted on this poll.', 'info');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to check voting eligibility:', error);
+                ModalManager.alert('Error', 'Failed to verify voting eligibility. Please try again.', 'error');
                 return;
             }
             
