@@ -124,9 +124,10 @@
         
         .docs-tabs {
             display: flex;
+            flex-wrap: wrap;
             background: rgba(13, 13, 13, 0.8);
             border-bottom: 1px solid rgba(32, 178, 170, 0.2);
-            overflow-x: auto;
+            gap: 5px;
         }
         
         .docs-tab {
@@ -336,6 +337,10 @@
                     <button class="docs-tab" data-tab="chat">
                         <i class="fas fa-comments"></i>
                         <span>Chat & Community</span>
+                    </button>
+                    <button class="docs-tab" data-tab="charting">
+                        <i class="fas fa-chart-area"></i>
+                        <span>Charting & Positions</span>
                     </button>
 
                 </div>
@@ -856,6 +861,182 @@
                         <div class="highlight-box">
                             <h4>💡 Pro Tip</h4>
                             <p>The most successful tokens combine active chat engagement with regular polls and strategic airdrops to top contributors. Build your community points early to be first in line for future rewards!</p>
+                        </div>
+                    </div>
+
+                    <!-- Charting & Positions Tab -->
+                    <div class="tab-panel" id="charting">
+                        <h2>📈 Charting & Position Tracking</h2>
+                        
+                        <div class="highlight-box">
+                            <h4>🎯 Professional-Grade Analytics</h4>
+                            <p>Gemlaunch.fun features an elite position tracking system with FTX-style average-cost rebasing. This isn't just a chart - it's a complete trading analytics platform that shows your true profitability across all your trades.</p>
+                        </div>
+                        
+                        <h3>💎 FTX-Style Cost Basis Rebasing</h3>
+                        <p>Our position tracking system uses the same weighted average methodology used by professional exchanges like FTX, Binance, and Coinbase. This ensures accurate P&L calculations across multiple buys and sells.</p>
+                        
+                        <h4>How It Works:</h4>
+                        
+                        <div class="highlight-box" style="background: rgba(32, 178, 170, 0.15); border: 2px solid rgba(32, 178, 170, 0.4);">
+                            <h4>📊 Buying Tokens (Weighted Average)</h4>
+                            <p><strong>Algorithm:</strong> cost_basis += KAS_spent; avg_entry = cost_basis / total_tokens</p>
+                            <p style="margin-top: 1rem;"><strong>Example:</strong></p>
+                            <ul style="margin-top: 0.5rem;">
+                                <li>Buy 100 tokens @ 1 KAS each → cost_basis = 100 KAS, avg_entry = 1.00 KAS</li>
+                                <li>Buy 100 tokens @ 3 KAS each → cost_basis = 400 KAS, avg_entry = 2.00 KAS</li>
+                            </ul>
+                            <p style="margin-top: 1rem; color: #AAA; font-size: 0.95rem;">Your average entry price is the weighted average of all your purchases. This is your true "break-even" price.</p>
+                        </div>
+                        
+                        <div class="highlight-box" style="background: rgba(32, 178, 170, 0.15); border: 2px solid rgba(32, 178, 170, 0.4);">
+                            <h4>💰 Selling Tokens (Rebasing)</h4>
+                            <p><strong>Critical Insight:</strong> When you sell, we subtract the <strong>original cost</strong> of those tokens, NOT the sale proceeds.</p>
+                            <p style="margin-top: 1rem;"><strong>Algorithm:</strong> cost_basis -= avg_entry × tokens_sold</p>
+                            <p style="margin-top: 1rem;"><strong>Example:</strong></p>
+                            <ul style="margin-top: 0.5rem;">
+                                <li>Position: 200 tokens, cost_basis = 400 KAS, avg_entry = 2.00 KAS</li>
+                                <li>Sell 50 @ 5 KAS each → cost_basis = 400 - (2 × 50) = 300 KAS</li>
+                                <li>New position: 150 tokens, cost_basis = 300 KAS, avg_entry = 2.00 KAS ✅</li>
+                            </ul>
+                            <p style="margin-top: 1rem; color: #AAA; font-size: 0.95rem;"><strong>Why this matters:</strong> Rebasing ensures your average entry stays accurate when you take profits. Without it, selling at a profit would artificially inflate your average cost!</p>
+                        </div>
+                        
+                        <div class="highlight-box" style="background: rgba(32, 178, 170, 0.15); border: 2px solid rgba(32, 178, 170, 0.4);">
+                            <h4>🎁 Airdrop Handling (Free Tokens = Lower Avg Cost)</h4>
+                            <p><strong>Smart Economics:</strong> Airdrops are added to your position with $0 cost basis, which <strong>lowers your average entry price</strong>.</p>
+                            <p style="margin-top: 1rem;"><strong>Example:</strong></p>
+                            <ul style="margin-top: 0.5rem;">
+                                <li>Buy 100 @ 2 KAS = 200 KAS cost, avg = 2.00 KAS</li>
+                                <li>Receive 100 airdrop (free)</li>
+                                <li>New position: 200 tokens, 200 KAS cost, avg = <strong>1.00 KAS</strong> 🎉</li>
+                            </ul>
+                            <p style="margin-top: 1rem; color: #AAA; font-size: 0.95rem;">This shows the true value of community engagement - free tokens from airdrops reduce your average cost and increase your profit margin!</p>
+                        </div>
+                        
+                        <h3>📊 Chart Visualization</h3>
+                        <p>Every token page features a professional candlestick chart with your personalized position overlay showing your break-even point.</p>
+                        
+                        <h4>Chart Features:</h4>
+                        <ul>
+                            <li><strong>Candlestick Chart:</strong> Professional price action visualization with open, high, low, close data</li>
+                            <li><strong>Market Cap Chart:</strong> Track total market cap growth over time</li>
+                            <li><strong>Break-Even Line:</strong> Green horizontal line shows your average entry price/market cap</li>
+                            <li><strong>Position Info:</strong> Live display of your holdings, entry price, and unrealized P&L</li>
+                            <li><strong>Multi-Wallet Support:</strong> Aggregates positions across all your linked wallets</li>
+                            <li><strong>Real-Time Updates:</strong> Charts update automatically as new trades happen</li>
+                        </ul>
+                        
+                        <h3>⚠️ Important: Market Cap vs Price Visibility</h3>
+                        
+                        <div class="highlight-box" style="background: rgba(255, 200, 0, 0.1); border: 2px solid rgba(255, 200, 0, 0.4);">
+                            <h4>📊 During Bonding Curve (Before Graduation)</h4>
+                            <p><strong>ONLY Market Cap is visible on charts</strong></p>
+                            <ul style="margin-top: 1rem;">
+                                <li>Charts display <strong>Market Cap in USD</strong> on the Y-axis</li>
+                                <li>Price per token is <strong>NOT shown</strong> on bonding curve charts</li>
+                                <li>Your break-even line shows <strong>market cap at entry</strong>, not price</li>
+                                <li>Trade interface shows current market cap and your cost basis market cap</li>
+                            </ul>
+                            <p style="margin-top: 1rem; color: #AAA; font-size: 0.95rem;"><strong>Why?</strong> During the bonding curve phase, market cap is the standard metric for tracking token value. This keeps charts consistent with how most users think about bonding curve tokens.</p>
+                        </div>
+                        
+                        <div class="highlight-box" style="background: rgba(0, 200, 255, 0.1); border: 2px solid rgba(0, 200, 255, 0.4);">
+                            <h4>🎓 After Graduation (DEX Trading)</h4>
+                            <p><strong>Price per token becomes visible</strong></p>
+                            <ul style="margin-top: 1rem;">
+                                <li>Charts switch to display <strong>Price in KAS</strong> on the Y-axis</li>
+                                <li>Your break-even line shows <strong>price per token at entry</strong></li>
+                                <li>DEX trading uses standard price-based metrics like all exchanges</li>
+                                <li>More granular price action visible for technical analysis</li>
+                            </ul>
+                            <p style="margin-top: 1rem; color: #AAA; font-size: 0.95rem;"><strong>Why?</strong> After graduation to the DEX, tokens trade like any other cryptocurrency with visible per-token pricing. This aligns with standard exchange conventions.</p>
+                        </div>
+                        
+                        <h3>💹 P&L Calculations</h3>
+                        
+                        <h4>Realized P&L (Locked In Profits/Losses):</h4>
+                        <p><strong>Formula:</strong> (sell_price - avg_entry) × quantity_sold</p>
+                        <ul>
+                            <li>Calculated and locked in every time you sell</li>
+                            <li>Tracks your actual profits withdrawn from the position</li>
+                            <li>Displayed in your position summary</li>
+                            <li>Shows cumulative profits across all sells</li>
+                        </ul>
+                        
+                        <h4>Unrealized P&L (Paper Profits/Losses):</h4>
+                        <p><strong>Formula:</strong> (current_price - avg_entry) × tokens_remaining</p>
+                        <ul>
+                            <li>Shows profit/loss on your current holdings</li>
+                            <li>Updates in real-time as price changes</li>
+                            <li>Green = profit, Red = loss</li>
+                            <li>Percentage gain/loss displayed alongside dollar amount</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>💡 Pro Trading Insights</h4>
+                            <p><strong>Taking Profits Strategy:</strong> When you sell 50% of your position after it 2x, the rebasing system accurately maintains your average entry price. This means:</p>
+                            <ul style="margin-top: 1rem;">
+                                <li>Your remaining 50% position still shows original avg entry</li>
+                                <li>Realized P&L shows locked-in profits from the sale</li>
+                                <li>Future price increases calculate correctly from your true entry point</li>
+                                <li>No artificial inflation of your cost basis (unlike naive systems)</li>
+                            </ul>
+                        </div>
+                        
+                        <h3>🔗 Multi-Wallet Position Aggregation</h3>
+                        <p>Link multiple wallets to see your complete position across all addresses:</p>
+                        
+                        <ul>
+                            <li><strong>Unified View:</strong> All trades from linked wallets counted together</li>
+                            <li><strong>Single Break-Even:</strong> One aggregated average entry price</li>
+                            <li><strong>Total Holdings:</strong> Combined token balance across wallets</li>
+                            <li><strong>Consolidated P&L:</strong> Complete profit/loss picture</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>🎓 Example: Complete Trading Scenario</h4>
+                            <p style="margin-bottom: 1rem;"><strong>Scenario:</strong> Trading a token through bonding curve and graduation</p>
+                            
+                            <p><strong>Phase 1 - Bonding Curve:</strong></p>
+                            <ul style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                                <li>Buy 1,000 tokens when market cap = $5,000 (cost: 100 KAS)</li>
+                                <li>Receive 500 airdrop tokens (cost: 0 KAS)</li>
+                                <li>Total: 1,500 tokens, avg entry = $3.33 market cap per token</li>
+                                <li>Chart shows green line at $5,000 market cap (your break-even)</li>
+                            </ul>
+                            
+                            <p><strong>Phase 2 - Taking Profits:</strong></p>
+                            <ul style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                                <li>Market cap hits $15,000 (3x from your entry)</li>
+                                <li>Sell 750 tokens for 150 KAS</li>
+                                <li>Realized P&L: +50 KAS profit (locked in!)</li>
+                                <li>Remaining: 750 tokens, cost_basis = 50 KAS, avg entry still $3.33</li>
+                            </ul>
+                            
+                            <p><strong>Phase 3 - Graduation:</strong></p>
+                            <ul style="margin-top: 0.5rem;">
+                                <li>Token graduates to DEX at $50k market cap</li>
+                                <li>Chart switches from market cap to price display</li>
+                                <li>Your 750 tokens now show price-based break-even line</li>
+                                <li>Continue trading on DEX with accurate position tracking</li>
+                            </ul>
+                        </div>
+                        
+                        <h3>🚀 Why This System is Elite</h3>
+                        <ul>
+                            <li><strong>Industry Standard:</strong> Same math as FTX, Binance, Coinbase</li>
+                            <li><strong>Accurate De-Risking:</strong> Taking profits doesn't break your average entry calculation</li>
+                            <li><strong>Airdrop Economics:</strong> Shows true value of community rewards</li>
+                            <li><strong>Multi-Wallet Support:</strong> Complete picture across all your addresses</li>
+                            <li><strong>Real-Time Updates:</strong> Always shows current position status</li>
+                            <li><strong>Visual Break-Even:</strong> Instantly see if you're in profit or loss</li>
+                            <li><strong>Phase-Aware:</strong> Adapts chart display for bonding curve vs DEX trading</li>
+                        </ul>
+                        
+                        <div class="highlight-box">
+                            <h4>💎 Bottom Line</h4>
+                            <p>This isn't just basic "bought X, sold Y" tracking. It's a professional-grade position management system that handles complex trading scenarios with mathematical precision. The FTX-style rebasing ensures your average entry price always reflects reality, giving you accurate profit/loss data for informed trading decisions.</p>
                         </div>
                     </div>
 
