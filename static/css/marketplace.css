@@ -1,6 +1,11 @@
+body {
+    overflow-x: hidden;
+}
+
 .marketplace-main {
     padding-top: 100px;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .marketplace-header {
