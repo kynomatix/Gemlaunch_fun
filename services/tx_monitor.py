@@ -72,8 +72,13 @@ class TransactionMonitor:
     def _handle_confirmed_transaction(self, tx, receipt):
         """Handle post-confirmation actions for different transaction types"""
         try:
-            # No transaction types to handle currently
-            pass
+            # Immediately index transaction so it appears in recent trades
+            from services.event_indexer import index_transaction_immediately
+            index_result = index_transaction_immediately(tx.tx_hash)
+            if index_result.get('success'):
+                logging.info(f"✅ Immediately indexed confirmed tx: {tx.tx_hash[:10]}...")
+            else:
+                logging.warning(f"Failed to immediately index tx {tx.tx_hash[:10]}...: {index_result.get('error')}")
         except Exception as e:
             logging.error(f"Error handling confirmed transaction {tx.tx_hash}: {str(e)}")
     
