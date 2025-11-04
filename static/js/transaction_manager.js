@@ -297,9 +297,7 @@ class TransactionManager {
         const provider = this.walletManager.getMetaMaskProvider();
         const accounts = await provider.request({method: 'eth_accounts'});
         
-        // CRITICAL: Send ONLY required parameters (Uniswap V3 pattern)
-        // Let MetaMask auto-fill: nonce, chainId, gas, gasPrice
-        // This is "recommended for most dApps" per MetaMask docs
+        // Build transaction params
         const txParams = {
             from: accounts[0],
             to: txData.to,
@@ -307,7 +305,12 @@ class TransactionManager {
             data: txData.data
         };
         
-        // DO NOT include gas, gasPrice, chainId - MetaMask handles these
+        // CRITICAL: For Kasplex (EIP-1559 only chain), we MUST include explicit fee params
+        // Otherwise MetaMask sees RPC gasPrice and creates legacy tx that gets rejected
+        if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
+            txParams.maxFeePerGas = txData.maxFeePerGas;
+            txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
+        }
         
         // eth_sendTransaction signs AND submits to blockchain
         const txHash = await provider.request({
