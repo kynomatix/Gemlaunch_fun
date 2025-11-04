@@ -63,6 +63,21 @@
         
         // Initialize the module with data from server
         init: function(config) {
+            // CRITICAL: Clear ALL previous token state to prevent Turbo navigation bugs
+            // This ensures switching from KAMI → KREX doesn't show KAMI's chart data
+            this.tradeDataByTimestamp = {};  // Clear old trade markers
+            this.chartData = null;            // Clear old chart data
+            this.currentSeries = null;        // Clear series reference
+            this.userEntryPriceLine = null;   // Clear position line
+            this.currentPriceLine = null;     // Clear price line
+            
+            // Remove existing chart if it exists (will be recreated with new token data)
+            if (this.myChart) {
+                this.myChart.remove();
+                this.myChart = null;
+            }
+            
+            // Now set new token data
             this.tokenPrice = config.tokenPrice;
             this.marketCap = config.marketCap;
             this.tokenSymbol = config.tokenSymbol;
