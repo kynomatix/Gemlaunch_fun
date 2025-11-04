@@ -1246,7 +1246,7 @@ body {
 
 .trending-ticker {
     position: fixed;
-    top: 96px;
+    top: 60px;
     left: 0;
     right: 0;
     background: rgba(32, 178, 170, 0.05);
