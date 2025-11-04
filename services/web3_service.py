@@ -1903,18 +1903,15 @@ class Web3Service:
             multicall_encoded = multicall_call._encode_transaction_data()
             
             # Build final transaction with native KAS as value
-            # CRITICAL: Must include gasPrice for Kasplex (MetaMask gas estimation bug)
-            gas_price = self.w3.eth.gas_price
-            
+            # Let MetaMask compute EIP-1559 fees automatically (Kasplex is EIP-1559 only)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),  # Native KAS sent with transaction
-                'data': multicall_encoded,
-                'gasPrice': hex(gas_price)  # Required for Kasplex MetaMask bug
+                'data': multicall_encoded
             }
             
-            logging.info(f"✅ DEX buy tx built: exactInputSingle({kas_amount} KAS → {min_tokens_out} tokens min) + refundETH in multicall (gasPrice: {gas_price})")
+            logging.info(f"✅ DEX buy tx built: exactInputSingle({kas_amount} KAS → {min_tokens_out} tokens min) + refundETH in multicall")
             return tx_data
             
         except Exception as e:
@@ -1975,18 +1972,15 @@ class Web3Service:
             encoded_data = function_call._encode_transaction_data()
             
             # Build transaction (no value needed - we're selling tokens, not sending KAS)
-            # CRITICAL: Must include gasPrice for Kasplex (MetaMask gas estimation bug)
-            gas_price = self.w3.eth.gas_price
-            
+            # Let MetaMask compute EIP-1559 fees automatically (Kasplex is EIP-1559 only)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data,
-                'gasPrice': hex(gas_price)  # Required for Kasplex MetaMask bug
+                'data': encoded_data
             }
             
-            logging.info(f"✅ DEX sell tx built: exactInputSingle({token_amount} tokens → {min_kas_out} WKAS min) (gasPrice: {gas_price})")
+            logging.info(f"✅ DEX sell tx built: exactInputSingle({token_amount} tokens → {min_kas_out} WKAS min)")
             return tx_data
             
         except Exception as e:
@@ -2013,18 +2007,15 @@ class Web3Service:
             function_call = wkas_contract.functions.withdraw(wkas_amount)
             encoded_data = function_call._encode_transaction_data()
             
-            # Build transaction with gasPrice (CRITICAL for Kasplex)
-            gas_price = self.w3.eth.gas_price
-            
+            # Build transaction - let MetaMask compute EIP-1559 fees automatically
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
                 'value': '0x0',
-                'data': encoded_data,
-                'gasPrice': hex(gas_price)  # Required for Kasplex MetaMask bug
+                'data': encoded_data
             }
             
-            logging.info(f"WKAS unwrap tx built (gasPrice: {gas_price})")
+            logging.info(f"WKAS unwrap tx built")
             return tx_data
             
         except Exception as e:
