@@ -6531,6 +6531,104 @@ def api_claim_creator_fees(address):
         logging.error(f"Error in claim-creator-fees: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to claim creator fees'}), 500
 
+@app.route('/api/token/<int:token_id>/claim-fees', methods=['POST'])
+@csrf.exempt
+def api_claim_creator_fees_by_id(token_id):
+    """
+    Claim accumulated creator fees by token ID (wraps address-based endpoint)
+    
+    Request JSON:
+    {
+        "creator_address": "0x..." (optional, defaults to connected wallet)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tx_data": {...},
+        "claimable_amount": "0.3"
+    }
+    """
+    try:
+        # Get token by ID
+        token = Token.query.filter_by(id=token_id).first()
+        if not token:
+            return jsonify({'success': False, 'error': 'Token not found'}), 404
+        
+        if not token.contract_address:
+            return jsonify({'success': False, 'error': 'Token not deployed yet'}), 400
+        
+        # Get request data
+        data = request.get_json(silent=True) or {}
+        
+        # Build transaction using web3_service
+        web3_service = get_web3_service()
+        
+        # Get creator address from request or use token creator
+        creator_address = data.get('creator_address')
+        if not creator_address:
+            if not token.creator:
+                return jsonify({'success': False, 'error': 'Token creator not found'}), 404
+            creator_address = token.creator.wallet_address
+        
+        try:
+            creator_address = Web3.to_checksum_address(creator_address)
+            pool_address = Web3.to_checksum_address(token.contract_address)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Invalid address format'}), 400
+        
+        # Verify creator ownership
+        if creator_address.lower() != token.creator.wallet_address.lower():
+            return jsonify({
+                'success': False,
+                'error': 'Only token creator can claim fees'
+            }), 403
+        
+        # Check claimable amount
+        claimable_wei = web3_service.get_creator_claimable(pool_address)
+        
+        if claimable_wei == 0:
+            return jsonify({
+                'success': False,
+                'error': 'No fees available to claim'
+            }), 400
+        
+        claimable_kas = float(Web3.from_wei(claimable_wei, 'ether'))
+        
+        # Build unsigned transaction
+        unsigned_tx = web3_service.withdraw_creator_fees_tx_data(
+            creator_address,
+            pool_address
+        )
+        
+        # Format for frontend
+        tx_data = {
+            'from': unsigned_tx['from'],
+            'to': unsigned_tx['to'],
+            'data': unsigned_tx['data'],
+            'value': hex(unsigned_tx['value']),
+            'gas': hex(unsigned_tx['gas']),
+            'gasPrice': hex(unsigned_tx['gasPrice']),
+            'nonce': hex(unsigned_tx['nonce']),
+            'chainId': 167012
+        }
+        
+        logging.info(f"Built claim fees tx for token {token_id} ({token.symbol}) - Claimable: {claimable_kas} KAS")
+        
+        return jsonify({
+            'success': True,
+            'tx_data': tx_data,
+            'claimable_amount': str(claimable_kas),
+            'claimable_amount_wei': str(claimable_wei)
+        })
+    
+    except ValueError as e:
+        logging.debug(f"Validation error in claim-fees (by ID): {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logging.error(f"Error in claim-fees (by ID): {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to claim creator fees'}), 500
+
 @app.route('/api/token/<int:token_id>/contract-address', methods=['GET'])
 def api_token_contract_address(token_id):
     """
