@@ -1218,7 +1218,7 @@ body {
 
 /* Adjust marketplace padding when ticker is visible */
 .marketplace-main {
-    padding-top: 136px !important; /* 60px topbar + 36px ticker + 40px spacing */
+    padding-top: 170px !important; /* 60px topbar + 36px ticker + 74px spacing */
 }
 
 @media (max-width: 768px) {
@@ -1227,7 +1227,7 @@ body {
     }
     
     .marketplace-main {
-        padding-top: 132px !important; /* 60px topbar + 32px ticker + 40px spacing */
+        padding-top: 160px !important; /* 60px topbar + 32px ticker + 68px spacing */
     }
     
     .trending-ticker-item img {
