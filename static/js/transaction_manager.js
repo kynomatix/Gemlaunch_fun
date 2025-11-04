@@ -305,17 +305,18 @@ class TransactionManager {
             data: txData.data
         };
         
-        // CRITICAL: For Kasplex (EIP-1559 only chain), we MUST include explicit fee params
-        // Otherwise MetaMask sees RPC gasPrice and creates legacy tx that gets rejected
+        // Let MetaMask estimate gas fees for Kasplex
+        // Backend no longer sends gas params because RPC returns incorrect base fee
+        // MetaMask will query the network and use correct ~2000 gwei base fee
         if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
             txParams.maxFeePerGas = txData.maxFeePerGas;
             txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
-            console.log('✅ DEX TX: Including EIP-1559 params', {
+            console.log('✅ DEX TX: Using backend-provided gas params', {
                 maxFeePerGas: txData.maxFeePerGas,
                 maxPriorityFeePerGas: txData.maxPriorityFeePerGas
             });
         } else {
-            console.warn('⚠️ DEX TX: Missing EIP-1559 params! This will fail on Kasplex.', txData);
+            console.log('✅ DEX TX: Letting MetaMask estimate gas fees (Kasplex base fee ~2000 gwei)');
         }
         
         console.log('📤 Sending to MetaMask:', txParams);

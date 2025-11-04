@@ -1900,23 +1900,16 @@ class Web3Service:
             multicall_data = [exact_input_encoded, refund_eth_encoded]
             multicall_encoded = swap_router.functions.multicall(multicall_data)._encode_transaction_data()
             
-            # Get current block to calculate EIP-1559 fees
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block['baseFeePerGas']
-            max_priority_fee = self.w3.to_wei(2, 'gwei')  # 2 gwei tip
-            max_fee = base_fee * 2 + max_priority_fee  # 2x base + tip
-            
-            # Build EIP-1559 transaction (forces MetaMask to use EIP-1559 mode)
+            # Let MetaMask estimate gas fees - DO NOT override
+            # Kasplex base fee is ~2000 gwei, RPC returns incorrect values
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_encoded,
-                'maxFeePerGas': hex(max_fee),
-                'maxPriorityFeePerGas': hex(max_priority_fee)
+                'data': multicall_encoded
             }
             
-            logging.info(f"✅ DEX buy tx built - MultiCall([exactInputSingle, refundETH]) - EIP-1559 (base: {base_fee}, max: {max_fee})")
+            logging.info(f"✅ DEX buy tx built - MultiCall([exactInputSingle, refundETH]) - Letting MetaMask estimate fees")
             return tx_data
             
         except Exception as e:
@@ -1975,23 +1968,16 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Get current block to calculate EIP-1559 fees
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block['baseFeePerGas']
-            max_priority_fee = self.w3.to_wei(2, 'gwei')  # 2 gwei tip
-            max_fee = base_fee * 2 + max_priority_fee  # 2x base + tip
-            
-            # Build EIP-1559 transaction (forces MetaMask to use EIP-1559 mode)
+            # Let MetaMask estimate gas fees - DO NOT override
+            # Kasplex base fee is ~2000 gwei, RPC returns incorrect values
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data,
-                'maxFeePerGas': hex(max_fee),
-                'maxPriorityFeePerGas': hex(max_priority_fee)
+                'data': encoded_data
             }
             
-            logging.info(f"✅ DEX sell tx built - exactInputSingle - EIP-1559 (base: {base_fee}, max: {max_fee})")
+            logging.info(f"✅ DEX sell tx built - exactInputSingle - Letting MetaMask estimate fees")
             return tx_data
             
         except Exception as e:
@@ -2017,23 +2003,16 @@ class Web3Service:
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
             
-            # Get current block to calculate EIP-1559 fees
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block['baseFeePerGas']
-            max_priority_fee = self.w3.to_wei(2, 'gwei')  # 2 gwei tip
-            max_fee = base_fee * 2 + max_priority_fee  # 2x base + tip
-            
-            # Build EIP-1559 transaction (forces MetaMask to use EIP-1559 mode)
+            # Let MetaMask estimate gas fees - DO NOT override
+            # Kasplex base fee is ~2000 gwei, RPC returns incorrect values
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
                 'value': '0x0',
-                'data': encoded_data,
-                'maxFeePerGas': hex(max_fee),
-                'maxPriorityFeePerGas': hex(max_priority_fee)
+                'data': encoded_data
             }
             
-            logging.info(f"WKAS unwrap tx built - EIP-1559 (base: {base_fee}, max: {max_fee})")
+            logging.info(f"WKAS unwrap tx built - Letting MetaMask estimate fees")
             return tx_data
             
         except Exception as e:
