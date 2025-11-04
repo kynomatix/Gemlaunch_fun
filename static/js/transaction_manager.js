@@ -305,18 +305,20 @@ class TransactionManager {
             data: txData.data
         };
         
-        // Let MetaMask estimate gas fees for Kasplex
-        // Backend no longer sends gas params because RPC returns incorrect base fee
-        // MetaMask will query the network and use correct ~2000 gwei base fee
+        // Include gas limit if backend provides it (for DEX swaps)
+        if (txData.gas) {
+            txParams.gas = txData.gas;
+            console.log('✅ DEX TX: Using backend gas limit:', parseInt(txData.gas, 16), 'units');
+        }
+        
+        // Include EIP-1559 gas params if backend provides them
         if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
             txParams.maxFeePerGas = txData.maxFeePerGas;
             txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
-            console.log('✅ DEX TX: Using backend-provided gas params', {
+            console.log('✅ DEX TX: Using backend EIP-1559 gas params', {
                 maxFeePerGas: txData.maxFeePerGas,
                 maxPriorityFeePerGas: txData.maxPriorityFeePerGas
             });
-        } else {
-            console.log('✅ DEX TX: Letting MetaMask estimate gas fees (Kasplex base fee ~2000 gwei)');
         }
         
         console.log('📤 Sending to MetaMask:', txParams);
