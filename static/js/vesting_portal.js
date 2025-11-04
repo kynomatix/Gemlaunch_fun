@@ -341,9 +341,30 @@
 
             } catch (error) {
                 console.error(`Error withdrawing ${type} tokens:`, error);
+                
+                // Parse error message to extract human-readable content
+                let errorMessage = error.message;
+                
+                // Try to extract JSON error message from server response
+                const jsonMatch = errorMessage.match(/\{.*"error":\s*"([^"]+)"/);
+                if (jsonMatch && jsonMatch[1]) {
+                    errorMessage = jsonMatch[1];
+                } else {
+                    // Clean up generic error messages
+                    errorMessage = errorMessage
+                        .replace(/^Server error: \d+ - /, '')  // Remove "Server error: 429 -"
+                        .replace(/\{.*\}/, '')  // Remove any JSON
+                        .trim();
+                    
+                    // If we're left with nothing meaningful, use a default message
+                    if (!errorMessage || errorMessage.length < 5) {
+                        errorMessage = 'Unable to process claim. Please try again later.';
+                    }
+                }
+                
                 this.showToast(
                     'Claim Failed',
-                    `Unable to claim ${type} vesting tokens: ${error.message}`,
+                    errorMessage,
                     'error'
                 );
             } finally {
