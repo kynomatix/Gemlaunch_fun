@@ -664,6 +664,8 @@ def process_trade_events_batch(purchase_events, sell_events, token, w3, blocks_c
                     logger.debug(f"✅ Updated position cache for user {wallet[:10]}... on token {token.symbol}")
                 except Exception as e:
                     logger.error(f"Error updating position for user {wallet[:10]}... on token {token.symbol}: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
         
         # Step 3.6: Track per-token engagement for PRO tokens
         from services.token_service import TokenService

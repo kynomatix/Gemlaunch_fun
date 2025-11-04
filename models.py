@@ -1192,7 +1192,7 @@ class Position(db.Model):
     token_id = db.Column(db.Integer, db.ForeignKey('token.id'), nullable=False, index=True)
     
     # Position metrics (average-cost method)
-    qty_remaining = db.Column(db.Numeric(precision=30, scale=0), nullable=False, default=0)
+    qty_remaining = db.Column(db.Numeric(precision=30, scale=18), nullable=False, default=0)
     cost_basis_kas = db.Column(db.Numeric(precision=20, scale=8), nullable=False, default=0)
     avg_entry_price_kas = db.Column(db.Numeric(precision=20, scale=12), nullable=False, default=0)
     
