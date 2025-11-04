@@ -1421,9 +1421,12 @@ def app_dashboard():
     # Calculate pagination metadata
     has_more = offset + len(created_tokens) < total_tokens
     
-    # TODO: Replace with HolderService to fetch holdings from blockchain
-    # For now, return empty list to remove database dependency
-    holdings = []
+    # Get user's active positions (tokens with qty_remaining > 0)
+    # This shows the count of different tokens currently held
+    holdings = Position.query.filter(
+        Position.user_id == user.id,
+        Position.qty_remaining > 0
+    ).all()
     
     # Get user's activities with eager loading of related entities
     activities = Activity.query.options(

@@ -1367,12 +1367,12 @@
                             
                             <div class="token-stats">
                                 <div class="token-stat">
-                                    <div class="token-stat-value">{{ "%.0f"|format(holding.token_amount) }}</div>
+                                    <div class="token-stat-value">{{ "%.0f"|format(holding.qty_remaining) }}</div>
                                     <div class="token-stat-label">Tokens Held</div>
                                 </div>
                                 <div class="token-stat">
-                                    <div class="token-stat-value">${{ "%.2f"|format(holding.total_invested or 0) }}</div>
-                                    <div class="token-stat-label">Total Invested</div>
+                                    <div class="token-stat-value">{{ "%.2f"|format(holding.cost_basis_kas or 0) }} KAS</div>
+                                    <div class="token-stat-label">Cost Basis</div>
                                 </div>
                             </div>
                             
