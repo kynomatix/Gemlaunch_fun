@@ -1897,21 +1897,26 @@ class Web3Service:
             refund_eth_encoded = refund_eth_call._encode_transaction_data()
             
             # Build multicall with [exactInputSingle, refundETH]
-            # multicall(bytes[] data) - array of encoded function calls
             multicall_data = [exact_input_encoded, refund_eth_encoded]
-            multicall_call = swap_router.functions.multicall(multicall_data)
-            multicall_encoded = multicall_call._encode_transaction_data()
             
-            # Build final transaction with native KAS as value
-            # Let MetaMask compute EIP-1559 fees automatically (Kasplex is EIP-1559 only)
-            tx_data = {
+            # Build transaction using web3.py build_transaction (no gasPrice for EIP-1559)
+            tx_data = swap_router.functions.multicall(multicall_data).build_transaction({
                 'from': user_address,
-                'to': swap_router.address,
-                'value': hex(kas_amount),  # Native KAS sent with transaction
-                'data': multicall_encoded
-            }
+                'value': kas_amount,
+                'nonce': self.w3.eth.get_transaction_count(user_address)
+            })
             
-            logging.info(f"✅ DEX buy tx built: exactInputSingle({kas_amount} KAS → {min_tokens_out} tokens min) + refundETH in multicall")
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"✅ DEX buy tx built: Gas: {gas_estimate['gas']}")
             return tx_data
             
         except Exception as e:
@@ -1967,20 +1972,24 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode exactInputSingle call using web3.py automatic encoding
-            function_call = swap_router.functions.exactInputSingle(exact_input_params)
-            encoded_data = function_call._encode_transaction_data()
-            
-            # Build transaction (no value needed - we're selling tokens, not sending KAS)
-            # Let MetaMask compute EIP-1559 fees automatically (Kasplex is EIP-1559 only)
-            tx_data = {
+            # Build transaction using web3.py build_transaction (no gasPrice for EIP-1559)
+            tx_data = swap_router.functions.exactInputSingle(exact_input_params).build_transaction({
                 'from': user_address,
-                'to': swap_router.address,
-                'value': '0x0',
-                'data': encoded_data
-            }
+                'value': 0,
+                'nonce': self.w3.eth.get_transaction_count(user_address)
+            })
             
-            logging.info(f"✅ DEX sell tx built: exactInputSingle({token_amount} tokens → {min_kas_out} WKAS min)")
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"✅ DEX sell tx built: Gas: {gas_estimate['gas']}")
             return tx_data
             
         except Exception as e:
@@ -2003,19 +2012,24 @@ class Web3Service:
             
             wkas_contract = self.contracts['WKAS']
             
-            # WKAS.withdraw(amount) - unwraps to native KAS
-            function_call = wkas_contract.functions.withdraw(wkas_amount)
-            encoded_data = function_call._encode_transaction_data()
-            
-            # Build transaction - let MetaMask compute EIP-1559 fees automatically
-            tx_data = {
+            # Build transaction using web3.py build_transaction (no gasPrice for EIP-1559)
+            tx_data = wkas_contract.functions.withdraw(wkas_amount).build_transaction({
                 'from': Web3.to_checksum_address(user_address),
-                'to': wkas_contract.address,
-                'value': '0x0',
-                'data': encoded_data
-            }
+                'value': 0,
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+            })
             
-            logging.info(f"WKAS unwrap tx built")
+            # Estimate gas
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"WKAS unwrap tx built: Gas: {gas_estimate['gas']}")
             return tx_data
             
         except Exception as e:
