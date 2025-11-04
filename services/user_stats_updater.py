@@ -4,6 +4,7 @@ Updates User model statistics from trade events
 """
 
 import logging
+from decimal import Decimal
 from models import User, db
 
 logging.basicConfig(level=logging.DEBUG)
@@ -69,8 +70,26 @@ def update_user_stats_batch(trade_events_with_amounts):
     for wallet, stats in user_trades.items():
         user = User.query.filter_by(wallet_address=wallet).first()
         if user:
+            # Calculate points based on cumulative volume thresholds crossed
+            # Use Decimal to avoid floating point precision errors
+            old_volume = user.total_trading_volume or Decimal(0)
+            new_volume = old_volume + stats['volume']
+            
+            # Points = floor(new_total / 100) - floor(old_total / 100)
+            # Use Decimal division to ensure precise threshold detection
+            old_points_threshold = int(old_volume / Decimal(100))
+            new_points_threshold = int(new_volume / Decimal(100))
+            points_to_add = new_points_threshold - old_points_threshold
+            
+            # Update stats
             user.total_trades_count = (user.total_trades_count or 0) + stats['count']
             user.total_trading_volume = (user.total_trading_volume or 0) + stats['volume']
+            
+            # Award GEM points if threshold crossed
+            if points_to_add > 0:
+                user.gem_points = (user.gem_points or 0) + points_to_add
+                logger.debug(f"  💎 Awarded {points_to_add} GEM points ({float(old_volume):.2f} → {float(new_volume):.2f} KAS)")
+            
             updated_count += 1
     
     logger.debug(f"✅ Updated stats for {updated_count} users in batch")
