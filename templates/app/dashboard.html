@@ -1371,7 +1371,8 @@
                                     <div class="token-stat-label">Tokens Held</div>
                                 </div>
                                 <div class="token-stat">
-                                    <div class="token-stat-value">{{ "%.2f"|format(holding.cost_basis_kas or 0) }} KAS</div>
+                                    {% set cost_basis_usd = (holding.cost_basis_kas|float or 0) * (kas_price if kas_price > 0 else 0.10) %}
+                                    <div class="token-stat-value">${{ "%.2f"|format(cost_basis_usd) }}</div>
                                     <div class="token-stat-label">Cost Basis</div>
                                 </div>
                             </div>
