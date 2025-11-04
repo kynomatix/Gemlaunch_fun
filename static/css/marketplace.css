@@ -10,6 +10,7 @@ body {
 
 .marketplace-header {
     text-align: center;
+    margin-top: 3rem;
     margin-bottom: 3rem;
 }
 
@@ -1218,7 +1219,7 @@ body {
 
 /* Adjust marketplace padding when ticker is visible */
 .marketplace-main {
-    padding-top: 170px !important; /* 60px topbar + 36px ticker + 74px spacing */
+    padding-top: 96px !important; /* 60px topbar + 36px ticker */
 }
 
 @media (max-width: 768px) {
@@ -1227,7 +1228,7 @@ body {
     }
     
     .marketplace-main {
-        padding-top: 160px !important; /* 60px topbar + 32px ticker + 68px spacing */
+        padding-top: 92px !important; /* 60px topbar + 32px ticker */
     }
     
     .trending-ticker-item img {
