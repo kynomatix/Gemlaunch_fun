@@ -18,7 +18,7 @@ class WalletManager {
                 decimals: 18
             },
             rpcUrls: ['https://rpc.kasplextest.xyz'],
-            blockExplorerUrls: ['https://frontend.kasplextest.xyz']
+            blockExplorerUrls: ['https://explorer.testnet.kasplextest.xyz']
         };
         
         this.init();

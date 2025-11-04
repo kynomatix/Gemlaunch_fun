@@ -587,7 +587,7 @@ class TransactionManager {
                                     decimals: 18
                                 },
                                 rpcUrls: ['https://rpc.kasplextest.xyz'],
-                                blockExplorerUrls: ['http://explorer.testnet.kasplextest.xyz']
+                                blockExplorerUrls: ['https://explorer.testnet.kasplextest.xyz']
                             }]
                         });
                     } else {
