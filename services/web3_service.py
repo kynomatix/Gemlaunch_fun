@@ -1900,27 +1900,15 @@ class Web3Service:
             multicall_data = [exact_input_encoded, refund_eth_encoded]
             multicall_encoded = swap_router.functions.multicall(multicall_data)._encode_transaction_data()
             
-            # Build transaction manually (matching bonding curve format)
+            # Build transaction - let MetaMask handle everything
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': kas_amount,
-                'data': multicall_encoded,
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(user_address)
+                'value': hex(kas_amount),
+                'data': multicall_encoded
             }
             
-            # Estimate gas
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"✅ DEX buy tx built: Gas: {gas_estimate['gas']}")
+            logging.info(f"✅ DEX buy tx built - MultiCall([exactInputSingle, refundETH])")
             return tx_data
             
         except Exception as e:
@@ -1979,27 +1967,15 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Build transaction manually (matching bonding curve format)
+            # Build transaction - let MetaMask handle everything
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': 0,
-                'data': encoded_data,
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(user_address)
+                'value': '0x0',
+                'data': encoded_data
             }
             
-            # Estimate gas
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"✅ DEX sell tx built: Gas: {gas_estimate['gas']}")
+            logging.info(f"✅ DEX sell tx built - exactInputSingle")
             return tx_data
             
         except Exception as e:
@@ -2024,29 +2000,16 @@ class Web3Service:
             
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
-            user_checksum = Web3.to_checksum_address(user_address)
             
-            # Build transaction manually (matching bonding curve format)
+            # Build transaction - let MetaMask handle everything  
             tx_data = {
-                'from': user_checksum,
+                'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
-                'value': 0,
-                'data': encoded_data,
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(user_checksum)
+                'value': '0x0',
+                'data': encoded_data
             }
             
-            # Estimate gas
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"WKAS unwrap tx built: Gas: {gas_estimate['gas']}")
+            logging.info(f"WKAS unwrap tx built")
             return tx_data
             
         except Exception as e:
