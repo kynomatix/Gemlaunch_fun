@@ -1900,16 +1900,17 @@ class Web3Service:
             multicall_data = [exact_input_encoded, refund_eth_encoded]
             multicall_encoded = swap_router.functions.multicall(multicall_data)._encode_transaction_data()
             
-            # Let MetaMask estimate gas fees - DO NOT override
-            # Kasplex base fee is ~2000 gwei, RPC returns incorrect values
+            # Set reasonable gas limit based on Uniswap V3 swap patterns
+            # Kasplex RPC gas estimation is unreliable, use known-good value
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_encoded
+                'data': multicall_encoded,
+                'gas': hex(350000)  # 350k gas for DEX swap (Uniswap V3 standard)
             }
             
-            logging.info(f"✅ DEX buy tx built - MultiCall([exactInputSingle, refundETH]) - Letting MetaMask estimate fees")
+            logging.info(f"✅ DEX buy tx built - MultiCall([exactInputSingle, refundETH]) - Gas: 350000")
             return tx_data
             
         except Exception as e:
@@ -1968,16 +1969,17 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Let MetaMask estimate gas fees - DO NOT override
-            # Kasplex base fee is ~2000 gwei, RPC returns incorrect values
+            # Set reasonable gas limit based on Uniswap V3 swap patterns
+            # Kasplex RPC gas estimation is unreliable, use known-good value
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data
+                'data': encoded_data,
+                'gas': hex(350000)  # 350k gas for DEX swap (Uniswap V3 standard)
             }
             
-            logging.info(f"✅ DEX sell tx built - exactInputSingle - Letting MetaMask estimate fees")
+            logging.info(f"✅ DEX sell tx built - exactInputSingle - Gas: 350000")
             return tx_data
             
         except Exception as e:
@@ -2003,16 +2005,16 @@ class Web3Service:
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
             
-            # Let MetaMask estimate gas fees - DO NOT override
-            # Kasplex base fee is ~2000 gwei, RPC returns incorrect values
+            # Set reasonable gas limit for WKAS unwrap
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
                 'value': '0x0',
-                'data': encoded_data
+                'data': encoded_data,
+                'gas': hex(50000)  # 50k gas for WKAS unwrap (simple contract call)
             }
             
-            logging.info(f"WKAS unwrap tx built - Letting MetaMask estimate fees")
+            logging.info(f"WKAS unwrap tx built - Gas: 50000")
             return tx_data
             
         except Exception as e:
