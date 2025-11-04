@@ -125,9 +125,28 @@
         .docs-tabs {
             display: flex;
             flex-wrap: wrap;
-            background: rgba(13, 13, 13, 0.8);
-            border-bottom: 1px solid rgba(32, 178, 170, 0.2);
+            background: rgba(13, 13, 13, 0.95);
+            border-bottom: 1px solid rgba(32, 178, 170, 0.3);
             gap: 5px;
+            padding: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .docs-tabs::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #20B2AA, transparent);
+            animation: scanline 4s linear infinite;
+        }
+        
+        @keyframes scanline {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
         
         .docs-tab {
@@ -135,30 +154,99 @@
             align-items: center;
             gap: 8px;
             padding: 20px 25px;
-            background: none;
-            border: none;
+            background: rgba(20, 20, 20, 0.5);
+            border: 1px solid rgba(32, 178, 170, 0.2);
+            border-radius: 10px 10px 0 0;
             color: #CCCCCC;
             cursor: pointer;
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
             font-size: 0.95rem;
             font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .docs-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(32, 178, 170, 0.15), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .docs-tab:hover::before {
+            left: 100%;
+        }
+        
+        .docs-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, #20B2AA, #00CED1, #20B2AA);
+            transition: width 0.4s ease;
         }
         
         .docs-tab:hover {
-            background: rgba(32, 178, 170, 0.1);
+            background: rgba(32, 178, 170, 0.12);
             color: #20B2AA;
+            border-color: rgba(32, 178, 170, 0.4);
+            box-shadow: 0 5px 20px rgba(32, 178, 170, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .docs-tab:hover::after {
+            width: 100%;
         }
         
         .docs-tab.active {
-            background: rgba(32, 178, 170, 0.15);
+            background: linear-gradient(135deg, rgba(32, 178, 170, 0.2) 0%, rgba(0, 206, 209, 0.15) 100%);
             color: #20B2AA;
-            border-bottom-color: #20B2AA;
+            border: 1px solid rgba(32, 178, 170, 0.6);
+            box-shadow: 0 0 20px rgba(32, 178, 170, 0.3),
+                        inset 0 0 20px rgba(32, 178, 170, 0.1);
+            animation: activeGlow 2s ease-in-out infinite;
+        }
+        
+        .docs-tab.active::after {
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #20B2AA, #00CED1, #40E0D0, #00CED1, #20B2AA);
+            background-size: 200% 100%;
+            animation: gradientShift 3s linear infinite;
+        }
+        
+        @keyframes activeGlow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(32, 178, 170, 0.3),
+                            inset 0 0 20px rgba(32, 178, 170, 0.1);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(32, 178, 170, 0.5),
+                            inset 0 0 30px rgba(32, 178, 170, 0.15);
+            }
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
         }
         
         .docs-tab i {
             font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .docs-tab:hover i,
+        .docs-tab.active i {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 8px rgba(32, 178, 170, 0.8));
         }
         
         .docs-content {
