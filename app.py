@@ -225,7 +225,7 @@ def add_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
         "img-src 'self' data: https: blob:; "
-        "connect-src 'self' https://explorer.kasplextest.xyz https://rpc.kasplextest.xyz https://api.coingecko.com wss://explorer.kasplextest.xyz; "
+        "connect-src 'self' https://explorer.testnet.kasplextest.xyz https://rpc.kasplextest.xyz https://api.coingecko.com wss://explorer.testnet.kasplextest.xyz; "
         "frame-src 'self' https://gemlaunch.fun; "
         "child-src 'self'; "
         "object-src 'none'; "
@@ -9156,7 +9156,7 @@ def api_admin_recover_kas():
                     'amount_kas': balance_kas,
                     'tx_hash': tx_hash_hex,
                     'status': 'pending',
-                    'blockscout_url': f'https://explorer.kasplextest.xyz/tx/{tx_hash_hex}'
+                    'blockscout_url': f'https://explorer.testnet.kasplextest.xyz/tx/{tx_hash_hex}'
                 })
                 total_recovered += balance_kas
                 

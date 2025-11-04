@@ -246,7 +246,7 @@ def relay_transaction(signed_tx, user_address):
             if result.get('success'):
                 tx_hash = result['tx_hash']
                 print(f"   ✅ Transaction relayed: {tx_hash}")
-                print(f"   🔗 Explorer: https://explorer.kasplextest.xyz/tx/{tx_hash}")
+                print(f"   🔗 Explorer: https://explorer.testnet.kasplextest.xyz/tx/{tx_hash}")
                 return tx_hash
             else:
                 print(f"   ❌ Relay failed: {result.get('error')}")
@@ -494,7 +494,7 @@ def generate_report(liquidity_tx_hash, api_results):
 - **TX Hash:** `{liquidity_tx_hash}`
 - **Amount:** {BUY_AMOUNT_KAS} KAS
 - **Status:** ✅ Confirmed on blockchain
-- **Explorer:** https://explorer.kasplextest.xyz/tx/{liquidity_tx_hash}
+- **Explorer:** https://explorer.testnet.kasplextest.xyz/tx/{liquidity_tx_hash}
 
 ### Purpose
 Initial liquidity seeding to enable accurate buy quote calculations and bonding curve pricing.

@@ -113,7 +113,7 @@ def test_dex_buy():
             
             print(f"✅ RPC accepted broadcast!")
             print(f"   - Hash: {tx_hash_hex}")
-            print(f"   - Explorer: https://explorer.kasplextest.xyz/tx/{tx_hash_hex}")
+            print(f"   - Explorer: https://explorer.testnet.kasplextest.xyz/tx/{tx_hash_hex}")
             
             # Check if transaction is in mempool
             print(f"\n🔍 Checking transaction status...")
