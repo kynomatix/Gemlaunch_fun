@@ -310,13 +310,23 @@ class TransactionManager {
         if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
             txParams.maxFeePerGas = txData.maxFeePerGas;
             txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
+            console.log('✅ DEX TX: Including EIP-1559 params', {
+                maxFeePerGas: txData.maxFeePerGas,
+                maxPriorityFeePerGas: txData.maxPriorityFeePerGas
+            });
+        } else {
+            console.warn('⚠️ DEX TX: Missing EIP-1559 params! This will fail on Kasplex.', txData);
         }
+        
+        console.log('📤 Sending to MetaMask:', txParams);
         
         // eth_sendTransaction signs AND submits to blockchain
         const txHash = await provider.request({
             method: 'eth_sendTransaction',
             params: [txParams]
         });
+        
+        console.log('✅ MetaMask returned tx hash:', txHash);
         
         return {
             tx_hash: txHash,

@@ -6110,6 +6110,9 @@ def api_dex_buy():
             fee_tier=fee_tier
         )
         
+        # Log transaction data for debugging
+        logging.info(f"DEX buy tx_data returned to frontend: {tx_data}")
+        
         return jsonify({
             'success': True,
             'tx_data': tx_data,
