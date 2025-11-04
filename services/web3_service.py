@@ -329,14 +329,20 @@ class Web3Service:
                 contracts['QuoterV2'] = None
             
             try:
-                swap_router_abi = self._load_interface_abi('ISwapRouter')
+                # Load FULL SwapRouter ABI from Kaspa Finance Hardhat artifact
+                # This contains the complete interface including multicall(bytes[]), refundETH(), etc.
+                swap_router_abi_path = Path(__file__).parent.parent / "attached_assets" / "SwapRouter_1762263429508.json"
+                with open(swap_router_abi_path, 'r') as f:
+                    swap_router_artifact = json.load(f)
+                swap_router_abi = swap_router_artifact['abi']
+                
                 contracts['SwapRouter'] = self.w3.eth.contract(
                     address=Web3.to_checksum_address(KASPA_FINANCE_SWAP_ROUTER),
                     abi=swap_router_abi
                 )
-                logging.info(f"Loaded SwapRouter at {KASPA_FINANCE_SWAP_ROUTER}")
+                logging.info(f"Loaded SwapRouter (FULL ABI) at {KASPA_FINANCE_SWAP_ROUTER}")
             except FileNotFoundError:
-                logging.warning("ISwapRouter interface not found - post-graduation swap features disabled")
+                logging.warning("SwapRouter ABI not found - post-graduation swap features disabled")
                 contracts['SwapRouter'] = None
             
             # Load IWKAS from interfaces directory
@@ -1838,8 +1844,8 @@ class Web3Service:
         """
         Build transaction for buying tokens via Kaspa Finance DEX using native KAS
         
-        CRITICAL: Kaspa Finance requires using multicall() for payable swaps, not direct exactInputSingle.
-        Pattern: multicall(deadline, [exactInputSingle(...), refundETH()])
+        Uses Uniswap V3 pattern: exactInputSingle wrapped in multicall with refundETH
+        to return any unused KAS to the user.
         
         Args:
             user_address (str): User's wallet address
@@ -1853,67 +1859,58 @@ class Web3Service:
             dict: Unsigned transaction dict {from, to, data, value}
         """
         try:
-            logging.info(f"Building DEX buy tx via multicall - Token: {token_address}, KAS: {kas_amount}")
+            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}, Fee tier: {fee_tier}")
             
             swap_router = self.contracts['SwapRouter']
+            user_address = Web3.to_checksum_address(user_address)
+            token_address = Web3.to_checksum_address(token_address)
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Step 1: Encode path for exactInput (multi-hop method)
-            # Path format: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
-            # Even for single-hop swaps, Kaspa Finance uses exactInput with path
-            path = b''.join([
-                bytes.fromhex(KASPA_FINANCE_WKAS[2:]),  # Remove 0x prefix
-                fee_tier.to_bytes(3, 'big'),             # Fee as 3 bytes
-                bytes.fromhex(token_address[2:])         # Remove 0x prefix
-            ])
-            
-            # exactInput params: struct ExactInputParams { bytes path; address recipient; uint256 deadline; uint256 amountIn; uint256 amountOutMinimum; }
-            # Manually construct ABI encoding to match working Kaspa Finance transactions
-            exact_input_selector = '0xb858183f'
-            
-            # Manual ABI encoding for struct with dynamic bytes field
-            # Structure: selector + offset_to_struct + [offset_to_path + recipient + deadline + amountIn + amountOutMin] + [path_length + path_data]
-            
-            path_length = len(path)
-            path_padded = path + b'\x00' * ((32 - (path_length % 32)) % 32)  # Pad to 32-byte boundary
-            
-            # Build the encoding manually
-            encoding = bytes.fromhex(exact_input_selector[2:])
-            encoding += (32).to_bytes(32, 'big')  # Offset to struct start (0x20)
-            encoding += (128).to_bytes(32, 'big')  # Offset to path within struct (0x80 = 4*32 bytes for offset+recipient+deadline+amountIn+amountOutMin headers)
-            encoding += bytes.fromhex(user_address[2:].lower().zfill(64))  # recipient (padded to 32 bytes)
-            encoding += deadline.to_bytes(32, 'big')  # deadline
-            encoding += kas_amount.to_bytes(32, 'big')  # amountIn
-            encoding += min_tokens_out.to_bytes(32, 'big')  # amountOutMinimum
-            encoding += path_length.to_bytes(32, 'big')  # path length
-            encoding += path_padded  # path data (padded)
-            
-            exact_input_encoded = encoding
-            
-            # Step 2: Build multicall with single exactInput call
-            # NOTE: Working transactions only have 1 call, no refundETH
-            multicall_data = [exact_input_encoded]
-            
-            # Manually encode multicall call
-            # Selector for multicall(uint256,bytes[])
-            multicall_selector = '0x5ae401dc'
-            
-            # Encode parameters: (uint256 deadline, bytes[] data)
-            encoded_params = self.w3.codec.encode(
-                ['uint256', 'bytes[]'],
-                [deadline, multicall_data]
+            # Build ExactInputSingleParams struct for swapping WKAS → Token
+            # struct ExactInputSingleParams {
+            #     address tokenIn;
+            #     address tokenOut;
+            #     uint24 fee;
+            #     address recipient;
+            #     uint256 deadline;
+            #     uint256 amountIn;
+            #     uint256 amountOutMinimum;
+            #     uint160 sqrtPriceLimitX96;
+            # }
+            exact_input_params = (
+                wkas_address,           # tokenIn (WKAS)
+                token_address,          # tokenOut (Token)
+                fee_tier,               # fee (e.g., 2500 = 0.25%)
+                user_address,           # recipient
+                deadline,               # deadline
+                kas_amount,             # amountIn
+                min_tokens_out,         # amountOutMinimum
+                0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            multicall_encoded = multicall_selector + encoded_params.hex()
+            # Encode exactInputSingle call using web3.py automatic encoding
+            exact_input_call = swap_router.functions.exactInputSingle(exact_input_params)
+            exact_input_encoded = exact_input_call._encode_transaction_data()
             
-            # Build final transaction with native KAS
+            # Encode refundETH call (returns any unused KAS)
+            refund_eth_call = swap_router.functions.refundETH()
+            refund_eth_encoded = refund_eth_call._encode_transaction_data()
+            
+            # Build multicall with [exactInputSingle, refundETH]
+            # multicall(bytes[] data) - array of encoded function calls
+            multicall_data = [exact_input_encoded, refund_eth_encoded]
+            multicall_call = swap_router.functions.multicall(multicall_data)
+            multicall_encoded = multicall_call._encode_transaction_data()
+            
+            # Build final transaction with native KAS as value
             tx_data = {
-                'from': Web3.to_checksum_address(user_address),
+                'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),  # Native KAS sent with transaction
                 'data': multicall_encoded
             }
             
-            logging.info(f"DEX buy tx built using multicall with exactInputSingle + refundETH")
+            logging.info(f"✅ DEX buy tx built: exactInputSingle({kas_amount} KAS → {min_tokens_out} tokens min) + refundETH in multicall")
             return tx_data
             
         except Exception as e:
@@ -1924,7 +1921,9 @@ class Web3Service:
         """
         Build transaction for selling tokens via Kaspa Finance DEX
         
-        NOTE: User must approve token spending before calling this
+        NOTE: User must approve token spending before calling this (approve SwapRouter)
+        
+        Uses exactInputSingle to swap Token → WKAS, then user can unwrap WKAS → KAS separately.
         
         Args:
             user_address (str): User's wallet address
@@ -1932,44 +1931,54 @@ class Web3Service:
             token_amount (int): Token amount to sell (in wei)
             min_kas_out (int): Minimum WKAS to receive (slippage protection)
             deadline (int): Transaction deadline (unix timestamp)
-            fee_tier (int): Pool fee tier (default 0.30% = 3000)
+            fee_tier (int): Pool fee tier (2500 for 0.25%)
         
         Returns:
-            dict: Unsigned transaction dict {from, to, data, value, gas}
+            dict: Unsigned transaction dict {from, to, data, value}
         """
         try:
-            logging.info(f"Building DEX sell tx for user {user_address} - Token: {token_address}, Amount: {token_amount}")
+            logging.info(f"Building DEX sell tx - Token: {token_address}, Amount: {token_amount}, Fee tier: {fee_tier}")
             
             swap_router = self.contracts['SwapRouter']
+            user_address = Web3.to_checksum_address(user_address)
+            token_address = Web3.to_checksum_address(token_address)
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # SwapRouter.exactInputSingle params
-            # MUST be a tuple in exact order: tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96
-            params = (
-                Web3.to_checksum_address(token_address),        # tokenIn
-                Web3.to_checksum_address(KASPA_FINANCE_WKAS),   # tokenOut
-                fee_tier,                                       # fee
-                Web3.to_checksum_address(user_address),         # recipient
-                deadline,                                       # deadline
-                token_amount,                                   # amountIn
-                min_kas_out,                                    # amountOutMinimum
-                0                                               # sqrtPriceLimitX96
+            # Build ExactInputSingleParams struct for swapping Token → WKAS
+            # struct ExactInputSingleParams {
+            #     address tokenIn;
+            #     address tokenOut;
+            #     uint24 fee;
+            #     address recipient;
+            #     uint256 deadline;
+            #     uint256 amountIn;
+            #     uint256 amountOutMinimum;
+            #     uint160 sqrtPriceLimitX96;
+            # }
+            exact_input_params = (
+                token_address,          # tokenIn (Token)
+                wkas_address,           # tokenOut (WKAS)
+                fee_tier,               # fee (e.g., 2500 = 0.25%)
+                user_address,           # recipient
+                deadline,               # deadline
+                token_amount,           # amountIn
+                min_kas_out,            # amountOutMinimum
+                0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # CRITICAL FIX: Kasplex RPC has broken gas estimation - manually encode to bypass simulation
-            function_call = swap_router.functions.exactInputSingle(params)
+            # Encode exactInputSingle call using web3.py automatic encoding
+            function_call = swap_router.functions.exactInputSingle(exact_input_params)
             encoded_data = function_call._encode_transaction_data()
             
-            # Following Uniswap V3 + MetaMask best practice:
-            # Send ONLY required params (from, to, value, data)
-            # Let MetaMask auto-fill: nonce, chainId, gas, gasPrice
+            # Build transaction (no value needed - we're selling tokens, not sending KAS)
             tx_data = {
-                'from': Web3.to_checksum_address(user_address),
+                'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data
             }
             
-            logging.info(f"DEX sell tx built - letting MetaMask handle gas estimation")
+            logging.info(f"✅ DEX sell tx built: exactInputSingle({token_amount} tokens → {min_kas_out} WKAS min)")
             return tx_data
             
         except Exception as e:
