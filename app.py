@@ -4582,6 +4582,7 @@ def edit_wallet(wallet_id):
         return jsonify({'error': 'Failed to update wallet label. Please try again.'}), 500
 
 @app.route('/app/update-referral-code', methods=['POST'])
+@csrf.exempt
 def update_referral_code():
     """Update custom referral code"""
     user = get_current_user()
