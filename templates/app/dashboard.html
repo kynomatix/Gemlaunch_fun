@@ -1833,32 +1833,6 @@
                                 
                                 <div class="points-source">
                                     <div class="source-icon">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
-                                    <div class="source-details">
-                                        <span class="source-name">Trading Volume</span>
-                                        <span class="source-amount">{{ (((user.total_trading_volume or 0) / 100)|int) }} pts</span>
-                                    </div>
-                                    <div class="source-bar">
-                                        <div class="bar-fill" style="width: {{ ((((user.total_trading_volume or 0) / 100)) / (user.gem_points or 1) * 100)|int }}%"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="points-source">
-                                    <div class="source-icon">
-                                        <i class="fas fa-users"></i>
-                                    </div>
-                                    <div class="source-details">
-                                        <span class="source-name">Referrals</span>
-                                        <span class="source-amount">{{ ((referral.qualified_signups if referral else 0) * 50)|int }} pts</span>
-                                    </div>
-                                    <div class="source-bar">
-                                        <div class="bar-fill" style="width: {{ (((referral.qualified_signups if referral else 0) * 50) / (user.gem_points or 1) * 100)|int }}%"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="points-source">
-                                    <div class="source-icon">
                                         <i class="fas fa-star"></i>
                                     </div>
                                     <div class="source-details">
@@ -1880,14 +1854,6 @@
                                     <div class="tip-item">
                                         <i class="fas fa-rocket"></i>
                                         <span>Create tokens (+100 pts each)</span>
-                                    </div>
-                                    <div class="tip-item">
-                                        <i class="fas fa-exchange-alt"></i>
-                                        <span>Trade actively (+1 pt per $100 volume)</span>
-                                    </div>
-                                    <div class="tip-item">
-                                        <i class="fas fa-users"></i>
-                                        <span>Refer friends (+50 pts each)</span>
                                     </div>
                                     <div class="tip-item">
                                         <i class="fas fa-star"></i>
