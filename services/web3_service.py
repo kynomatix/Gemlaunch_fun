@@ -1898,13 +1898,17 @@ class Web3Service:
             
             # Build multicall with [exactInputSingle, refundETH]
             multicall_data = [exact_input_encoded, refund_eth_encoded]
+            multicall_encoded = swap_router.functions.multicall(multicall_data)._encode_transaction_data()
             
-            # Build transaction using web3.py build_transaction (no gasPrice for EIP-1559)
-            tx_data = swap_router.functions.multicall(multicall_data).build_transaction({
+            # Build transaction manually (matching bonding curve format)
+            tx_data = {
                 'from': user_address,
+                'to': swap_router.address,
                 'value': kas_amount,
+                'data': multicall_encoded,
+                'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(user_address)
-            })
+            }
             
             # Estimate gas
             gas_estimate = self.estimate_gas({
@@ -1972,12 +1976,18 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Build transaction using web3.py build_transaction (no gasPrice for EIP-1559)
-            tx_data = swap_router.functions.exactInputSingle(exact_input_params).build_transaction({
+            # Encode function call
+            encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            
+            # Build transaction manually (matching bonding curve format)
+            tx_data = {
                 'from': user_address,
+                'to': swap_router.address,
                 'value': 0,
+                'data': encoded_data,
+                'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(user_address)
-            })
+            }
             
             # Estimate gas
             gas_estimate = self.estimate_gas({
@@ -2012,12 +2022,19 @@ class Web3Service:
             
             wkas_contract = self.contracts['WKAS']
             
-            # Build transaction using web3.py build_transaction (no gasPrice for EIP-1559)
-            tx_data = wkas_contract.functions.withdraw(wkas_amount).build_transaction({
-                'from': Web3.to_checksum_address(user_address),
+            # Encode function call
+            encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
+            user_checksum = Web3.to_checksum_address(user_address)
+            
+            # Build transaction manually (matching bonding curve format)
+            tx_data = {
+                'from': user_checksum,
+                'to': wkas_contract.address,
                 'value': 0,
-                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
-            })
+                'data': encoded_data,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(user_checksum)
+            }
             
             # Estimate gas
             gas_estimate = self.estimate_gas({
