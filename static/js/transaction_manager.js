@@ -411,8 +411,9 @@ class TransactionManager {
     
     // ===== PHASE 5: MONITOR VIA SSE =====
     /**
-     * Monitor transaction confirmation via Server-Sent Events
+     * Monitor transaction confirmation via Server-Sent Events with fallback polling
      * ⚠️ H-2 FIX: Properly cleanup SSE connections to prevent memory leaks
+     * ⚠️ NEW FIX: Fallback to polling if SSE connection fails
      * 
      * @param {string} txHash - Transaction hash to monitor
      * @param {Object} callbacks - {onUpdate, onConfirm, onError}
@@ -420,6 +421,7 @@ class TransactionManager {
     async monitorTransaction(txHash, callbacks) {
         const eventSource = new EventSource(`/api/tx/${txHash}/stream`);
         let receivedTerminalStatus = false;
+        let fallbackActivated = false;
         
         // Listen for 'status' events (default event type from backend)
         eventSource.addEventListener('status', (event) => {
@@ -447,17 +449,78 @@ class TransactionManager {
             this.activeTransactions.delete(txHash);
         });
         
-        eventSource.onerror = () => {
-            // Only treat as error if we haven't received a terminal status
-            if (!receivedTerminalStatus) {
-                callbacks.onError('Connection lost');
-            }
+        eventSource.onerror = async () => {
             eventSource.close();
             this.activeTransactions.delete(txHash);
+            
+            // If we haven't received terminal status, fall back to polling
+            if (!receivedTerminalStatus && !fallbackActivated) {
+                fallbackActivated = true;
+                console.log(`SSE connection lost for ${txHash}, falling back to polling...`);
+                callbacks.onUpdate({
+                    status: 'pending',
+                    message: 'Connection lost, checking transaction status...'
+                });
+                
+                // Fall back to polling
+                await this._pollTransactionStatus(txHash, callbacks);
+            }
         };
         
         // ⚠️ H-2 FIX: Store for cleanup on page unload
         this.activeTransactions.set(txHash, eventSource);
+    }
+    
+    /**
+     * Fallback polling method when SSE fails
+     * Polls transaction status endpoint directly
+     * 
+     * @param {string} txHash - Transaction hash to monitor
+     * @param {Object} callbacks - {onUpdate, onConfirm, onError}
+     * @private
+     */
+    async _pollTransactionStatus(txHash, callbacks) {
+        const maxAttempts = 60;  // 2 minutes max (2s interval * 60)
+        const pollInterval = 2000;  // 2 seconds
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                const response = await fetch(`/api/tx/${txHash}/status`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch status');
+                }
+                
+                const status = await response.json();
+                
+                if (status.status === 'confirmed') {
+                    callbacks.onConfirm(status);
+                    return;
+                } else if (status.status === 'failed') {
+                    callbacks.onError(status.error || 'Transaction failed');
+                    return;
+                } else {
+                    callbacks.onUpdate(status);
+                }
+                
+                // Wait before next poll
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                
+            } catch (error) {
+                console.error(`Polling error for ${txHash}:`, error);
+                
+                // If it's the last attempt, report error
+                if (attempt === maxAttempts - 1) {
+                    callbacks.onError('Transaction monitoring failed. Please verify status on explorer.');
+                    return;
+                }
+                
+                // Otherwise, wait and retry
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+        }
+        
+        // Timeout reached
+        callbacks.onError('Transaction monitoring timed out. Please verify status on explorer.');
     }
     
     // ⚠️ H-2 FIX: Network Validation
