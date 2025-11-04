@@ -304,16 +304,34 @@
                     return;
                 }
 
+                const wallet = this.walletManager.getConnectedWallet();
+                if (!wallet) {
+                    throw new Error('No wallet connected');
+                }
+
                 // Show loading state
                 btn.classList.add('loading');
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
-                // Build transaction
-                const txData = await this.transactionManager.buildTransaction('vesting_withdraw', {
-                    token_id: this.currentTokenId,
-                    vesting_type: type
+                // Build transaction by calling backend directly
+                const buildEndpoint = `/api/token/${this.currentTokenId}/vesting/withdraw-${type}`;
+                const buildResponse = await fetch(buildEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        creator_address: wallet.wallet_address
+                    })
                 });
+
+                if (!buildResponse.ok) {
+                    const errorData = await buildResponse.json();
+                    throw new Error(errorData.error || 'Failed to build transaction');
+                }
+
+                const txData = await buildResponse.json();
 
                 if (!txData.success) {
                     throw new Error(txData.error || 'Failed to build transaction');
@@ -342,29 +360,10 @@
             } catch (error) {
                 console.error(`Error withdrawing ${type} tokens:`, error);
                 
-                // Parse error message to extract human-readable content
-                let errorMessage = error.message;
-                
-                // Try to extract JSON error message from server response
-                const jsonMatch = errorMessage.match(/\{.*"error":\s*"([^"]+)"/);
-                if (jsonMatch && jsonMatch[1]) {
-                    errorMessage = jsonMatch[1];
-                } else {
-                    // Clean up generic error messages
-                    errorMessage = errorMessage
-                        .replace(/^Server error: \d+ - /, '')  // Remove "Server error: 429 -"
-                        .replace(/\{.*\}/, '')  // Remove any JSON
-                        .trim();
-                    
-                    // If we're left with nothing meaningful, use a default message
-                    if (!errorMessage || errorMessage.length < 5) {
-                        errorMessage = 'Unable to process claim. Please try again later.';
-                    }
-                }
-                
+                // Display clean error message
                 this.showToast(
                     'Claim Failed',
-                    errorMessage,
+                    error.message || 'Unable to process claim. Please try again later.',
                     'error'
                 );
             } finally {
