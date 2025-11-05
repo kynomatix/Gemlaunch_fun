@@ -55,10 +55,20 @@
 
 **How It Works:**
 - All trades go through **Kaspa Finance SwapRouter** (your contracts!)
-- Users trade via **Uniswap V3 pool** created during graduation
-- **Liquidity:** Real concentrated liquidity (full range position)
-- **Price discovery:** Kaspa Finance AMM pricing
+- Users trade in **THE EXACT POOL WE CREATED** during graduation
+  - Pool address stored in our DB: `token.dex_pool_address`
+  - We query YOUR pool for quotes, prices, and liquidity
+  - We route trades through YOUR SwapRouter to this specific pool
+- **Liquidity:** Real concentrated liquidity (full range position we created)
+- **Price discovery:** Kaspa Finance AMM pricing (your math)
 - **Transaction signing:** User's MetaMask ONLY (no backend involvement)
+
+**Critical Detail:**
+We DON'T create our own trading mechanism post-graduation. When a token graduates, we:
+1. Create a pool on YOUR DEX (via PoolManager/NonfungiblePositionManager)
+2. Store the pool address: `0x1Bc9e2F8a3f1e89D741333CC85847e2C34F5E44D` (example)
+3. ALL future trades route through YOUR SwapRouter → YOUR pool
+4. We're essentially a **frontend for your DEX** after graduation
 
 **Our Integration with Kaspa Finance:**
 
