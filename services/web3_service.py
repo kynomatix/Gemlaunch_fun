@@ -1969,15 +1969,25 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Use the ABI's multicall(bytes[]) function directly
+            # Encode the individual function calls
             exact_input_encoded = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             refund_eth_encoded = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Build multicall using the ACTUAL ABI function: multicall(bytes[])
-            multicall_data = swap_router.functions.multicall([
-                exact_input_encoded,
-                refund_eth_encoded
-            ])._encode_transaction_data()
+            # Try calling multicall with deadline (Kaspa Finance pattern)
+            # Build it manually since ABI might not have this overload
+            # multicall(uint256 deadline, bytes[] data)
+            from eth_abi import encode
+            
+            # Function selector for multicall(uint256,bytes[])
+            multicall_selector = Web3.keccak(text="multicall(uint256,bytes[])")[:4]
+            
+            # Encode parameters: (deadline, [exact_input_encoded, refund_eth_encoded])
+            encoded_params = encode(
+                ['uint256', 'bytes[]'],
+                [deadline, [exact_input_encoded, refund_eth_encoded]]
+            )
+            
+            multicall_data = multicall_selector + encoded_params
             
             # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
             # Don't send any gas params - MetaMask will auto-calculate everything
