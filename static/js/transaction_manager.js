@@ -765,42 +765,43 @@ class TransactionManager {
      */
     async executeTradeWithAutoSlippage(tradeType, params, callbacks = {}, signal = null) {
         const isGraduated = params.is_graduated || false;
-        
-        // STEP 1: Get initial quote to determine price impact
         const {onRetry, onStatusUpdate} = callbacks;
         
-        if (onStatusUpdate) {
-            onStatusUpdate('Calculating optimal slippage...');
+        let slippageLadder;
+        
+        if (isGraduated) {
+            // DEX: Calculate optimal slippage based on price impact
+            if (onStatusUpdate) {
+                onStatusUpdate('Calculating optimal slippage...');
+            }
+            
+            const initialQuoteParams = {...params, slippage_bps: 0};
+            const initialQuote = await this.getQuote(tradeType, initialQuoteParams, signal);
+            
+            if (!initialQuote.success) {
+                throw new Error(initialQuote.error || 'Failed to get initial quote');
+            }
+            
+            // Extract price impact from DEX quote
+            const priceImpactPct = initialQuote.price_impact_pct || 0;
+            const priceImpactBps = Math.round(priceImpactPct * 100);
+            
+            // Calculate: price_impact + 1% buffer, minimum 5%, max 15%
+            const safetyBufferBps = 100;
+            const minimumSlippageBps = 500;
+            const maxSlippageBps = 1500;
+            const calculatedSlippageBps = Math.max(priceImpactBps + safetyBufferBps, minimumSlippageBps);
+            const optimalSlippageBps = Math.min(calculatedSlippageBps, maxSlippageBps);
+            
+            console.log(`🎯 DEX Slippage: Price impact ${priceImpactPct.toFixed(2)}% → Using ${(optimalSlippageBps / 100).toFixed(2)}% slippage`);
+            
+            // DEX ladder: optimal → 8% → 10% → 15%
+            slippageLadder = [optimalSlippageBps, 800, 1000, 1500];
+        } else {
+            // Bonding Curve: Use static ladder (UNCHANGED)
+            slippageLadder = [50, 100, 200, 500, 750, 1000];
         }
         
-        const initialQuoteParams = {...params, slippage_bps: 0};  // Get raw price impact
-        const initialQuote = await this.getQuote(tradeType, initialQuoteParams, signal);
-        
-        if (!initialQuote.success) {
-            throw new Error(initialQuote.error || 'Failed to get initial quote');
-        }
-        
-        // Extract price impact (different field names for bonding curve vs DEX)
-        const priceImpactPct = initialQuote.price_impact_percent || initialQuote.price_impact_pct || 0;
-        const priceImpactBps = Math.round(priceImpactPct * 100);  // Convert % to basis points
-        
-        // Calculate required slippage based on price impact + safety buffer
-        // DEX (thin liquidity): price_impact + 1% buffer, minimum 5%
-        // Bonding curve (deep liquidity): price_impact + 0.5% buffer, minimum 0.5%
-        const safetyBufferBps = isGraduated ? 100 : 50;  // 1% for DEX, 0.5% for bonding
-        const minimumSlippageBps = isGraduated ? 500 : 50;  // 5% for DEX, 0.5% for bonding
-        const calculatedSlippageBps = Math.max(priceImpactBps + safetyBufferBps, minimumSlippageBps);
-        
-        // Cap maximum slippage at 15% for safety
-        const maxSlippageBps = 1500;
-        const optimalSlippageBps = Math.min(calculatedSlippageBps, maxSlippageBps);
-        
-        console.log(`🎯 Slippage calculation: Price impact ${priceImpactPct.toFixed(2)}% → Using ${(optimalSlippageBps / 100).toFixed(2)}% slippage (${isGraduated ? 'DEX' : 'Bonding'})`);
-        
-        // Fallback ladder if optimal slippage fails (rare)
-        const slippageLadder = isGraduated 
-            ? [optimalSlippageBps, 800, 1000, 1500]  // Start with optimal, fallback to 8%, 10%, 15%
-            : [optimalSlippageBps, 100, 200, 500, 1000];  // Start with optimal, fallback ladder
         const maxAttempts = slippageLadder.length;
         
         // ✅ FIX: Track if wallet popup was shown to prevent double-popup retries
