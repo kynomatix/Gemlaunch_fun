@@ -1987,19 +1987,26 @@ class Web3Service:
             encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
-            # Use LEGACY gas mode (gasPrice) - Kasplex doesn't support EIP-1559
-            # Same as bonding curve trading (which works perfectly)
-            gas_price = self.w3.eth.gas_price
-            
+            # Build tx_data - EXACT same pattern as bonding curve
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_data,
-                'gasPrice': hex(gas_price)  # CRITICAL: Legacy gas mode for Kasplex
+                'gasPrice': hex(self.w3.eth.gas_price)
             }
             
-            logging.info(f"✅ DEX buy tx built - multicall([exactInput, refundETH]) - gasPrice: {gas_price}")
+            # Estimate gas - same as bonding curve
+            gas_estimate = self.estimate_gas({
+                'from': user_address,
+                'to': swap_router.address,
+                'data': multicall_data,
+                'value': kas_amount
+            })
+            
+            tx_data['gas'] = hex(gas_estimate['gas'])
+            
+            logging.info(f"✅ DEX buy tx built - multicall([exactInput, refundETH]) - Gas: {gas_estimate['gas']}")
             return tx_data
             
         except Exception as e:
@@ -2058,19 +2065,26 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Use LEGACY gas mode (gasPrice) - Kasplex doesn't support EIP-1559
-            # Same as bonding curve trading (which works perfectly)
-            gas_price = self.w3.eth.gas_price
-            
+            # Build tx_data - EXACT same pattern as bonding curve
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gasPrice': hex(gas_price)  # CRITICAL: Legacy gas mode for Kasplex
+                'gasPrice': hex(self.w3.eth.gas_price)
             }
             
-            logging.info(f"✅ DEX sell tx built - gasPrice: {gas_price}")
+            # Estimate gas - same as bonding curve
+            gas_estimate = self.estimate_gas({
+                'from': user_address,
+                'to': swap_router.address,
+                'data': encoded_data,
+                'value': 0
+            })
+            
+            tx_data['gas'] = hex(gas_estimate['gas'])
+            
+            logging.info(f"✅ DEX sell tx built - Gas: {gas_estimate['gas']}")
             return tx_data
             
         except Exception as e:
