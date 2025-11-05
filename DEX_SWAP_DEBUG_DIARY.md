@@ -1,5 +1,155 @@
 # DEX Swap Debugging Diary
 
+## Gemlaunch.fun Trading System Overview (For Kaspa Finance Devs)
+
+### Pre-Graduation Trading (Bonding Curve Phase)
+
+**How It Works:**
+- Tokens launch with a **custom bonding curve pool** (our smart contract: `BondingCurvePool.sol`)
+- Users trade KAS ↔ Tokens directly through our bonding curve
+- All trades happen **on-chain via our contract**, not Kaspa Finance
+- **Liquidity:** Virtual reserves (starts at ~1000 KAS virtual reserve)
+- **Price discovery:** Determined by bonding curve formula (constant product)
+- **Transaction signing:** Backend oracle wallet OR user's MetaMask
+  - Buy: User sends KAS → receives tokens
+  - Sell: User sends tokens → receives KAS
+
+**Gas Handling (Pre-Graduation):**
+```python
+# Backend builds and signs transactions
+{
+    'gasPrice': self.w3.eth.gas_price,  # Legacy type-0 transactions
+    'gas': estimated_gas_limit          # Explicitly calculated
+}
+```
+
+**Market Cap Tracking:**
+- Market cap calculated from bonding curve reserves
+- Graduation threshold: **$50 USD market cap**
+- When market cap hits $50, token is eligible for graduation
+
+---
+
+### Graduation Process (Transition to DEX)
+
+**Automated 2-Step Process:**
+
+**Step 1: Migrate Liquidity**
+- Backend calls `GraduationController.initiateMigration(poolAddress)`
+- Moves all KAS + tokens from bonding curve to DEX
+- Creates **Kaspa Finance pool** (Uniswap V3 architecture)
+- Pool configuration:
+  - Fee tier: **0.25% (2500 basis points)**
+  - Range: **Full range liquidity** (tick range: MIN_TICK to MAX_TICK)
+  - Initial liquidity: All tokens + KAS from bonding curve (~10 KAS typical)
+
+**Step 2: Complete Graduation**
+- Backend calls `GraduationController.completeMigration(poolAddress)`
+- Bonding curve permanently disabled
+- Token lifecycle state changes: `active` → `graduated`
+- All future trades route through **Kaspa Finance DEX**
+
+---
+
+### Post-Graduation Trading (DEX Phase)
+
+**How It Works:**
+- All trades go through **Kaspa Finance SwapRouter** (your contracts!)
+- Users trade via **Uniswap V3 pool** created during graduation
+- **Liquidity:** Real concentrated liquidity (full range position)
+- **Price discovery:** Kaspa Finance AMM pricing
+- **Transaction signing:** User's MetaMask ONLY (no backend involvement)
+
+**Our Integration with Kaspa Finance:**
+
+**BUY Flow (KAS → Token):**
+```javascript
+// 1. Get quote from your QuoterV2
+const quote = await quoter.quoteExactInput(path, kasAmount);
+
+// 2. Build multicall transaction
+const tx = swapRouter.multicall(deadline, [
+    exactInput({
+        path: encode_path([WKAS, token], [2500]),
+        recipient: userAddress,
+        deadline: deadline,
+        amountIn: kasAmount,
+        amountOutMinimum: minTokensOut  // Slippage protection
+    }),
+    refundETH()  // Return excess KAS
+]);
+
+// 3. User signs via MetaMask
+// 4. Transaction broadcasts to Kasplex L2
+```
+
+**SELL Flow (Token → KAS):**
+```javascript
+// 1. User approves SwapRouter to spend tokens
+await token.approve(swapRouterAddress, tokenAmount);
+
+// 2. Build exactInputSingle transaction
+const tx = swapRouter.exactInputSingle({
+    tokenIn: tokenAddress,
+    tokenOut: WKAS,
+    fee: 2500,  // 0.25% tier
+    recipient: userAddress,
+    deadline: deadline,
+    amountIn: tokenAmount,
+    amountOutMinimum: minKasOut,
+    sqrtPriceLimitX96: 0  // No price limit
+});
+
+// 3. User signs via MetaMask
+// 4. Transaction broadcasts to Kasplex L2
+```
+
+**Key Differences from Bonding Curve:**
+1. **No backend signing** - User MetaMask signs everything
+2. **EIP-1559 or Legacy gas** - MetaMask calculates fees (we don't set them)
+3. **Slippage requirements** - Thin liquidity needs 2-8% slippage minimum
+4. **Approval required** - Selling requires ERC20 approval first
+5. **Gas estimation** - MetaMask auto-estimates (we DON'T hardcode gas limits)
+
+---
+
+### Critical Parameters
+
+**Pool Configuration (Created During Graduation):**
+- SwapRouter: `0xDf88D478aF51C0AB616aFBfDD933c874e142858c`
+- WKAS: `0xd18fCD278F7156daA2a506dBc2A4a15337B91B94`
+- Fee Tier: `2500` (0.25%)
+- Tick Spacing: `50`
+- Initial Liquidity: ~10 KAS + proportional tokens
+
+**Transaction Requirements:**
+- Chain ID: `167012` (Kasplex zkEVM Testnet)
+- Gas Mode: Legacy (`gasPrice`) OR EIP-1559 (both work)
+- Slippage: **Minimum 2%** for graduated tokens (thin liquidity)
+- Deadline: 5 minutes from current timestamp
+
+---
+
+### Common Issues (For Debugging)
+
+**Issue 1: "Execution Reverted"**
+- **Cause:** Slippage too low for thin post-graduation liquidity
+- **Solution:** Use 5-8% slippage minimum for graduated tokens
+
+**Issue 2: "Insufficient Allowance"**
+- **Cause:** User hasn't approved SwapRouter to spend tokens
+- **Solution:** Call `token.approve(swapRouter, amount)` before sell
+
+**Issue 3: "Transaction Pending Forever"**
+- **Cause:** Hardcoded gas limit OR wrong gas pricing
+- **Solution:** Let MetaMask auto-estimate gas, don't set `gas` field
+
+**Issue 4: Pool Not Found**
+- **Cause:** Token hasn't graduated yet OR wrong fee tier
+- **Solution:** Check `token.graduation_status == 'graduated'` and use fee tier 2500
+
+---
+
 ## Problem Statement
 DEX swaps on Kaspa Finance are not reaching the blockchain. Transactions generate local hashes in MetaMask but never appear on chain.
 
