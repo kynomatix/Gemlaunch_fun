@@ -1990,7 +1990,8 @@ class Web3Service:
                 [deadline, [exact_input_bytes, refund_eth_bytes]]
             )
             
-            multicall_data = multicall_selector + encoded_params
+            # Combine selector + params and convert to hex string
+            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
             # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
             # Don't send any gas params - MetaMask will auto-calculate everything
@@ -1998,7 +1999,7 @@ class Web3Service:
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_data
+                'data': multicall_data  # Now a hex string, JSON serializable
                 # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
                 # MetaMask auto-estimates all of it
             }
