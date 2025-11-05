@@ -311,8 +311,13 @@ class TransactionManager {
             console.log('✅ DEX TX: Using backend gas limit:', parseInt(txData.gas, 16), 'units');
         }
         
-        // Include EIP-1559 gas params if backend provides them
-        if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
+        // Include gas pricing params from backend
+        if (txData.gasPrice) {
+            // Legacy gas pricing (like bonding curve)
+            txParams.gasPrice = txData.gasPrice;
+            console.log('✅ DEX TX: Using backend legacy gas price:', txData.gasPrice);
+        } else if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
+            // EIP-1559 gas pricing
             txParams.maxFeePerGas = txData.maxFeePerGas;
             txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
             console.log('✅ DEX TX: Using backend EIP-1559 gas params', {
