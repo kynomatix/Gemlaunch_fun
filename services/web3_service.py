@@ -1947,7 +1947,8 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Use exactInputSingle - SIMPLE like bonding curve, no multicall complexity
+            # Use multicall pattern for native KAS swaps (canonical Uniswap V3 pattern)
+            # This wraps exactInputSingle + refundETH to handle native currency correctly
             # struct ExactInputSingleParams {
             #     address tokenIn;
             #     address tokenOut;
@@ -1969,8 +1970,17 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Build transaction - EXACT COPY of bonding curve pattern
-            tx_data = swap_router.functions.exactInputSingle(exact_input_params).build_transaction({
+            # Encode exactInputSingle call
+            exact_input_call = swap_router.encodeABI(
+                fn_name='exactInputSingle',
+                args=[exact_input_params]
+            )
+            
+            # Encode refundETH call (no parameters)
+            refund_eth_call = swap_router.encodeABI(fn_name='refundETH')
+            
+            # Wrap in multicall
+            tx_data = swap_router.functions.multicall([exact_input_call, refund_eth_call]).build_transaction({
                 'from': user_address,
                 'value': kas_amount,
                 'gas': 0,
