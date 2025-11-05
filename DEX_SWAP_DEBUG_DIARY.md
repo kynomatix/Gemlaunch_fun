@@ -79,12 +79,21 @@ multicall(
 )
 ```
 
-## Next Steps
-1. Test the latest fix (hex to bytes conversion)
-2. If still fails, consider:
-   - Finding the correct SwapRouter ABI from Kaspa Finance
-   - Using a different function (not multicall)
-   - Checking if we need the mysterious 0xb858183f function
+## CRITICAL DISCOVERY
+The problem is NOT our code - it's the Kasplex RPC/MetaMask interaction:
+1. Our multicall structure is CORRECT (MetaMask decodes it properly)
+2. Gas prices are set correctly (4000 GWEI)
+3. BUT MetaMask shows "0 KAS total gas fee" - this is the red flag
+4. Transactions get a hash but NEVER reach the blockchain
+
+## ROOT CAUSE
+Kasplex testnet is silently rejecting transactions from MetaMask even though they appear to be submitted. The "0 KAS fee" display indicates MetaMask can't properly calculate fees for Kasplex.
+
+## SOLUTION
+Since manual Kaspa Finance trades work, the issue is specific to our integration. Possible fixes:
+1. Use a different wallet (not MetaMask) that better supports Kasplex
+2. Submit transactions directly via RPC (bypass MetaMask)
+3. Match EXACTLY what Kaspa Finance does (need to capture their raw transaction)
 
 ## Key Learning
 The SwapRouter ABI we have doesn't match what's actually deployed. Kaspa Finance's router has additional functions/signatures we don't have documented.
