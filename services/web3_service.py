@@ -1985,7 +1985,7 @@ class Web3Service:
                 'value': hex(kas_amount),
                 'data': multicall_data,
                 'gas': hex(450000),
-                'gasPrice': self.w3.eth.gas_price,  # Legacy transaction (same as bonding curve)
+                'gasPrice': hex(self.w3.eth.gas_price),  # MetaMask requires hex string
                 'type': '0x0'  # Force type-0 transaction (Kasplex requirement)
             }
             
@@ -2055,7 +2055,7 @@ class Web3Service:
                 'value': '0x0',
                 'data': encoded_data,
                 'gas': hex(350000),  # 350k gas for DEX swap
-                'gasPrice': self.w3.eth.gas_price,  # Legacy transaction (same as bonding curve)
+                'gasPrice': hex(self.w3.eth.gas_price),  # MetaMask requires hex string
                 'type': '0x0'  # Force type-0 transaction (Kasplex requirement)
             }
             
