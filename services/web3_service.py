@@ -1947,34 +1947,36 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Build ExactInputSingleParams struct for swapping WKAS → Token
-            # struct ExactInputSingleParams {
-            #     address tokenIn;
-            #     address tokenOut;
-            #     uint24 fee;
+            # Build ExactInputParams for exactInput (multi-hop compatible, works for single hop too)
+            # This is what Kaspa Finance uses - NOT exactInputSingle
+            # struct ExactInputParams {
+            #     bytes path;          // encoded as: tokenIn + fee + tokenOut
             #     address recipient;
             #     uint256 deadline;
             #     uint256 amountIn;
             #     uint256 amountOutMinimum;
-            #     uint160 sqrtPriceLimitX96;
             # }
-            exact_input_params = (
-                wkas_address,           # tokenIn (WKAS)
-                token_address,          # tokenOut (Token)
-                fee_tier,               # fee (e.g., 2500 = 0.25%)
-                user_address,           # recipient
-                deadline,               # deadline
-                kas_amount,             # amountIn
-                min_tokens_out,         # amountOutMinimum
-                0                       # sqrtPriceLimitX96 (0 = no limit)
+            
+            # Encode path: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
+            from eth_abi import encode_packed
+            path = encode_packed(
+                ['address', 'uint24', 'address'],
+                [wkas_address, fee_tier, token_address]
             )
             
-            # Encode the individual function calls (these return hex strings)
-            exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            exact_input_params = (
+                path,                   # bytes path
+                user_address,           # recipient
+                deadline,               # deadline  
+                kas_amount,             # amountIn
+                min_tokens_out          # amountOutMinimum
+            )
+            
+            # Use exactInput, not exactInputSingle
+            exact_input_hex = swap_router.functions.exactInput(exact_input_params)._encode_transaction_data()
             refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Build multicall(uint256 deadline, bytes[]) manually - same as bonding curve
-            # This function exists in the contract but isn't in the ABI JSON
+            # Build multicall(uint256 deadline, bytes[])
             exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
             refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
             
