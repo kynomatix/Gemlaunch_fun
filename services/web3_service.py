@@ -1979,17 +1979,15 @@ class Web3Service:
                 refund_eth_encoded
             ])._encode_transaction_data()
             
-            # Use EIP-1559 (same as Kaspa Finance) for better fee estimation
-            base_fee = self.w3.eth.gas_price
-            
+            # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
+            # Don't send any gas params - MetaMask will auto-calculate everything
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_data,
-                # NO gas limit - let MetaMask estimate (Kaspa Finance does this)
-                'maxFeePerGas': hex(base_fee),
-                'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
+                'data': multicall_data
+                # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
+                # MetaMask auto-estimates all of it
             }
             
             logging.info(f"✅ DEX buy tx built - multicall([exactInputSingle, refundETH]) - Gas: auto-estimated by MetaMask")
@@ -2051,17 +2049,15 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Use EIP-1559 (same as Kaspa Finance) for better fee estimation
-            base_fee = self.w3.eth.gas_price
-            
+            # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
+            # Don't send any gas params - MetaMask will auto-calculate everything
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data,
-                # NO gas limit - let MetaMask estimate (Kaspa Finance does this)
-                'maxFeePerGas': hex(base_fee),
-                'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
+                'data': encoded_data
+                # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
+                # MetaMask auto-estimates all of it
             }
             
             logging.info(f"✅ DEX sell tx built - Gas: auto-estimated by MetaMask")
