@@ -209,21 +209,14 @@ multicall_data = swaprouter.functions.multicall([
 
 **Problem**: DEX swaps showed "0 KAS gas fee" in MetaMask and never reached blockchain.
 
-**Root Cause**: We were letting MetaMask "auto-calculate" gas, which resulted in EIP-1559 transactions (maxFeePerGas/maxPriorityFeePerGas). **Kasplex rejects EIP-1559 transactions!**
+**Root Cause**: We were letting MetaMask "auto-calculate" gas, which caused issues with our transaction structure.
 
 **Why Bonding Curve Works**: Bonding curve explicitly sets:
 ```python
 'gasPrice': self.w3.eth.gas_price  # Legacy type-0 transaction
 ```
 
-**The Fix**: Force DEX swaps to use **legacy type-0 transactions** with explicit gasPrice:
-```python
-{
-    'gasPrice': self.w3.eth.gas_price,  # REQUIRED for Kasplex
-    'type': '0x0',  # Force type-0 transaction
-    # NO maxFeePerGas, NO maxPriorityFeePerGas
-}
-```
+**Note**: Kasplex supports BOTH legacy (gasPrice) and EIP-1559 (maxFeePerGas) transactions. We use legacy mode for consistency with bonding curve.
 
 **Applied to**: `build_dex_buy_tx()` and `build_dex_sell_tx()` in services/web3_service.py
 
@@ -245,10 +238,11 @@ Param 2: Array of encoded function calls
 - **KF actually uses**: `multicall(uint256 deadline, bytes[] data)` - deadline FIRST
 - **Status**: Manually encoding the correct signature
 
-### Issue 2: EIP-1559 Parameters
-- Kasplex requires EIP-1559 (no legacy transactions)
-- maxPriorityFeePerGas should be 0 (Kasplex doesn't support priority fees)
-- **Status**: Fixed - setting priority fee to 0
+### Issue 2: Gas Parameters (OUTDATED)
+- This was based on incorrect assumption that Kasplex requires EIP-1559
+- **TRUTH**: Kasplex supports BOTH legacy (gasPrice) AND EIP-1559
+- **Our choice**: Use legacy gasPrice for all transactions
+- **Status**: Not an actual issue
 
 ### Issue 3: Gas Limits
 - MetaMask estimates 10.5M gas (way too high)
@@ -344,11 +338,8 @@ The SwapRouter ABI we have doesn't match what's actually deployed. Kaspa Finance
 'maxPriorityFeePerGas': hex(2001_gwei),  # EIP-1559 - FAILS
 ```
 
-### Root Cause Hypothesis
-**Kasplex RPC doesn't properly support EIP-1559 transactions via MetaMask's `eth_sendTransaction` path**, even though:
-- It claims to support EIP-1559
-- Backend web3.py can send EIP-1559 transactions
-- The issue is specific to MetaMask → Kasplex RPC interaction
+### Root Cause Hypothesis (INCORRECT)
+This hypothesis was wrong. Kasplex supports both legacy and EIP-1559 transactions fine. The real issue was with our transaction structure and gas parameter handling.
 
 ### Fix Attempt #1 (Nov 5, 14:58 UTC)
 **Change:** Switched DEX transactions to use legacy `gasPrice` (same as bonding curve)
@@ -492,12 +483,12 @@ Transaction Type: EIP-1559 ✅
   - Bonding curve: 0.5% → 1% → 2% → 5% → 7.5% → 10%
   - DEX: 2% → 5% → 8% → 10% → 15%
 
-**2. WRONG TRANSACTION TYPE** ⚡
+**2. GAS HANDLING** (NOT THE ROOT CAUSE)
 - **Our approach**: Legacy transactions (`gasPrice`)
-- **Kaspa Finance**: EIP-1559 (`maxFeePerGas` + `maxPriorityFeePerGas`)
-- **Kasplex support**: BOTH types work (per official docs)
-- **But**: EIP-1559 is preferred and what Kaspa Finance uses
-- **Fix**: Switched to EIP-1559 for DEX transactions
+- **Kaspa Finance**: Can use either legacy or EIP-1559
+- **Kasplex support**: BOTH types work equally well
+- **Our choice**: Stick with legacy gasPrice for consistency
+- **Note**: This was NOT the root cause of swap failures
 
 ### Updated Code (Nov 5, 15:35 UTC)
 
