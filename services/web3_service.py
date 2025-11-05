@@ -1840,12 +1840,79 @@ class Web3Service:
             logging.error(f"Failed to get DEX sell quote: {str(e)}")
             raise
     
-    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=FEE_TIER_025):
+    def find_best_direct_pool(self, token_address, kas_amount):
+        """
+        Use QuoterV2 to find the best direct WKAS→Token pool across fee tiers
+        
+        Tries fee tiers: 500 (0.05%), 3000 (0.30%), 10000 (1.00%)
+        Returns the fee tier and expected output that gives best price
+        
+        Args:
+            token_address (str): Token contract address
+            kas_amount (int): KAS amount to spend (in wei)
+        
+        Returns:
+            dict: {'fee_tier': int, 'tokens_out': int, 'gas_estimate': int} or None if no pool found
+        """
+        try:
+            quoter = self.contracts['QuoterV2']
+            wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
+            token_address = Web3.to_checksum_address(token_address)
+            
+            # Fee tiers to try: 0.05%, 0.30%, 1.00%
+            fee_tiers = [500, 3000, 10000]
+            best_result = None
+            
+            for fee in fee_tiers:
+                try:
+                    # QuoteExactInputSingleParams
+                    params = (
+                        wkas_address,      # tokenIn
+                        token_address,     # tokenOut
+                        kas_amount,        # amountIn
+                        fee,               # fee
+                        0                  # sqrtPriceLimitX96 (0 = no limit)
+                    )
+                    
+                    # Call quoter (this is a static call, doesn't cost gas)
+                    result = quoter.functions.quoteExactInputSingle(params).call()
+                    tokens_out = result[0]  # amountOut
+                    gas_estimate = result[3]  # gasEstimate
+                    
+                    logging.info(f"  Fee {fee/10000:.2f}%: {tokens_out/1e18:.4f} tokens (gas: {gas_estimate})")
+                    
+                    # Keep the best result (most tokens out)
+                    if best_result is None or tokens_out > best_result['tokens_out']:
+                        best_result = {
+                            'fee_tier': fee,
+                            'tokens_out': tokens_out,
+                            'gas_estimate': gas_estimate
+                        }
+                        
+                except Exception as e:
+                    # Pool doesn't exist or has no liquidity at this fee tier
+                    logging.debug(f"  Fee {fee/10000:.2f}%: Pool not available ({str(e)})")
+                    continue
+            
+            if best_result:
+                logging.info(f"✅ Best pool: {best_result['fee_tier']/10000:.2f}% fee → {best_result['tokens_out']/1e18:.4f} tokens")
+            else:
+                logging.warning(f"❌ No direct WKAS→Token pools found for {token_address}")
+                
+            return best_result
+            
+        except Exception as e:
+            logging.error(f"Failed to find best pool: {str(e)}")
+            return None
+    
+    def build_dex_buy_tx(self, user_address, token_address, kas_amount, min_tokens_out, deadline, fee_tier=None):
         """
         Build transaction for buying tokens via Kaspa Finance DEX using native KAS
         
         Uses Uniswap V3 pattern: exactInputSingle wrapped in multicall with refundETH
         to return any unused KAS to the user.
+        
+        If fee_tier is None, automatically finds the best pool using QuoterV2.
         
         Args:
             user_address (str): User's wallet address
@@ -1853,13 +1920,27 @@ class Web3Service:
             kas_amount (int): KAS amount to spend (in wei)
             min_tokens_out (int): Minimum tokens to receive (slippage protection)
             deadline (int): Transaction deadline (unix timestamp)
-            fee_tier (int): Pool fee tier (2500 for 0.25%)
+            fee_tier (int, optional): Pool fee tier (500/3000/10000) or None for auto-detection
         
         Returns:
             dict: Unsigned transaction dict {from, to, data, value}
         """
         try:
-            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}, Fee tier: {fee_tier}")
+            logging.info(f"Building DEX buy tx - Token: {token_address}, KAS: {kas_amount}")
+            
+            # Auto-detect best pool if fee tier not specified
+            if fee_tier is None:
+                logging.info("Auto-detecting best pool via QuoterV2...")
+                pool_result = self.find_best_direct_pool(token_address, kas_amount)
+                if pool_result:
+                    fee_tier = pool_result['fee_tier']
+                    logging.info(f"Using fee tier: {fee_tier/10000:.2f}%")
+                else:
+                    # Fallback to default 0.25%
+                    fee_tier = FEE_TIER_025
+                    logging.warning(f"No pools found, falling back to default fee tier: 0.25%")
+            
+            logging.info(f"Fee tier: {fee_tier}")
             
             swap_router = self.contracts['SwapRouter']
             user_address = Web3.to_checksum_address(user_address)

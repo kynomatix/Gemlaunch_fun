@@ -6096,10 +6096,10 @@ def api_dex_buy():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': 'Invalid amount or deadline format'}), 400
         
-        # Get fee tier from token
-        fee_tier = data.get('fee_tier', token.dex_pool_fee_tier or 2500)
+        # Get fee tier - use None for auto-detection via QuoterV2
+        fee_tier = data.get('fee_tier', None)  # Auto-detect best pool if not specified
         
-        # Build transaction
+        # Build transaction (will auto-detect best pool if fee_tier is None)
         web3_service = get_web3_service()
         tx_data = web3_service.build_dex_buy_tx(
             user_address=user_address,
