@@ -1920,9 +1920,17 @@ class Web3Service:
             latest_block = self.w3.eth.get_block('latest')
             base_fee = latest_block['baseFeePerGas']
             
-            # Set EIP-1559 parameters
-            max_fee_per_gas = hex(base_fee * 2)
+            # Ensure minimum gas price (Kasplex needs at least 1 gwei)
+            # Current base fee is around 2000 gwei on Kasplex
+            min_gas_price = Web3.to_wei(2000, 'gwei')  # 2000 gwei minimum
+            
+            # Set EIP-1559 parameters with proper minimum
+            # Use 2x base fee or minimum, whichever is higher
+            calculated_fee = max(base_fee * 2, min_gas_price)
+            max_fee_per_gas = hex(calculated_fee)
             max_priority_fee = hex(0)  # Kasplex doesn't support priority fees
+            
+            logging.info(f"Gas prices - Base: {base_fee/1e9:.1f} gwei, MaxFee: {calculated_fee/1e9:.1f} gwei")
             
             tx_data = {
                 'from': user_address,
