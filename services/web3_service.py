@@ -1988,12 +1988,14 @@ class Web3Service:
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
             # Build tx_data dict (same as bonding curve - uses legacy gasPrice)
+            # MetaMask expects gasPrice as hex string, not number
+            gas_price_wei = self.w3.eth.gas_price
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': kas_amount,
+                'value': hex(kas_amount),  # Convert to hex for MetaMask
                 'data': multicall_data,
-                'gasPrice': self.w3.eth.gas_price  # LEGACY gas mode (same as bonding curve)
+                'gasPrice': hex(gas_price_wei)  # Convert to hex string for MetaMask
             }
             
             logging.info(f"DEX buy tx built - multicall([exactInput, refundETH])")
@@ -2056,12 +2058,14 @@ class Web3Service:
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
             # Build tx_data dict (same as bonding curve - uses legacy gasPrice)
+            # MetaMask expects gasPrice as hex string, not number
+            gas_price_wei = self.w3.eth.gas_price
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': 0,
+                'value': '0x0',  # 0 value as hex
                 'data': encoded_data,
-                'gasPrice': self.w3.eth.gas_price  # LEGACY gas mode (same as bonding curve)
+                'gasPrice': hex(gas_price_wei)  # Convert to hex string for MetaMask
             }
             
             logging.info(f"DEX sell tx built - exactInputSingle")
