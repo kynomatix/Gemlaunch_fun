@@ -6096,10 +6096,11 @@ def api_dex_buy():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': 'Invalid amount or deadline format'}), 400
         
-        # Get fee tier - use None for auto-detection via QuoterV2
-        fee_tier = data.get('fee_tier', None)  # Auto-detect best pool if not specified
+        # Get fee tier from database (stored during graduation) - bypass broken pool detection
+        # Graduation always uses 2500 (0.25%) as defined in GraduationController contract
+        fee_tier = token.dex_pool_fee_tier if token.dex_pool_fee_tier else data.get('fee_tier', None)
         
-        # Build transaction (will auto-detect best pool if fee_tier is None)
+        # Build transaction
         web3_service = get_web3_service()
         tx_data = web3_service.build_dex_buy_tx(
             user_address=user_address,
