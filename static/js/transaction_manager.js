@@ -311,12 +311,6 @@ class TransactionManager {
             console.log('✅ DEX TX: Using backend gas limit:', parseInt(txData.gas, 16), 'units');
         }
         
-        // Include transaction type if backend specifies it
-        if (txData.type) {
-            txParams.type = txData.type;
-            console.log('✅ DEX TX: Using backend transaction type:', txData.type);
-        }
-        
         // Include gas pricing params from backend
         if (txData.gasPrice) {
             // Legacy gas pricing (like bonding curve)
@@ -792,18 +786,17 @@ class TransactionManager {
             const priceImpactPct = initialQuote.price_impact_pct || 0;
             const priceImpactBps = Math.round(priceImpactPct * 100);
             
-            // Calculate: price_impact + 1% buffer, minimum 4%, max 10%
-            // Based on user's real-world testing on Kaspa Finance directly
+            // Calculate: price_impact + 1% buffer, minimum 5%, max 15%
             const safetyBufferBps = 100;
-            const minimumSlippageBps = 400;  // 4% minimum (user needed this)
-            const maxSlippageBps = 1000;  // 10% maximum
+            const minimumSlippageBps = 500;
+            const maxSlippageBps = 1500;
             const calculatedSlippageBps = Math.max(priceImpactBps + safetyBufferBps, minimumSlippageBps);
             const optimalSlippageBps = Math.min(calculatedSlippageBps, maxSlippageBps);
             
             console.log(`🎯 DEX Slippage: Price impact ${priceImpactPct.toFixed(2)}% → Using ${(optimalSlippageBps / 100).toFixed(2)}% slippage`);
             
-            // DEX ladder: optimal (4%+) → 6% → 8% → 10%
-            slippageLadder = [optimalSlippageBps, 600, 800, 1000];
+            // DEX ladder: optimal → 8% → 10% → 15%
+            slippageLadder = [optimalSlippageBps, 800, 1000, 1500];
         } else {
             // Bonding Curve: Use static ladder (UNCHANGED)
             slippageLadder = [50, 100, 200, 500, 750, 1000];

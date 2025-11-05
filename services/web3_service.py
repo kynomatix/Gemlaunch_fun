@@ -1947,58 +1947,58 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Use multicall pattern for native KAS swaps (canonical Uniswap V3 pattern)
-            # This wraps exactInputSingle + refundETH to handle native currency correctly
-            # struct ExactInputSingleParams {
-            #     address tokenIn;
-            #     address tokenOut;
-            #     uint24 fee;
+            # Build ExactInputParams for exactInput (multi-hop compatible, works for single hop too)
+            # This is what Kaspa Finance uses - NOT exactInputSingle
+            # struct ExactInputParams {
+            #     bytes path;          // encoded as: tokenIn + fee + tokenOut
             #     address recipient;
             #     uint256 deadline;
             #     uint256 amountIn;
             #     uint256 amountOutMinimum;
-            #     uint160 sqrtPriceLimitX96;
             # }
+            
+            # Encode path manually: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
+            # Remove 0x prefix and convert addresses to bytes
+            token_in_bytes = bytes.fromhex(wkas_address[2:])
+            token_out_bytes = bytes.fromhex(token_address[2:])
+            # Fee as 3 bytes (uint24)
+            fee_bytes = fee_tier.to_bytes(3, 'big')
+            # Concatenate: tokenIn + fee + tokenOut
+            path = token_in_bytes + fee_bytes + token_out_bytes
+            
             exact_input_params = (
-                wkas_address,           # tokenIn (WKAS)
-                token_address,          # tokenOut (Token)
-                fee_tier,               # fee (e.g., 2500 = 0.25%)
+                path,                   # bytes path
                 user_address,           # recipient
-                deadline,               # deadline
+                deadline,               # deadline  
                 kas_amount,             # amountIn
-                min_tokens_out,         # amountOutMinimum
-                0                       # sqrtPriceLimitX96 (0 = no limit)
+                min_tokens_out          # amountOutMinimum
             )
             
-            # Encode exactInputSingle call
-            exact_input_call = swap_router.encodeABI(
-                fn_name='exactInputSingle',
-                args=[exact_input_params]
-            )
+            # Use exactInput, not exactInputSingle
+            exact_input_hex = swap_router.functions.exactInput(exact_input_params)._encode_transaction_data()
+            refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Encode refundETH call (no parameters)
-            refund_eth_call = swap_router.encodeABI(fn_name='refundETH')
+            # Build multicall(uint256 deadline, bytes[])
+            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
+            refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
             
-            # Wrap in multicall
-            tx_data = swap_router.functions.multicall([exact_input_call, refund_eth_call]).build_transaction({
+            from eth_abi import encode
+            multicall_selector = Web3.keccak(text="multicall(uint256,bytes[])")[:4]
+            encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
+            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
+            
+            # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
+            # Don't send any gas params - MetaMask will auto-calculate everything
+            tx_data = {
                 'from': user_address,
-                'value': kas_amount,
-                'gas': 0,
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(user_address)
-            })
+                'to': swap_router.address,
+                'value': hex(kas_amount),
+                'data': multicall_data  # Now a hex string, JSON serializable
+                # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
+                # MetaMask auto-estimates all of it
+            }
             
-            # Estimate gas - EXACT COPY of bonding curve pattern
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"✅ DEX buy tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            logging.info(f"✅ DEX buy tx built - multicall([exactInputSingle, refundETH]) - Gas: auto-estimated by MetaMask")
             return tx_data
             
         except Exception as e:
@@ -2057,28 +2057,18 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Build transaction - EXACT COPY of bonding curve pattern
+            # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
+            # Don't send any gas params - MetaMask will auto-calculate everything
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': 0,
-                'data': encoded_data,
-                'gas': 0,
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(user_address)
+                'value': '0x0',
+                'data': encoded_data
+                # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
+                # MetaMask auto-estimates all of it
             }
             
-            # Estimate gas - EXACT COPY of bonding curve pattern
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"✅ DEX sell tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            logging.info(f"✅ DEX sell tx built - Gas: auto-estimated by MetaMask")
             return tx_data
             
         except Exception as e:
@@ -2104,29 +2094,25 @@ class Web3Service:
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
             
-            # Build transaction - EXACT COPY of bonding curve pattern
-            user_address_checksum = Web3.to_checksum_address(user_address)
+            # Get current base fee for EIP-1559
+            latest_block = self.w3.eth.get_block('latest')
+            base_fee = latest_block['baseFeePerGas']
+            
+            # Set EIP-1559 parameters (Kasplex doesn't support priority fees)
+            max_fee_per_gas = hex(base_fee * 2)
+            max_priority_fee = hex(0)
+            
             tx_data = {
-                'from': user_address_checksum,
+                'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
-                'value': 0,
+                'value': '0x0',
                 'data': encoded_data,
-                'gas': 0,
-                'gasPrice': self.w3.eth.gas_price,
-                'nonce': self.w3.eth.get_transaction_count(user_address_checksum)
+                'gas': hex(50000),  # 50k gas for WKAS unwrap
+                'maxFeePerGas': max_fee_per_gas,
+                'maxPriorityFeePerGas': max_priority_fee
             }
             
-            # Estimate gas - EXACT COPY of bonding curve pattern
-            gas_estimate = self.estimate_gas({
-                'from': tx_data['from'],
-                'to': tx_data['to'],
-                'data': tx_data['data'],
-                'value': tx_data['value']
-            })
-            
-            tx_data['gas'] = gas_estimate['gas']
-            
-            logging.info(f"WKAS unwrap tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
+            logging.info(f"WKAS unwrap tx built - Gas: 50000")
             return tx_data
             
         except Exception as e:
