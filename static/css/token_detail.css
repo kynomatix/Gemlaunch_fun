@@ -2154,6 +2154,8 @@ select.airdrop-input-field option {
 @media (max-width: 1200px) {
     .token-layout {
         grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
     }
     
     .token-header {
@@ -2165,13 +2167,33 @@ select.airdrop-input-field option {
         width: 100%;
     }
     
+    /* Mobile panel ordering: Info → Buy → Chat → Chart → Recent Trades */
+    .left-panel,
     .right-panel {
-        order: -1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .token-header {
+        order: 1; /* Info panel first */
     }
     
     .trade-panel {
+        order: 2; /* Buy panel second */
         position: relative;
         top: auto;
+    }
+    
+    .chat-panel {
+        order: 3; /* Chat panel third */
+    }
+    
+    .chart-container {
+        order: 4; /* Chart fourth */
+    }
+    
+    .bonding-curve-frame {
+        order: 4; /* With chart */
     }
 }
 
