@@ -139,9 +139,58 @@ tx_data = {
 }
 ```
 
-**Status:** TESTING - awaiting user confirmation
+**Status:** ❌ FAILED - Backend sent gasPrice, but frontend ignored it!
+
+**User Evidence (Nov 5, ~15:05 UTC):**
+- MetaMask still shows "Total gas fee: 0 KAS"
+- Max fee per gas: 0.000002001 KAS (correct value)
+- Transaction stuck pending at nonce 327
+- Browser console shows NO gas pricing log (should have shown gasPrice or EIP-1559)
+
+### ROOT CAUSE FOUND (Nov 5, 15:10 UTC) ⚡
+**The bug was in the FRONTEND, not the backend!**
+
+**Frontend code (transaction_manager.js line 314-322):**
+```javascript
+// Include EIP-1559 gas params if backend provides them
+if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
+    txParams.maxFeePerGas = txData.maxFeePerGas;
+    txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
+}
+// ❌ NO HANDLING FOR gasPrice - it was IGNORED!
+```
+
+**What happened:**
+1. Backend correctly sends `gasPrice: '0x...'`
+2. Frontend only checks for EIP-1559 params (maxFeePerGas/maxPriorityFeePerGas)
+3. Since neither exists, frontend sends txParams WITHOUT any gas pricing
+4. MetaMask calculates its own EIP-1559 values (broken on Kasplex)
+5. Result: 0 KAS total fee, transaction stuck
+
+### Fix Attempt #2 (Nov 5, 15:10 UTC)
+**Change:** Frontend now properly includes `gasPrice` from backend
+```javascript
+// Include gas pricing params from backend
+if (txData.gasPrice) {
+    // Legacy gas pricing (like bonding curve)
+    txParams.gasPrice = txData.gasPrice;
+    console.log('✅ DEX TX: Using backend legacy gas price:', txData.gasPrice);
+} else if (txData.maxFeePerGas && txData.maxPriorityFeePerGas) {
+    // EIP-1559 gas pricing
+    txParams.maxFeePerGas = txData.maxFeePerGas;
+    txParams.maxPriorityFeePerGas = txData.maxPriorityFeePerGas;
+}
+```
+
+**Expected Result:**
+- Browser console will log: `"✅ DEX TX: Using backend legacy gas price: 0x..."`
+- MetaMask should show proper gas fee (like bonding curve trades)
+- Transaction should confirm on-chain
+
+**Status:** DEPLOYED - User needs to hard refresh (Ctrl+F5) to load new JavaScript
 
 ### Notes
 - Pool detection via QuoterV2 was added but unrelated to core issue
 - Both bonding curve and DEX use same submission method (MetaMask eth_sendTransaction)
 - The ONLY difference that matters: gas pricing format
+- **CRITICAL**: Always verify frontend is USING backend parameters, not just that backend sends them!
