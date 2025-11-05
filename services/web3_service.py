@@ -1973,8 +1973,15 @@ class Web3Service:
             exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Use multicall(bytes[]) - deadline is already in exactInputSingle params
-            multicall_data = swap_router.functions.multicall([exact_input_hex, refund_eth_hex])._encode_transaction_data()
+            # Build multicall(uint256 deadline, bytes[]) manually - same as bonding curve
+            # This function exists in the contract but isn't in the ABI JSON
+            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
+            refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
+            
+            from eth_abi import encode
+            multicall_selector = Web3.keccak(text="multicall(uint256,bytes[])")[:4]
+            encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
+            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
             # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
             # Don't send any gas params - MetaMask will auto-calculate everything
