@@ -764,8 +764,13 @@ class TransactionManager {
      * @returns {Promise<Object>} {success, tx_hash, slippage_used}
      */
     async executeTradeWithAutoSlippage(tradeType, params, callbacks = {}, signal = null) {
-        // Progressive slippage ladder: 0.5% → 1% → 2% → 5% → 7.5% → 10%
-        const slippageLadder = [50, 100, 200, 500, 750, 1000];
+        // DEX tokens need higher slippage due to thin liquidity post-graduation
+        // Bonding curve: 0.5% → 1% → 2% → 5% → 7.5% → 10%
+        // DEX (graduated): 2% → 5% → 8% → 10% → 15%
+        const isGraduated = params.is_graduated || false;
+        const slippageLadder = isGraduated 
+            ? [200, 500, 800, 1000, 1500]  // DEX: Start at 2%, max 15%
+            : [50, 100, 200, 500, 750, 1000];  // Bonding curve: Start at 0.5%
         const maxAttempts = slippageLadder.length;
         
         const {onRetry, onStatusUpdate} = callbacks;

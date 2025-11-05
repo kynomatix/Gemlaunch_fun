@@ -299,3 +299,77 @@ tx_data = {
 - The ONLY difference that matters: gas pricing format
 - **CRITICAL**: On Kasplex, MetaMask's auto-calculation works, but ANY explicit gas param fails!
 - **LESSON LEARNED**: Always test what the working code is ACTUALLY doing, not what we think it should do!
+
+---
+
+## Nov 5, 2025 - ACTUAL ROOT CAUSE FOUND 🎯
+
+### The Real Problem (After Testing Kaspa Finance Directly)
+
+**User tested Kaspa Finance directly and discovered:**
+1. ✅ **8% slippage = SUCCESS** (transaction confirmed!)
+2. ❌ **1% slippage = FAILED** ("Execution reverted for an unknown reason")
+3. ❌ **0.5% slippage = FAILED** (likely would fail)
+
+**Kaspa Finance Transaction Details (SUCCESSFUL):**
+```
+Method: multicall(deadline, [exactInputSingle, refundETH])
+Gas Limit: 200040 units
+Gas Used: 149827 units
+Base Fee: 2000 GWEI
+Priority Fee: 1 GWEI
+Total Gas: 0.299804 KAS
+Transaction Type: EIP-1559 ✅
+```
+
+### Root Causes Identified
+
+**1. SLIPPAGE TOO LOW** ⚡
+- **Our ladder**: Started at 50 bps (0.5%) for all trades
+- **DEX reality**: Thin liquidity post-graduation needs 2-8% minimum
+- **Why**: Only 10 KAS liquidity after graduation → high price impact (0.97% shown in Kaspa Finance)
+- **Fix**: Separate slippage ladders
+  - Bonding curve: 0.5% → 1% → 2% → 5% → 7.5% → 10%
+  - DEX: 2% → 5% → 8% → 10% → 15%
+
+**2. WRONG TRANSACTION TYPE** ⚡
+- **Our approach**: Legacy transactions (`gasPrice`)
+- **Kaspa Finance**: EIP-1559 (`maxFeePerGas` + `maxPriorityFeePerGas`)
+- **Kasplex support**: BOTH types work (per official docs)
+- **But**: EIP-1559 is preferred and what Kaspa Finance uses
+- **Fix**: Switched to EIP-1559 for DEX transactions
+
+### Updated Code (Nov 5, 15:35 UTC)
+
+**Backend (services/web3_service.py):**
+```python
+# Use EIP-1559 (same as Kaspa Finance)
+base_fee = self.w3.eth.gas_price
+
+tx_data = {
+    'from': user_address,
+    'to': swap_router.address,
+    'value': hex(kas_amount),
+    'data': multicall_data,
+    'gas': hex(450000),
+    'maxFeePerGas': hex(base_fee),
+    'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
+}
+```
+
+**Frontend (transaction_manager.js):**
+```javascript
+// DEX tokens need higher slippage due to thin liquidity
+const slippageLadder = isGraduated 
+    ? [200, 500, 800, 1000, 1500]  // DEX: Start at 2%, max 15%
+    : [50, 100, 200, 500, 750, 1000];  // Bonding curve: 0.5%
+```
+
+### Why This Fixes It
+
+1. **First attempt starts at 2% slippage** - likely to succeed immediately
+2. **Auto-retries at 5%, 8%** - matches what worked for user on Kaspa Finance
+3. **EIP-1559 format** - matches Kaspa Finance's working implementation
+4. **MetaMask will show proper fees** - base + priority fee calculation
+
+**Status:** DEPLOYED - Testing in progress

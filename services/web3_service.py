@@ -1979,14 +1979,17 @@ class Web3Service:
                 refund_eth_encoded
             ])._encode_transaction_data()
             
+            # Use EIP-1559 (same as Kaspa Finance) for better fee estimation
+            base_fee = self.w3.eth.gas_price
+            
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_data,
                 'gas': hex(450000),
-                'gasPrice': hex(self.w3.eth.gas_price)  # Legacy transaction
-                # Note: MetaMask infers type=0 from gasPrice presence
+                'maxFeePerGas': hex(base_fee),
+                'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
             }
             
             logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
@@ -2049,14 +2052,17 @@ class Web3Service:
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
             # DON'T send gas pricing - let MetaMask auto-calculate (same as bonding curve)
+            # Use EIP-1559 (same as Kaspa Finance) for better fee estimation
+            base_fee = self.w3.eth.gas_price
+            
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
                 'gas': hex(350000),  # 350k gas for DEX swap
-                'gasPrice': hex(self.w3.eth.gas_price)  # Legacy transaction
-                # Note: MetaMask infers type=0 from gasPrice presence
+                'maxFeePerGas': hex(base_fee),
+                'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
             }
             
             logging.info(f"✅ DEX sell tx built - Gas: 350000")
