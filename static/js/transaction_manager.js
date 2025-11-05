@@ -792,17 +792,18 @@ class TransactionManager {
             const priceImpactPct = initialQuote.price_impact_pct || 0;
             const priceImpactBps = Math.round(priceImpactPct * 100);
             
-            // Calculate: price_impact + 0.5% buffer, minimum 0.5%, max 3%
-            const safetyBufferBps = 50;
-            const minimumSlippageBps = 50;
-            const maxSlippageBps = 300;
+            // Calculate: price_impact + 1% buffer, minimum 4%, max 10%
+            // Based on user's real-world testing on Kaspa Finance directly
+            const safetyBufferBps = 100;
+            const minimumSlippageBps = 400;  // 4% minimum (user needed this)
+            const maxSlippageBps = 1000;  // 10% maximum
             const calculatedSlippageBps = Math.max(priceImpactBps + safetyBufferBps, minimumSlippageBps);
             const optimalSlippageBps = Math.min(calculatedSlippageBps, maxSlippageBps);
             
             console.log(`🎯 DEX Slippage: Price impact ${priceImpactPct.toFixed(2)}% → Using ${(optimalSlippageBps / 100).toFixed(2)}% slippage`);
             
-            // DEX ladder: optimal → 1% → 2% → 3%
-            slippageLadder = [optimalSlippageBps, 100, 200, 300];
+            // DEX ladder: optimal (4%+) → 6% → 8% → 10%
+            slippageLadder = [optimalSlippageBps, 600, 800, 1000];
         } else {
             // Bonding Curve: Use static ladder (UNCHANGED)
             slippageLadder = [50, 100, 200, 500, 750, 1000];
