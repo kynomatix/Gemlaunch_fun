@@ -372,4 +372,86 @@ const slippageLadder = isGraduated
 3. **EIP-1559 format** - matches Kaspa Finance's working implementation
 4. **MetaMask will show proper fees** - base + priority fee calculation
 
-**Status:** DEPLOYED - Testing in progress
+**Status:** ❌ STILL FAILED - Transactions showing "0 KAS fee" despite optimal slippage
+
+---
+
+## Nov 5, 2025 - FINAL ROOT CAUSE: Hardcoded Gas Limits 🎯
+
+### The Discovery
+
+**User comparison of successful vs failed transactions:**
+
+**Kaspa Finance (SUCCESS):**
+```
+Gas limit: 199,995 (MetaMask auto-estimated)
+Gas used: 149,787
+Total gas fee: 0.299724 KAS
+Status: Confirmed ✅
+```
+
+**Our Platform (FAILED):**
+```
+Gas limit: 450,000 (hardcoded by us)
+Total gas fee: 0 KAS
+Status: Stuck pending ❌
+```
+
+### The Real Problem
+
+We were hardcoding `gas: 450000` in our transaction data. When MetaMask receives a transaction with a **hardcoded gas limit**, it skips its own gas estimation and shows "0 KAS fee" if the call would revert.
+
+**Why Kaspa Finance works:**
+- They send transaction WITHOUT gas limit field
+- MetaMask runs `eth_estimateGas` simulation
+- Simulation succeeds (with proper slippage)
+- MetaMask shows actual fee (~0.3 KAS)
+- Transaction broadcasts successfully
+
+**Why ours failed:**
+- We forced `gas: 450000`
+- MetaMask accepts the limit without simulation
+- Transaction shows "0 KAS fee" 
+- Gets stuck in pending forever
+
+### The Complete Fix
+
+**Backend (services/web3_service.py):**
+```python
+tx_data = {
+    'from': user_address,
+    'to': swap_router.address,
+    'value': hex(kas_amount),
+    'data': multicall_data,
+    # NO gas limit - let MetaMask estimate ✅
+    'maxFeePerGas': hex(base_fee),
+    'maxPriorityFeePerGas': hex(1000000000)
+}
+```
+
+**Frontend (transaction_manager.js):**
+```javascript
+// Dynamic slippage based on price impact
+const priceImpactPct = quote.price_impact_pct || 0;
+const calculatedSlippage = Math.max(priceImpactPct * 100 + 100, 500); // +1% buffer, min 5%
+```
+
+### Why BOTH Changes Were Needed
+
+1. **Dynamic Slippage** - Ensures the swap won't revert during MetaMask's simulation
+2. **No Gas Limit** - Allows MetaMask to run simulation and estimate gas properly
+
+**Without both fixes:**
+- Low slippage → MetaMask simulation reverts → can't estimate gas
+- Hardcoded gas → MetaMask skips simulation → shows "0 KAS fee"
+
+### Final Status
+
+**Deployed:** Nov 5, 2025 16:42 UTC
+**Testing:** User needs to test with hard refresh
+
+**Expected behavior:**
+- 1 KAS trade: ~5% slippage (0.19% impact + 1% buffer vs 5% minimum)
+- Gas: ~200k auto-estimated by MetaMask
+- Fee: ~0.3-0.4 KAS displayed properly
+- Transaction: Confirms in seconds ✅

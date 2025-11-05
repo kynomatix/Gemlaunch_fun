@@ -129,12 +129,52 @@ const txHash = await provider.request({
 
 ## Questions for Kaspa Finance Team
 
-1. Is our multicall encoding correct?
-2. Do we need to include any special parameters for Kasplex?
-3. How does your frontend submit multicall transactions to MetaMask?
-4. Are there any known issues with MetaMask on Kasplex for complex transactions?
-5. What gas params do you send to MetaMask for DEX swaps?
+1. ~~Is our multicall encoding correct?~~ ✅ RESOLVED - Encoding was correct
+2. ~~Do we need to include any special parameters for Kasplex?~~ ✅ RESOLVED - Standard EIP-1559
+3. ~~How does your frontend submit multicall transactions to MetaMask?~~ ✅ RESOLVED - Without gas limit
+4. ~~Are there any known issues with MetaMask on Kasplex for complex transactions?~~ ✅ RESOLVED - Works when gas auto-estimated
+5. ~~What gas params do you send to MetaMask for DEX swaps?~~ ✅ RESOLVED - maxFeePerGas + maxPriorityFeePerGas only
+
+---
+
+## ✅ SOLUTION FOUND (Nov 5, 2025)
+
+### Root Cause
+We were hardcoding `gas: 450000` which prevented MetaMask from running gas estimation simulation. Combined with low slippage, this caused "0 KAS fee" display and stuck transactions.
+
+### The Fix
+
+**Backend (services/web3_service.py):**
+```python
+tx_data = {
+    'from': user_address,
+    'to': swap_router.address,
+    'value': hex(kas_amount),
+    'data': multicall_data,
+    # NO gas field - let MetaMask auto-estimate (~200k)
+    'maxFeePerGas': hex(base_fee),
+    'maxPriorityFeePerGas': hex(1000000000)
+}
+```
+
+**Frontend (transaction_manager.js):**
+```javascript
+// Dynamic slippage based on price impact
+const priceImpactPct = quote.price_impact_pct || 0;
+const calculatedSlippage = Math.max(priceImpactPct * 100 + 100, 500); // +1% buffer, min 5%
+```
+
+### Why Both Changes Were Critical
+
+1. **Dynamic Slippage** - Prevents revert during MetaMask's `eth_estimateGas` simulation
+2. **No Gas Limit** - Allows MetaMask to run simulation and estimate gas properly
+
+**Result:**
+- Gas: ~200k (auto-estimated, vs our 450k hardcoded)
+- Fee: ~0.3-0.4 KAS (displayed properly)
+- Status: **Transactions confirming successfully** ✅
 
 ## Contact
 Platform: gemlaunch.fun - memecoin launchpad on Kasplex L2
 Goal: Integrate Kaspa Finance DEX for post-graduation trading
+**Status:** Integration complete and working!

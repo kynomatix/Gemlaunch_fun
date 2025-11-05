@@ -1992,7 +1992,7 @@ class Web3Service:
                 'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
             }
             
-            logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
+            logging.info(f"✅ DEX buy tx built - multicall([exactInputSingle, refundETH]) - Gas: auto-estimated by MetaMask")
             return tx_data
             
         except Exception as e:
@@ -2064,7 +2064,7 @@ class Web3Service:
                 'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
             }
             
-            logging.info(f"✅ DEX sell tx built - Gas: 350000")
+            logging.info(f"✅ DEX sell tx built - Gas: auto-estimated by MetaMask")
             return tx_data
             
         except Exception as e:
