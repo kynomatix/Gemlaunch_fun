@@ -1987,16 +1987,15 @@ class Web3Service:
             encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
-            # Build tx_data - send to MetaMask
+            # Build tx_data dict - DON'T estimate gas (fails on Kasplex for DEX)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': hex(kas_amount),
-                'data': multicall_data,
-                'gasPrice': hex(self.w3.eth.gas_price)
+                'value': kas_amount,
+                'data': multicall_data
             }
             
-            logging.info(f"✅ DEX buy tx built - multicall([exactInput, refundETH])")
+            logging.info(f"DEX buy tx built - multicall([exactInput, refundETH])")
             return tx_data
             
         except Exception as e:
@@ -2055,16 +2054,15 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Build tx_data - send to MetaMask
+            # Build tx_data dict - DON'T estimate gas (fails on Kasplex for DEX)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': '0x0',
-                'data': encoded_data,
-                'gasPrice': hex(self.w3.eth.gas_price)
+                'value': 0,
+                'data': encoded_data
             }
             
-            logging.info(f"✅ DEX sell tx built")
+            logging.info(f"DEX sell tx built - exactInputSingle")
             return tx_data
             
         except Exception as e:
