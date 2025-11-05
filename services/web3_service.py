@@ -1997,30 +1997,21 @@ class Web3Service:
             # Combine selector and encoded params (already includes 0x prefix)
             multicall_encoded = '0x' + multicall_selector.hex() + encoded_params.hex()
             
-            # Get current base fee for EIP-1559
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block['baseFeePerGas']
+            # Use LEGACY gas pricing (same as bonding curve) - Kasplex RPC doesn't handle EIP-1559 via MetaMask
+            gas_price = self.w3.eth.gas_price
+            min_gas_price = Web3.to_wei(2001, 'gwei')
+            final_gas_price = max(gas_price, min_gas_price)
             
-            # CRITICAL: Kasplex requires priority fee = base fee (not 0!)
-            # Based on successful KF transaction analysis
-            min_gas_price = Web3.to_wei(2001, 'gwei')  # Minimum 2001 gwei
-            
-            # For Kasplex: maxPriorityFeePerGas MUST equal maxFeePerGas
-            # This is what makes transactions work!
-            calculated_fee = max(base_fee, min_gas_price)
-            max_fee_per_gas = hex(calculated_fee)
-            max_priority_fee = hex(calculated_fee)  # SAME as max fee!
-            
-            logging.info(f"Gas prices - Base: {base_fee/1e9:.1f} gwei, MaxFee: {calculated_fee/1e9:.1f} gwei")
+            logging.info(f"Gas price: {final_gas_price/1e9:.1f} gwei (legacy pricing)")
             
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_encoded,  # NO double 0x prefix!
-                'gas': hex(450000),  # 450k gas (KF uses ~437k)
-                'maxFeePerGas': max_fee_per_gas,
-                'maxPriorityFeePerGas': max_priority_fee
+                'data': multicall_encoded,
+                'gas': hex(450000),
+                'gasPrice': hex(final_gas_price),  # Legacy gas pricing (like bonding curve)
+                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
             }
             
             logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
