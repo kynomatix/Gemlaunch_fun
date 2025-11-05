@@ -6049,8 +6049,10 @@ def api_dex_buy():
         "requires_approval": false
     }
     """
+    logging.info("🚀 /api/dex/buy endpoint called!")
     try:
         data = request.get_json(silent=True)
+        logging.info(f"📦 Received payload: {data}")
         if not data:
             return jsonify({'success': False, 'error': 'Invalid JSON payload'}), 400
         
