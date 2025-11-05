@@ -1987,18 +1987,21 @@ class Web3Service:
             encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
-            # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
-            # Don't send any gas params - MetaMask will auto-calculate everything
+            # Use legacy type-0 transaction (as documented in debug diary)
+            # This prevents MetaMask from showing "0 KAS fee" on Kasplex
+            gas_price = self.w3.eth.gas_price
+            
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_data  # Now a hex string, JSON serializable
-                # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
-                # MetaMask auto-estimates all of it
+                'data': multicall_data,
+                'gas': '0x556a0',  # 350,000 gas limit (debug diary finding)
+                'gasPrice': hex(gas_price),  # Legacy gas pricing
+                'type': '0x0'  # Force legacy type-0 transaction
             }
             
-            logging.info(f"✅ DEX buy tx built - multicall([exactInputSingle, refundETH]) - Gas: auto-estimated by MetaMask")
+            logging.info(f"✅ DEX buy tx built - Legacy type-0 with gasPrice: {gas_price}, gas: 350k")
             return tx_data
             
         except Exception as e:
@@ -2057,18 +2060,20 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Let MetaMask handle ALL gas parameters (same as Kaspa Finance)
-            # Don't send any gas params - MetaMask will auto-calculate everything
+            # Use legacy type-0 transaction (as documented in debug diary)
+            gas_price = self.w3.eth.gas_price
+            
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data
-                # NO gas, NO maxFeePerGas, NO maxPriorityFeePerGas
-                # MetaMask auto-estimates all of it
+                'data': encoded_data,
+                'gas': '0x556a0',  # 350,000 gas limit
+                'gasPrice': hex(gas_price),  # Legacy gas pricing
+                'type': '0x0'  # Force legacy type-0 transaction
             }
             
-            logging.info(f"✅ DEX sell tx built - Gas: auto-estimated by MetaMask")
+            logging.info(f"✅ DEX sell tx built - Legacy type-0 with gasPrice: {gas_price}, gas: 350k")
             return tx_data
             
         except Exception as e:
@@ -2094,13 +2099,8 @@ class Web3Service:
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
             
-            # Get current base fee for EIP-1559
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block['baseFeePerGas']
-            
-            # Set EIP-1559 parameters (Kasplex doesn't support priority fees)
-            max_fee_per_gas = hex(base_fee * 2)
-            max_priority_fee = hex(0)
+            # Use legacy type-0 transaction (consistent with DEX swaps)
+            gas_price = self.w3.eth.gas_price
             
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
@@ -2108,11 +2108,11 @@ class Web3Service:
                 'value': '0x0',
                 'data': encoded_data,
                 'gas': hex(50000),  # 50k gas for WKAS unwrap
-                'maxFeePerGas': max_fee_per_gas,
-                'maxPriorityFeePerGas': max_priority_fee
+                'gasPrice': hex(gas_price),  # Legacy gas pricing
+                'type': '0x0'  # Force legacy type-0 transaction
             }
             
-            logging.info(f"WKAS unwrap tx built - Gas: 50000")
+            logging.info(f"WKAS unwrap tx built - Legacy type-0 with gasPrice: {gas_price}, gas: 50k")
             return tx_data
             
         except Exception as e:

@@ -311,6 +311,12 @@ class TransactionManager {
             console.log('✅ DEX TX: Using backend gas limit:', parseInt(txData.gas, 16), 'units');
         }
         
+        // Include transaction type if backend specifies it
+        if (txData.type) {
+            txParams.type = txData.type;
+            console.log('✅ DEX TX: Using backend transaction type:', txData.type);
+        }
+        
         // Include gas pricing params from backend
         if (txData.gasPrice) {
             // Legacy gas pricing (like bonding curve)
