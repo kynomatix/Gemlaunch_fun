@@ -1957,12 +1957,14 @@ class Web3Service:
             #     uint256 amountOutMinimum;
             # }
             
-            # Encode path: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
-            from eth_abi import encode_packed
-            path = encode_packed(
-                ['address', 'uint24', 'address'],
-                [wkas_address, fee_tier, token_address]
-            )
+            # Encode path manually: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
+            # Remove 0x prefix and convert addresses to bytes
+            token_in_bytes = bytes.fromhex(wkas_address[2:])
+            token_out_bytes = bytes.fromhex(token_address[2:])
+            # Fee as 3 bytes (uint24)
+            fee_bytes = fee_tier.to_bytes(3, 'big')
+            # Concatenate: tokenIn + fee + tokenOut
+            path = token_in_bytes + fee_bytes + token_out_bytes
             
             exact_input_params = (
                 path,                   # bytes path
