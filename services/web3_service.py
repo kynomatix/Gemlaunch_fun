@@ -1987,7 +1987,7 @@ class Web3Service:
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_data,
-                'gas': hex(450000),
+                # NO gas limit - let MetaMask estimate (Kaspa Finance does this)
                 'maxFeePerGas': hex(base_fee),
                 'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
             }
@@ -2051,7 +2051,6 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # DON'T send gas pricing - let MetaMask auto-calculate (same as bonding curve)
             # Use EIP-1559 (same as Kaspa Finance) for better fee estimation
             base_fee = self.w3.eth.gas_price
             
@@ -2060,7 +2059,7 @@ class Web3Service:
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(350000),  # 350k gas for DEX swap
+                # NO gas limit - let MetaMask estimate (Kaspa Finance does this)
                 'maxFeePerGas': hex(base_fee),
                 'maxPriorityFeePerGas': hex(1000000000)  # 1 gwei priority
             }
