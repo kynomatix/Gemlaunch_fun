@@ -40,10 +40,21 @@ Param 2: Array of encoded function calls
 - Cause: Passing hex strings to eth_abi.encode instead of bytes
 - **Status**: FIXED - converting hex to bytes with bytes.fromhex()
 
-### Issue 5: Double 0x Prefix (CURRENT)
+### Issue 5: Double 0x Prefix 
 - Error: "Cannot convert string to Uint8Array. toBytes only supports 0x-prefixed hex strings"
 - Cause: Adding 0x prefix when multicall_encoded already had one
 - **Status**: FIXED - removed double prefix
+
+### Issue 6: Transactions Not Reaching Chain (CURRENT BLOCKER)
+- **Symptom**: MetaMask accepts tx, returns hash, but tx never appears on blockchain
+- **Evidence**: 
+  - Hash 0xe5c7b0f9... returned by MetaMask
+  - Not found on explorer: https://explorer.testnet.kasplextest.xyz
+  - User has 20+ stuck pending transactions at nonce 325
+- **Likely Causes**:
+  1. Gas price too low (showing 0 KAS fee)
+  2. Nonce conflict - need to clear stuck transactions
+  3. RPC silently rejecting transactions
 
 ## Transaction Structure Comparison
 
