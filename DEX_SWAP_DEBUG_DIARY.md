@@ -97,3 +97,51 @@ Since manual Kaspa Finance trades work, the issue is specific to our integration
 
 ## Key Learning
 The SwapRouter ABI we have doesn't match what's actually deployed. Kaspa Finance's router has additional functions/signatures we don't have documented.
+
+---
+
+## Nov 5, 2025 - CRITICAL DISCOVERY: Gas Pricing Difference
+
+### Test Results
+**Bonding Curve (WORKS):**
+- Uses `gasPrice` (legacy EIP-1 gas pricing)
+- Tx confirms on-chain in seconds ✅
+- Example: 0xbf6cd7af... confirmed at nonce 326
+
+**DEX Swaps (FAILS):**
+- Was using `maxFeePerGas` + `maxPriorityFeePerGas` (EIP-1559)
+- MetaMask shows correct fee in popup (0.9 KAS)
+- After confirm: shows 0 KAS, stuck pending forever ❌
+- Never reaches blockchain
+
+### Code Comparison
+```python
+# Bonding Curve (services/web3_service.py line 1654)
+'gasPrice': self.w3.eth.gas_price,  # Legacy - WORKS
+
+# DEX (was using)
+'maxFeePerGas': hex(2001_gwei),
+'maxPriorityFeePerGas': hex(2001_gwei),  # EIP-1559 - FAILS
+```
+
+### Root Cause Hypothesis
+**Kasplex RPC doesn't properly support EIP-1559 transactions via MetaMask's `eth_sendTransaction` path**, even though:
+- It claims to support EIP-1559
+- Backend web3.py can send EIP-1559 transactions
+- The issue is specific to MetaMask → Kasplex RPC interaction
+
+### Fix Attempt #1 (Nov 5, 14:58 UTC)
+**Change:** Switched DEX transactions to use legacy `gasPrice` (same as bonding curve)
+```python
+tx_data = {
+    'gasPrice': hex(final_gas_price),  # Legacy pricing
+    'nonce': self.w3.eth.get_transaction_count(user_address)
+}
+```
+
+**Status:** TESTING - awaiting user confirmation
+
+### Notes
+- Pool detection via QuoterV2 was added but unrelated to core issue
+- Both bonding curve and DEX use same submission method (MetaMask eth_sendTransaction)
+- The ONLY difference that matters: gas pricing format
