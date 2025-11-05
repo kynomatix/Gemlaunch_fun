@@ -43,6 +43,32 @@ multicall_data = swaprouter.functions.multicall([
 
 **DO NOT manually encode multicall with deadline - that signature doesn't exist!**
 
+---
+
+## ROOT CAUSE IDENTIFIED (Nov 5, 2025)
+
+**Problem**: DEX swaps showed "0 KAS gas fee" in MetaMask and never reached blockchain.
+
+**Root Cause**: We were letting MetaMask "auto-calculate" gas, which resulted in EIP-1559 transactions (maxFeePerGas/maxPriorityFeePerGas). **Kasplex rejects EIP-1559 transactions!**
+
+**Why Bonding Curve Works**: Bonding curve explicitly sets:
+```python
+'gasPrice': self.w3.eth.gas_price  # Legacy type-0 transaction
+```
+
+**The Fix**: Force DEX swaps to use **legacy type-0 transactions** with explicit gasPrice:
+```python
+{
+    'gasPrice': self.w3.eth.gas_price,  # REQUIRED for Kasplex
+    'type': '0x0',  # Force type-0 transaction
+    # NO maxFeePerGas, NO maxPriorityFeePerGas
+}
+```
+
+**Applied to**: `build_dex_buy_tx()` and `build_dex_sell_tx()` in services/web3_service.py
+
+---
+
 ## What We Know Works (from Kaspa Finance)
 ```
 Function: multicall(uint256 deadline, bytes[] data)

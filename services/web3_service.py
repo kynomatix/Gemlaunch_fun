@@ -1984,8 +1984,9 @@ class Web3Service:
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_data,
-                'gas': hex(450000)
-                # NO gasPrice - let MetaMask auto-calculate
+                'gas': hex(450000),
+                'gasPrice': self.w3.eth.gas_price,  # Legacy transaction (same as bonding curve)
+                'type': '0x0'  # Force type-0 transaction (Kasplex requirement)
             }
             
             logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
@@ -2053,8 +2054,9 @@ class Web3Service:
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(350000)  # 350k gas for DEX swap
-                # NO gasPrice, NO maxFeePerGas - MetaMask will auto-calculate
+                'gas': hex(350000),  # 350k gas for DEX swap
+                'gasPrice': self.w3.eth.gas_price,  # Legacy transaction (same as bonding curve)
+                'type': '0x0'  # Force type-0 transaction (Kasplex requirement)
             }
             
             logging.info(f"✅ DEX sell tx built - Gas: 350000")
