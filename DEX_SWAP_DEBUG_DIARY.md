@@ -9,6 +9,40 @@ DEX swaps on Kaspa Finance are not reaching the blockchain. Transactions generat
 - **Chain**: Kasplex zkEVM testnet (Chain ID: 167012)
 - **Router**: 0xDf88D478aF51C0AB616aFBfDD933c874e142858c
 
+## KASPA FINANCE SWAPROUTER ABI (attached_assets/SwapRouter_1762263429508.json)
+**CRITICAL: Always reference this - stop misreading it!**
+
+### Key Functions:
+1. **multicall**: `multicall(bytes[] data)` - NO DEADLINE PARAMETER!
+   - Input: Array of encoded function calls
+   - Payable: YES
+   - Returns: `bytes[] results`
+
+2. **exactInputSingle**: For single-hop swaps
+   - Input: ExactInputSingleParams struct (8 fields)
+   - Payable: YES
+   - Returns: `uint256 amountOut`
+
+3. **refundETH**: Returns excess ETH/KAS to caller
+   - No inputs
+   - Payable: YES
+   - No return value
+
+### Correct Usage Pattern:
+```javascript
+// Build individual calls
+exactInputSingle_call = encode_exactInputSingle(params)
+refundETH_call = encode_refundETH()
+
+// Use multicall(bytes[]) - NOT multicall(uint256, bytes[])
+multicall_data = swaprouter.functions.multicall([
+    exactInputSingle_call,
+    refundETH_call
+])._encode_transaction_data()
+```
+
+**DO NOT manually encode multicall with deadline - that signature doesn't exist!**
+
 ## What We Know Works (from Kaspa Finance)
 ```
 Function: multicall(uint256 deadline, bytes[] data)
