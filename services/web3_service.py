@@ -1997,21 +1997,16 @@ class Web3Service:
             # Combine selector and encoded params (already includes 0x prefix)
             multicall_encoded = '0x' + multicall_selector.hex() + encoded_params.hex()
             
-            # Use LEGACY gas pricing (same as bonding curve) - Kasplex RPC doesn't handle EIP-1559 via MetaMask
-            gas_price = self.w3.eth.gas_price
-            min_gas_price = Web3.to_wei(2001, 'gwei')
-            final_gas_price = max(gas_price, min_gas_price)
-            
-            logging.info(f"Gas price: {final_gas_price/1e9:.1f} gwei (legacy pricing)")
+            # DON'T send gas pricing - let MetaMask auto-calculate (same as bonding curve)
+            # MetaMask rejects both gasPrice AND EIP-1559 params on Kasplex, but auto-calc works!
             
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_encoded,
-                'gas': hex(450000),
-                'gasPrice': hex(final_gas_price),  # Legacy gas pricing (like bonding curve)
-                'nonce': self.w3.eth.get_transaction_count(Web3.to_checksum_address(user_address))
+                'gas': hex(450000)
+                # NO gasPrice, NO maxFeePerGas - MetaMask will auto-calculate
             }
             
             logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
@@ -2073,25 +2068,17 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Get current base fee for EIP-1559
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block['baseFeePerGas']
-            
-            # Set EIP-1559 parameters (Kasplex doesn't support priority fees)
-            max_fee_per_gas = hex(base_fee * 2)
-            max_priority_fee = hex(0)
-            
+            # DON'T send gas pricing - let MetaMask auto-calculate (same as bonding curve)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(350000),  # 350k gas for DEX swap
-                'maxFeePerGas': max_fee_per_gas,
-                'maxPriorityFeePerGas': max_priority_fee
+                'gas': hex(350000)  # 350k gas for DEX swap
+                # NO gasPrice, NO maxFeePerGas - MetaMask will auto-calculate
             }
             
-            logging.info(f"✅ DEX sell tx built - Gas: 350000, MaxFee: {int(max_fee_per_gas, 16)} wei ({int(max_fee_per_gas, 16)/1e9:.1f} gwei)")
+            logging.info(f"✅ DEX sell tx built - Gas: 350000")
             return tx_data
             
         except Exception as e:

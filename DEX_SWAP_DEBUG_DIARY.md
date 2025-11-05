@@ -182,15 +182,60 @@ if (txData.gasPrice) {
 }
 ```
 
-**Expected Result:**
-- Browser console will log: `"✅ DEX TX: Using backend legacy gas price: 0x..."`
-- MetaMask should show proper gas fee (like bonding curve trades)
-- Transaction should confirm on-chain
+**Status:** ❌ FAILED - MetaMask still shows 0 KAS fee!
 
-**Status:** DEPLOYED - User needs to hard refresh (Ctrl+F5) to load new JavaScript
+**User Evidence (Nov 5, ~15:15 UTC):**
+- Browser console shows: `"✅ DEX TX: Using backend legacy gas price: 0x1d1e4e4ea00"` ✅
+- Frontend IS passing gasPrice to MetaMask
+- But MetaMask STILL shows: "Total gas fee: 0 KAS" ❌
+- Transaction stuck pending at nonce 328
+
+### THE ACTUAL ROOT CAUSE (Nov 5, 15:20 UTC) 🎯
+
+**MetaMask REJECTS all gas pricing params on Kasplex!**
+
+Discovery process:
+1. **Bonding curve (WORKS):**
+   - Backend sends `gasPrice`
+   - OLD frontend ignored it (didn't check for gasPrice)
+   - MetaMask got NO gas params
+   - MetaMask AUTO-CALCULATED gas → SUCCESS ✅
+
+2. **DEX with my "fix" (FAILS):**
+   - Backend sends `gasPrice`
+   - NEW frontend includes it
+   - MetaMask gets `gasPrice` param
+   - MetaMask converts to broken EIP-1559 → 0 KAS fee ❌
+
+**Conclusion:** MetaMask's auto-calculation works perfectly, but providing ANY gas param (gasPrice OR EIP-1559) causes it to fail!
+
+### Fix Attempt #3 (Nov 5, 15:20 UTC) - THE REAL FIX
+**Change:** Remove ALL gas pricing params from backend - let MetaMask auto-calculate
+
+**Backend (services/web3_service.py):**
+```python
+tx_data = {
+    'from': user_address,
+    'to': swap_router.address,
+    'value': hex(kas_amount),
+    'data': multicall_encoded,
+    'gas': hex(450000)
+    # NO gasPrice, NO maxFeePerGas - MetaMask will auto-calculate
+}
+```
+
+**Frontend:** Will pass tx_data as-is (no gas params), letting MetaMask handle everything
+
+**Expected Result:**
+- MetaMask auto-calculates gas fees (like bonding curve)
+- Shows proper fee in confirmation popup
+- Transaction confirms on-chain ✅
+
+**Status:** DEPLOYED - User needs to test
 
 ### Notes
 - Pool detection via QuoterV2 was added but unrelated to core issue
 - Both bonding curve and DEX use same submission method (MetaMask eth_sendTransaction)
 - The ONLY difference that matters: gas pricing format
-- **CRITICAL**: Always verify frontend is USING backend parameters, not just that backend sends them!
+- **CRITICAL**: On Kasplex, MetaMask's auto-calculation works, but ANY explicit gas param fails!
+- **LESSON LEARNED**: Always test what the working code is ACTUALLY doing, not what we think it should do!
