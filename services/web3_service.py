@@ -1896,21 +1896,25 @@ class Web3Service:
             # but our ABI only has multicall(bytes[] data). We need to manually encode the correct version.
             
             # Manually encode multicall(uint256 deadline, bytes[] data)
-            # Function selector for multicall(uint256,bytes[])
             from eth_abi import encode
             
             # Calculate correct function selector
             multicall_with_deadline_sig = "multicall(uint256,bytes[])"
             multicall_selector = Web3.keccak(text=multicall_with_deadline_sig)[:4]
             
+            # Convert hex strings to bytes for the data array
+            # Remove '0x' prefix and convert hex string to bytes
+            exact_input_bytes = bytes.fromhex(exact_input_encoded[2:])
+            refund_eth_bytes = bytes.fromhex(refund_eth_encoded[2:])
+            
             # Encode the parameters: deadline (uint256) and data array (bytes[])
             encoded_params = encode(
                 ['uint256', 'bytes[]'],
-                [deadline, [exact_input_encoded[10:], refund_eth_encoded[10:]]]  # Remove '0x' + 8-char selector from each
+                [deadline, [exact_input_bytes, refund_eth_bytes]]
             )
             
             # Combine selector and encoded params
-            multicall_encoded = multicall_selector.hex() + encoded_params.hex()
+            multicall_encoded = '0x' + multicall_selector.hex() + encoded_params.hex()
             
             # Get current base fee for EIP-1559
             latest_block = self.w3.eth.get_block('latest')
