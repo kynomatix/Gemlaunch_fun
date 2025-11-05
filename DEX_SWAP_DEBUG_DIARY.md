@@ -35,10 +35,15 @@ Param 2: Array of encoded function calls
 - Should be 350k for DEX swaps
 - **Status**: Fixed - hardcoded 350k
 
-### Issue 4: Encoding Error (CURRENT)
+### Issue 4: Encoding Error 
 - Error: "Value of type <class 'str'> cannot be encoded by ByteStringEncoder"
 - Cause: Passing hex strings to eth_abi.encode instead of bytes
-- **Status**: Just fixed - converting hex to bytes with bytes.fromhex()
+- **Status**: FIXED - converting hex to bytes with bytes.fromhex()
+
+### Issue 5: Double 0x Prefix (CURRENT)
+- Error: "Cannot convert string to Uint8Array. toBytes only supports 0x-prefixed hex strings"
+- Cause: Adding 0x prefix when multicall_encoded already had one
+- **Status**: FIXED - removed double prefix
 
 ## Transaction Structure Comparison
 

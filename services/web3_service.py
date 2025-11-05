@@ -1913,7 +1913,7 @@ class Web3Service:
                 [deadline, [exact_input_bytes, refund_eth_bytes]]
             )
             
-            # Combine selector and encoded params
+            # Combine selector and encoded params (already includes 0x prefix)
             multicall_encoded = '0x' + multicall_selector.hex() + encoded_params.hex()
             
             # Get current base fee for EIP-1559
@@ -1928,7 +1928,7 @@ class Web3Service:
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': '0x' + multicall_encoded,
+                'data': multicall_encoded,  # NO double 0x prefix!
                 'gas': hex(350000),  # 350k gas for DEX swap
                 'maxFeePerGas': max_fee_per_gas,
                 'maxPriorityFeePerGas': max_priority_fee
