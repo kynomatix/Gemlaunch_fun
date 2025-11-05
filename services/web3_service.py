@@ -1969,44 +1969,23 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode exactInputSingle and refundETH calls
+            # Use the ABI's multicall(bytes[]) function directly
             exact_input_encoded = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             refund_eth_encoded = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # CRITICAL: Kaspa Finance's SwapRouter uses multicall(uint256 deadline, bytes[] data)
-            # but our ABI only has multicall(bytes[] data). We need to manually encode the correct version.
-            
-            # Manually encode multicall(uint256 deadline, bytes[] data)
-            from eth_abi import encode
-            
-            # Calculate correct function selector
-            multicall_with_deadline_sig = "multicall(uint256,bytes[])"
-            multicall_selector = Web3.keccak(text=multicall_with_deadline_sig)[:4]
-            
-            # Convert hex strings to bytes for the data array
-            # Remove '0x' prefix and convert hex string to bytes
-            exact_input_bytes = bytes.fromhex(exact_input_encoded[2:])
-            refund_eth_bytes = bytes.fromhex(refund_eth_encoded[2:])
-            
-            # Encode the parameters: deadline (uint256) and data array (bytes[])
-            encoded_params = encode(
-                ['uint256', 'bytes[]'],
-                [deadline, [exact_input_bytes, refund_eth_bytes]]
-            )
-            
-            # Combine selector and encoded params (already includes 0x prefix)
-            multicall_encoded = '0x' + multicall_selector.hex() + encoded_params.hex()
-            
-            # DON'T send gas pricing - let MetaMask auto-calculate (same as bonding curve)
-            # MetaMask rejects both gasPrice AND EIP-1559 params on Kasplex, but auto-calc works!
+            # Build multicall using the ACTUAL ABI function: multicall(bytes[])
+            multicall_data = swap_router.functions.multicall([
+                exact_input_encoded,
+                refund_eth_encoded
+            ])._encode_transaction_data()
             
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_encoded,
+                'data': multicall_data,
                 'gas': hex(450000)
-                # NO gasPrice, NO maxFeePerGas - MetaMask will auto-calculate
+                # NO gasPrice - let MetaMask auto-calculate
             }
             
             logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
