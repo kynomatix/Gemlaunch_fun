@@ -1888,17 +1888,11 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode exactInputSingle call using web3.py automatic encoding
-            exact_input_call = swap_router.functions.exactInputSingle(exact_input_params)
-            exact_input_encoded = exact_input_call._encode_transaction_data()
+            # IMPORTANT: Kaspa Finance uses a different multicall signature that includes deadline
+            # Our ABI doesn't match, so we'll use direct exactInputSingle call instead
             
-            # Encode refundETH call (returns any unused KAS)
-            refund_eth_call = swap_router.functions.refundETH()
-            refund_eth_encoded = refund_eth_call._encode_transaction_data()
-            
-            # Build multicall with [exactInputSingle, refundETH]
-            multicall_data = [exact_input_encoded, refund_eth_encoded]
-            multicall_encoded = swap_router.functions.multicall(multicall_data)._encode_transaction_data()
+            # Encode exactInputSingle call directly (no multicall)
+            exact_input_encoded = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
             # Get current base fee for EIP-1559
             latest_block = self.w3.eth.get_block('latest')
@@ -1914,13 +1908,13 @@ class Web3Service:
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_encoded,
+                'data': exact_input_encoded,
                 'gas': hex(350000),  # 350k gas for DEX swap
                 'maxFeePerGas': max_fee_per_gas,
                 'maxPriorityFeePerGas': max_priority_fee
             }
             
-            logging.info(f"✅ DEX buy tx built - Gas: 350000, MaxFee: {int(max_fee_per_gas, 16)} wei ({int(max_fee_per_gas, 16)/1e9:.1f} gwei)")
+            logging.info(f"✅ DEX buy tx built - Direct exactInputSingle - Gas: 350000, MaxFee: {int(max_fee_per_gas, 16)} wei ({int(max_fee_per_gas, 16)/1e9:.1f} gwei)")
             return tx_data
             
         except Exception as e:
