@@ -1969,22 +1969,25 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode the individual function calls
-            exact_input_encoded = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
-            refund_eth_encoded = swap_router.functions.refundETH()._encode_transaction_data()
+            # Encode the individual function calls (these return hex strings)
+            exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Try calling multicall with deadline (Kaspa Finance pattern)
-            # Build it manually since ABI might not have this overload
+            # Convert hex strings to bytes for encoding
+            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])  # Remove '0x' prefix
+            refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
+            
+            # Build multicall with deadline (Kaspa Finance pattern)
             # multicall(uint256 deadline, bytes[] data)
             from eth_abi import encode
             
             # Function selector for multicall(uint256,bytes[])
             multicall_selector = Web3.keccak(text="multicall(uint256,bytes[])")[:4]
             
-            # Encode parameters: (deadline, [exact_input_encoded, refund_eth_encoded])
+            # Encode parameters: (deadline, [exact_input_bytes, refund_eth_bytes])
             encoded_params = encode(
                 ['uint256', 'bytes[]'],
-                [deadline, [exact_input_encoded, refund_eth_encoded]]
+                [deadline, [exact_input_bytes, refund_eth_bytes]]
             )
             
             multicall_data = multicall_selector + encoded_params
