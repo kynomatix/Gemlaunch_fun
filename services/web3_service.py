@@ -1900,17 +1900,27 @@ class Web3Service:
             multicall_data = [exact_input_encoded, refund_eth_encoded]
             multicall_encoded = swap_router.functions.multicall(multicall_data)._encode_transaction_data()
             
-            # Set reasonable gas limit based on Uniswap V3 swap patterns
-            # Kasplex RPC gas estimation is unreliable, use known-good value
+            # Get current base fee for EIP-1559
+            latest_block = self.w3.eth.get_block('latest')
+            base_fee = latest_block['baseFeePerGas']
+            
+            # Set EIP-1559 parameters
+            # maxFeePerGas = 2x base fee (room for base fee to increase)
+            # maxPriorityFeePerGas = 1 gwei tip (minimal but shows priority)
+            max_fee_per_gas = hex(base_fee * 2)
+            max_priority_fee = hex(1_000_000_000)  # 1 gwei
+            
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_encoded,
-                'gas': hex(350000)  # 350k gas for DEX swap (Uniswap V3 standard)
+                'gas': hex(350000),  # 350k gas for DEX swap
+                'maxFeePerGas': max_fee_per_gas,
+                'maxPriorityFeePerGas': max_priority_fee
             }
             
-            logging.info(f"✅ DEX buy tx built - MultiCall([exactInputSingle, refundETH]) - Gas: 350000")
+            logging.info(f"✅ DEX buy tx built - Gas: 350000, MaxFee: {int(max_fee_per_gas, 16)} wei ({int(max_fee_per_gas, 16)/1e9:.1f} gwei)")
             return tx_data
             
         except Exception as e:
@@ -1969,17 +1979,25 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Set reasonable gas limit based on Uniswap V3 swap patterns
-            # Kasplex RPC gas estimation is unreliable, use known-good value
+            # Get current base fee for EIP-1559
+            latest_block = self.w3.eth.get_block('latest')
+            base_fee = latest_block['baseFeePerGas']
+            
+            # Set EIP-1559 parameters
+            max_fee_per_gas = hex(base_fee * 2)
+            max_priority_fee = hex(1_000_000_000)  # 1 gwei
+            
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(350000)  # 350k gas for DEX swap (Uniswap V3 standard)
+                'gas': hex(350000),  # 350k gas for DEX swap
+                'maxFeePerGas': max_fee_per_gas,
+                'maxPriorityFeePerGas': max_priority_fee
             }
             
-            logging.info(f"✅ DEX sell tx built - exactInputSingle - Gas: 350000")
+            logging.info(f"✅ DEX sell tx built - Gas: 350000, MaxFee: {int(max_fee_per_gas, 16)} wei ({int(max_fee_per_gas, 16)/1e9:.1f} gwei)")
             return tx_data
             
         except Exception as e:
@@ -2005,13 +2023,22 @@ class Web3Service:
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
             
-            # Set reasonable gas limit for WKAS unwrap
+            # Get current base fee for EIP-1559
+            latest_block = self.w3.eth.get_block('latest')
+            base_fee = latest_block['baseFeePerGas']
+            
+            # Set EIP-1559 parameters
+            max_fee_per_gas = hex(base_fee * 2)
+            max_priority_fee = hex(1_000_000_000)  # 1 gwei
+            
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
                 'to': wkas_contract.address,
                 'value': '0x0',
                 'data': encoded_data,
-                'gas': hex(50000)  # 50k gas for WKAS unwrap (simple contract call)
+                'gas': hex(50000),  # 50k gas for WKAS unwrap
+                'maxFeePerGas': max_fee_per_gas,
+                'maxPriorityFeePerGas': max_priority_fee
             }
             
             logging.info(f"WKAS unwrap tx built - Gas: 50000")
