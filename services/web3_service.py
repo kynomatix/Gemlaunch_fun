@@ -1888,19 +1888,35 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # IMPORTANT: Kaspa Finance uses a different multicall signature that includes deadline
-            # Our ABI doesn't match, so we'll use direct exactInputSingle call instead
-            
-            # Encode exactInputSingle call directly (no multicall)
+            # Encode exactInputSingle and refundETH calls
             exact_input_encoded = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            refund_eth_encoded = swap_router.functions.refundETH()._encode_transaction_data()
+            
+            # CRITICAL: Kaspa Finance's SwapRouter uses multicall(uint256 deadline, bytes[] data)
+            # but our ABI only has multicall(bytes[] data). We need to manually encode the correct version.
+            
+            # Manually encode multicall(uint256 deadline, bytes[] data)
+            # Function selector for multicall(uint256,bytes[])
+            from eth_abi import encode
+            
+            # Calculate correct function selector
+            multicall_with_deadline_sig = "multicall(uint256,bytes[])"
+            multicall_selector = Web3.keccak(text=multicall_with_deadline_sig)[:4]
+            
+            # Encode the parameters: deadline (uint256) and data array (bytes[])
+            encoded_params = encode(
+                ['uint256', 'bytes[]'],
+                [deadline, [exact_input_encoded[10:], refund_eth_encoded[10:]]]  # Remove '0x' + 8-char selector from each
+            )
+            
+            # Combine selector and encoded params
+            multicall_encoded = multicall_selector.hex() + encoded_params.hex()
             
             # Get current base fee for EIP-1559
             latest_block = self.w3.eth.get_block('latest')
             base_fee = latest_block['baseFeePerGas']
             
             # Set EIP-1559 parameters
-            # Kasplex doesn't support priority fees, so maxPriorityFeePerGas = 0
-            # maxFeePerGas = 2x base fee (room for base fee to increase)
             max_fee_per_gas = hex(base_fee * 2)
             max_priority_fee = hex(0)  # Kasplex doesn't support priority fees
             
@@ -1908,13 +1924,13 @@ class Web3Service:
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': exact_input_encoded,
+                'data': '0x' + multicall_encoded,
                 'gas': hex(350000),  # 350k gas for DEX swap
                 'maxFeePerGas': max_fee_per_gas,
                 'maxPriorityFeePerGas': max_priority_fee
             }
             
-            logging.info(f"✅ DEX buy tx built - Direct exactInputSingle - Gas: 350000, MaxFee: {int(max_fee_per_gas, 16)} wei ({int(max_fee_per_gas, 16)/1e9:.1f} gwei)")
+            logging.info(f"✅ DEX buy tx built - multicall(deadline, [exactInputSingle, refundETH]) - Gas: 350000")
             return tx_data
             
         except Exception as e:
