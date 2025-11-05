@@ -1947,56 +1947,36 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Build ExactInputParams for exactInput (multi-hop compatible, works for single hop too)
-            # This is what Kaspa Finance uses - NOT exactInputSingle
-            # struct ExactInputParams {
-            #     bytes path;          // encoded as: tokenIn + fee + tokenOut
+            # Use exactInputSingle - SIMPLE like bonding curve, no multicall complexity
+            # struct ExactInputSingleParams {
+            #     address tokenIn;
+            #     address tokenOut;
+            #     uint24 fee;
             #     address recipient;
             #     uint256 deadline;
             #     uint256 amountIn;
             #     uint256 amountOutMinimum;
+            #     uint160 sqrtPriceLimitX96;
             # }
-            
-            # Encode path manually: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
-            # Remove 0x prefix and convert addresses to bytes
-            token_in_bytes = bytes.fromhex(wkas_address[2:])
-            token_out_bytes = bytes.fromhex(token_address[2:])
-            # Fee as 3 bytes (uint24)
-            fee_bytes = fee_tier.to_bytes(3, 'big')
-            # Concatenate: tokenIn + fee + tokenOut
-            path = token_in_bytes + fee_bytes + token_out_bytes
-            
             exact_input_params = (
-                path,                   # bytes path
+                wkas_address,           # tokenIn (WKAS)
+                token_address,          # tokenOut (Token)
+                fee_tier,               # fee (e.g., 2500 = 0.25%)
                 user_address,           # recipient
-                deadline,               # deadline  
+                deadline,               # deadline
                 kas_amount,             # amountIn
-                min_tokens_out          # amountOutMinimum
+                min_tokens_out,         # amountOutMinimum
+                0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Use exactInput, not exactInputSingle
-            exact_input_hex = swap_router.functions.exactInput(exact_input_params)._encode_transaction_data()
-            refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
-            
-            # Build multicall(uint256 deadline, bytes[])
-            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
-            refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
-            
-            from eth_abi import encode
-            multicall_selector = Web3.keccak(text="multicall(uint256,bytes[])")[:4]
-            encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
-            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
-            
             # Build transaction - EXACT COPY of bonding curve pattern
-            tx_data = {
+            tx_data = swap_router.functions.exactInputSingle(exact_input_params).build_transaction({
                 'from': user_address,
-                'to': swap_router.address,
                 'value': kas_amount,
-                'data': multicall_data,
                 'gas': 0,
                 'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(user_address)
-            }
+            })
             
             # Estimate gas - EXACT COPY of bonding curve pattern
             gas_estimate = self.estimate_gas({

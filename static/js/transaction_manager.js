@@ -792,17 +792,17 @@ class TransactionManager {
             const priceImpactPct = initialQuote.price_impact_pct || 0;
             const priceImpactBps = Math.round(priceImpactPct * 100);
             
-            // Calculate: price_impact + 1% buffer, minimum 5%, max 15%
-            const safetyBufferBps = 100;
-            const minimumSlippageBps = 500;
-            const maxSlippageBps = 1500;
+            // Calculate: price_impact + 0.5% buffer, minimum 0.5%, max 3%
+            const safetyBufferBps = 50;
+            const minimumSlippageBps = 50;
+            const maxSlippageBps = 300;
             const calculatedSlippageBps = Math.max(priceImpactBps + safetyBufferBps, minimumSlippageBps);
             const optimalSlippageBps = Math.min(calculatedSlippageBps, maxSlippageBps);
             
             console.log(`🎯 DEX Slippage: Price impact ${priceImpactPct.toFixed(2)}% → Using ${(optimalSlippageBps / 100).toFixed(2)}% slippage`);
             
-            // DEX ladder: optimal → 8% → 10% → 15%
-            slippageLadder = [optimalSlippageBps, 800, 1000, 1500];
+            // DEX ladder: optimal → 1% → 2% → 3%
+            slippageLadder = [optimalSlippageBps, 100, 200, 300];
         } else {
             // Bonding Curve: Use static ladder (UNCHANGED)
             slippageLadder = [50, 100, 200, 500, 750, 1000];
