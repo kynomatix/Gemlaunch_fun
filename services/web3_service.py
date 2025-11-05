@@ -1969,12 +1969,12 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Build transaction for USER's MetaMask wallet (EIP-1559 only on Kasplex)
-            # DO NOT include gasPrice - let MetaMask compute EIP-1559 fees automatically
+            # Build transaction - EXACT COPY of bonding curve pattern
             tx_data = swap_router.functions.exactInputSingle(exact_input_params).build_transaction({
                 'from': user_address,
                 'value': kas_amount,
                 'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
                 'nonce': self.w3.eth.get_transaction_count(user_address)
             })
             
