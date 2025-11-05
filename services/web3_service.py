@@ -1987,21 +1987,28 @@ class Web3Service:
             encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
-            # Use legacy type-0 transaction (as documented in debug diary)
-            # This prevents MetaMask from showing "0 KAS fee" on Kasplex
-            gas_price = self.w3.eth.gas_price
-            
+            # Build transaction - EXACT COPY of bonding curve pattern
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': hex(kas_amount),
+                'value': kas_amount,
                 'data': multicall_data,
-                'gas': '0x556a0',  # 350,000 gas limit (debug diary finding)
-                'gasPrice': hex(gas_price),  # Legacy gas pricing
-                'type': '0x0'  # Force legacy type-0 transaction
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(user_address)
             }
             
-            logging.info(f"✅ DEX buy tx built - Legacy type-0 with gasPrice: {gas_price}, gas: 350k")
+            # Estimate gas - EXACT COPY of bonding curve pattern
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"✅ DEX buy tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
             return tx_data
             
         except Exception as e:
@@ -2060,20 +2067,28 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Use legacy type-0 transaction (as documented in debug diary)
-            gas_price = self.w3.eth.gas_price
-            
+            # Build transaction - EXACT COPY of bonding curve pattern
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': '0x0',
+                'value': 0,
                 'data': encoded_data,
-                'gas': '0x556a0',  # 350,000 gas limit
-                'gasPrice': hex(gas_price),  # Legacy gas pricing
-                'type': '0x0'  # Force legacy type-0 transaction
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(user_address)
             }
             
-            logging.info(f"✅ DEX sell tx built - Legacy type-0 with gasPrice: {gas_price}, gas: 350k")
+            # Estimate gas - EXACT COPY of bonding curve pattern
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"✅ DEX sell tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
             return tx_data
             
         except Exception as e:
@@ -2099,20 +2114,29 @@ class Web3Service:
             # Encode function call
             encoded_data = wkas_contract.functions.withdraw(wkas_amount)._encode_transaction_data()
             
-            # Use legacy type-0 transaction (consistent with DEX swaps)
-            gas_price = self.w3.eth.gas_price
-            
+            # Build transaction - EXACT COPY of bonding curve pattern
+            user_address_checksum = Web3.to_checksum_address(user_address)
             tx_data = {
-                'from': Web3.to_checksum_address(user_address),
+                'from': user_address_checksum,
                 'to': wkas_contract.address,
-                'value': '0x0',
+                'value': 0,
                 'data': encoded_data,
-                'gas': hex(50000),  # 50k gas for WKAS unwrap
-                'gasPrice': hex(gas_price),  # Legacy gas pricing
-                'type': '0x0'  # Force legacy type-0 transaction
+                'gas': 0,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(user_address_checksum)
             }
             
-            logging.info(f"WKAS unwrap tx built - Legacy type-0 with gasPrice: {gas_price}, gas: 50k")
+            # Estimate gas - EXACT COPY of bonding curve pattern
+            gas_estimate = self.estimate_gas({
+                'from': tx_data['from'],
+                'to': tx_data['to'],
+                'data': tx_data['data'],
+                'value': tx_data['value']
+            })
+            
+            tx_data['gas'] = gas_estimate['gas']
+            
+            logging.info(f"WKAS unwrap tx built - Gas: {gas_estimate['gas']}, Cost: {gas_estimate['cost_kas']} KAS")
             return tx_data
             
         except Exception as e:
