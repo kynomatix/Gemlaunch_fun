@@ -1987,26 +1987,18 @@ class Web3Service:
             encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
-            # Build tx_data - EXACT same pattern as bonding curve
+            # Build tx_data - send to MetaMask for signing
+            # Set a reasonable gas limit (working tx used 149k, we'll suggest 200k)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_data,
+                'gas': hex(200000),  # Reasonable limit based on working tx (149,787 gas)
                 'gasPrice': hex(self.w3.eth.gas_price)
             }
             
-            # Estimate gas - same as bonding curve
-            gas_estimate = self.estimate_gas({
-                'from': user_address,
-                'to': swap_router.address,
-                'data': multicall_data,
-                'value': kas_amount
-            })
-            
-            tx_data['gas'] = hex(gas_estimate['gas'])
-            
-            logging.info(f"✅ DEX buy tx built - multicall([exactInput, refundETH]) - Gas: {gas_estimate['gas']}")
+            logging.info(f"✅ DEX buy tx built - multicall([exactInput, refundETH]) - Gas: 200000")
             return tx_data
             
         except Exception as e:
@@ -2065,26 +2057,18 @@ class Web3Service:
             # Encode function call
             encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
-            # Build tx_data - EXACT same pattern as bonding curve
+            # Build tx_data - send to MetaMask for signing
+            # Set a reasonable gas limit (sells typically use ~150-180k gas)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': encoded_data,
+                'gas': hex(180000),  # Reasonable limit for DEX sell
                 'gasPrice': hex(self.w3.eth.gas_price)
             }
             
-            # Estimate gas - same as bonding curve
-            gas_estimate = self.estimate_gas({
-                'from': user_address,
-                'to': swap_router.address,
-                'data': encoded_data,
-                'value': 0
-            })
-            
-            tx_data['gas'] = hex(gas_estimate['gas'])
-            
-            logging.info(f"✅ DEX sell tx built - Gas: {gas_estimate['gas']}")
+            logging.info(f"✅ DEX sell tx built - Gas: 180000")
             return tx_data
             
         except Exception as e:
