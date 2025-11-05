@@ -1905,10 +1905,10 @@ class Web3Service:
             base_fee = latest_block['baseFeePerGas']
             
             # Set EIP-1559 parameters
+            # Kasplex doesn't support priority fees, so maxPriorityFeePerGas = 0
             # maxFeePerGas = 2x base fee (room for base fee to increase)
-            # maxPriorityFeePerGas = 1 gwei tip (minimal but shows priority)
             max_fee_per_gas = hex(base_fee * 2)
-            max_priority_fee = hex(1_000_000_000)  # 1 gwei
+            max_priority_fee = hex(0)  # Kasplex doesn't support priority fees
             
             tx_data = {
                 'from': user_address,
@@ -1983,9 +1983,9 @@ class Web3Service:
             latest_block = self.w3.eth.get_block('latest')
             base_fee = latest_block['baseFeePerGas']
             
-            # Set EIP-1559 parameters
+            # Set EIP-1559 parameters (Kasplex doesn't support priority fees)
             max_fee_per_gas = hex(base_fee * 2)
-            max_priority_fee = hex(1_000_000_000)  # 1 gwei
+            max_priority_fee = hex(0)
             
             tx_data = {
                 'from': user_address,
@@ -2027,9 +2027,9 @@ class Web3Service:
             latest_block = self.w3.eth.get_block('latest')
             base_fee = latest_block['baseFeePerGas']
             
-            # Set EIP-1559 parameters
+            # Set EIP-1559 parameters (Kasplex doesn't support priority fees)
             max_fee_per_gas = hex(base_fee * 2)
-            max_priority_fee = hex(1_000_000_000)  # 1 gwei
+            max_priority_fee = hex(0)
             
             tx_data = {
                 'from': Web3.to_checksum_address(user_address),
