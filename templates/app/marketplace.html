@@ -533,20 +533,33 @@
         if (searchToggle && searchInputWrapper && searchInput) {
             searchToggle.addEventListener('click', function(e) {
                 e.stopPropagation();
-                searchInputWrapper.classList.toggle('expanded');
-                searchToggle.classList.toggle('active');
                 
                 const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
                 const dropdownFilters = document.querySelectorAll('.filter-dropdown');
                 const allButton = document.querySelector('.filter-btn[data-filter="all"]');
+                const isExpanding = !searchInputWrapper.classList.contains('expanded');
                 
-                if (searchInputWrapper.classList.contains('expanded')) {
+                if (isExpanding) {
+                    // STEP 1: Hide filters first
                     nonAllFilters.forEach(btn => btn.classList.add('hidden-for-search'));
                     dropdownFilters.forEach(dropdown => dropdown.classList.add('hidden-for-search'));
-                    setTimeout(() => searchInput.focus(), 250);
+                    
+                    // STEP 2: Wait for filters to collapse, then expand search box
+                    setTimeout(() => {
+                        searchInputWrapper.classList.add('expanded');
+                        searchToggle.classList.add('active');
+                        setTimeout(() => searchInput.focus(), 100);
+                    }, 200);
                 } else {
-                    nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
-                    dropdownFilters.forEach(dropdown => dropdown.classList.remove('hidden-for-search'));
+                    // STEP 1: Collapse search box first
+                    searchInputWrapper.classList.remove('expanded');
+                    searchToggle.classList.remove('active');
+                    
+                    // STEP 2: Wait for search to collapse, then show filters
+                    setTimeout(() => {
+                        nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
+                        dropdownFilters.forEach(dropdown => dropdown.classList.remove('hidden-for-search'));
+                    }, 200);
                 }
             });
             
@@ -555,19 +568,24 @@
                 if (!searchInputWrapper.contains(e.target) && !searchToggle.contains(e.target)) {
                     const wasExpanded = searchInputWrapper.classList.contains('expanded');
                     
-                    searchInputWrapper.classList.remove('expanded');
-                    searchToggle.classList.remove('active');
-                    
-                    // Restore all filter buttons and dropdowns
-                    const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
-                    const dropdownFilters = document.querySelectorAll('.filter-dropdown');
-                    nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
-                    dropdownFilters.forEach(dropdown => dropdown.classList.remove('hidden-for-search'));
-                    
-                    // Clear search input and reapply active filter when closing
-                    if (wasExpanded && searchInput.value) {
-                        searchInput.value = '';
-                        applyFiltersAndSearch();
+                    if (wasExpanded) {
+                        // STEP 1: Collapse search box first
+                        searchInputWrapper.classList.remove('expanded');
+                        searchToggle.classList.remove('active');
+                        
+                        // STEP 2: Wait for search to collapse, then show filters
+                        setTimeout(() => {
+                            const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
+                            const dropdownFilters = document.querySelectorAll('.filter-dropdown');
+                            nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
+                            dropdownFilters.forEach(dropdown => dropdown.classList.remove('hidden-for-search'));
+                        }, 200);
+                        
+                        // Clear search input and reapply active filter when closing
+                        if (searchInput.value) {
+                            searchInput.value = '';
+                            applyFiltersAndSearch();
+                        }
                     }
                 }
             });
