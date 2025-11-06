@@ -20,24 +20,24 @@ You mentioned Kaspa Finance uses WebSocket successfully. We need the exact confi
 
 ## What We've Tried
 
-**Endpoint:** `wss://rpc.kasplextest.xyz`  
-**Result:** `HTTP 400 - server rejected WebSocket connection`
+### Endpoint 1: `ws.kasplextest.xyz` (as you mentioned)
+**Result:** `Connection Refused` on ALL ports (443, 80, 8545, 8546)  
+**Details:** No server listening at IP 54.154.73.46
 
-The HTTP RPC works perfectly at `https://rpc.kasplextest.xyz`, but WebSocket handshake fails.
+### Endpoint 2: `wss://rpc.kasplextest.xyz`
+**Result:** `HTTP 400 - server rejected WebSocket connection`  
+**Details:** Server expects HTTP JSON-RPC, not WebSocket upgrade
+
+**HTTP RPC works perfectly:** `https://rpc.kasplextest.xyz` ✅
 
 **Test code:**
 ```python
 import websockets
 import json
 
-async with websockets.connect("wss://rpc.kasplextest.xyz") as ws:
-    await ws.send(json.dumps({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "eth_blockNumber",
-        "params": []
-    }))
-    # ❌ Fails with HTTP 400
+# Tried both:
+# wss://ws.kasplextest.xyz - Connection refused
+# wss://rpc.kasplextest.xyz - HTTP 400
 ```
 
 ---
