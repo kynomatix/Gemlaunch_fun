@@ -734,6 +734,23 @@ body {
     transition: max-width 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
 }
 
+/* Dropdown filter collapse animation for search mode */
+.filter-dropdown.hidden-for-search {
+    max-width: 0;
+    opacity: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-width 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+}
+
+/* Ensure smooth expand transition for dropdowns */
+.filter-dropdown:not(.hidden-for-search) {
+    max-width: 200px;
+    transition: max-width 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+}
+
 /* Mobile breakpoint - All marketplace elements */
 @media (max-width: 768px) {
     /* Disable heavy animations on mobile */
