@@ -28,4 +28,5 @@ dependencies = [
     "authlib>=1.6.5",
     "graphene>=3.4.3",
     "flask-graphql>=2.0.0",
+    "websockets>=15.0.1",
 ]

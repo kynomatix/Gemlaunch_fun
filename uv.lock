@@ -1996,6 +1996,7 @@ dependencies = [
     { name = "requests" },
     { name = "sqlalchemy" },
     { name = "web3" },
+    { name = "websockets" },
     { name = "werkzeug" },
 ]
 
@@ -2024,6 +2025,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "sqlalchemy", specifier = ">=2.0.42" },
     { name = "web3", specifier = ">=7.13.0" },
+    { name = "websockets", specifier = ">=15.0.1" },
     { name = "werkzeug", specifier = ">=3.1.3" },
 ]
 
