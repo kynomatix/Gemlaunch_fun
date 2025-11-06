@@ -1,7 +1,8 @@
 # Overview
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
-# Recent Changes (Nov 3, 2025)
+# Recent Changes (Nov 6, 2025)
+- **WebSocket Migration Planned**: Comprehensive plan created to migrate from polling to WebSocket (WSS) for real-time updates. See `WEBSOCKET_MIGRATION_PLAN.md` for complete specification.
 - **Achievement Auto-Evaluation**: Achievements now automatically evaluate and award after token deployment, in addition to lazy-loading when users click the Accolades tab
 - **Stat Tracking Fixes**: `total_tokens_created` now automatically increments when tokens are deployed (was previously broken)
 - **Trading Volume Display**: Dashboard now correctly converts KAS trading volume to USD for display
@@ -78,6 +79,50 @@ This configuration works and has been tested. DO NOT modify gas-related code in 
 
 ## Transaction Flow Architecture
 Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool. The `static/js/transaction_manager.js` module orchestrates all transaction types.
+
+## Real-Time Update Architecture
+
+### Current State: Hybrid SSE + Polling
+The platform currently uses a hybrid approach for real-time updates:
+
+#### SSE (Server-Sent Events) - Primary for Transactions
+- **Transaction Monitoring**: Uses SSE via `/api/tx/<tx_hash>/stream` with polling fallback
+- **File**: `static/js/transaction_manager.js`
+- **Status**: ✅ Optimal, keep as-is
+
+#### Polling-Based Systems
+1. **Graduation Status**: Polls `/api/token/<address>/graduation-status` every 30 seconds
+2. **Recent Trades**: One-time fetch, no updates
+3. **Chat Messages**: One-time fetch, no updates
+4. **Polls/Voting**: One-time fetch, no updates
+5. **Spotlight Messages**: One-time fetch, no updates
+
+### Future: WebSocket (WSS) Migration
+**Status**: Planned - See `WEBSOCKET_MIGRATION_PLAN.md` for complete specification
+
+**Target Architecture**:
+- WebSocket (WSS) as primary for all real-time updates
+- Polling as fallback when WebSocket unavailable
+- SSE remains for transaction monitoring (already optimal)
+
+**Key Benefits**:
+- Real-time trade notifications (<100ms latency)
+- Instant chat message delivery
+- Live graduation progress updates
+- 90% reduction in network overhead
+- Significantly improved user experience
+
+**WebSocket Events** (Planned):
+- `trade_new` - New trade occurred
+- `price_update` - Token price/market data changed
+- `graduation_status` - Graduation progress update
+- `chat_message_new` - New chat message
+- `poll_created`, `poll_voted` - Poll events
+- `spotlight_created`, `spotlight_expired` - Spotlight events
+- `holdings_update` - User portfolio changes
+- `leaderboard_update` - Rankings changed
+
+**Implementation**: Flask-SocketIO with Socket.IO client, room-based broadcasting for token-specific updates
 
 # External Dependencies
 
