@@ -537,13 +537,16 @@
                 searchToggle.classList.toggle('active');
                 
                 const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
+                const dropdownFilters = document.querySelectorAll('.filter-dropdown');
                 const allButton = document.querySelector('.filter-btn[data-filter="all"]');
                 
                 if (searchInputWrapper.classList.contains('expanded')) {
                     nonAllFilters.forEach(btn => btn.classList.add('hidden-for-search'));
+                    dropdownFilters.forEach(dropdown => dropdown.classList.add('hidden-for-search'));
                     setTimeout(() => searchInput.focus(), 250);
                 } else {
                     nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
+                    dropdownFilters.forEach(dropdown => dropdown.classList.remove('hidden-for-search'));
                 }
             });
             
@@ -555,9 +558,11 @@
                     searchInputWrapper.classList.remove('expanded');
                     searchToggle.classList.remove('active');
                     
-                    // Restore all filter buttons
+                    // Restore all filter buttons and dropdowns
                     const nonAllFilters = document.querySelectorAll('.filter-btn:not([data-filter="all"])');
+                    const dropdownFilters = document.querySelectorAll('.filter-dropdown');
                     nonAllFilters.forEach(btn => btn.classList.remove('hidden-for-search'));
+                    dropdownFilters.forEach(dropdown => dropdown.classList.remove('hidden-for-search'));
                     
                     // Clear search input and reapply active filter when closing
                     if (wasExpanded && searchInput.value) {
