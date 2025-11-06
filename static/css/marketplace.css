@@ -678,8 +678,8 @@ body {
 }
 
 .search-input-wrapper.expanded {
-    max-width: clamp(400px, 70vw, 750px);
-    min-width: 400px;
+    max-width: clamp(500px, 75vw, 900px);
+    min-width: 500px;
     opacity: 1;
     margin-left: 0.75rem;
 }
