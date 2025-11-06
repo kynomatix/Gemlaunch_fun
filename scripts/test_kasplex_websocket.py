@@ -22,7 +22,8 @@ class KasplexWebSocketTester:
     """Test Kasplex L2 WebSocket capabilities"""
     
     def __init__(self):
-        self.ws_endpoint = "wss://ws.kasplextest.xyz"
+        # Correct WebSocket URL: Replace https:// with wss:// on same domain
+        self.ws_endpoint = "wss://rpc.kasplextest.xyz"
         self.http_endpoint = "https://rpc.kasplextest.xyz"
         self.results = {}
         
