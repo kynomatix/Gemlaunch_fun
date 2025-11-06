@@ -85,44 +85,43 @@ Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → 
 ### Current State: Hybrid SSE + Polling
 The platform currently uses a hybrid approach for real-time updates:
 
-#### SSE (Server-Sent Events) - Primary for Transactions
+#### SSE (Server-Sent Events) - Transaction Monitoring
 - **Transaction Monitoring**: Uses SSE via `/api/tx/<tx_hash>/stream` with polling fallback
 - **File**: `static/js/transaction_manager.js`
 - **Status**: ✅ Optimal, keep as-is
 
 #### Polling-Based Systems
-1. **Graduation Status**: Polls `/api/token/<address>/graduation-status` every 30 seconds
-2. **Recent Trades**: One-time fetch, no updates
-3. **Chat Messages**: One-time fetch, no updates
-4. **Polls/Voting**: One-time fetch, no updates
-5. **Spotlight Messages**: One-time fetch, no updates
+1. **Blockchain Event Indexer**: Polls blockchain every 30 seconds for trades/events
+2. **Graduation Status**: Frontend polls `/api/token/<address>/graduation-status` every 30 seconds
 
-### Future: WebSocket (WSS) Migration
-**Status**: Planned - See `WEBSOCKET_MIGRATION_PLAN.md` for complete specification
+#### One-Time Fetch Systems (No Real-Time Updates Needed)
+- Chat messages, polls/voting, spotlight messages load once on page load
+
+### Future: WebSocket (WSS) for Blockchain Events
+**Status**: Planned - See `DevDocs/WEBSOCKET_IMPLEMENTATION_PLAN.md`
+
+**Scope**: WebSocket is ONLY for on-chain event indexing (blockchain data), NOT social features
 
 **Target Architecture**:
-- WebSocket (WSS) as primary for all real-time updates
-- Polling as fallback when WebSocket unavailable
+- WebSocket (WSS) or fast polling (2s) for blockchain event monitoring
+- Real-time broadcasts to users for trade events, price updates, graduations
 - SSE remains for transaction monitoring (already optimal)
+- Social features (chat, polls, spotlight) remain one-time fetch
 
 **Key Benefits**:
-- Real-time trade notifications (<100ms latency)
-- Instant chat message delivery
+- Real-time trade notifications (<2-4s latency vs 42s current)
+- Instant price updates after trades
 - Live graduation progress updates
-- 90% reduction in network overhead
-- Significantly improved user experience
+- 90% reduction in blockchain polling overhead
+- Significantly improved trading experience
 
-**WebSocket Events** (Planned):
-- `trade_new` - New trade occurred
+**WebSocket Events** (Blockchain Only):
+- `trade_new` - New trade occurred on-chain
 - `price_update` - Token price/market data changed
 - `graduation_status` - Graduation progress update
-- `chat_message_new` - New chat message
-- `poll_created`, `poll_voted` - Poll events
-- `spotlight_created`, `spotlight_expired` - Spotlight events
-- `holdings_update` - User portfolio changes
-- `leaderboard_update` - Rankings changed
+- `holdings_update` - User portfolio changes from on-chain events
 
-**Implementation**: Flask-SocketIO with Socket.IO client, room-based broadcasting for token-specific updates
+**Implementation**: Flask-SocketIO with eventlet workers, room-based broadcasting for token-specific updates
 
 # External Dependencies
 
