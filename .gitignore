@@ -65,6 +65,7 @@ logs/
 # Development documentation and assets (not for git)
 attached_assets/
 DEVDOCS/
+DevDocs/
 
 # Temporary debug/test scripts (not for git)
 check_*.js
