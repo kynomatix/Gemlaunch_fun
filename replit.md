@@ -1,7 +1,9 @@
 # Overview
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
-# Recent Changes (Nov 6, 2025)
+# Recent Changes (Nov 22, 2025)
+- **Kaspa Finance Architecture Confirmed**: Verified Kaspa Finance uses **Uniswap V3** (NOT SushiSwap). Evidence: `exactInputSingle()`, `getPool(fee)`, QuoterV2 contract. Current implementation is correct.
+- **Mirza Team Deployment Package**: Created comprehensive package with database exports, setup guides, mock token fix instructions, and troubleshooting docs
 - **WebSocket Migration Planned**: Comprehensive plan created to migrate from polling to WebSocket (WSS) for real-time updates. See `WEBSOCKET_MIGRATION_PLAN.md` for complete specification.
 - **Achievement Auto-Evaluation**: Achievements now automatically evaluate and award after token deployment, in addition to lazy-loading when users click the Accolades tab
 - **Stat Tracking Fixes**: `total_tokens_created` now automatically increments when tokens are deployed (was previously broken)
@@ -136,7 +138,7 @@ The platform currently uses a hybrid approach for real-time updates:
 
 ## Blockchain Integration
 - **Kasplex zkEVM L2**: EVM-compatible Layer 2 on Kaspa.
-- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools (Uniswap V3 architecture).
+- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools. **Uses Uniswap V3 architecture** (NOT SushiSwap/V2). Confirmed by on-chain verification: `exactInputSingle()`, `getPool()` with fee tiers, QuoterV2, and PositionManager contracts all indicate V3.
 - **Smart Contract Stack**: Solidity ^0.8.20, Hardhat, OpenZeppelin.
 - **web3.py**: Python library for Ethereum/EVM blockchain interaction.
 - **eth-account**: Ethereum account management for transaction signing.
