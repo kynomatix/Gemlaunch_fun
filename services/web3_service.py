@@ -1975,19 +1975,19 @@ class Web3Service:
                 min_tokens_out          # amountOutMinimum
             )
             
-            # Use exactInput for the swap
+            # Encode the inner calls for multicall
+            # Use _encode_transaction_data() to get raw calldata (selector + ABI-encoded params)
             exact_input_hex = swap_router.functions.exactInput(exact_input_params)._encode_transaction_data()
             refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Build multicall(bytes[]) - Kaspa Finance custom ABI (NOT Uniswap V3's multicall(uint256,bytes[]))
-            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
-            refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
+            # Wrap with HexBytes so multicall receives proper bytes objects
+            from hexbytes import HexBytes
+            exact_input_bytes = HexBytes(exact_input_hex)
+            refund_eth_bytes = HexBytes(refund_eth_hex)
             
-            from eth_abi import encode
-            # Kaspa Finance uses multicall(bytes[]) NOT multicall(uint256,bytes[])
-            multicall_selector = Web3.keccak(text="multicall(bytes[])")[:4]
-            encoded_params = encode(['bytes[]'], [[exact_input_bytes, refund_eth_bytes]])
-            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
+            # Use ContractFunction.multicall to encode the outer call correctly
+            # Kaspa Finance uses multicall(bytes[]) - NOT multicall(uint256,bytes[])
+            multicall_data = swap_router.functions.multicall([exact_input_bytes, refund_eth_bytes])._encode_transaction_data()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
             tx_data = {
@@ -2056,21 +2056,22 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode exactInputSingle call
+            # Encode exactInputSingle call using _encode_transaction_data()
             exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
             # Encode unwrapWETH9(uint256 amountMinimum, address recipient)
             # Kaspa Finance ABI: unwrapWETH9(amountMinimum, recipient)
+            # The router will hold the WKAS from exactInputSingle, then unwrap to native KAS and send to user
             unwrap_hex = swap_router.functions.unwrapWETH9(min_kas_out, user_address)._encode_transaction_data()
             
-            # Build multicall(bytes[]) - Kaspa Finance custom ABI
-            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
-            unwrap_bytes = bytes.fromhex(unwrap_hex[2:])
+            # Wrap with HexBytes so multicall receives proper bytes objects
+            from hexbytes import HexBytes
+            exact_input_bytes = HexBytes(exact_input_hex)
+            unwrap_bytes = HexBytes(unwrap_hex)
             
-            from eth_abi import encode
-            multicall_selector = Web3.keccak(text="multicall(bytes[])")[:4]
-            encoded_params = encode(['bytes[]'], [[exact_input_bytes, unwrap_bytes]])
-            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
+            # Use ContractFunction.multicall to encode the outer call correctly
+            # Kaspa Finance uses multicall(bytes[]) - NOT multicall(uint256,bytes[])
+            multicall_data = swap_router.functions.multicall([exact_input_bytes, unwrap_bytes])._encode_transaction_data()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
             tx_data = {
