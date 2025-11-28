@@ -2000,6 +2000,20 @@ class Web3Service:
                 'gasPrice': hex(gas_price)
             }
             
+            # Simulate transaction with eth_call to verify it would succeed
+            try:
+                sim_tx = {
+                    'from': user_address,
+                    'to': swap_router.address,
+                    'value': kas_amount,
+                    'data': multicall_data
+                }
+                result = self.w3.eth.call(sim_tx)
+                logging.info(f"DEX buy tx simulation SUCCESS - result length: {len(result)} bytes")
+            except Exception as sim_error:
+                logging.error(f"DEX buy tx simulation FAILED: {str(sim_error)}")
+                # Still return the tx_data - let MetaMask try, but log the warning
+            
             logging.info(f"DEX buy tx built - multicall([exactInput, refundETH])")
             return tx_data
             
@@ -2085,6 +2099,20 @@ class Web3Service:
                 'data': multicall_data,
                 'gasPrice': hex(gas_price)
             }
+            
+            # Simulate transaction with eth_call to verify it would succeed
+            try:
+                sim_tx = {
+                    'from': user_address,
+                    'to': swap_router.address,
+                    'value': 0,
+                    'data': multicall_data
+                }
+                result = self.w3.eth.call(sim_tx)
+                logging.info(f"DEX sell tx simulation SUCCESS - result length: {len(result)} bytes")
+            except Exception as sim_error:
+                logging.error(f"DEX sell tx simulation FAILED: {str(sim_error)}")
+                # Still return the tx_data - let MetaMask try, but log the warning
             
             logging.info(f"DEX sell tx built - multicall([exactInputSingle, unwrapWETH9])")
             return tx_data

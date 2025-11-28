@@ -786,9 +786,9 @@ class TransactionManager {
             const priceImpactPct = initialQuote.price_impact_pct || 0;
             const priceImpactBps = Math.round(priceImpactPct * 100);
             
-            // Calculate: price_impact + 1% buffer, minimum 5%, max 15%
-            const safetyBufferBps = 100;
-            const minimumSlippageBps = 500;
+            // Calculate: price_impact + 0.5% buffer, minimum 0.5%, max 15%
+            const safetyBufferBps = 50;  // 0.5% buffer
+            const minimumSlippageBps = 50;  // 0.5% minimum slippage
             const maxSlippageBps = 1500;
             const calculatedSlippageBps = Math.max(priceImpactBps + safetyBufferBps, minimumSlippageBps);
             const optimalSlippageBps = Math.min(calculatedSlippageBps, maxSlippageBps);
