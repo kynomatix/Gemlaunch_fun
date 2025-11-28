@@ -1990,12 +1990,14 @@ class Web3Service:
             multicall_data = swap_router.functions.multicall([exact_input_bytes, refund_eth_bytes])._encode_transaction_data()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
+            # IMPORTANT: gasPrice must be hex string for MetaMask compatibility
+            gas_price = self.w3.eth.gas_price
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
                 'data': multicall_data,
-                'gasPrice': self.w3.eth.gas_price
+                'gasPrice': hex(gas_price)
             }
             
             logging.info(f"DEX buy tx built - multicall([exactInput, refundETH])")
@@ -2074,12 +2076,14 @@ class Web3Service:
             multicall_data = swap_router.functions.multicall([exact_input_bytes, unwrap_bytes])._encode_transaction_data()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
+            # IMPORTANT: gasPrice must be hex string for MetaMask compatibility
+            gas_price = self.w3.eth.gas_price
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
                 'data': multicall_data,
-                'gasPrice': self.w3.eth.gas_price
+                'gasPrice': hex(gas_price)
             }
             
             logging.info(f"DEX sell tx built - multicall([exactInputSingle, unwrapWETH9])")
