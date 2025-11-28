@@ -329,9 +329,10 @@ class Web3Service:
                 contracts['QuoterV2'] = None
             
             try:
-                # Load FULL SwapRouter ABI from Kaspa Finance Hardhat artifact
-                # This contains the complete interface including multicall(bytes[]), refundETH(), etc.
-                swap_router_abi_path = Path(__file__).parent.parent / "attached_assets" / "SwapRouter_1762263429508.json"
+                # Load FULL SwapRouter ABI from official Kaspa Finance file
+                # This is the authoritative ABI provided by Kaspa Finance devs
+                # Contains: multicall(bytes[]), exactInput, exactInputSingle, unwrapWETH9, refundETH, etc.
+                swap_router_abi_path = Path(__file__).parent.parent / "attached_assets" / "SwapRouter_1764370054553.json"
                 with open(swap_router_abi_path, 'r') as f:
                     swap_router_artifact = json.load(f)
                 swap_router_abi = swap_router_artifact['abi']
@@ -1974,17 +1975,18 @@ class Web3Service:
                 min_tokens_out          # amountOutMinimum
             )
             
-            # Use exactInput, not exactInputSingle
+            # Use exactInput for the swap
             exact_input_hex = swap_router.functions.exactInput(exact_input_params)._encode_transaction_data()
             refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
-            # Build multicall(uint256 deadline, bytes[])
+            # Build multicall(bytes[]) - Kaspa Finance custom ABI (NOT Uniswap V3's multicall(uint256,bytes[]))
             exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
             refund_eth_bytes = bytes.fromhex(refund_eth_hex[2:])
             
             from eth_abi import encode
-            multicall_selector = Web3.keccak(text="multicall(uint256,bytes[])")[:4]
-            encoded_params = encode(['uint256', 'bytes[]'], [deadline, [exact_input_bytes, refund_eth_bytes]])
+            # Kaspa Finance uses multicall(bytes[]) NOT multicall(uint256,bytes[])
+            multicall_selector = Web3.keccak(text="multicall(bytes[])")[:4]
+            encoded_params = encode(['bytes[]'], [[exact_input_bytes, refund_eth_bytes]])
             multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
@@ -2009,13 +2011,14 @@ class Web3Service:
         
         NOTE: User must approve token spending before calling this (approve SwapRouter)
         
-        Uses exactInputSingle to swap Token → WKAS, then user can unwrap WKAS → KAS separately.
+        Uses multicall([exactInputSingle, unwrapWETH9]) to swap Token → WKAS → native KAS.
+        This gives users native KAS directly, not WKAS.
         
         Args:
             user_address (str): User's wallet address
             token_address (str): Token contract address
             token_amount (int): Token amount to sell (in wei)
-            min_kas_out (int): Minimum WKAS to receive (slippage protection)
+            min_kas_out (int): Minimum KAS to receive (slippage protection)
             deadline (int): Transaction deadline (unix timestamp)
             fee_tier (int): Pool fee tier (2500 for 0.25%)
         
@@ -2031,6 +2034,7 @@ class Web3Service:
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
             # Build ExactInputSingleParams struct for swapping Token → WKAS
+            # IMPORTANT: recipient is SwapRouter address (address(this)) so unwrapWETH9 can work
             # struct ExactInputSingleParams {
             #     address tokenIn;
             #     address tokenOut;
@@ -2045,26 +2049,39 @@ class Web3Service:
                 token_address,          # tokenIn (Token)
                 wkas_address,           # tokenOut (WKAS)
                 fee_tier,               # fee (e.g., 2500 = 0.25%)
-                user_address,           # recipient
+                swap_router.address,    # recipient = SwapRouter (for unwrapWETH9)
                 deadline,               # deadline
                 token_amount,           # amountIn
                 min_kas_out,            # amountOutMinimum
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode function call
-            encoded_data = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            # Encode exactInputSingle call
+            exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            
+            # Encode unwrapWETH9(uint256 amountMinimum, address recipient)
+            # Kaspa Finance ABI: unwrapWETH9(amountMinimum, recipient)
+            unwrap_hex = swap_router.functions.unwrapWETH9(min_kas_out, user_address)._encode_transaction_data()
+            
+            # Build multicall(bytes[]) - Kaspa Finance custom ABI
+            exact_input_bytes = bytes.fromhex(exact_input_hex[2:])
+            unwrap_bytes = bytes.fromhex(unwrap_hex[2:])
+            
+            from eth_abi import encode
+            multicall_selector = Web3.keccak(text="multicall(bytes[])")[:4]
+            encoded_params = encode(['bytes[]'], [[exact_input_bytes, unwrap_bytes]])
+            multicall_data = '0x' + (multicall_selector + encoded_params).hex()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': encoded_data,
+                'data': multicall_data,
                 'gasPrice': self.w3.eth.gas_price
             }
             
-            logging.info(f"DEX sell tx built - exactInputSingle")
+            logging.info(f"DEX sell tx built - multicall([exactInputSingle, unwrapWETH9])")
             return tx_data
             
         except Exception as e:
