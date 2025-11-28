@@ -1,8 +1,12 @@
 # Overview
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
-# Recent Changes (Nov 22, 2025)
-- **Kaspa Finance Architecture Confirmed**: Verified Kaspa Finance uses **Uniswap V3** (NOT SushiSwap). Evidence: `exactInputSingle()`, `getPool(fee)`, QuoterV2 contract. Current implementation is correct.
+# Recent Changes (Nov 28, 2025)
+- **DEX Swap Encoding FIXED**: Post-graduation swaps now use correct multicall(bytes[]) encoding via `ContractFunction._encode_transaction_data()` + `HexBytes` wrapper. Fixed double-encoding bug that caused calldata corruption.
+- **Kaspa Finance Hybrid ABI**: Confirmed Kaspa Finance uses custom hybrid ABI mixing Uniswap V3, SushiSwap, and PancakeSwap patterns. Key difference: `multicall(bytes[])` NOT `multicall(uint256,bytes[])`.
+
+# Previous Changes (Nov 22, 2025)
+- **Kaspa Finance Architecture Confirmed**: Verified Kaspa Finance uses **Uniswap V3** (NOT SushiSwap). Evidence: `exactInputSingle()`, `getPool(fee)`, QuoterV2 contract.
 - **Mirza Team Deployment Package**: Created comprehensive package with database exports, setup guides, mock token fix instructions, and troubleshooting docs
 - **WebSocket Migration Planned**: Comprehensive plan created to migrate from polling to WebSocket (WSS) for real-time updates. See `WEBSOCKET_MIGRATION_PLAN.md` for complete specification.
 - **Achievement Auto-Evaluation**: Achievements now automatically evaluate and award after token deployment, in addition to lazy-loading when users click the Accolades tab
