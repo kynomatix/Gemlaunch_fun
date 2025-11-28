@@ -1948,36 +1948,32 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Build ExactInputParams for exactInput (multi-hop compatible, works for single hop too)
-            # This is what Kaspa Finance uses - NOT exactInputSingle
-            # struct ExactInputParams {
-            #     bytes path;          // encoded as: tokenIn + fee + tokenOut
+            # Build ExactInputSingleParams struct for swapping WKAS → Token
+            # Using exactInputSingle (simpler than exactInput with path) 
+            # struct ExactInputSingleParams {
+            #     address tokenIn;
+            #     address tokenOut;
+            #     uint24 fee;
             #     address recipient;
             #     uint256 deadline;
             #     uint256 amountIn;
             #     uint256 amountOutMinimum;
+            #     uint160 sqrtPriceLimitX96;
             # }
-            
-            # Encode path manually: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
-            # Remove 0x prefix and convert addresses to bytes
-            token_in_bytes = bytes.fromhex(wkas_address[2:])
-            token_out_bytes = bytes.fromhex(token_address[2:])
-            # Fee as 3 bytes (uint24)
-            fee_bytes = fee_tier.to_bytes(3, 'big')
-            # Concatenate: tokenIn + fee + tokenOut
-            path = token_in_bytes + fee_bytes + token_out_bytes
-            
             exact_input_params = (
-                path,                   # bytes path
-                user_address,           # recipient
-                deadline,               # deadline  
+                wkas_address,           # tokenIn (WKAS)
+                token_address,          # tokenOut (Token)
+                fee_tier,               # fee (e.g., 2500 = 0.25%)
+                user_address,           # recipient = user (receives tokens directly)
+                deadline,               # deadline
                 kas_amount,             # amountIn
-                min_tokens_out          # amountOutMinimum
+                min_tokens_out,         # amountOutMinimum
+                0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
             # Encode the inner calls for multicall
             # Use _encode_transaction_data() to get raw calldata (selector + ABI-encoded params)
-            exact_input_hex = swap_router.functions.exactInput(exact_input_params)._encode_transaction_data()
+            exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
             
             # Wrap with HexBytes so multicall receives proper bytes objects
@@ -2014,7 +2010,7 @@ class Web3Service:
                 logging.error(f"DEX buy tx simulation FAILED: {str(sim_error)}")
                 # Still return the tx_data - let MetaMask try, but log the warning
             
-            logging.info(f"DEX buy tx built - multicall([exactInput, refundETH])")
+            logging.info(f"DEX buy tx built - multicall([exactInputSingle, refundETH])")
             return tx_data
             
         except Exception as e:
