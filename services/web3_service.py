@@ -1948,32 +1948,38 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Build ExactInputSingleParams struct for swapping WKAS → Token
-            # When sending native KAS with msg.value, the router should auto-wrap
-            # struct ExactInputSingleParams {
-            #     address tokenIn;
-            #     address tokenOut;
-            #     uint24 fee;
-            #     address recipient;
-            #     uint256 deadline;
-            #     uint256 amountIn;
-            #     uint256 amountOutMinimum;
-            #     uint160 sqrtPriceLimitX96;
-            # }
-            exact_input_params = (
-                wkas_address,           # tokenIn (WKAS - router wraps native KAS automatically)
-                token_address,          # tokenOut (Token)
-                fee_tier,               # fee (e.g., 2500 = 0.25%)
-                user_address,           # recipient = user (receives tokens directly)
-                deadline,               # deadline
-                kas_amount,             # amountIn
-                min_tokens_out,         # amountOutMinimum
-                0                       # sqrtPriceLimitX96 (0 = no limit)
-            )
+            # CRITICAL: Kaspa Finance uses SwapRouter02-style functions (HYBRID ABI)
+            # - multicall(uint256 deadline, bytes[] data) - selector 0x5ae401dc
+            # - exactInput with struct (path, recipient, amountIn, amountOutMinimum) - selector 0xb858183f
+            # - deadline is in the OUTER multicall, NOT in the inner struct
+            # - Send msg.value = amountIn for router to wrap native KAS → WKAS
             
-            # Try calling exactInputSingle directly without multicall
-            # Some routers handle native token wrapping automatically when called directly
-            swap_calldata = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            from eth_abi import encode
+            from hexbytes import HexBytes
+            
+            # Build the path: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
+            path = bytes.fromhex(wkas_address[2:]) + fee_tier.to_bytes(3, 'big') + bytes.fromhex(token_address[2:])
+            
+            # SwapRouter02 exactInput struct (NO deadline in struct):
+            # struct ExactInputParams { bytes path; address recipient; uint256 amountIn; uint256 amountOutMinimum; }
+            # Selector: 0xb858183f
+            exact_input_selector = bytes.fromhex('b858183f')
+            exact_input_encoded = encode(
+                ['(bytes,address,uint256,uint256)'],
+                [(path, user_address, kas_amount, min_tokens_out)]
+            )
+            inner_calldata = exact_input_selector + exact_input_encoded
+            
+            # Wrap in multicall(uint256 deadline, bytes[] data) - selector 0x5ae401dc
+            multicall_selector = bytes.fromhex('5ae401dc')
+            multicall_encoded = encode(
+                ['uint256', 'bytes[]'],
+                [deadline, [inner_calldata]]
+            )
+            final_calldata = '0x' + (multicall_selector + multicall_encoded).hex()
+            
+            logging.info(f"DEX buy encoded with SwapRouter02 pattern - multicall(deadline, [exactInput])")
+            logging.info(f"Path: WKAS({wkas_address}) → {fee_tier/10000:.2f}% → Token({token_address})")
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
             # IMPORTANT: gasPrice must be hex string for MetaMask compatibility
@@ -1981,8 +1987,8 @@ class Web3Service:
             tx_data = {
                 'from': user_address,
                 'to': swap_router.address,
-                'value': hex(kas_amount),
-                'data': swap_calldata,
+                'value': hex(kas_amount),  # Send native KAS - router will wrap it
+                'data': final_calldata,
                 'gasPrice': hex(gas_price)
             }
             
@@ -1992,7 +1998,7 @@ class Web3Service:
                     'from': user_address,
                     'to': swap_router.address,
                     'value': kas_amount,
-                    'data': swap_calldata
+                    'data': final_calldata
                 }
                 result = self.w3.eth.call(sim_tx)
                 logging.info(f"DEX buy tx simulation SUCCESS - result length: {len(result)} bytes")
@@ -2000,7 +2006,7 @@ class Web3Service:
                 logging.error(f"DEX buy tx simulation FAILED: {str(sim_error)}")
                 # Still return the tx_data - let MetaMask try, but log the warning
             
-            logging.info(f"DEX buy tx built - exactInputSingle direct call (no multicall)")
+            logging.info(f"DEX buy tx built - SwapRouter02 multicall(deadline, [exactInput])")
             return tx_data
             
         except Exception as e:
@@ -2013,8 +2019,8 @@ class Web3Service:
         
         NOTE: User must approve token spending before calling this (approve SwapRouter)
         
-        Uses multicall([exactInputSingle, unwrapWETH9]) to swap Token → WKAS → native KAS.
-        This gives users native KAS directly, not WKAS.
+        Uses SwapRouter02 pattern: multicall(deadline, [exactInput, unwrapWETH9])
+        to swap Token → WKAS → native KAS.
         
         Args:
             user_address (str): User's wallet address
@@ -2035,45 +2041,44 @@ class Web3Service:
             token_address = Web3.to_checksum_address(token_address)
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
-            # Build ExactInputSingleParams struct for swapping Token → WKAS
-            # IMPORTANT: recipient is SwapRouter address (address(this)) so unwrapWETH9 can work
-            # struct ExactInputSingleParams {
-            #     address tokenIn;
-            #     address tokenOut;
-            #     uint24 fee;
-            #     address recipient;
-            #     uint256 deadline;
-            #     uint256 amountIn;
-            #     uint256 amountOutMinimum;
-            #     uint160 sqrtPriceLimitX96;
-            # }
-            exact_input_params = (
-                token_address,          # tokenIn (Token)
-                wkas_address,           # tokenOut (WKAS)
-                fee_tier,               # fee (e.g., 2500 = 0.25%)
-                swap_router.address,    # recipient = SwapRouter (for unwrapWETH9)
-                deadline,               # deadline
-                token_amount,           # amountIn
-                min_kas_out,            # amountOutMinimum
-                0                       # sqrtPriceLimitX96 (0 = no limit)
-            )
+            # CRITICAL: Kaspa Finance uses SwapRouter02-style functions (HYBRID ABI)
+            # - multicall(uint256 deadline, bytes[] data) - selector 0x5ae401dc
+            # - exactInput with struct (path, recipient, amountIn, amountOutMinimum) - selector 0xb858183f
+            # - deadline is in the OUTER multicall, NOT in the inner struct
+            # - For sell: recipient = SwapRouter address (for unwrapWETH9)
             
-            # Encode exactInputSingle call using _encode_transaction_data()
-            exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
+            from eth_abi import encode
+            from hexbytes import HexBytes
+            
+            # Build the path: Token(20 bytes) + fee(3 bytes) + WKAS(20 bytes)
+            path = bytes.fromhex(token_address[2:]) + fee_tier.to_bytes(3, 'big') + bytes.fromhex(wkas_address[2:])
+            
+            # SwapRouter02 exactInput struct (NO deadline in struct):
+            # struct ExactInputParams { bytes path; address recipient; uint256 amountIn; uint256 amountOutMinimum; }
+            # Selector: 0xb858183f
+            # Recipient = SwapRouter so we can unwrapWETH9 after
+            exact_input_selector = bytes.fromhex('b858183f')
+            exact_input_encoded = encode(
+                ['(bytes,address,uint256,uint256)'],
+                [(path, swap_router.address, token_amount, min_kas_out)]
+            )
+            inner_calldata_1 = exact_input_selector + exact_input_encoded
             
             # Encode unwrapWETH9(uint256 amountMinimum, address recipient)
-            # Kaspa Finance ABI: unwrapWETH9(amountMinimum, recipient)
-            # The router will hold the WKAS from exactInputSingle, then unwrap to native KAS and send to user
+            # Selector: 0x49404b7c
             unwrap_hex = swap_router.functions.unwrapWETH9(min_kas_out, user_address)._encode_transaction_data()
+            inner_calldata_2 = bytes.fromhex(unwrap_hex[2:])
             
-            # Wrap with HexBytes so multicall receives proper bytes objects
-            from hexbytes import HexBytes
-            exact_input_bytes = HexBytes(exact_input_hex)
-            unwrap_bytes = HexBytes(unwrap_hex)
+            # Wrap in multicall(uint256 deadline, bytes[] data) - selector 0x5ae401dc
+            multicall_selector = bytes.fromhex('5ae401dc')
+            multicall_encoded = encode(
+                ['uint256', 'bytes[]'],
+                [deadline, [inner_calldata_1, inner_calldata_2]]
+            )
+            final_calldata = '0x' + (multicall_selector + multicall_encoded).hex()
             
-            # Use ContractFunction.multicall to encode the outer call correctly
-            # Kaspa Finance uses multicall(bytes[]) - NOT multicall(uint256,bytes[])
-            multicall_data = swap_router.functions.multicall([exact_input_bytes, unwrap_bytes])._encode_transaction_data()
+            logging.info(f"DEX sell encoded with SwapRouter02 pattern - multicall(deadline, [exactInput, unwrapWETH9])")
+            logging.info(f"Path: Token({token_address}) → {fee_tier/10000:.2f}% → WKAS({wkas_address})")
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
             # IMPORTANT: gasPrice must be hex string for MetaMask compatibility
@@ -2082,7 +2087,7 @@ class Web3Service:
                 'from': user_address,
                 'to': swap_router.address,
                 'value': '0x0',
-                'data': multicall_data,
+                'data': final_calldata,
                 'gasPrice': hex(gas_price)
             }
             

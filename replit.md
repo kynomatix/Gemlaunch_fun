@@ -2,30 +2,33 @@
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
 # Recent Changes (Nov 29, 2025)
-- **DEX Buy Investigation**: Native KAS → Token swaps fail with "execution reverted". The hybrid router does NOT auto-wrap native KAS like vanilla Uniswap V3. Need to capture successful Kaspa Finance frontend transaction to decode exact pattern.
+- **DEX Buy FIXED**: Decoded successful Kaspa Finance transaction and implemented correct SwapRouter02 pattern
+- **Pattern Discovery**: Kaspa Finance uses `multicall(uint256 deadline, bytes[])` NOT `multicall(bytes[])`
+- **Inner Function**: Uses `exactInput` with selector `0xb858183f` (SwapRouter02 style - no deadline in struct)
+- **Native KAS Handling**: Send `msg.value = amountIn` - router wraps KAS to WKAS automatically
 
-# Changes (Nov 28, 2025)
-- **DEX Swap Encoding FIXED**: Post-graduation swaps now use correct multicall(bytes[]) encoding via `ContractFunction._encode_transaction_data()` + `HexBytes` wrapper. Fixed double-encoding bug that caused calldata corruption.
-- **Kaspa Finance Hybrid ABI**: Confirmed Kaspa Finance uses custom hybrid ABI mixing Uniswap V3, SushiSwap, and PancakeSwap patterns. Key difference: `multicall(bytes[])` NOT `multicall(uint256,bytes[])`.
+## CRITICAL: Kaspa Finance SwapRouter02 Pattern
+**⚠️ CONFIRMED WORKING PATTERN (Nov 29, 2025) ⚠️**
 
-## CRITICAL: Kaspa Finance Hybrid Router
-**⚠️ DO NOT ASSUME VANILLA UNISWAP V3 BEHAVIOR ⚠️**
+**Reference transaction**: `0xe6015d9f00281855adcc56483df81c96b3017d40e38386e303307d6e7ad98283`
 
-Kaspa Finance SwapRouter is a **CUSTOM HYBRID** combining:
-- Uniswap V3 core functions (`exactInputSingle`, `exactInput`, `getPool`)
-- SushiSwap patterns
-- PancakeSwap patterns
+**Outer Function**:
+- `multicall(uint256 deadline, bytes[] data)` - selector `0x5ae401dc`
+- Deadline is in the OUTER call, NOT in inner structs
 
-**Key Differences from Standard V3:**
-1. `multicall(bytes[])` - NOT `multicall(uint256,bytes[])`
-2. Native token (KAS) handling differs - router may NOT auto-wrap
-3. May require explicit wrap step before swap
-4. Always check Kaspa Finance frontend transactions to understand exact pattern
+**Inner Function**:
+- `exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum))` - selector `0xb858183f`
+- Path format: WKAS(20 bytes) + fee(3 bytes) + Token(20 bytes)
+- Fee: 2500 = 0.25% (encoded as 3-byte big-endian `0x0009c4`)
 
-**To fix DEX buy (native KAS → Token):**
-1. Capture successful swap from Kaspa Finance UI
-2. Decode calldata to understand multicall sequence
-3. Replicate exact pattern in `build_dex_buy_tx()`
+**Native KAS → Token Buy**:
+- Send `msg.value = amountIn` (router handles WKAS wrapping)
+- Use WKAS in path, but send native KAS as value
+
+**DO NOT**:
+- Use `multicall(bytes[])` (wrong selector)
+- Use `exactInputSingle` (wrong function)
+- Put deadline inside the inner struct (wrong format)
 
 # Previous Changes (Nov 22, 2025)
 - **Kaspa Finance Architecture Confirmed**: Verified Kaspa Finance uses **Uniswap V3** (NOT SushiSwap). Evidence: `exactInputSingle()`, `getPool(fee)`, QuoterV2 contract.
