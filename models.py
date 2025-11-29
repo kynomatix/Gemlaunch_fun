@@ -1204,6 +1204,16 @@ class Position(db.Model):
     last_trade_event_id = db.Column(db.Integer, nullable=True)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
+    def __init__(self, user_id=None, token_id=None, qty_remaining=0, cost_basis_kas=0, 
+                 avg_entry_price_kas=0, realized_pnl_kas=0, last_trade_event_id=None):
+        self.user_id = user_id
+        self.token_id = token_id
+        self.qty_remaining = qty_remaining
+        self.cost_basis_kas = cost_basis_kas
+        self.avg_entry_price_kas = avg_entry_price_kas
+        self.realized_pnl_kas = realized_pnl_kas
+        self.last_trade_event_id = last_trade_event_id
+    
     # Relationships
     user = db.relationship('User', backref='positions')
     token = db.relationship('Token', backref='positions')

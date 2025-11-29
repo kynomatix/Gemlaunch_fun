@@ -1512,6 +1512,7 @@ class Web3Service:
         # Optimized binary search parameters
         tolerance = 10**17  # 0.1 token tolerance - imperceptible to users
         max_iterations = 12  # Reduced from 30 for sub-2s response
+        mid = (low + high) // 2  # Initialize mid before loop
         
         for iteration in range(max_iterations):
             mid = (low + high) // 2
@@ -1575,6 +1576,7 @@ class Web3Service:
         # Optimized binary search parameters
         tolerance = 10**17  # 0.1 KAS tolerance - imperceptible to users
         max_iterations = 12  # Reduced from 30 for sub-2s response
+        mid = (low + high) // 2  # Initialize mid before loop
         
         for iteration in range(max_iterations):
             mid = (low + high) // 2
@@ -1954,7 +1956,7 @@ class Web3Service:
             # - deadline is in the OUTER multicall, NOT in the inner struct
             # - Send msg.value = amountIn for router to wrap native KAS → WKAS
             
-            from eth_abi import encode
+            from eth_abi.abi import encode
             from hexbytes import HexBytes
             
             # Build the path: tokenIn (20 bytes) + fee (3 bytes) + tokenOut (20 bytes)
@@ -2047,7 +2049,7 @@ class Web3Service:
             # - deadline is in the OUTER multicall, NOT in the inner struct
             # - For sell: recipient = SwapRouter address (for unwrapWETH9)
             
-            from eth_abi import encode
+            from eth_abi.abi import encode
             from hexbytes import HexBytes
             
             # Build the path: Token(20 bytes) + fee(3 bytes) + WKAS(20 bytes)
@@ -2097,7 +2099,7 @@ class Web3Service:
                     'from': user_address,
                     'to': swap_router.address,
                     'value': 0,
-                    'data': multicall_data
+                    'data': final_calldata
                 }
                 result = self.w3.eth.call(sim_tx)
                 logging.info(f"DEX sell tx simulation SUCCESS - result length: {len(result)} bytes")
