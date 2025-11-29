@@ -1,43 +1,5 @@
 # Overview
-gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
-
-# Recent Changes (Nov 29, 2025)
-- **DEX Buy FIXED**: Decoded successful Kaspa Finance transaction and implemented correct SwapRouter02 pattern
-- **Pattern Discovery**: Kaspa Finance uses `multicall(uint256 deadline, bytes[])` NOT `multicall(bytes[])`
-- **Inner Function**: Uses `exactInput` with selector `0xb858183f` (SwapRouter02 style - no deadline in struct)
-- **Native KAS Handling**: Send `msg.value = amountIn` - router wraps KAS to WKAS automatically
-
-## CRITICAL: Kaspa Finance SwapRouter02 Pattern
-**⚠️ CONFIRMED WORKING PATTERN (Nov 29, 2025) ⚠️**
-
-**Reference transaction**: `0xe6015d9f00281855adcc56483df81c96b3017d40e38386e303307d6e7ad98283`
-
-**Outer Function**:
-- `multicall(uint256 deadline, bytes[] data)` - selector `0x5ae401dc`
-- Deadline is in the OUTER call, NOT in inner structs
-
-**Inner Function**:
-- `exactInput((bytes path, address recipient, uint256 amountIn, uint256 amountOutMinimum))` - selector `0xb858183f`
-- Path format: WKAS(20 bytes) + fee(3 bytes) + Token(20 bytes)
-- Fee: 2500 = 0.25% (encoded as 3-byte big-endian `0x0009c4`)
-
-**Native KAS → Token Buy**:
-- Send `msg.value = amountIn` (router handles WKAS wrapping)
-- Use WKAS in path, but send native KAS as value
-
-**DO NOT**:
-- Use `multicall(bytes[])` (wrong selector)
-- Use `exactInputSingle` (wrong function)
-- Put deadline inside the inner struct (wrong format)
-
-# Previous Changes (Nov 22, 2025)
-- **Kaspa Finance Architecture Confirmed**: Verified Kaspa Finance uses **Uniswap V3** (NOT SushiSwap). Evidence: `exactInputSingle()`, `getPool(fee)`, QuoterV2 contract.
-- **Mirza Team Deployment Package**: Created comprehensive package with database exports, setup guides, mock token fix instructions, and troubleshooting docs
-- **WebSocket Migration Planned**: Comprehensive plan created to migrate from polling to WebSocket (WSS) for real-time updates. See `WEBSOCKET_MIGRATION_PLAN.md` for complete specification.
-- **Achievement Auto-Evaluation**: Achievements now automatically evaluate and award after token deployment, in addition to lazy-loading when users click the Accolades tab
-- **Stat Tracking Fixes**: `total_tokens_created` now automatically increments when tokens are deployed (was previously broken)
-- **Trading Volume Display**: Dashboard now correctly converts KAS trading volume to USD for display
-- **User Stats System**: Trading volume tracked automatically via event indexer processing TradeEvents every 30 seconds
+gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain, offering a no-code solution focused on fair launch mechanisms and community-driven tokens. It leverages Kaspa's high-performance L1 capabilities and includes an AI Assistant (Gemmy), a social layer, and a gamified leaderboard. The platform aims to democratize memecoin creation and foster a vibrant Kaspa ecosystem, tapping into the growing memecoin market.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -59,32 +21,30 @@ Built with Flask, the backend features a minimal, route-based architecture with 
 ### AI Features
 - **Gemmy Zeroday Memification Engine**: An AI-powered trend discovery system using OpenRouter API for multi-source cultural trend detection and Kaspa Tech analysis.
 - **AI Token Image Generation**: A two-stage AI pipeline uses OpenRouter Llama 3.1 70B for prompt enhancement and Replicate FLUX.1 Schnell for 1024x1024 WebP image generation.
-- **AI Multi-Category Token Classification**: Automatic token categorization using Llama 3.1 8B via OpenRouter. Categories are stored as JSON arrays.
+- **AI Multi-Category Token Classification**: Automatic token categorization using Llama 3.1 8B via OpenRouter.
 
 ### Core Features
 - **Anti-Bot System (GEM System)**: An optional premium feature for PRO tokens using time-based KAS fee decay to prevent bot sniping.
-- **Token-Specific Community Points System**: Allows PRO token creators to configure and track engagement points. Token creators are excluded from earning points in their own token's leaderboard.
+- **Token-Specific Community Points System**: Allows PRO token creators to configure and track engagement points.
 - **Multi-Wallet Linking System**: Securely links multiple wallets via challenge-response authentication.
 - **Wallet Connection System**: A modal-based system supporting Kastle, KasWare, and MetaMask using challenge-response authentication.
 - **Enhanced Marketplace Search**: Provides comprehensive search across token name, symbol, contract address, and creator information.
 - **Deployment Confirmation System**: A 6-layer security verification system for confirming token deployments.
-- **X/Twitter Verification System**: OAuth 2.0-based social verification system that authenticates user identities and prevents impersonation.
+- **X/Twitter Verification System**: OAuth 2.0-based social verification system that authenticates user identities.
 - **KASPERS NFT Holder Recognition**: Social accolade system recognizes KASPERS NFT holders (KRC721) with a special achievement badge and bonus GEM points.
 - **Graduation System**: Automated token lifecycle management transitioning tokens from bonding curve to DEX at a $50 market cap threshold, with a 4-state lifecycle. A monitor service checks eligibility every 60 seconds.
-- **PRO Token Vesting System**: Fully implemented with atomic on-chain deployment. It uses a creator custody model for airdrop, marketing, and team vesting, managed by `TokenFactory V2` and `VestingDeployer V2` smart contracts. All vesting contracts (AirdropVesting, LinearVesting, CliffVesting) use `getWithdrawableAmount()` to check available balance, not `releasable()`.
+- **PRO Token Vesting System**: Fully implemented with atomic on-chain deployment, using a creator custody model for airdrop, marketing, and team vesting, managed by `TokenFactory V2` and `VestingDeployer V2` smart contracts. Vesting contracts use `getWithdrawableAmount()` to check available balance.
 - **Airdrop Distribution System**: PRO token creators can distribute airdrops to various recipient categories. The system automatically checks creator's wallet balance plus unlocked vesting tokens, bundles multi-step transactions, and protects all endpoints with CSRF tokens.
-- **Poll Voting System with Token Burning**: Token creators can create polls with customizable vote costs requiring users to burn tokens to a specified burn address. The backend verifies burn transaction details to prevent replay attacks.
+- **Poll Voting System with Token Burning**: Token creators can create polls with customizable vote costs requiring users to burn tokens to a specified burn address. The backend verifies burn transaction details.
 
 ## Smart Contract Architecture
-Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The `BondingCurvePool` acts as the ERC20 token itself.
-**CRITICAL: All contract addresses are managed in `contracts/deployed_addresses.json`**
-**ALWAYS follow `contracts/DEPLOYMENT_GUIDE.md` when deploying new contracts**
+Core contracts (`BondingCurvePool.sol`, `TokenFactory.sol`, `GraduationController.sol`) manage token creation, bonding curve mechanics, creator fee claims, anti-bot measures, and a two-step graduation process for transitioning tokens to the Kaspa Finance DEX. The `BondingCurvePool` acts as the ERC20 token itself. All contract addresses are managed in `contracts/deployed_addresses.json` and follow `contracts/DEPLOYMENT_GUIDE.md`.
 
 ## Database Schema
 The `Token` model includes blockchain integration fields, `TradeEvent` for trade history, and `AntiBotFeeTracker` for fee distributions. `is_visible` and `graduation_disabled` flags manage token visibility and graduation eligibility.
 
 ### Data Architecture Strategy
-A hybrid approach uses Blockscout GraphQL API and Web3 direct queries for real-time data, and `TradeEvent` database replay for historical chart data. The database retains user profiles, token metadata, trade history (charts), and social features. Timestamps are stored in UTC and displayed in the user's local timezone.
+A hybrid approach uses Blockscout GraphQL API and Web3 direct queries for real-time data, and `TradeEvent` database replay for historical chart data. The database retains user profiles, token metadata, trade history (charts), and social features. Timestamps are stored in UTC.
 
 ## Design Patterns
 The project adheres to an MVC pattern.
@@ -93,20 +53,10 @@ The project adheres to an MVC pattern.
 Includes hardware-accelerated CSS animations, efficient asset caching, and JavaScript-enhanced smooth scrolling.
 
 ## Blockchain Integration Foundation
-The system includes a Web3 Service Layer for RPC connection to **Kasplex zkEVM L2 (Testnet)**, an Oracle Wallet for automated operations, and contract loading. Transaction utilities handle gas estimation, signing, relay, and status polling, with POA middleware for Kasplex compatibility.
-**⚠️ IMPORTANT: This platform uses Kasplex zkEVM L2, not native Kaspa L1.**
-**CRITICAL: Kasplex Testnet Chain ID is 167012 (0x28c64).**
+The system includes a Web3 Service Layer for RPC connection to **Kasplex zkEVM L2 (Testnet)**, an Oracle Wallet for automated operations, and contract loading. Transaction utilities handle gas estimation, signing, relay, and status polling, with POA middleware for Kasplex compatibility. The platform uses Kasplex zkEVM L2 (Chain ID 167012) and not native Kaspa L1.
 
 ### CRITICAL GAS RULES - DO NOT MODIFY UNLESS EXPLICITLY ASKED
-**🚨 LEGACY GAS MODE ONLY - NEVER CHANGE THIS 🚨**
-- **ALL transactions MUST use LEGACY gas mode**: `gasPrice: self.w3.eth.gas_price`
-- **NEVER use EIP-1559**: No `maxFeePerGas` or `maxPriorityFeePerGas`
-- **NEVER add gas estimation to DEX swaps**: Gas estimation fails on Kasplex for DEX transactions
-- **NEVER add gas limits to DEX swaps**: Let MetaMask handle gas estimation
-- **Bonding curve pattern is the reference**: `services/web3_service.py` lines 1628-1673 show the correct pattern
-- **DEX swap transactions return**: `{from, to, value, data, gasPrice}` ONLY - nothing else
-
-This configuration works and has been tested. DO NOT modify gas-related code in `build_dex_buy_tx()` or `build_dex_sell_tx()` unless the user explicitly requests changes.
+All transactions MUST use LEGACY gas mode (`gasPrice: self.w3.eth.gas_price`), NEVER EIP-1559. Gas estimation and limits are NEVER to be added to DEX swaps on Kasplex. The bonding curve pattern in `services/web3_service.py` is the reference. DEX swap transactions should only return `{from, to, value, data, gasPrice}`.
 
 ## Transaction Flow Architecture
 Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → Monitor. Token creation is handled by a backend oracle wallet. Sell transactions require prior ERC20 approval for the BondingCurvePool. The `static/js/transaction_manager.js` module orchestrates all transaction types.
@@ -115,44 +65,11 @@ Transactions follow a 5-phase lifecycle: Quote → Build → Sign → Relay → 
 
 ### Current State: Hybrid SSE + Polling
 The platform currently uses a hybrid approach for real-time updates:
-
-#### SSE (Server-Sent Events) - Transaction Monitoring
-- **Transaction Monitoring**: Uses SSE via `/api/tx/<tx_hash>/stream` with polling fallback
-- **File**: `static/js/transaction_manager.js`
-- **Status**: ✅ Optimal, keep as-is
-
-#### Polling-Based Systems
-1. **Blockchain Event Indexer**: Polls blockchain every 30 seconds for trades/events
-2. **Graduation Status**: Frontend polls `/api/token/<address>/graduation-status` every 30 seconds
-
-#### One-Time Fetch Systems (No Real-Time Updates Needed)
-- Chat messages, polls/voting, spotlight messages load once on page load
+- **SSE (Server-Sent Events)**: Used for transaction monitoring via `/api/tx/<tx_hash>/stream` with polling fallback. This is considered optimal.
+- **Polling-Based Systems**: Blockchain Event Indexer polls every 30 seconds for trades/events, and the frontend polls `/api/token/<address>/graduation-status` every 30 seconds.
 
 ### Future: WebSocket (WSS) for Blockchain Events
-**Status**: Planned - See `DevDocs/WEBSOCKET_IMPLEMENTATION_PLAN.md`
-
-**Scope**: WebSocket is ONLY for on-chain event indexing (blockchain data), NOT social features
-
-**Target Architecture**:
-- WebSocket (WSS) or fast polling (2s) for blockchain event monitoring
-- Real-time broadcasts to users for trade events, price updates, graduations
-- SSE remains for transaction monitoring (already optimal)
-- Social features (chat, polls, spotlight) remain one-time fetch
-
-**Key Benefits**:
-- Real-time trade notifications (<2-4s latency vs 42s current)
-- Instant price updates after trades
-- Live graduation progress updates
-- 90% reduction in blockchain polling overhead
-- Significantly improved trading experience
-
-**WebSocket Events** (Blockchain Only):
-- `trade_new` - New trade occurred on-chain
-- `price_update` - Token price/market data changed
-- `graduation_status` - Graduation progress update
-- `holdings_update` - User portfolio changes from on-chain events
-
-**Implementation**: Flask-SocketIO with eventlet workers, room-based broadcasting for token-specific updates
+A migration to WebSocket (WSS) is planned for on-chain event indexing, targeting real-time broadcasts for trade events, price updates, and graduations. SSE will remain for transaction monitoring. WebSocket events will include `trade_new`, `price_update`, `graduation_status`, and `holdings_update`. Implementation will use Flask-SocketIO with eventlet workers and room-based broadcasting.
 
 # External Dependencies
 
@@ -167,17 +84,12 @@ The platform currently uses a hybrid approach for real-time updates:
 
 ## Blockchain Integration
 - **Kasplex zkEVM L2**: EVM-compatible Layer 2 on Kaspa.
-- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools. **Uses Uniswap V3 architecture** (NOT SushiSwap/V2). Confirmed by on-chain verification: `exactInputSingle()`, `getPool()` with fee tiers, QuoterV2, and PositionManager contracts all indicate V3.
+- **Kaspa Finance DEX**: Target DEX for token graduation and liquidity pools, using Uniswap V3 architecture.
 - **Smart Contract Stack**: Solidity ^0.8.20, Hardhat, OpenZeppelin.
 - **web3.py**: Python library for Ethereum/EVM blockchain interaction.
 - **eth-account**: Ethereum account management for transaction signing.
 
 ## External Services
-- **Telegram**: Community engagement.
-- **Twitter/X**: Social media.
-- **Kaspa Finance**: Automatic DEX deployment.
 - **OpenRouter API**: For Gemmy AI, trend analysis, and image prompt enhancement (Meta Llama 3.1 70B).
 - **Replicate API**: For AI-powered token image generation (FLUX.1 Schnell).
-- **4chan /biz/**: Real-time meme trend scraping.
-- **Reddit CryptoMoonShots**: Community-validated meme trends.
 - **Pinata**: IPFS pinning service for permanent image storage.
