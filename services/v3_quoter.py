@@ -7,6 +7,7 @@ and calculates quotes using the same math as Uniswap V3 core.
 """
 
 import logging
+import time
 from typing import Tuple, Dict
 from web3 import Web3
 
@@ -17,6 +18,11 @@ from services.uniswap_v3_math import (
     FullMath,
     sqrt_price_x96_to_price
 )
+
+# Global caches for performance
+_quoter_cache: Dict[str, 'UniswapV3Quoter'] = {}
+_pool_state_cache: Dict[str, Tuple[Dict, float]] = {}  # pool_address -> (state, timestamp)
+_POOL_STATE_TTL = 2.0  # Cache pool state for 2 seconds
 
 
 class UniswapV3Quoter:
@@ -44,9 +50,11 @@ class UniswapV3Quoter:
         
         logging.debug(f"V3 Quoter initialized - Pool: {self.pool.address}, Fee: {self.fee}")
     
-    def get_pool_state(self) -> Dict:
+    def get_pool_state(self, use_cache: bool = True) -> Dict:
         """
         Read current pool state from slot0 and liquidity
+        
+        Uses a 2-second cache to reduce RPC calls during rapid quote requests.
         
         Returns:
             dict: {
@@ -60,14 +68,23 @@ class UniswapV3Quoter:
                 'unlocked': bool
             }
         """
+        global _pool_state_cache
+        
+        pool_addr = self.pool.address.lower()
+        now = time.time()
+        
+        if use_cache and pool_addr in _pool_state_cache:
+            cached_state, cached_time = _pool_state_cache[pool_addr]
+            if now - cached_time < _POOL_STATE_TTL:
+                logging.debug(f"Pool state cache HIT for {pool_addr[:10]}... (age: {now - cached_time:.2f}s)")
+                return cached_state
+        
         try:
-            # Manually read slot0() raw bytes (Kaspa Finance pools return non-standard format)
             slot0_data = self.w3.eth.call({
                 'to': self.pool.address,
                 'data': '0x3850c7bd'  # slot0() function selector
             })
             
-            # Parse raw bytes (standard Uniswap V3 layout in first 224 bytes)
             sqrt_price_x96 = int.from_bytes(slot0_data[0:32], 'big')
             tick = int.from_bytes(slot0_data[32:64], 'big', signed=True)
             observation_index = int.from_bytes(slot0_data[64:96], 'big')
@@ -76,11 +93,9 @@ class UniswapV3Quoter:
             fee_protocol = int.from_bytes(slot0_data[160:192], 'big')
             unlocked = int.from_bytes(slot0_data[192:224], 'big')
             
-            # Handle int24 tick properly (convert from int256 to int24)
             if tick > 2**23 - 1:
                 tick = tick - 2**24
             
-            # Read liquidity normally
             liquidity = self.pool.functions.liquidity().call()
             
             state = {
@@ -93,6 +108,8 @@ class UniswapV3Quoter:
                 'unlocked': bool(unlocked),
                 'liquidity': liquidity
             }
+            
+            _pool_state_cache[pool_addr] = (state, now)
             
             logging.debug(f"Pool state: sqrtPriceX96={state['sqrt_price_x96']}, tick={state['tick']}, liquidity={state['liquidity']}")
             return state
@@ -280,7 +297,10 @@ class UniswapV3Quoter:
 
 def create_quoter_for_pool(w3, pool_address: str) -> UniswapV3Quoter:
     """
-    Create a quoter instance for a specific V3 pool
+    Create or retrieve cached quoter instance for a specific V3 pool
+    
+    Caches quoter instances to avoid repeated RPC calls for token0/token1/fee
+    which never change for a given pool.
     
     Args:
         w3: Web3 instance
@@ -289,6 +309,14 @@ def create_quoter_for_pool(w3, pool_address: str) -> UniswapV3Quoter:
     Returns:
         UniswapV3Quoter instance
     """
+    global _quoter_cache
+    
+    pool_addr_lower = pool_address.lower()
+    
+    if pool_addr_lower in _quoter_cache:
+        logging.debug(f"Quoter cache HIT for pool {pool_addr_lower[:10]}...")
+        return _quoter_cache[pool_addr_lower]
+    
     try:
         from pathlib import Path
         import json
@@ -307,7 +335,11 @@ def create_quoter_for_pool(w3, pool_address: str) -> UniswapV3Quoter:
             abi=pool_abi
         )
         
-        return UniswapV3Quoter(w3, pool_contract)
+        quoter = UniswapV3Quoter(w3, pool_contract)
+        _quoter_cache[pool_addr_lower] = quoter
+        logging.debug(f"Quoter created and cached for pool {pool_addr_lower[:10]}...")
+        
+        return quoter
         
     except Exception as e:
         logging.error(f"Failed to create quoter for pool {pool_address}: {str(e)}")
