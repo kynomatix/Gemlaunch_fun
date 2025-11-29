@@ -1473,6 +1473,8 @@ def index_transaction_immediately(tx_hash):
     """
     Index events from a specific transaction immediately (for real-time updates)
     
+    Handles BOTH bonding curve trades AND DEX trades (post-graduation)
+    
     Args:
         tx_hash: Transaction hash to index
     
@@ -1490,40 +1492,88 @@ def index_transaction_immediately(tx_hash):
         
         block_number = receipt['blockNumber']
         
-        # Find the token by contract address from logs
-        token_address = None
+        # Collect all unique addresses from logs
+        log_addresses = set()
         for log in receipt['logs']:
-            # The first log's address is usually the pool/token contract
             if log['address']:
-                token_address = log['address'].lower()
+                log_addresses.add(log['address'].lower())
+        
+        if not log_addresses:
+            return {'success': False, 'error': 'Could not find any addresses in logs'}
+        
+        # Try to find token by checking ALL log addresses
+        # DEX swaps have multiple logs: WKAS transfer, Token transfer, Pool Swap event
+        token = None
+        
+        # First try: Find token by contract_address (token ERC20 contract)
+        for addr in log_addresses:
+            token = Token.query.filter(
+                db.func.lower(Token.contract_address) == addr
+            ).first()
+            if token:
                 break
         
-        if not token_address:
-            return {'success': False, 'error': 'Could not find token address'}
+        # Second try: Find token by liquidity_pool_address (bonding curve)
+        if not token:
+            for addr in log_addresses:
+                token = Token.query.filter(
+                    db.func.lower(Token.liquidity_pool_address) == addr
+                ).first()
+                if token:
+                    break
         
-        # Find token in database
-        token = Token.query.filter(
-            db.func.lower(Token.contract_address) == token_address
-        ).first()
+        # Third try: Find token by dex_pool_address (Uniswap V3 pool for graduated tokens)
+        if not token:
+            for addr in log_addresses:
+                token = Token.query.filter(
+                    db.func.lower(Token.dex_pool_address) == addr
+                ).first()
+                if token:
+                    break
         
         if not token:
-            logger.debug(f"Token not found for address {token_address}")
+            logger.debug(f"Token not found for any address in logs: {log_addresses}")
             return {'success': False, 'error': 'Token not found'}
         
-        # Process events from this specific block and token
-        # Use liquidity_pool_address (BondingCurvePool) which emits trade events
-        pool_address = token.liquidity_pool_address or token.contract_address
-        result = process_bonding_pool_events(
-            pool_address,
-            block_number,
-            block_number
-        )
+        # Determine if this is a bonding curve trade or DEX trade
+        result = {'success': False, 'buy_count': 0, 'sell_count': 0, 'dex_buys': 0, 'dex_sells': 0}
         
-        if result.get('success'):
-            logger.info(f"✅ Immediately indexed transaction {tx_hash[:10]}... - {result.get('buy_count', 0)} buys, {result.get('sell_count', 0)} sells")
-            return {'success': True, 'result': result}
+        if token.graduation_status == 'graduated' and token.dex_pool_address:
+            # GRADUATED TOKEN: Process DEX pool events
+            logger.debug(f"Processing DEX trade for graduated token {token.symbol}")
+            dex_result = process_dex_pool_events(
+                token.dex_pool_address,
+                block_number,
+                block_number
+            )
+            
+            if dex_result.get('success'):
+                stats = dex_result.get('stats', {})
+                result['success'] = True
+                result['dex_buys'] = stats.get('dex_buys', 0)
+                result['dex_sells'] = stats.get('dex_sells', 0)
+                logger.info(f"✅ Immediately indexed DEX transaction {tx_hash[:10]}... - {result['dex_buys']} DEX buys, {result['dex_sells']} DEX sells")
+            else:
+                result['error'] = dex_result.get('error', 'DEX indexing failed')
         else:
-            return {'success': False, 'error': result.get('error', 'Unknown error')}
+            # PRE-GRADUATION TOKEN: Process bonding curve events
+            pool_address = token.liquidity_pool_address or token.contract_address
+            bc_result = process_bonding_pool_events(
+                pool_address,
+                block_number,
+                block_number
+            )
+            
+            if bc_result.get('success'):
+                stats = bc_result.get('stats', {})
+                result['success'] = True
+                result['buy_count'] = stats.get('purchases', 0)
+                result['sell_count'] = stats.get('sells', 0)
+                logger.info(f"✅ Immediately indexed transaction {tx_hash[:10]}... - {result['buy_count']} buys, {result['sell_count']} sells")
+            else:
+                result['error'] = bc_result.get('error', 'Bonding curve indexing failed')
+        
+        return {'success': result['success'], 'result': result}
             
     except Exception as e:
         logger.error(f"Error immediately indexing transaction {tx_hash}: {str(e)}")
