@@ -415,15 +415,8 @@
         // Fetch real chart data from blockchain trade history with candlestick support
         fetchChartData: async function(type, interval = '1h') {
             try {
-                // Calculate appropriate timeframe based on interval (like real trading platforms)
-                const timeframeMap = {
-                    '5m': '6h',    // 5min candles: show last 6 hours
-                    '15m': '24h',  // 15min candles: show last 24 hours
-                    '1h': '7d',    // 1hour candles: show last 7 days
-                    '4h': '30d',   // 4hour candles: show last 30 days
-                    '1d': '90d'    // 1day candles: show last 90 days
-                };
-                const timeframe = timeframeMap[interval] || '7d';
+                // Always fetch all trade history - chart will scroll to show history
+                const timeframe = 'all';
                 
                 let url = `/api/token/${window.tokenContractAddress}/chart-data?timeframe=${timeframe}&interval=${interval}&type=${type}`;
                 
@@ -2525,21 +2518,25 @@
             const tradesHTML = trades.slice(0, 10).map(trade => {
                 const tradeType = trade.trade_type;
                 
-                // Determine badge colors based on trade type
-                let badgeBg, badgeColor;
+                // Determine badge colors and display text based on trade type
+                let badgeBg, badgeColor, displayType;
                 if (tradeType === 'buy' || tradeType === 'dex_buy') {
                     badgeBg = 'rgba(34, 197, 94, 0.2)';  // Green background
                     badgeColor = '#22c55e';  // Green text
+                    displayType = 'BUY';
                 } else if (tradeType === 'sell' || tradeType === 'dex_sell') {
                     badgeBg = 'rgba(239, 68, 68, 0.2)';  // Red background
                     badgeColor = '#ef4444';  // Red text
+                    displayType = 'SELL';
                 } else if (tradeType === 'airdrop') {
                     badgeBg = 'rgba(255, 215, 0, 0.2)';  // Gold background
                     badgeColor = '#FFD700';  // Gold text
+                    displayType = 'AIRDROP';
                 } else {
                     // Default fallback for unknown types
                     badgeBg = 'rgba(128, 128, 128, 0.2)';  // Gray background
                     badgeColor = '#888';  // Gray text
+                    displayType = tradeType.toUpperCase();
                 }
                 
                 const tokenAmount = (parseFloat(trade.token_amount) / 1e18).toFixed(2);
@@ -2551,7 +2548,7 @@
                     <div class="trade-item" style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;">
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <span class="trade-type-badge" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: ${badgeBg}; color: ${badgeColor};">
-                                ${tradeType.toUpperCase()}
+                                ${displayType}
                             </span>
                             <div style="display: flex; flex-direction: column;">
                                 <span style="color: #FFF; font-size: 0.9rem;">

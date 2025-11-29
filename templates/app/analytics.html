@@ -275,8 +275,8 @@
                         {% for trade in analytics.recent_trades %}
                         <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
                             <td style="padding: 0.75rem;">
-                                <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; background: {% if trade.trade_type == 'buy' %}rgba(32, 178, 170, 0.2); color: #20B2AA{% else %}rgba(255, 68, 68, 0.2); color: #FF4444{% endif %};">
-                                    {{ trade.trade_type.upper() }}
+                                <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; background: {% if trade.trade_type in ['buy', 'dex_buy'] %}rgba(32, 178, 170, 0.2); color: #20B2AA{% else %}rgba(255, 68, 68, 0.2); color: #FF4444{% endif %};">
+                                    {{ 'BUY' if trade.trade_type in ['buy', 'dex_buy'] else 'SELL' }}
                                 </span>
                             </td>
                             <td style="padding: 0.75rem;">

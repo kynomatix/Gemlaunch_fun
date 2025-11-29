@@ -7917,14 +7917,26 @@ def get_token_chart_data(contract_address):
         requested_format = request.args.get('format', None)
         chart_type = request.args.get('type', 'marketcap')  # 'price' or 'marketcap'
         
-        # Calculate time window
+        # Calculate time window - support all frontend timeframes
         now = datetime.now(timezone.utc)
-        if timeframe == '7d':
+        if timeframe == 'all':
+            # All time - show complete trade history from token creation
+            start_time = token.created_at if token.created_at else now - timedelta(days=365)
+            if start_time.tzinfo is None:
+                start_time = start_time.replace(tzinfo=timezone.utc)
+            default_interval = '1d'
+        elif timeframe == '6h':
+            start_time = now - timedelta(hours=6)
+            default_interval = '5m'
+        elif timeframe == '7d':
             start_time = now - timedelta(days=7)
             default_interval = '1h'
         elif timeframe == '30d':
             start_time = now - timedelta(days=30)
             default_interval = '4h'
+        elif timeframe == '90d':
+            start_time = now - timedelta(days=90)
+            default_interval = '1d'
         else:  # Default 24h
             start_time = now - timedelta(hours=24)
             default_interval = '5m'
