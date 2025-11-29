@@ -1,9 +1,31 @@
 # Overview
 gemlaunch.fun is a web platform for creating and launching memecoins on the Kaspa blockchain. It offers a no-code solution with an emphasis on fair launch mechanisms and community-driven tokens, leveraging Kaspa's high-performance L1 capabilities. The platform includes an AI Assistant (Gemmy), a social layer, a gamified leaderboard, and integrates with Kaspa Finance for DEX deployments. Its purpose is to democratize memecoin creation and foster a vibrant Kaspa ecosystem with business potential in the growing memecoin market.
 
-# Recent Changes (Nov 28, 2025)
+# Recent Changes (Nov 29, 2025)
+- **DEX Buy Investigation**: Native KAS → Token swaps fail with "execution reverted". The hybrid router does NOT auto-wrap native KAS like vanilla Uniswap V3. Need to capture successful Kaspa Finance frontend transaction to decode exact pattern.
+
+# Changes (Nov 28, 2025)
 - **DEX Swap Encoding FIXED**: Post-graduation swaps now use correct multicall(bytes[]) encoding via `ContractFunction._encode_transaction_data()` + `HexBytes` wrapper. Fixed double-encoding bug that caused calldata corruption.
 - **Kaspa Finance Hybrid ABI**: Confirmed Kaspa Finance uses custom hybrid ABI mixing Uniswap V3, SushiSwap, and PancakeSwap patterns. Key difference: `multicall(bytes[])` NOT `multicall(uint256,bytes[])`.
+
+## CRITICAL: Kaspa Finance Hybrid Router
+**⚠️ DO NOT ASSUME VANILLA UNISWAP V3 BEHAVIOR ⚠️**
+
+Kaspa Finance SwapRouter is a **CUSTOM HYBRID** combining:
+- Uniswap V3 core functions (`exactInputSingle`, `exactInput`, `getPool`)
+- SushiSwap patterns
+- PancakeSwap patterns
+
+**Key Differences from Standard V3:**
+1. `multicall(bytes[])` - NOT `multicall(uint256,bytes[])`
+2. Native token (KAS) handling differs - router may NOT auto-wrap
+3. May require explicit wrap step before swap
+4. Always check Kaspa Finance frontend transactions to understand exact pattern
+
+**To fix DEX buy (native KAS → Token):**
+1. Capture successful swap from Kaspa Finance UI
+2. Decode calldata to understand multicall sequence
+3. Replicate exact pattern in `build_dex_buy_tx()`
 
 # Previous Changes (Nov 22, 2025)
 - **Kaspa Finance Architecture Confirmed**: Verified Kaspa Finance uses **Uniswap V3** (NOT SushiSwap). Evidence: `exactInputSingle()`, `getPool(fee)`, QuoterV2 contract.
