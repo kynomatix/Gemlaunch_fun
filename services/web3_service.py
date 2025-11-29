@@ -1949,7 +1949,7 @@ class Web3Service:
             wkas_address = Web3.to_checksum_address(KASPA_FINANCE_WKAS)
             
             # Build ExactInputSingleParams struct for swapping WKAS → Token
-            # Using exactInputSingle (simpler than exactInput with path) 
+            # When sending native KAS with msg.value, the router should auto-wrap
             # struct ExactInputSingleParams {
             #     address tokenIn;
             #     address tokenOut;
@@ -1961,7 +1961,7 @@ class Web3Service:
             #     uint160 sqrtPriceLimitX96;
             # }
             exact_input_params = (
-                wkas_address,           # tokenIn (WKAS)
+                wkas_address,           # tokenIn (WKAS - router wraps native KAS automatically)
                 token_address,          # tokenOut (Token)
                 fee_tier,               # fee (e.g., 2500 = 0.25%)
                 user_address,           # recipient = user (receives tokens directly)
@@ -1971,19 +1971,9 @@ class Web3Service:
                 0                       # sqrtPriceLimitX96 (0 = no limit)
             )
             
-            # Encode the inner calls for multicall
-            # Use _encode_transaction_data() to get raw calldata (selector + ABI-encoded params)
-            exact_input_hex = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
-            refund_eth_hex = swap_router.functions.refundETH()._encode_transaction_data()
-            
-            # Wrap with HexBytes so multicall receives proper bytes objects
-            from hexbytes import HexBytes
-            exact_input_bytes = HexBytes(exact_input_hex)
-            refund_eth_bytes = HexBytes(refund_eth_hex)
-            
-            # Use ContractFunction.multicall to encode the outer call correctly
-            # Kaspa Finance uses multicall(bytes[]) - NOT multicall(uint256,bytes[])
-            multicall_data = swap_router.functions.multicall([exact_input_bytes, refund_eth_bytes])._encode_transaction_data()
+            # Try calling exactInputSingle directly without multicall
+            # Some routers handle native token wrapping automatically when called directly
+            swap_calldata = swap_router.functions.exactInputSingle(exact_input_params)._encode_transaction_data()
             
             # Build tx_data dict with legacy gas mode (required for Kasplex)
             # IMPORTANT: gasPrice must be hex string for MetaMask compatibility
@@ -1992,7 +1982,7 @@ class Web3Service:
                 'from': user_address,
                 'to': swap_router.address,
                 'value': hex(kas_amount),
-                'data': multicall_data,
+                'data': swap_calldata,
                 'gasPrice': hex(gas_price)
             }
             
@@ -2002,7 +1992,7 @@ class Web3Service:
                     'from': user_address,
                     'to': swap_router.address,
                     'value': kas_amount,
-                    'data': multicall_data
+                    'data': swap_calldata
                 }
                 result = self.w3.eth.call(sim_tx)
                 logging.info(f"DEX buy tx simulation SUCCESS - result length: {len(result)} bytes")
@@ -2010,7 +2000,7 @@ class Web3Service:
                 logging.error(f"DEX buy tx simulation FAILED: {str(sim_error)}")
                 # Still return the tx_data - let MetaMask try, but log the warning
             
-            logging.info(f"DEX buy tx built - multicall([exactInputSingle, refundETH])")
+            logging.info(f"DEX buy tx built - exactInputSingle direct call (no multicall)")
             return tx_data
             
         except Exception as e:
