@@ -318,6 +318,26 @@ class PositionService:
                 'realized_pnl_kas': position.realized_pnl_kas,
                 'last_trade_event_id': position.last_trade_event_id
             }
+            
+            # CRITICAL FIX: Validate and correct cached avg_entry_price_kas
+            # If avg_entry is 0 but cost_basis and qty are positive, recalculate
+            # Handle both human-readable and WEI format qty_remaining (legacy data)
+            if (metrics['avg_entry_price_kas'] == 0 and 
+                metrics['cost_basis_kas'] > 0 and 
+                metrics['qty_remaining'] > 0):
+                
+                qty = metrics['qty_remaining']
+                
+                # Detect WEI format: if qty > 1 trillion, it's likely WEI
+                if qty > Decimal('1000000000000'):
+                    qty = qty / Decimal('1000000000000000000')
+                    logging.warning(f"Detected WEI format qty_remaining, converting: {metrics['qty_remaining']} → {qty}")
+                
+                metrics['avg_entry_price_kas'] = metrics['cost_basis_kas'] / qty
+                logging.warning(
+                    f"⚠️ Corrected zero avg_entry_price_kas from cache: cost_basis={metrics['cost_basis_kas']} KAS, "
+                    f"qty={qty} → avg_entry={metrics['avg_entry_price_kas']:.12f} KAS"
+                )
         
         # Calculate break-even market cap if current market cap is provided
         if current_market_cap_kas and current_price_kas and metrics['avg_entry_price_kas'] > 0:
