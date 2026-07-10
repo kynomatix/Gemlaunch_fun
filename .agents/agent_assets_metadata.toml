@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KFObUeByxReT49EDWoZVW"
+uri = "file://BREAKEVEN_PRICE_REPORT.md"
+type = "text"
+title = "Breakeven Price Feature — Complete Technical Report"
